@@ -10,7 +10,7 @@ import (
 // three methods may be called concurrently. This interface here does not
 // support log compaction.
 type ReplicatedLog interface {
-	// Start sets an internal field lo; later WaitCommitted will turn entries
+	// Start sets an internal field lo; later WaitCommitted will return entries
 	// with indices >= lo.
 	Start(lo uint64) error
 
@@ -20,7 +20,7 @@ type ReplicatedLog interface {
 	Propose(ctx context.Context, data []byte)
 
 	// GetCommitted loads committed entries for post-replication distribution:
-	// All returned entries are consequtive and start at Index=lo, but do not
+	// All returned entries are consecutive and start at Index=lo, but do not
 	// necessarily go all the way up to (but not including) Index=hi. At least
 	// one entry is returned as long as there is one in the specified range. If
 	// possible, no more than maxSize bytes are returned.
