@@ -1,0 +1,72 @@
+syntax = "proto3";
+package proto;
+
+// A user's entry, containing public keys and other information. This definition
+// only contains fields relevant to the keyserver and auditors.
+// Application-specific content will be defined as extensions.
+message Entry {
+	SignatureVerifier update_key = 1; // required: signing key authorized to change the profile
+	repeated bytes email_PGP_fingerprint = 2; // keyrings can be huge, and are of no interest to verifiers
+	// A new field will be added here for each application, with the TCP/UDP
+	// port number as field number whenever possible to avoid collisions.
+	// The keyserver and verifiers only need to understand keys in field 1.
+}
+
+message SignedEntryUpdate {
+	message EntryUpdateT {
+		bytes index = 1; // VRF(name)
+		Entry new_entry = 2; // hashed field, do not re-encode
+	}
+	bytes new_sig  = 2; // required: signature by an update key in new entry
+	bytes old_sig = 3; // signature by an update key in old entry; required if old entry exists
+}
+
+// SignedRatification messages are used by auditors and the service provider to
+// vouch that the SummaryHash represents the unique global state at the end of
+// Epoch.
+message SignedRatification {
+	message RatificationT {
+		uint64 epoch = 1; // sequence number
+		message KeyserverStateSummary {
+			bytes root_hash = 1;
+			// Chaining is used to allow signatures from different epochs in the same quorum:
+			// a signature vouches for all epochs chained to that in addition to the one listed.
+			bytes previous_summary_hash = 2;
+		}
+		bytes summary_hash = 2; // hash of KeyserverStateSummary at the end of Epoch. do not re-encode
+		uint64 timestamp = 3; // google.protobuf.Timestamp timestamp = 3;
+	}
+	uint64 ratifier = 1; // unique ID, hash of public key by convention
+	RatificationT ratification = 2; // signed field, do not re-encode
+	bytes signature = 3;
+}
+
+// SignatureVerifier wraps a public key of a cryptographically secure signature
+// scheme and verification metadata. Each verifier can have its own signature
+// format and needs to implement serialization and deserialization of its own
+// signatures.
+message SignatureVerifier {
+	// ThresholdVerifiers returns "OK" if any threshould of verifers do.
+	// This is used to implement
+	// 1. Account Recovery through service provider: if an user's entry
+	// contains has the update key set to
+	// threshold(1,user,serviceprovider), the service provider can perform
+	// account recovery.
+	// 2. Service providers with servers in geographically diverse locations,
+	// for example threshold(2,freedonia,gilead,mordor).
+	message ThresholdVerifier {
+		int32 threshold = 1; // required
+		repeated SignatureVerifier verifiers = 2;
+	}
+	// Unlike cryptographic anonymous threshold signatures, the signature
+	// simply contains the signatures from the specified keys.
+	message ThresholdSignature {
+		repeated int32 key_index = 1;
+		repeated bytes signature = 2;
+	}
+
+	oneof verification_method {
+		bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
+		ThresholdVerifier threshold = 2;
+	}
+}
