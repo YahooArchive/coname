@@ -1,5 +1,6 @@
 syntax = "proto3";
 package proto;
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 // A user's entry, containing public keys and other information. This definition
 // only contains fields relevant to the keyserver and auditors.
@@ -13,10 +14,14 @@ message Entry {
 }
 
 message SignedEntryUpdate {
+	// TODO: replay prevention. But we probably want to allow update-surviving revocation certificates.
 	message EntryUpdateT {
 		bytes index = 1; // VRF(name)
-		Entry new_entry = 2; // hashed field, do not re-encode
+		Entry new_entry = 2 // hashed field, do not re-encode
+			[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
 	}
+	EntryUpdateT update = 1 // signed field, do not re-encode
+		[(gogoproto.customtype) = "SignedEntryUpdate_EntryUpdateT_PreserveEncoding", (gogoproto.nullable) = false];
 	bytes new_sig  = 2; // required: signature by an update key in new entry
 	bytes old_sig = 3; // signature by an update key in old entry; required if old entry exists
 }
@@ -33,11 +38,13 @@ message SignedRatification {
 			// a signature vouches for all epochs chained to that in addition to the one listed.
 			bytes previous_summary_hash = 2;
 		}
-		bytes summary_hash = 2; // hash of KeyserverStateSummary at the end of Epoch. do not re-encode
+		KeyserverStateSummary summary = 2 // hashed field, do not re-encode
+			[(gogoproto.customtype) = "SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding", (gogoproto.nullable) = false];
 		uint64 timestamp = 3; // google.protobuf.Timestamp timestamp = 3;
 	}
 	uint64 ratifier = 1; // unique ID, hash of public key by convention
-	RatificationT ratification = 2; // signed field, do not re-encode
+	RatificationT ratification = 2 // signed field, do not re-encode
+			[(gogoproto.customtype) = "SignedRatification_RatificationT_PreserveEncoding", (gogoproto.nullable) = false];
 	bytes signature = 3;
 }
 

@@ -18,6 +18,8 @@ package proto
 
 import proto1 "github.com/golang/protobuf/proto"
 
+// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+
 import io "io"
 import fmt "fmt"
 
@@ -44,54 +46,42 @@ func (m *Entry) GetUpdateKey() *SignatureVerifier {
 }
 
 type SignedEntryUpdate struct {
-	NewSig []byte `protobuf:"bytes,2,opt,name=new_sig,proto3" json:"new_sig,omitempty"`
-	OldSig []byte `protobuf:"bytes,3,opt,name=old_sig,proto3" json:"old_sig,omitempty"`
+	Update SignedEntryUpdate_EntryUpdateT_PreserveEncoding `protobuf:"bytes,1,opt,name=update,customtype=SignedEntryUpdate_EntryUpdateT_PreserveEncoding" json:"update"`
+	NewSig []byte                                          `protobuf:"bytes,2,opt,name=new_sig,proto3" json:"new_sig,omitempty"`
+	OldSig []byte                                          `protobuf:"bytes,3,opt,name=old_sig,proto3" json:"old_sig,omitempty"`
 }
 
 func (m *SignedEntryUpdate) Reset()         { *m = SignedEntryUpdate{} }
 func (m *SignedEntryUpdate) String() string { return proto1.CompactTextString(m) }
 func (*SignedEntryUpdate) ProtoMessage()    {}
 
+// TODO: replay prevention. But we probably want to allow update-surviving revocation certificates.
 type SignedEntryUpdate_EntryUpdateT struct {
-	Index    []byte `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
-	NewEntry *Entry `protobuf:"bytes,2,opt,name=new_entry" json:"new_entry,omitempty"`
+	Index    []byte                 `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
+	NewEntry Entry_PreserveEncoding `protobuf:"bytes,2,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
 }
 
 func (m *SignedEntryUpdate_EntryUpdateT) Reset()         { *m = SignedEntryUpdate_EntryUpdateT{} }
 func (m *SignedEntryUpdate_EntryUpdateT) String() string { return proto1.CompactTextString(m) }
 func (*SignedEntryUpdate_EntryUpdateT) ProtoMessage()    {}
 
-func (m *SignedEntryUpdate_EntryUpdateT) GetNewEntry() *Entry {
-	if m != nil {
-		return m.NewEntry
-	}
-	return nil
-}
-
 // SignedRatification messages are used by auditors and the service provider to
 // vouch that the SummaryHash represents the unique global state at the end of
 // Epoch.
 type SignedRatification struct {
-	Ratifier     uint64                            `protobuf:"varint,1,opt,name=ratifier,proto3" json:"ratifier,omitempty"`
-	Ratification *SignedRatification_RatificationT `protobuf:"bytes,2,opt,name=ratification" json:"ratification,omitempty"`
-	Signature    []byte                            `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	Ratifier     uint64                                            `protobuf:"varint,1,opt,name=ratifier,proto3" json:"ratifier,omitempty"`
+	Ratification SignedRatification_RatificationT_PreserveEncoding `protobuf:"bytes,2,opt,name=ratification,customtype=SignedRatification_RatificationT_PreserveEncoding" json:"ratification"`
+	Signature    []byte                                            `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
 }
 
 func (m *SignedRatification) Reset()         { *m = SignedRatification{} }
 func (m *SignedRatification) String() string { return proto1.CompactTextString(m) }
 func (*SignedRatification) ProtoMessage()    {}
 
-func (m *SignedRatification) GetRatification() *SignedRatification_RatificationT {
-	if m != nil {
-		return m.Ratification
-	}
-	return nil
-}
-
 type SignedRatification_RatificationT struct {
-	Epoch       uint64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	SummaryHash []byte `protobuf:"bytes,2,opt,name=summary_hash,proto3" json:"summary_hash,omitempty"`
-	Timestamp   uint64 `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Epoch     uint64                                                                  `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	Summary   SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding `protobuf:"bytes,2,opt,name=summary,customtype=SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding" json:"summary"`
+	Timestamp uint64                                                                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
 func (m *SignedRatification_RatificationT) Reset()         { *m = SignedRatification_RatificationT{} }
@@ -139,7 +129,7 @@ func (m *SignatureVerifier) GetThreshold() *SignatureVerifier_ThresholdVerifier 
 // contains has the update key set to
 // threshold(1,user,serviceprovider), the service provider can perform
 // account recovery.
-// 2. Service providers with servers in politically diverse locations,
+// 2. Service providers with servers in geographically diverse locations,
 // for example threshold(2,freedonia,gilead,mordor).
 type SignatureVerifier_ThresholdVerifier struct {
 	Threshold int32                `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
@@ -281,6 +271,30 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NewSig", wireType)
@@ -409,9 +423,6 @@ func (m *SignedEntryUpdate_EntryUpdateT) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.NewEntry == nil {
-				m.NewEntry = &Entry{}
-			}
 			if err := m.NewEntry.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -492,9 +503,6 @@ func (m *SignedRatification) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Ratification == nil {
-				m.Ratification = &SignedRatification_RatificationT{}
 			}
 			if err := m.Ratification.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -581,25 +589,27 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SummaryHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Summary", wireType)
 			}
-			var byteLen int
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + byteLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			if err := m.Summary.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 0 {
@@ -1083,6 +1093,8 @@ func (m *Entry) Size() (n int) {
 func (m *SignedEntryUpdate) Size() (n int) {
 	var l int
 	_ = l
+	l = m.Update.Size()
+	n += 1 + l + sovClient(uint64(l))
 	if m.NewSig != nil {
 		l = len(m.NewSig)
 		if l > 0 {
@@ -1107,10 +1119,8 @@ func (m *SignedEntryUpdate_EntryUpdateT) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
-	if m.NewEntry != nil {
-		l = m.NewEntry.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
+	l = m.NewEntry.Size()
+	n += 1 + l + sovClient(uint64(l))
 	return n
 }
 
@@ -1120,10 +1130,8 @@ func (m *SignedRatification) Size() (n int) {
 	if m.Ratifier != 0 {
 		n += 1 + sovClient(uint64(m.Ratifier))
 	}
-	if m.Ratification != nil {
-		l = m.Ratification.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
+	l = m.Ratification.Size()
+	n += 1 + l + sovClient(uint64(l))
 	if m.Signature != nil {
 		l = len(m.Signature)
 		if l > 0 {
@@ -1139,12 +1147,8 @@ func (m *SignedRatification_RatificationT) Size() (n int) {
 	if m.Epoch != 0 {
 		n += 1 + sovClient(uint64(m.Epoch))
 	}
-	if m.SummaryHash != nil {
-		l = len(m.SummaryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
+	l = m.Summary.Size()
+	n += 1 + l + sovClient(uint64(l))
 	if m.Timestamp != 0 {
 		n += 1 + sovClient(uint64(m.Timestamp))
 	}
@@ -1281,6 +1285,14 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Update.Size()))
+	n2, err := m.Update.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n2
 	if m.NewSig != nil {
 		if len(m.NewSig) > 0 {
 			data[i] = 0x12
@@ -1323,16 +1335,14 @@ func (m *SignedEntryUpdate_EntryUpdateT) MarshalTo(data []byte) (n int, err erro
 			i += copy(data[i:], m.Index)
 		}
 	}
-	if m.NewEntry != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-		n2, err := m.NewEntry.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
+	n3, err := m.NewEntry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n3
 	return i, nil
 }
 
@@ -1356,16 +1366,14 @@ func (m *SignedRatification) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Ratifier))
 	}
-	if m.Ratification != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
-		n3, err := m.Ratification.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
+	n4, err := m.Ratification.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n4
 	if m.Signature != nil {
 		if len(m.Signature) > 0 {
 			data[i] = 0x1a
@@ -1397,14 +1405,14 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Epoch))
 	}
-	if m.SummaryHash != nil {
-		if len(m.SummaryHash) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.SummaryHash)))
-			i += copy(data[i:], m.SummaryHash)
-		}
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
+	n5, err := m.Summary.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n5
 	if m.Timestamp != 0 {
 		data[i] = 0x18
 		i++
@@ -1474,11 +1482,11 @@ func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n4, err := m.Threshold.MarshalTo(data[i:])
+		n6, err := m.Threshold.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	return i, nil
 }

@@ -1,4 +1,9 @@
 package common
 
-func VerifyUpdate(current *Entry, update *SignedEntryUpdate, next *Entry) error {
+import (
+	"github.com/yahoo/coname/proto"
+)
+
+func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate, next *proto.Entry) error {
+
 }
