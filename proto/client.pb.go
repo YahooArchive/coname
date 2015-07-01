@@ -9,10 +9,14 @@
 		client.proto
 
 	It has these top-level messages:
+		LookupProfileRequest
+		LookupProof
+		Profile
 		Entry
 		SignedEntryUpdate
 		SignedRatification
 		SignatureVerifier
+		ThresholdSignature
 */
 package proto
 
@@ -26,12 +30,80 @@ import fmt "fmt"
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
-// A user's entry, containing public keys and other information. This definition
-// only contains fields relevant to the keyserver and auditors.
-// Application-specific content will be defined as extensions.
+type LookupProfileRequest struct {
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+}
+
+func (m *LookupProfileRequest) Reset()         { *m = LookupProfileRequest{} }
+func (m *LookupProfileRequest) String() string { return proto1.CompactTextString(m) }
+func (*LookupProfileRequest) ProtoMessage()    {}
+
+// LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
+// least one* of the ratifiers has been correctly following the rules of the
+// keyserver protocol then profile contains the latest public keys and metadata
+// uploaded by user_id before the time specified in ratifications[0]. If any
+// step of the proof does not check out, the contents of profile MUST NOT be
+// used for any other purpose than debugging.
+type LookupProof struct {
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	// index proof gives an index idx, and shows that the index is a result of
+	// applying a globally fixed bijection VRF to user_id: idx = VRF(user_ID).
+	// If this proof checks out, we can safely continue by looking up the
+	// keyserver entry corresponding to index to get the public key of user_id.
+	IndexProof []byte `protobuf:"bytes,2,opt,name=index_proof,proto3" json:"index_proof,omitempty"`
+	// ratifications contains signed directory state summaries for consecutive
+	// epochs, starting with the one as of which the lookup was performed.
+	// A single valid ratification r by a honest and correct verifier implies
+	// that the r.ratification.summary.root_hash summarizes the authenticated
+	// data structure containing the unique and correct mapping from indices to
+	// entries as of epoch r.ratification.epoch at human time
+	// r.ratification.timestamp.
+	// The ratifications of the later epochs indirectly vouch for the first one
+	// through directory state summary hash chaining. Only the latest valid
+	// signature from each verifier is provided, so some returned ratifications
+	// may have no signatures on them.
+	Ratifications []*SignedRatification `protobuf:"bytes,3,rep,name=ratifications" json:"ratifications,omitempty"`
+	// tree_proof contains an authenticated data structure lookup trace,
+	// arguing that in the data structure with hash
+	// ratifications[0].ratification.summary.root_hash, the index from
+	// index_proof maps to entry (which is given in the proof).
+	TreeProof []byte `protobuf:"bytes,4,opt,name=tree_proof,proto3" json:"tree_proof,omitempty"`
+	// entry specifies profile by hash(profile) = entry.profile_hash
+	Profile *Profile `protobuf:"bytes,5,opt,name=profile" json:"profile,omitempty"`
+}
+
+func (m *LookupProof) Reset()         { *m = LookupProof{} }
+func (m *LookupProof) String() string { return proto1.CompactTextString(m) }
+func (*LookupProof) ProtoMessage()    {}
+
+func (m *LookupProof) GetRatifications() []*SignedRatification {
+	if m != nil {
+		return m.Ratifications
+	}
+	return nil
+}
+
+func (m *LookupProof) GetProfile() *Profile {
+	if m != nil {
+		return m.Profile
+	}
+	return nil
+}
+
+// A user's profile, containing public keys and other information.
+type Profile struct {
+	Nonce             []byte   `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	EmailPgpPublickey [][]byte `protobuf:"bytes,2,rep,name=email_pgp_publickey" json:"email_pgp_publickey,omitempty"`
+}
+
+func (m *Profile) Reset()         { *m = Profile{} }
+func (m *Profile) String() string { return proto1.CompactTextString(m) }
+func (*Profile) ProtoMessage()    {}
+
 type Entry struct {
-	UpdateKey            *SignatureVerifier `protobuf:"bytes,1,opt,name=update_key" json:"update_key,omitempty"`
-	Email_PGPFingerprint [][]byte           `protobuf:"bytes,2,rep,name=email_PGP_fingerprint" json:"email_PGP_fingerprint,omitempty"`
+	Version     uint64             `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	UpdateKey   *SignatureVerifier `protobuf:"bytes,2,opt,name=update_key" json:"update_key,omitempty"`
+	ProfileHash []byte             `protobuf:"bytes,3,opt,name=profile_hash,proto3" json:"profile_hash,omitempty"`
 }
 
 func (m *Entry) Reset()         { *m = Entry{} }
@@ -46,16 +118,23 @@ func (m *Entry) GetUpdateKey() *SignatureVerifier {
 }
 
 type SignedEntryUpdate struct {
-	Update SignedEntryUpdate_EntryUpdateT_PreserveEncoding `protobuf:"bytes,1,opt,name=update,customtype=SignedEntryUpdate_EntryUpdateT_PreserveEncoding" json:"update"`
-	NewSig []byte                                          `protobuf:"bytes,2,opt,name=new_sig,proto3" json:"new_sig,omitempty"`
-	OldSig []byte                                          `protobuf:"bytes,3,opt,name=old_sig,proto3" json:"old_sig,omitempty"`
+	Update  SignedEntryUpdate_EntryUpdateT_PreserveEncoding `protobuf:"bytes,1,opt,name=update,customtype=SignedEntryUpdate_EntryUpdateT_PreserveEncoding" json:"update"`
+	NewSig  []byte                                          `protobuf:"bytes,2,opt,name=new_sig,proto3" json:"new_sig,omitempty"`
+	OldSig  []byte                                          `protobuf:"bytes,3,opt,name=old_sig,proto3" json:"old_sig,omitempty"`
+	Profile *Profile                                        `protobuf:"bytes,4,opt,name=profile" json:"profile,omitempty"`
 }
 
 func (m *SignedEntryUpdate) Reset()         { *m = SignedEntryUpdate{} }
 func (m *SignedEntryUpdate) String() string { return proto1.CompactTextString(m) }
 func (*SignedEntryUpdate) ProtoMessage()    {}
 
-// TODO: replay prevention. But we probably want to allow update-surviving revocation certificates.
+func (m *SignedEntryUpdate) GetProfile() *Profile {
+	if m != nil {
+		return m.Profile
+	}
+	return nil
+}
+
 type SignedEntryUpdate_EntryUpdateT struct {
 	Index    []byte                 `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
 	NewEntry Entry_PreserveEncoding `protobuf:"bytes,2,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
@@ -132,7 +211,7 @@ func (m *SignatureVerifier) GetThreshold() *SignatureVerifier_ThresholdVerifier 
 // 2. Service providers with servers in geographically diverse locations,
 // for example threshold(2,freedonia,gilead,mordor).
 type SignatureVerifier_ThresholdVerifier struct {
-	Threshold int32                `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Threshold uint32               `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
 	Verifiers []*SignatureVerifier `protobuf:"bytes,2,rep,name=verifiers" json:"verifiers,omitempty"`
 }
 
@@ -149,16 +228,327 @@ func (m *SignatureVerifier_ThresholdVerifier) GetVerifiers() []*SignatureVerifie
 
 // Unlike cryptographic anonymous threshold signatures, the signature
 // simply contains the signatures from the specified keys.
-type SignatureVerifier_ThresholdSignature struct {
-	KeyIndex  []int32  `protobuf:"varint,1,rep,name=key_index" json:"key_index,omitempty"`
+type ThresholdSignature struct {
+	KeyIndex  []uint32 `protobuf:"varint,1,rep,name=key_index" json:"key_index,omitempty"`
 	Signature [][]byte `protobuf:"bytes,2,rep,name=signature" json:"signature,omitempty"`
 }
 
-func (m *SignatureVerifier_ThresholdSignature) Reset()         { *m = SignatureVerifier_ThresholdSignature{} }
-func (m *SignatureVerifier_ThresholdSignature) String() string { return proto1.CompactTextString(m) }
-func (*SignatureVerifier_ThresholdSignature) ProtoMessage()    {}
+func (m *ThresholdSignature) Reset()         { *m = ThresholdSignature{} }
+func (m *ThresholdSignature) String() string { return proto1.CompactTextString(m) }
+func (*ThresholdSignature) ProtoMessage()    {}
 
 func init() {
+}
+func (m *LookupProfileRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *LookupProof) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IndexProof", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IndexProof = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ratifications", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ratifications = append(m.Ratifications, &SignedRatification{})
+			if err := m.Ratifications[len(m.Ratifications)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TreeProof", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TreeProof = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Profile == nil {
+				m.Profile = &Profile{}
+			}
+			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *Profile) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailPgpPublickey", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailPgpPublickey = append(m.EmailPgpPublickey, make([]byte, postIndex-iNdEx))
+			copy(m.EmailPgpPublickey[len(m.EmailPgpPublickey)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
 }
 func (m *Entry) Unmarshal(data []byte) error {
 	l := len(data)
@@ -180,6 +570,21 @@ func (m *Entry) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Version |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UpdateKey", wireType)
 			}
@@ -206,9 +611,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Email_PGPFingerprint", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileHash", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -226,8 +631,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Email_PGPFingerprint = append(m.Email_PGPFingerprint, make([]byte, postIndex-iNdEx))
-			copy(m.Email_PGPFingerprint[len(m.Email_PGPFingerprint)-1], data[iNdEx:postIndex])
+			m.ProfileHash = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -338,6 +742,33 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.OldSig = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Profile == nil {
+				m.Profile = &Profile{}
+			}
+			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -855,7 +1286,7 @@ func (m *SignatureVerifier_ThresholdVerifier) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Threshold |= (int32(b) & 0x7F) << shift
+				m.Threshold |= (uint32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -908,7 +1339,7 @@ func (m *SignatureVerifier_ThresholdVerifier) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *SignatureVerifier_ThresholdSignature) Unmarshal(data []byte) error {
+func (m *ThresholdSignature) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -931,14 +1362,14 @@ func (m *SignatureVerifier_ThresholdSignature) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field KeyIndex", wireType)
 			}
-			var v int32
+			var v uint32
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				v |= (int32(b) & 0x7F) << shift
+				v |= (uint32(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1074,16 +1505,79 @@ func skipClient(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+func (m *LookupProfileRequest) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *LookupProof) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.IndexProof != nil {
+		l = len(m.IndexProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, e := range m.Ratifications {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.TreeProof != nil {
+		l = len(m.TreeProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Profile != nil {
+		l = m.Profile.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *Profile) Size() (n int) {
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		l = len(m.Nonce)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.EmailPgpPublickey) > 0 {
+		for _, b := range m.EmailPgpPublickey {
+			l = len(b)
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *Entry) Size() (n int) {
 	var l int
 	_ = l
+	if m.Version != 0 {
+		n += 1 + sovClient(uint64(m.Version))
+	}
 	if m.UpdateKey != nil {
 		l = m.UpdateKey.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if len(m.Email_PGPFingerprint) > 0 {
-		for _, b := range m.Email_PGPFingerprint {
-			l = len(b)
+	if m.ProfileHash != nil {
+		l = len(m.ProfileHash)
+		if l > 0 {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
@@ -1106,6 +1600,10 @@ func (m *SignedEntryUpdate) Size() (n int) {
 		if l > 0 {
 			n += 1 + l + sovClient(uint64(l))
 		}
+	}
+	if m.Profile != nil {
+		l = m.Profile.Size()
+		n += 1 + l + sovClient(uint64(l))
 	}
 	return n
 }
@@ -1204,7 +1702,7 @@ func (m *SignatureVerifier_ThresholdVerifier) Size() (n int) {
 	return n
 }
 
-func (m *SignatureVerifier_ThresholdSignature) Size() (n int) {
+func (m *ThresholdSignature) Size() (n int) {
 	var l int
 	_ = l
 	if len(m.KeyIndex) > 0 {
@@ -1234,6 +1732,126 @@ func sovClient(x uint64) (n int) {
 func sozClient(x uint64) (n int) {
 	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
+func (m *LookupProfileRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupProfileRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	return i, nil
+}
+
+func (m *LookupProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.IndexProof != nil {
+		if len(m.IndexProof) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
+			i += copy(data[i:], m.IndexProof)
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, msg := range m.Ratifications {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.TreeProof != nil {
+		if len(m.TreeProof) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.TreeProof)))
+			i += copy(data[i:], m.TreeProof)
+		}
+	}
+	if m.Profile != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n1, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *Profile) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Profile) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		if len(m.Nonce) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
+			i += copy(data[i:], m.Nonce)
+		}
+	}
+	if len(m.EmailPgpPublickey) > 0 {
+		for _, b := range m.EmailPgpPublickey {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	return i, nil
+}
+
 func (m *Entry) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -1249,22 +1867,27 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
+	if m.Version != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Version))
+	}
 	if m.UpdateKey != nil {
-		data[i] = 0xa
+		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n1, err := m.UpdateKey.MarshalTo(data[i:])
+		n2, err := m.UpdateKey.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n2
 	}
-	if len(m.Email_PGPFingerprint) > 0 {
-		for _, b := range m.Email_PGPFingerprint {
-			data[i] = 0x12
+	if m.ProfileHash != nil {
+		if len(m.ProfileHash) > 0 {
+			data[i] = 0x1a
 			i++
-			i = encodeVarintClient(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
+			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
+			i += copy(data[i:], m.ProfileHash)
 		}
 	}
 	return i, nil
@@ -1288,11 +1911,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-	n2, err := m.Update.MarshalTo(data[i:])
+	n3, err := m.Update.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n2
+	i += n3
 	if m.NewSig != nil {
 		if len(m.NewSig) > 0 {
 			data[i] = 0x12
@@ -1308,6 +1931,16 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 			i = encodeVarintClient(data, i, uint64(len(m.OldSig)))
 			i += copy(data[i:], m.OldSig)
 		}
+	}
+	if m.Profile != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n4, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
 	}
 	return i, nil
 }
@@ -1338,11 +1971,11 @@ func (m *SignedEntryUpdate_EntryUpdateT) MarshalTo(data []byte) (n int, err erro
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n3, err := m.NewEntry.MarshalTo(data[i:])
+	n5, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n3
+	i += n5
 	return i, nil
 }
 
@@ -1369,11 +2002,11 @@ func (m *SignedRatification) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
-	n4, err := m.Ratification.MarshalTo(data[i:])
+	n6, err := m.Ratification.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n4
+	i += n6
 	if m.Signature != nil {
 		if len(m.Signature) > 0 {
 			data[i] = 0x1a
@@ -1408,11 +2041,11 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
-	n5, err := m.Summary.MarshalTo(data[i:])
+	n7, err := m.Summary.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n5
+	i += n7
 	if m.Timestamp != 0 {
 		data[i] = 0x18
 		i++
@@ -1482,11 +2115,11 @@ func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n6, err := m.Threshold.MarshalTo(data[i:])
+		n8, err := m.Threshold.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n8
 	}
 	return i, nil
 }
@@ -1526,7 +2159,7 @@ func (m *SignatureVerifier_ThresholdVerifier) MarshalTo(data []byte) (n int, err
 	return i, nil
 }
 
-func (m *SignatureVerifier_ThresholdSignature) Marshal() (data []byte, err error) {
+func (m *ThresholdSignature) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -1536,7 +2169,7 @@ func (m *SignatureVerifier_ThresholdSignature) Marshal() (data []byte, err error
 	return data[:n], nil
 }
 
-func (m *SignatureVerifier_ThresholdSignature) MarshalTo(data []byte) (n int, err error) {
+func (m *ThresholdSignature) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int

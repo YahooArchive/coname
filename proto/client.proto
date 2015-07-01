@@ -2,19 +2,64 @@ syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-// A user's entry, containing public keys and other information. This definition
-// only contains fields relevant to the keyserver and auditors.
-// Application-specific content will be defined as extensions.
-message Entry {
-	SignatureVerifier update_key = 1; // required: signing key authorized to change the profile
-	repeated bytes email_PGP_fingerprint = 2; // keyrings can be huge, and are of no interest to verifiers
+service E2EKeyService {
+	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof);
+	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
+}
+
+message LookupProfileRequest {
+	string user_id = 1; // TODO: should we allow lookups by index?
+}
+
+// LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
+// least one* of the ratifiers has been correctly following the rules of the
+// keyserver protocol then profile contains the latest public keys and metadata
+// uploaded by user_id before the time specified in ratifications[0]. If any
+// step of the proof does not check out, the contents of profile MUST NOT be
+// used for any other purpose than debugging.
+message LookupProof {
+	string user_id = 1;
+	// index proof gives an index idx, and shows that the index is a result of
+	// applying a globally fixed bijection VRF to user_id: idx = VRF(user_ID).
+	// If this proof checks out, we can safely continue by looking up the
+	// keyserver entry corresponding to index to get the public key of user_id.
+	bytes index_proof = 2;
+	// ratifications contains signed directory state summaries for consecutive
+	// epochs, starting with the one as of which the lookup was performed.
+	// A single valid ratification r by a honest and correct verifier implies
+	// that the r.ratification.summary.root_hash summarizes the authenticated
+	// data structure containing the unique and correct mapping from indices to
+	// entries as of epoch r.ratification.epoch at human time
+	// r.ratification.timestamp.
+	// The ratifications of the later epochs indirectly vouch for the first one
+	// through directory state summary hash chaining. Only the latest valid
+	// signature from each verifier is provided, so some returned ratifications
+	// may have no signatures on them.
+	repeated SignedRatification ratifications = 3;
+	// tree_proof contains an authenticated data structure lookup trace,
+	// arguing that in the data structure with hash
+	// ratifications[0].ratification.summary.root_hash, the index from
+	// index_proof maps to entry (which is given in the proof).
+	bytes tree_proof = 4;
+	// entry specifies profile by hash(profile) = entry.profile_hash
+	Profile profile = 5;
+}
+
+// A user's profile, containing public keys and other information.
+message Profile {
+	bytes nonce = 1; // 16 bytes. no two honest profiles should hash the same
+	repeated bytes email_pgp_publickey = 2; // non-ascii-armored public key packet
 	// A new field will be added here for each application, with the TCP/UDP
 	// port number as field number whenever possible to avoid collisions.
-	// The keyserver and verifiers only need to understand keys in field 1.
+}
+
+message Entry { // all fields required
+	uint64 version = 1; // non-decreasing, for replay prevention
+	SignatureVerifier update_key = 2; // signing key authorized to change the profile
+	bytes profile_hash = 3; // the content fields ("profile") are only referenced by hash because they main contain private data
 }
 
 message SignedEntryUpdate {
-	// TODO: replay prevention. But we probably want to allow update-surviving revocation certificates.
 	message EntryUpdateT {
 		bytes index = 1; // VRF(name)
 		Entry new_entry = 2 // hashed field, do not re-encode
@@ -24,6 +69,7 @@ message SignedEntryUpdate {
 		[(gogoproto.customtype) = "SignedEntryUpdate_EntryUpdateT_PreserveEncoding", (gogoproto.nullable) = false];
 	bytes new_sig  = 2; // required: signature by an update key in new entry
 	bytes old_sig = 3; // signature by an update key in old entry; required if old entry exists
+	Profile profile = 4; // optional (required by service providers, not shown to verifiers)
 }
 
 // SignedRatification messages are used by auditors and the service provider to
@@ -62,18 +108,19 @@ message SignatureVerifier {
 	// 2. Service providers with servers in geographically diverse locations,
 	// for example threshold(2,freedonia,gilead,mordor).
 	message ThresholdVerifier {
-		int32 threshold = 1; // required
+		uint32 threshold = 1; // required
 		repeated SignatureVerifier verifiers = 2;
-	}
-	// Unlike cryptographic anonymous threshold signatures, the signature
-	// simply contains the signatures from the specified keys.
-	message ThresholdSignature {
-		repeated int32 key_index = 1;
-		repeated bytes signature = 2;
 	}
 
 	oneof verification_method {
 		bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
 		ThresholdVerifier threshold = 2;
 	}
+}
+
+// Unlike cryptographic anonymous threshold signatures, the signature
+// simply contains the signatures from the specified keys.
+message ThresholdSignature {
+	repeated uint32 key_index = 1;
+	repeated bytes signature = 2;
 }

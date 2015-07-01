@@ -25,7 +25,7 @@ func VerifySignature(verifier *proto.SignatureVerifier, message []byte, sig []by
 	next_key:
 		for idx, ver := range verifier.Threshold.Verifiers {
 			for i := 0; i < len(sigs.Signature) && i < len(sigs.KeyIndex); i++ {
-				if sigs.KeyIndex[i] == idx && VerifySignature(ver, message, sigs.Signature[i]) {
+				if sigs.KeyIndex[i] == uint32(idx) && VerifySignature(ver, message, sigs.Signature[i]) {
 					remaining--
 					if remaining == 0 {
 						return true
