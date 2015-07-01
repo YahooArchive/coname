@@ -2,9 +2,12 @@ syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-service E2EKeyService {
-	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof);
+service E2EKSLookupService {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
+}
+service E2EKSUpdateService {
+	rpc LookupProfile(LookupProfileRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
+	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof);
 }
 
 message LookupProfileRequest {

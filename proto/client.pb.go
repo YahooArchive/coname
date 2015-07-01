@@ -27,6 +27,15 @@ import proto1 "github.com/golang/protobuf/proto"
 import io "io"
 import fmt "fmt"
 
+import (
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
+)
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
@@ -2251,4 +2260,145 @@ func encodeVarintClient(data []byte, offset int, v uint64) int {
 	}
 	data[offset] = uint8(v)
 	return offset + 1
+}
+
+// Client API for E2EKSLookupService service
+
+type E2EKSLookupServiceClient interface {
+	LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSLookupServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSLookupServiceClient(cc *grpc.ClientConn) E2EKSLookupServiceClient {
+	return &e2EKSLookupServiceClient{cc}
+}
+
+func (c *e2EKSLookupServiceClient) LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSLookupService/LookupProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSLookupService service
+
+type E2EKSLookupServiceServer interface {
+	LookupProfile(context.Context, *LookupProfileRequest) (*LookupProof, error)
+}
+
+func RegisterE2EKSLookupServiceServer(s *grpc.Server, srv E2EKSLookupServiceServer) {
+	s.RegisterService(&_E2EKSLookupService_serviceDesc, srv)
+}
+
+func _E2EKSLookupService_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupProfileRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSLookupServiceServer).LookupProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSLookupService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSLookupService",
+	HandlerType: (*E2EKSLookupServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LookupProfile",
+			Handler:    _E2EKSLookupService_LookupProfile_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+// Client API for E2EKSUpdateService service
+
+type E2EKSUpdateServiceClient interface {
+	LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	UpdateProfile(ctx context.Context, in *SignedEntryUpdate, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSUpdateServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSUpdateServiceClient(cc *grpc.ClientConn) E2EKSUpdateServiceClient {
+	return &e2EKSUpdateServiceClient{cc}
+}
+
+func (c *e2EKSUpdateServiceClient) LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdateService/LookupProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *e2EKSUpdateServiceClient) UpdateProfile(ctx context.Context, in *SignedEntryUpdate, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdateService/UpdateProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSUpdateService service
+
+type E2EKSUpdateServiceServer interface {
+	LookupProfile(context.Context, *LookupProfileRequest) (*LookupProof, error)
+	UpdateProfile(context.Context, *SignedEntryUpdate) (*LookupProof, error)
+}
+
+func RegisterE2EKSUpdateServiceServer(s *grpc.Server, srv E2EKSUpdateServiceServer) {
+	s.RegisterService(&_E2EKSUpdateService_serviceDesc, srv)
+}
+
+func _E2EKSUpdateService_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupProfileRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSUpdateServiceServer).LookupProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _E2EKSUpdateService_UpdateProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(SignedEntryUpdate)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSUpdateServiceServer).UpdateProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSUpdateService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSUpdateService",
+	HandlerType: (*E2EKSUpdateServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LookupProfile",
+			Handler:    _E2EKSUpdateService_LookupProfile_Handler,
+		},
+		{
+			MethodName: "UpdateProfile",
+			Handler:    _E2EKSUpdateService_UpdateProfile_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
 }
