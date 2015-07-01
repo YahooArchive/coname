@@ -158,9 +158,10 @@ func (m *SignedRatification) String() string { return proto1.CompactTextString(m
 func (*SignedRatification) ProtoMessage()    {}
 
 type SignedRatification_RatificationT struct {
-	Epoch     uint64                                                                  `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	Summary   SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding `protobuf:"bytes,2,opt,name=summary,customtype=SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding" json:"summary"`
-	Timestamp uint64                                                                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Realm     string                                                                  `protobuf:"bytes,1,opt,name=realm,proto3" json:"realm,omitempty"`
+	Epoch     uint64                                                                  `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	Summary   SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding `protobuf:"bytes,3,opt,name=summary,customtype=SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding" json:"summary"`
+	Timestamp uint64                                                                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
 func (m *SignedRatification_RatificationT) Reset()         { *m = SignedRatification_RatificationT{} }
@@ -1004,6 +1005,28 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Realm", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Realm = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
 			}
@@ -1018,7 +1041,7 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Summary", wireType)
 			}
@@ -1042,7 +1065,7 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}
@@ -1642,6 +1665,10 @@ func (m *SignedRatification) Size() (n int) {
 func (m *SignedRatification_RatificationT) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
 	if m.Epoch != 0 {
 		n += 1 + sovClient(uint64(m.Epoch))
 	}
@@ -2033,12 +2060,18 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 	_ = i
 	var l int
 	_ = l
+	if len(m.Realm) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
+		i += copy(data[i:], m.Realm)
+	}
 	if m.Epoch != 0 {
-		data[i] = 0x8
+		data[i] = 0x10
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Epoch))
 	}
-	data[i] = 0x12
+	data[i] = 0x1a
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
 	n7, err := m.Summary.MarshalTo(data[i:])
@@ -2047,7 +2080,7 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 	}
 	i += n7
 	if m.Timestamp != 0 {
-		data[i] = 0x18
+		data[i] = 0x20
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Timestamp))
 	}

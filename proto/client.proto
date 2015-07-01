@@ -77,16 +77,17 @@ message SignedEntryUpdate {
 // Epoch.
 message SignedRatification {
 	message RatificationT {
-		uint64 epoch = 1; // sequence number
+		string realm = 1; // (context) fully-qualified domain name of the entity handling registrations
+		uint64 epoch = 2; // sequence number
 		message KeyserverStateSummary {
 			bytes root_hash = 1;
 			// Chaining is used to allow signatures from different epochs in the same quorum:
 			// a signature vouches for all epochs chained to that in addition to the one listed.
 			bytes previous_summary_hash = 2;
 		}
-		KeyserverStateSummary summary = 2 // hashed field, do not re-encode
+		KeyserverStateSummary summary = 3 // hashed field, do not re-encode
 			[(gogoproto.customtype) = "SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding", (gogoproto.nullable) = false];
-		uint64 timestamp = 3; // google.protobuf.Timestamp timestamp = 3;
+		uint64 timestamp = 4; // google.protobuf.Timestamp timestamp = 3;
 	}
 	uint64 ratifier = 1; // unique ID, hash of public key by convention
 	RatificationT ratification = 2 // signed field, do not re-encode
