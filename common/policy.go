@@ -9,9 +9,6 @@ import (
 // VerifyUpdate returns nil iff replacing entry current (nil if none) with next
 // is justified given the evidence in update. Globally deterministic.
 func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate, next *proto.Entry) error {
-	if update.Update == nil {
-		return fmt.Errorf("VerifyUpdate: update body is nil")
-	}
 	if current != nil {
 		if current.UpdateKey == nil {
 			return fmt.Errorf("VerifyUpdate: current.UpdateKey is nil")
