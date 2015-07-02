@@ -32,4 +32,10 @@ type ReplicatedLog interface {
 	// All calls return the same channel.
 	// ch : chan (*mut Entry) // reader owns read values
 	WaitCommitted() <-chan []byte
+
+	// Close cleanly stops logging requests. No calls to Propose or
+	// GetCommitted must be started after Close has been called (and the values
+	// handed to ongoing Propose calls may not get committed). WaitCommitted
+	// channel is closed.
+	Close() error
 }

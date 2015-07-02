@@ -6,7 +6,7 @@ import (
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/yahoo/coname/internal/golang.org/x/net/context"
-	"github.com/yahoo/coname/replication"
+	"github.com/yahoo/coname/server/replication"
 )
 
 // LeveldbLog implements replication.ReplicatedLog using a NON-REPLICATED but
@@ -55,7 +55,10 @@ func (l *LeveldbLog) Close() error {
 }
 
 func (l *LeveldbLog) Propose(ctx context.Context, data []byte) {
-	l.propose <- data
+	select {
+	case l.propose <- data:
+	case <-l.close:
+	}
 }
 
 func (l *LeveldbLog) WaitCommitted() <-chan []byte {
@@ -90,6 +93,7 @@ func (l *LeveldbLog) get(i uint64) ([]byte, error) {
 
 func (l *LeveldbLog) run() {
 	defer close(l.closed)
+	defer close(l.waitCommitted)
 	for i := l.skipBefore; i < l.nextIndex; i++ {
 		v, err := l.get(i)
 		if err != nil {
