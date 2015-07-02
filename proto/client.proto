@@ -2,10 +2,10 @@ syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-service E2EKSLookupService {
+service E2EKSLookup {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
 }
-service E2EKSUpdateService {
+service E2EKSUpdate {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
 	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof);
 }
@@ -80,8 +80,8 @@ message SignedEntryUpdate {
 // Epoch.
 message SignedRatification {
 	message RatificationT {
-		string realm = 1; // (context) fully-qualified domain name of the entity handling registrations
-		uint64 epoch = 2; // sequence number
+		string realm = 1; // (space context) fully-qualified domain name of the entity handling registrations
+		uint64 epoch = 2; // (time context) sequence number
 		message KeyserverStateSummary {
 			bytes root_hash = 1;
 			// Chaining is used to allow signatures from different epochs in the same quorum:
@@ -120,6 +120,9 @@ message SignatureVerifier {
 		bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
 		ThresholdVerifier threshold = 2;
 	}
+
+	// TODO: time-restricted signature delegation a la TOR dirauths?
+	// This would make running a server without HSM significantly safer
 }
 
 // Unlike cryptographic anonymous threshold signatures, the signature
