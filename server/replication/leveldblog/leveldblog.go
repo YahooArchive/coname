@@ -3,15 +3,16 @@ package leveldblog
 import (
 	"encoding/binary"
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb"
+	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/yahoo/coname/internal/golang.org/x/net/context"
 	"github.com/yahoo/coname/server/replication"
 )
 
-// LeveldbLog implements replication.LogReplicator using a NON-REPLICATED but
+// leveldbLog implements replication.LogReplicator using a NON-REPLICATED but
 // persistent levelDB database.
-type LeveldbLog struct {
+type leveldbLog struct {
 	db         *leveldb.DB
 	nextIndex  uint64
 	skipBefore uint64
@@ -22,55 +23,76 @@ type LeveldbLog struct {
 	closed        chan struct{}
 }
 
-var _ replication.LogReplicator = (*LeveldbLog)(nil)
+var _ replication.LogReplicator = (*leveldbLog)(nil)
 
-func NewLeveldbLog(db *leveldb.DB) *LeveldbLog {
+// NewLeveldbLog initializes a replication.LogReplicator using an already open
+// leveldb instance.
+func NewLeveldbLog(db *leveldb.DB) (replication.LogReplicator, error) {
 	nextIndex := uint64(0)
 	iter := db.NewIterator(util.BytesPrefix(nil), nil)
 	if hasEntries := iter.Last(); hasEntries {
 		nextIndex = binary.BigEndian.Uint64(iter.Key()) + 1
 	}
 	iter.Release()
+	if err := iter.Error(); err != nil {
+		return nil, err
+	}
 
-	return &LeveldbLog{
+	return &leveldbLog{
 		db:            db,
 		nextIndex:     nextIndex,
 		propose:       make(chan []byte, 100),
 		waitCommitted: make(chan []byte),
 		close:         make(chan struct{}),
 		closed:        make(chan struct{}),
-	}
+	}, nil
 }
 
-func (l *LeveldbLog) Start(lo uint64) error {
+// Start implements replication.LogReplicator
+func (l *leveldbLog) Start(lo uint64) error {
 	l.skipBefore = lo
 	go l.run()
 	return nil
 }
 
-func (l *LeveldbLog) Close() error {
+// Close implements replication.LogReplicator
+func (l *leveldbLog) Close() error {
+	select {
+	case <-l.close:
+		return nil // already closing
+	default:
+	}
 	close(l.close)
 	<-l.closed
 	return nil
 }
 
-func (l *LeveldbLog) Propose(ctx context.Context, data []byte) {
+// Propose implements replication.LogReplicator
+// The following is true for leveldbLog.Propose but not necessarilty for other
+// implementations of replication.LogReplicator: If Propose(x) returns, then
+// after some amount of time without crashes, WaitCommitted returns x.
+func (l *leveldbLog) Propose(ctx context.Context, data []byte) {
 	select {
 	case l.propose <- data:
 	case <-l.close:
 	}
 }
 
-func (l *LeveldbLog) WaitCommitted() <-chan []byte {
+// WaitCommitted implements replication.LogReplicator
+func (l *leveldbLog) WaitCommitted() <-chan []byte {
 	return l.waitCommitted
 }
 
-func (l *LeveldbLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
+// GetCommitted implements replication.LogReplicator
+func (l *leveldbLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
 	size := uint64(0)
 	for i := lo; i < hi; i++ {
 		var v []byte
 		v, err = l.get(i)
 		if err != nil {
+			if err == errors.ErrNotFound {
+				return ret, nil
+			}
 			return nil, err
 		}
 		if len(ret) != 0 && size+uint64(len(v)) > maxSize {
@@ -85,13 +107,17 @@ func (l *LeveldbLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err err
 	return
 }
 
-func (l *LeveldbLog) get(i uint64) ([]byte, error) {
+// get returns entry number i from l.db
+func (l *leveldbLog) get(i uint64) ([]byte, error) {
 	var dbkey [8]byte
 	binary.BigEndian.PutUint64(dbkey[:], i)
 	return l.db.Get(dbkey[:], nil)
 }
 
-func (l *LeveldbLog) run() {
+// run is the CSP-style main of leveldbLog, all local struct fields (except
+// channels) belong exclusively to run while it is running. Method invocations
+// are signaled through channels.
+func (l *leveldbLog) run() {
 	defer close(l.closed)
 	defer close(l.waitCommitted)
 	for i := l.skipBefore; i < l.nextIndex; i++ {

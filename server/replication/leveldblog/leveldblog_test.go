@@ -8,22 +8,59 @@ import (
 	"testing"
 
 	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb"
+	"github.com/yahoo/coname/server/replication"
 )
 
-func TestLeveldbLog(t *testing.T) {
+func setupLevelDB(t *testing.T) (*leveldb.DB, func()) {
 	dir, err := ioutil.TempDir("", "leveldblog")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
 	db, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
-		panic(err)
+		os.RemoveAll(dir)
+		t.Fatal(err)
 	}
-	defer db.Close()
+	return db, func() {
+		db.Close()
+		os.RemoveAll(dir)
+	}
+}
 
-	l := NewLeveldbLog(db)
+func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.DB, func()) {
+	db, teardown := setupLevelDB(t)
+
+	l, err := NewLeveldbLog(db)
+	if err != nil {
+		teardown()
+		t.Fatal(err)
+	}
+
 	l.Start(0)
+	for i := uint64(1); i < 16; i++ {
+		prop := make([]byte, 8)
+		binary.BigEndian.PutUint64(prop, i)
+		l.Propose(nil, prop)
+		<-l.WaitCommitted()
+	}
+	return l, db, func() {
+		l.Close()
+		teardown()
+	}
+}
+
+// TestLeveldbLogProposeWait verifies that all Proposed values are returned by
+// WaitCommitted. This is not required to be true by the interface, but it is
+// true for leveldbLog and the tests in this module assume that.
+func TestLeveldbLogProposeWait(t *testing.T) {
+	db, teardown := setupLevelDB(t)
+	defer teardown()
+	l, err := NewLeveldbLog(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Start(0)
+	defer l.Close()
 
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
@@ -47,13 +84,24 @@ func TestLeveldbLog(t *testing.T) {
 		t.Errorf("expected %x\n"+
 			"got      %x\n", ref, state)
 	}
+}
 
+// TestLeveldbLogStartHistoric verifies that entries already returned by
+// GetCommitted and then re-requested after using Start are returned by both
+// the following WaitCommitted.
+func TestLeveldbLogStartHistoric(t *testing.T) {
+	l, db, teardown := setupLog1through15Start(t)
+	defer teardown()
 	l.Close()
-	l = NewLeveldbLog(db)
-	l.Start(3)
-	defer l.Close()
 
-	state = uint64(0)
+	l, err := NewLeveldbLog(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	l.Start(3)
+
+	state := uint64(0)
 	for i := 0; i < 12; i++ {
 		entry := <-l.WaitCommitted()
 		e := binary.BigEndian.Uint64(entry)
@@ -64,11 +112,50 @@ func TestLeveldbLog(t *testing.T) {
 		state |= e
 	}
 
-	ref = uint64(0x456789abcdef)
+	ref := uint64(0x456789abcdef)
 	if state != ref {
 		t.Errorf("expected %x\n"+
 			"got      %x\n", ref, state)
 	}
+}
+
+// TestLeveldbLogGetCommitted verifies that successfully proposed entries are
+// returned by GetCommitted both before and after restart.
+func TestLeveldbLogGetCommittedRestart(t *testing.T) {
+	l, db, teardown := setupLog1through15Start(t)
+	defer teardown()
+
+	check := func() {
+		entries, err := l.GetCommitted(0, 1<<63, 1<<63)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(entries) != 15 {
+			t.Fatalf("GetCommitted: asked for all (15) entries, got %d", len(entries))
+		}
+		for i := uint64(0); i < 15; i++ {
+			ref := make([]byte, 8)
+			binary.BigEndian.PutUint64(ref, 1+i)
+			if !bytes.Equal(entries[i], ref) {
+				t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
+			}
+		}
+	}
+
+	check()
+
+	l, err := NewLeveldbLog(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.Start(0)
+
+	check()
+}
+
+func TestLeveldbLogGetCommittedRange(t *testing.T) {
+	l, _, teardown := setupLog1through15Start(t)
+	defer teardown()
 
 	entries, err := l.GetCommitted(1, 14, 1<<63)
 	if err != nil {
@@ -84,6 +171,11 @@ func TestLeveldbLog(t *testing.T) {
 			t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
 		}
 	}
+}
+
+func TestLeveldbLogGetCommittedSize(t *testing.T) {
+	l, _, teardown := setupLog1through15Start(t)
+	defer teardown()
 
 	entriesLimited, err := l.GetCommitted(3, 14, 16)
 	if err != nil {
@@ -95,5 +187,18 @@ func TestLeveldbLog(t *testing.T) {
 			s += len(e)
 		}
 		t.Errorf("CommittedEntries asked for 16 bytes, got %d", s)
+	}
+}
+
+func TestLeveldbLogGetCommittedAtLeastOne(t *testing.T) {
+	l, _, teardown := setupLog1through15Start(t)
+	defer teardown()
+
+	entriesLimited, err := l.GetCommitted(3, 14, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entriesLimited) != 1 {
+		t.Errorf("CommittedEntries asked for 0 bytes (which should return one entry), got %d entries", len(entriesLimited))
 	}
 }
