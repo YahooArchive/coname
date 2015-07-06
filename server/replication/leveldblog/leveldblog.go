@@ -71,7 +71,7 @@ func (l *LeveldbLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err err
 		var v []byte
 		v, err = l.get(i)
 		if err != nil {
-			return
+			return nil, err
 		}
 		if len(ret) != 0 && size+uint64(len(v)) > maxSize {
 			return
