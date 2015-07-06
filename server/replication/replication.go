@@ -27,10 +27,12 @@ type LogReplicator interface {
 	Propose(ctx context.Context, data []byte)
 
 	// GetCommitted loads committed entries for post-replication distribution:
-	// All returned entries are consecutive and start at Index=lo, but do not
-	// necessarily go all the way up to (but not including) Index=hi. At least
-	// one entry is returned as long as there is one in the specified range. If
-	// possible, no more than maxSize bytes are returned.
+	// 1. The first returned entry corresponds to Index = lo
+	// 2. All returned entries are consecutive
+	// 3. No entry with Index >= hi is returned
+	// 4. At least one entry is returned, if there is any.
+	// 5. After that, no more than maxSize total bytes are returned (the first
+	//    entry counts towards the max size but is always returned)
 	// ret: []&[]byte // All returned byte slices are read-only for the caller.
 	GetCommitted(lo, hi, maxSize uint64) ([][]byte, error)
 
