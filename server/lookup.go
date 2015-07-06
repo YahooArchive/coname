@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/yahoo/coname/proto"
-	"golang.org/x/net/context"
+	"github.com/yahoo/coname/internal/golang.org/x/net/context"
 )
 
 func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfileRequest) (*proto.LookupProof, error) {

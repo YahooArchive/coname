@@ -28,7 +28,7 @@ import io "io"
 import fmt "fmt"
 
 import (
-	context "golang.org/x/net/context"
+	context "github.com/yahoo/coname/internal/golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
 

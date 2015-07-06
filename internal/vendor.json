@@ -2,11 +2,25 @@
 	"comment": "",
 	"package": [
 		{
+			"canonical": "github.com/agl/ed25519/edwards25519",
+			"comment": "",
+			"local": "github.com/yahoo/coname/internal/github.com/agl/ed25519/edwards25519",
+			"revision": "d2b94fd789ea21d12fac1a4443dd3a3f79cda72c",
+			"revisionTime": "2014-09-07T16:52:47-07:00"
+		},
+		{
 			"canonical": "github.com/coreos/etcd/raft",
 			"comment": "",
 			"local": "github.com/yahoo/coname/internal/github.com/coreos/etcd/raft",
 			"revision": "883bb47dcf3dace4d49303d5aaa867915e33f8cd",
 			"revisionTime": "2015-06-30T09:20:19-07:00"
+		},
+		{
+			"canonical": "github.com/google/go-snappy/snappy",
+			"comment": "",
+			"local": "github.com/yahoo/coname/internal/github.com/google/go-snappy/snappy",
+			"revision": "eaa750b9bf4dcb7cb20454be850613b66cda3273",
+			"revisionTime": "2015-06-08T14:53:52-07:00"
 		},
 		{
 			"canonical": "github.com/syndtr/goleveldb/leveldb",

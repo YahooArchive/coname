@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/yahoo/coname/proto"
-	"golang.org/x/net/context"
+	"github.com/yahoo/coname/internal/golang.org/x/net/context"
 )
 
 func (ks *Keyserver) UpdateProfile(ctx context.Context, req *proto.SignedEntryUpdate) (*proto.LookupProof, error) {
