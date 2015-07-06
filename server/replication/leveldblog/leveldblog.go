@@ -9,7 +9,7 @@ import (
 	"github.com/yahoo/coname/server/replication"
 )
 
-// LeveldbLog implements replication.ReplicatedLog using a NON-REPLICATED but
+// LeveldbLog implements replication.LogReplicator using a NON-REPLICATED but
 // persistent levelDB database.
 type LeveldbLog struct {
 	db         *leveldb.DB
@@ -22,7 +22,7 @@ type LeveldbLog struct {
 	closed        chan struct{}
 }
 
-var _ replication.ReplicatedLog = (*LeveldbLog)(nil)
+var _ replication.LogReplicator = (*LeveldbLog)(nil)
 
 func NewLeveldbLog(db *leveldb.DB) *LeveldbLog {
 	nextIndex := uint64(0)
