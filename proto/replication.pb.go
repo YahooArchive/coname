@@ -32,12 +32,15 @@ type KeyserverStep struct {
 	// As the leader requirement for appending an epoch_delimiter is soft,
 	// it may happen that two epoch delimiters end up with no updates
 	// between them. In this case, all but the first delimiter are ignored.
-	EpochDelimiter bool `protobuf:"varint,2,opt,name=epoch_delimiter,proto3" json:"epoch_delimiter,omitempty"`
-	// replica_ratification is appended to the log in response of
-	// epoch_delimiter. After some majority of the replicas has ratified the
-	// new state, their signatures make up the keyserver signature. As
-	// combining signatures is deterministic, no new log entry is appended
-	// to record that.
+	// The value of the epoch delimiter is the canonical timestamp as of
+	// which the epoch was closed, determined by the leader.
+	EpochDelimiter uint64 `protobuf:"varint,2,opt,name=epoch_delimiter,proto3" json:"epoch_delimiter,omitempty"`
+	// replica_ratification for the last epoch is appended to the log
+	// 1) when the epoch delimiter is committed
+	// 2) every RATIFICATION_VALIDITY-RATIFICATION_MARGIN after that
+	// After some majority of the replicas has ratified the state, their
+	// signatures make up the keyserver signature. As combining signatures
+	// is deterministic, no new log entry is appended to record that.
 	ReplicaRatification *SignedRatification `protobuf:"bytes,3,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
 	// verifier_ratification is appended for each new ratification received
 	// from a verifier; these are used to provide proof of verification to
@@ -122,19 +125,17 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EpochDelimiter", wireType)
 			}
-			var v int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				v |= (int(b) & 0x7F) << shift
+				m.EpochDelimiter |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			m.EpochDelimiter = bool(v != 0)
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaRatification", wireType)
@@ -303,8 +304,8 @@ func (m *KeyserverStep) Size() (n int) {
 		l = m.Update.Size()
 		n += 1 + l + sovReplication(uint64(l))
 	}
-	if m.EpochDelimiter {
-		n += 2
+	if m.EpochDelimiter != 0 {
+		n += 1 + sovReplication(uint64(m.EpochDelimiter))
 	}
 	if m.ReplicaRatification != nil {
 		l = m.ReplicaRatification.Size()
@@ -355,15 +356,10 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n1
 	}
-	if m.EpochDelimiter {
+	if m.EpochDelimiter != 0 {
 		data[i] = 0x10
 		i++
-		if m.EpochDelimiter {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter))
 	}
 	if m.ReplicaRatification != nil {
 		data[i] = 0x1a

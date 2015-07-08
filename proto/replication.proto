@@ -22,12 +22,15 @@ message KeyserverStep {
 		// As the leader requirement for appending an epoch_delimiter is soft,
 		// it may happen that two epoch delimiters end up with no updates
 		// between them. In this case, all but the first delimiter are ignored.
-		bool epoch_delimiter = 2;
-		// replica_ratification is appended to the log in response of
-		// epoch_delimiter. After some majority of the replicas has ratified the
-		// new state, their signatures make up the keyserver signature. As
-		// combining signatures is deterministic, no new log entry is appended
-		// to record that.
+		// The value of the epoch delimiter is the canonical timestamp as of
+		// which the epoch was closed, determined by the leader.
+		uint64 epoch_delimiter = 2;
+		// replica_ratification for the last epoch is appended to the log
+		// 1) when the epoch delimiter is committed
+		// 2) every RATIFICATION_VALIDITY-RATIFICATION_MARGIN after that
+		// After some majority of the replicas has ratified the state, their
+		// signatures make up the keyserver signature. As combining signatures
+		// is deterministic, no new log entry is appended to record that.
 		SignedRatification replica_ratification = 3;
 		// verifier_ratification is appended for each new ratification received
 		// from a verifier; these are used to provide proof of verification to
