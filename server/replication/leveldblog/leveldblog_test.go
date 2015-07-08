@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/server/replication"
 )
 

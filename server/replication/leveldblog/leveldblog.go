@@ -2,11 +2,11 @@ package leveldblog
 
 import (
 	"encoding/binary"
-	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/errors"
-	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/yahoo/coname/internal/github.com/syndtr/goleveldb/leveldb/util"
-	"github.com/yahoo/coname/internal/golang.org/x/net/context"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/util"
+	"golang.org/x/net/context"
 	"github.com/yahoo/coname/server/replication"
 )
 

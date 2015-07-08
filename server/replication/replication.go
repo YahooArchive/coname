@@ -1,7 +1,7 @@
 package replication
 
 import (
-	"github.com/yahoo/coname/internal/golang.org/x/net/context"
+	"golang.org/x/net/context"
 )
 
 // LogReplicator is a generic interface to state-machine replication logs.  The
