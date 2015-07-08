@@ -16,14 +16,14 @@ type Config struct {
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config // TODO: make this struct serializable. tls.Config is not
 
-	log replication.ReplicatedLog // TODO: cluster init information?
+	log replication.LogReplicator // TODO: cluster init information?
 }
 
 type Keyserver struct {
 	updateServer, lookupServer, verifierServer *grpc.Server
 	updateListen, lookupListen, verifierListen net.Listener
 
-	log replication.ReplicatedLog
+	log replication.LogReplicator
 
 	close    chan struct{}
 	waitStop sync.WaitGroup
