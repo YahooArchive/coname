@@ -1,0 +1,39 @@
+syntax = "proto3";
+package proto;
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "client.proto";
+
+service E2EKSVerification {
+	// VerifierStream accesses the public inputs to a keyserver state machine.
+	// The returned stream is gives a limited view of the log the keyserver
+	// that is being verified uses to replicate its state internally.
+	// However, private user data such as usernames and profile details
+	// is not included (the relevant fields are set to nil).
+	// note: the keyserver implementation also uses the same log to presist
+	// verifier ratifications, but as they do not affect any username:profile
+	// mappings, they are excluded as well.
+	rpc VerifierStream(VerifierStreamRequest) returns (stream VerifierStep);
+	// PushRatification is called each time a verifier who has been
+	// successfully replaying the log returned by VerifierStream interprets a
+	// keyserver_ratified step and agrees that the keyserver state summarized
+	// by it is the unique result of applying all the previous update steps.
+	// The SignedRatification will be stored by the server and used to
+	// argue the correctness of future lookups in front of clients.
+	rpc PushRatification(SignedRatification) returns (Nothing);
+}
+
+// UpdateRequest streams a specified number of committed updates or
+// ratifications. See replication.GetCommitted and replication.WaitCommitted.
+message VerifierStreamRequest {
+	int64 low_index = 1; // required: index of the first entry requested (inclusive)
+	int64 high_index = 2; // index of the first entry not requested (not inclusive)
+}
+
+message VerifierStep {
+	oneof type {
+		SignedEntryUpdate entry_changed = 1;
+		SignedRatification keyserver_ratified = 2;
+	}
+}
+
+message Nothing {}

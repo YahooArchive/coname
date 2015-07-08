@@ -7,6 +7,8 @@
 
 	It is generated from these files:
 		client.proto
+		replication.proto
+		verifier.proto
 
 	It has these top-level messages:
 		LookupProfileRequest
@@ -28,7 +30,7 @@ import io "io"
 import fmt "fmt"
 
 import (
-	context "github.com/yahoo/coname/internal/golang.org/x/net/context"
+	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
 
