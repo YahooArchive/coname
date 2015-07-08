@@ -8,6 +8,7 @@ import "client.proto";
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 message KeyserverStep {
+	// TODO: should all fields in a oneof have their own types for extensibility?
 	oneof type {
 		// update is appended to the log when it is received from a client and
 		// has passed pre-validation. However, since pre-validation is not

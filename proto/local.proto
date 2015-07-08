@@ -1,0 +1,10 @@
+syntax = "proto3";
+package proto;
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+message ReplicaState {
+	uint64 next_index_RSM = 1; // index of the next replicated state machine input to be processed
+	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers
+	uint64 last_epoch_delimiter = 3; // timestamp of the last epoch delimiter
+	bool pending_updates = 4; // are there any updates after the last epoch delimiter?
+}

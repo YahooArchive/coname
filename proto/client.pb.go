@@ -7,6 +7,7 @@
 
 	It is generated from these files:
 		client.proto
+		local.proto
 		replication.proto
 		verifier.proto
 

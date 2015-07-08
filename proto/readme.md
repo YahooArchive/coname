@@ -11,3 +11,6 @@ message descriptors are split into three files:
 - `replication.proto` -- service-provider internal protocol, included here as a
   part of the reference implementation. Handles high-availability replication
   and synchronization of updates to the keyserver state.
+- `local.proto` -- service-provider internal protocol, included here as a
+  part of the reference implementation. The local structures are user for
+  persisting local state at each replica of the service provider.
