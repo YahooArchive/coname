@@ -34,6 +34,8 @@ func (m *VerifierStreamRequest) Reset()         { *m = VerifierStreamRequest{} }
 func (m *VerifierStreamRequest) String() string { return proto1.CompactTextString(m) }
 func (*VerifierStreamRequest) ProtoMessage()    {}
 
+// VerifierStep denotes the input to a single state transition of the verified
+// part of the keyserver state machine.
 type VerifierStep struct {
 	EntryChanged      *SignedEntryUpdate  `protobuf:"bytes,1,opt,name=entry_changed" json:"entry_changed,omitempty"`
 	KeyserverRatified *SignedRatification `protobuf:"bytes,2,opt,name=keyserver_ratified" json:"keyserver_ratified,omitempty"`

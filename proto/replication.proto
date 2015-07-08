@@ -1,0 +1,37 @@
+syntax = "proto3";
+package proto;
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "client.proto";
+
+// KeyserverStep denotes the input to a single step of the keyserver state
+// machine. Linearizable high-availability replication is achieved by
+// replicating an in-order log of all steps and having each replica reproduce
+// the state from them.
+message KeyserverStep {
+	oneof type {
+		// update is appended to the log when it is received from a client and
+		// has passed pre-validation. However, since pre-validation is not
+		// final, "success" should not be returned to the client until after the
+		// update has been applied and ratified.
+		// update is applied to the keyserver state as soon as it has been
+		// committed to the log.
+		SignedEntryUpdate update = 1;
+		// epoch_delimiter is appended to the log by a leader (not necessarily
+		// unique) node when there has been at least one update appended to the log
+		// since the last epoch_delimiter AND at least EPOCH_DELAY has passed.
+		// As the leader requirement for appending an epoch_delimiter is soft,
+		// it may happen that two epoch delimiters end up with no updates
+		// between them. In this case, all but the first delimiter are ignored.
+		bool epoch_delimiter = 2;
+		// replica_ratification is appended to the log in response of
+		// epoch_delimiter. After some majority of the replicas has ratified the
+		// new state, their signatures make up the keyserver signature. As
+		// combining signatures is deterministic, no new log entry is appended
+		// to record that.
+		SignedRatification replica_ratification = 3;
+		// verifier_ratification is appended for each new ratification received
+		// from a verifier; these are used to provide proof of verification to
+		// clients.
+		SignedRatification verifier_ratification = 4;
+	}
+}

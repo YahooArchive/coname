@@ -29,6 +29,8 @@ message VerifierStreamRequest {
 	int64 high_index = 2; // index of the first entry not requested (not inclusive)
 }
 
+// VerifierStep denotes the input to a single state transition of the verified
+// part of the keyserver state machine.
 message VerifierStep {
 	oneof type {
 		SignedEntryUpdate entry_changed = 1;
