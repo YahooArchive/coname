@@ -6,8 +6,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"golang.org/x/net/context"
 	"github.com/yahoo/coname/server/replication"
+	"golang.org/x/net/context"
 )
 
 // leveldbLog implements replication.LogReplicator using a NON-REPLICATED but
