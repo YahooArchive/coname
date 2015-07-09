@@ -37,8 +37,9 @@ message KeyserverStep {
 		// clients.
 		SignedRatification verifier_ratification = 4;
 	}
-	message EpochDelimiter {
-		uint64 epoch_number = 1;
-		uint64 time = 2;
-	}
+}
+
+message EpochDelimiter {
+	uint64 epoch_number = 1; // epoch numbering starts at 1
+	uint64 time = 2;
 }

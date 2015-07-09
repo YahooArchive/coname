@@ -34,7 +34,7 @@ type KeyserverStep struct {
 	// As the leader requirement for appending an epoch_delimiter is soft,
 	// it may happen that an epoch delimiter with a epoch number not higher
 	// than the previous gets committed to the log. It must be ignored.
-	EpochDelimiter *KeyserverStep_EpochDelimiter `protobuf:"bytes,2,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
+	EpochDelimiter *EpochDelimiter `protobuf:"bytes,2,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
 	// replica_ratification for the last epoch is appended to the log
 	// when the epoch_delimiter is committed.
 	// After some majority of the replicas has ratified the state, their
@@ -58,7 +58,7 @@ func (m *KeyserverStep) GetUpdate() *SignedEntryUpdate {
 	return nil
 }
 
-func (m *KeyserverStep) GetEpochDelimiter() *KeyserverStep_EpochDelimiter {
+func (m *KeyserverStep) GetEpochDelimiter() *EpochDelimiter {
 	if m != nil {
 		return m.EpochDelimiter
 	}
@@ -79,14 +79,14 @@ func (m *KeyserverStep) GetVerifierRatification() *SignedRatification {
 	return nil
 }
 
-type KeyserverStep_EpochDelimiter struct {
+type EpochDelimiter struct {
 	EpochNumber uint64 `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
 	Time        uint64 `protobuf:"varint,2,opt,name=time,proto3" json:"time,omitempty"`
 }
 
-func (m *KeyserverStep_EpochDelimiter) Reset()         { *m = KeyserverStep_EpochDelimiter{} }
-func (m *KeyserverStep_EpochDelimiter) String() string { return proto1.CompactTextString(m) }
-func (*KeyserverStep_EpochDelimiter) ProtoMessage()    {}
+func (m *EpochDelimiter) Reset()         { *m = EpochDelimiter{} }
+func (m *EpochDelimiter) String() string { return proto1.CompactTextString(m) }
+func (*EpochDelimiter) ProtoMessage()    {}
 
 func init() {
 }
@@ -157,7 +157,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.EpochDelimiter == nil {
-				m.EpochDelimiter = &KeyserverStep_EpochDelimiter{}
+				m.EpochDelimiter = &EpochDelimiter{}
 			}
 			if err := m.EpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -240,7 +240,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *KeyserverStep_EpochDelimiter) Unmarshal(data []byte) error {
+func (m *EpochDelimiter) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -418,7 +418,7 @@ func (m *KeyserverStep) Size() (n int) {
 	return n
 }
 
-func (m *KeyserverStep_EpochDelimiter) Size() (n int) {
+func (m *EpochDelimiter) Size() (n int) {
 	var l int
 	_ = l
 	if m.EpochNumber != 0 {
@@ -501,7 +501,7 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
-func (m *KeyserverStep_EpochDelimiter) Marshal() (data []byte, err error) {
+func (m *EpochDelimiter) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -511,7 +511,7 @@ func (m *KeyserverStep_EpochDelimiter) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *KeyserverStep_EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
+func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
 	var i int
 	_ = i
 	var l int

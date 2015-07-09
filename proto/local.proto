@@ -1,12 +1,12 @@
 syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "replication.proto";
 
 // ReplicaState contains the persistent internal state of a single replica.
 message ReplicaState {
 	uint64 next_index_log = 1; // index of the next replicated state machine input to be processed
 	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers
-	uint64 next_epoch = 3; // index for the earliest epoch whose end delimiter has not appeared
-	uint64 last_epoch_delimiter = 4; // timestamp of the last epoch delimiter
+	EpochDelimiter last_epoch_delimiter = 4 [(gogoproto.nullable) = false];
 	bool pending_updates = 5; // are there any updates after the last epoch delimiter?
 }

@@ -16,16 +16,22 @@ var _ = proto1.Marshal
 
 // ReplicaState contains the persistent internal state of a single replica.
 type ReplicaState struct {
-	NextIndexLog       uint64 `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
-	NextIndexVerifier  uint64 `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
-	NextEpoch          uint64 `protobuf:"varint,3,opt,name=next_epoch,proto3" json:"next_epoch,omitempty"`
-	LastEpochDelimiter uint64 `protobuf:"varint,4,opt,name=last_epoch_delimiter,proto3" json:"last_epoch_delimiter,omitempty"`
-	PendingUpdates     bool   `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	NextIndexLog       uint64         `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
+	NextIndexVerifier  uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
+	LastEpochDelimiter EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
+	PendingUpdates     bool           `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
 }
 
 func (m *ReplicaState) Reset()         { *m = ReplicaState{} }
 func (m *ReplicaState) String() string { return proto1.CompactTextString(m) }
 func (*ReplicaState) ProtoMessage()    {}
+
+func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
+	if m != nil {
+		return m.LastEpochDelimiter
+	}
+	return EpochDelimiter{}
+}
 
 func init() {
 }
@@ -78,36 +84,30 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextEpoch", wireType)
-			}
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.NextEpoch |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		case 4:
-			if wireType != 0 {
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochDelimiter", wireType)
 			}
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LastEpochDelimiter |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.LastEpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PendingUpdates", wireType)
@@ -241,12 +241,8 @@ func (m *ReplicaState) Size() (n int) {
 	if m.NextIndexVerifier != 0 {
 		n += 1 + sovLocal(uint64(m.NextIndexVerifier))
 	}
-	if m.NextEpoch != 0 {
-		n += 1 + sovLocal(uint64(m.NextEpoch))
-	}
-	if m.LastEpochDelimiter != 0 {
-		n += 1 + sovLocal(uint64(m.LastEpochDelimiter))
-	}
+	l = m.LastEpochDelimiter.Size()
+	n += 1 + l + sovLocal(uint64(l))
 	if m.PendingUpdates {
 		n += 2
 	}
@@ -291,16 +287,14 @@ func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintLocal(data, i, uint64(m.NextIndexVerifier))
 	}
-	if m.NextEpoch != 0 {
-		data[i] = 0x18
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.NextEpoch))
+	data[i] = 0x22
+	i++
+	i = encodeVarintLocal(data, i, uint64(m.LastEpochDelimiter.Size()))
+	n1, err := m.LastEpochDelimiter.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	if m.LastEpochDelimiter != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.LastEpochDelimiter))
-	}
+	i += n1
 	if m.PendingUpdates {
 		data[i] = 0x28
 		i++
