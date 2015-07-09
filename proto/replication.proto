@@ -25,10 +25,6 @@ message KeyserverStep {
 		// As the leader requirement for appending an epoch_delimiter is soft,
 		// it may happen that an epoch delimiter with a epoch number not higher
 		// than the previous gets committed to the log. It must be ignored.
-		message EpochDelimiter {
-			uint64 epoch_number = 1;
-			uint64 time = 2;
-		}
 		EpochDelimiter epoch_delimiter = 2;
 		// replica_ratification for the last epoch is appended to the log
 		// when the epoch_delimiter is committed.
@@ -40,5 +36,9 @@ message KeyserverStep {
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
 		SignedRatification verifier_ratification = 4;
+	}
+	message EpochDelimiter {
+		uint64 epoch_number = 1;
+		uint64 time = 2;
 	}
 }

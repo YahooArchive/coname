@@ -27,17 +27,16 @@ type KeyserverStep struct {
 	// committed to the log.
 	Update *SignedEntryUpdate `protobuf:"bytes,1,opt,name=update" json:"update,omitempty"`
 	// epoch_delimiter is appended to the log by a leader (not necessarily
-	// unique) node when there has been at least one update appended to the log
-	// since the last epoch_delimiter AND at least EPOCH_DELAY has passed.
+	// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
+	// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
+	// Between these times, an epoch delimiter is appended as soon as an
+	// update is committed.
 	// As the leader requirement for appending an epoch_delimiter is soft,
-	// it may happen that two epoch delimiters end up with no updates
-	// between them. In this case, all but the first delimiter are ignored.
-	// The value of the epoch delimiter is the canonical timestamp as of
-	// which the epoch was closed, determined by the leader.
-	EpochDelimiter uint64 `protobuf:"varint,2,opt,name=epoch_delimiter,proto3" json:"epoch_delimiter,omitempty"`
+	// it may happen that an epoch delimiter with a epoch number not higher
+	// than the previous gets committed to the log. It must be ignored.
+	EpochDelimiter *KeyserverStep_EpochDelimiter `protobuf:"bytes,2,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
 	// replica_ratification for the last epoch is appended to the log
-	// 1) when the epoch delimiter is committed
-	// 2) every RATIFICATION_VALIDITY-RATIFICATION_MARGIN after that
+	// when the epoch_delimiter is committed.
 	// After some majority of the replicas has ratified the state, their
 	// signatures make up the keyserver signature. As combining signatures
 	// is deterministic, no new log entry is appended to record that.
@@ -59,6 +58,13 @@ func (m *KeyserverStep) GetUpdate() *SignedEntryUpdate {
 	return nil
 }
 
+func (m *KeyserverStep) GetEpochDelimiter() *KeyserverStep_EpochDelimiter {
+	if m != nil {
+		return m.EpochDelimiter
+	}
+	return nil
+}
+
 func (m *KeyserverStep) GetReplicaRatification() *SignedRatification {
 	if m != nil {
 		return m.ReplicaRatification
@@ -72,6 +78,15 @@ func (m *KeyserverStep) GetVerifierRatification() *SignedRatification {
 	}
 	return nil
 }
+
+type KeyserverStep_EpochDelimiter struct {
+	EpochNumber uint64 `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
+	Time        uint64 `protobuf:"varint,2,opt,name=time,proto3" json:"time,omitempty"`
+}
+
+func (m *KeyserverStep_EpochDelimiter) Reset()         { *m = KeyserverStep_EpochDelimiter{} }
+func (m *KeyserverStep_EpochDelimiter) String() string { return proto1.CompactTextString(m) }
+func (*KeyserverStep_EpochDelimiter) ProtoMessage()    {}
 
 func init() {
 }
@@ -122,20 +137,32 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
-			if wireType != 0 {
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EpochDelimiter", wireType)
 			}
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.EpochDelimiter |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.EpochDelimiter == nil {
+				m.EpochDelimiter = &KeyserverStep_EpochDelimiter{}
+			}
+			if err := m.EpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaRatification", wireType)
@@ -190,6 +217,78 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipReplication(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *KeyserverStep_EpochDelimiter) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EpochNumber", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.EpochNumber |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Time", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Time |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -304,8 +403,9 @@ func (m *KeyserverStep) Size() (n int) {
 		l = m.Update.Size()
 		n += 1 + l + sovReplication(uint64(l))
 	}
-	if m.EpochDelimiter != 0 {
-		n += 1 + sovReplication(uint64(m.EpochDelimiter))
+	if m.EpochDelimiter != nil {
+		l = m.EpochDelimiter.Size()
+		n += 1 + l + sovReplication(uint64(l))
 	}
 	if m.ReplicaRatification != nil {
 		l = m.ReplicaRatification.Size()
@@ -314,6 +414,18 @@ func (m *KeyserverStep) Size() (n int) {
 	if m.VerifierRatification != nil {
 		l = m.VerifierRatification.Size()
 		n += 1 + l + sovReplication(uint64(l))
+	}
+	return n
+}
+
+func (m *KeyserverStep_EpochDelimiter) Size() (n int) {
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		n += 1 + sovReplication(uint64(m.EpochNumber))
+	}
+	if m.Time != 0 {
+		n += 1 + sovReplication(uint64(m.Time))
 	}
 	return n
 }
@@ -356,30 +468,63 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n1
 	}
-	if m.EpochDelimiter != 0 {
-		data[i] = 0x10
+	if m.EpochDelimiter != nil {
+		data[i] = 0x12
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter))
-	}
-	if m.ReplicaRatification != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
-		n2, err := m.ReplicaRatification.MarshalTo(data[i:])
+		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
+		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n2
 	}
-	if m.VerifierRatification != nil {
-		data[i] = 0x22
+	if m.ReplicaRatification != nil {
+		data[i] = 0x1a
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
-		n3, err := m.VerifierRatification.MarshalTo(data[i:])
+		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
+		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n3
+	}
+	if m.VerifierRatification != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
+		n4, err := m.VerifierRatification.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *KeyserverStep_EpochDelimiter) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *KeyserverStep_EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
+	}
+	if m.Time != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.Time))
 	}
 	return i, nil
 }
