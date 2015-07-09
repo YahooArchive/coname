@@ -12,7 +12,7 @@ import (
 // necessarily mean it will be committed. One would use this interface
 // similarly to a local write-ahead log, except that this interface does not
 // support log compaction (it is intended for use when the entire log needs to
-// be kept around anyway).
+// be kept around anyway). Returned nil entries should be ignored.
 // Start(lo) must be called exactly once before any other method is called, and
 // no methods must be called after Close is called. The other three methods may
 // be called concurrently.
