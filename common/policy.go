@@ -20,6 +20,8 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 		if next.Version < current.Version {
 			return fmt.Errorf("VerifyUpdate: entry version must not decrease (got %d < %d)", next.Version, current.Version)
 		}
+	} else if next.Version != 0 {
+		return fmt.Errorf("VerifyUpdate: registering a new entry must use version number 0 (got %d)", next.Version)
 	}
 	if next.UpdateKey == nil {
 		return fmt.Errorf("VerifyUpdate: next.UpdateKey is nil")

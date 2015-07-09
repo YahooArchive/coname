@@ -57,7 +57,7 @@ message Profile {
 }
 
 message Entry { // all fields required
-	uint64 version = 1; // non-decreasing, for replay prevention
+	uint64 version = 1; // version is a non-decresing field that must start at 0 at registration
 	SignatureVerifier update_key = 2; // signing key authorized to change the profile
 	bytes profile_hash = 3; // the content fields ("profile") are only referenced by hash because they main contain private data
 }
