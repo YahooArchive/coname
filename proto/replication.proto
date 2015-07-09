@@ -18,17 +18,20 @@ message KeyserverStep {
 		// committed to the log.
 		SignedEntryUpdate update = 1;
 		// epoch_delimiter is appended to the log by a leader (not necessarily
-		// unique) node when there has been at least one update appended to the log
-		// since the last epoch_delimiter AND at least EPOCH_DELAY has passed.
+		// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
+		// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
+		// Between these times, an epoch delimiter is appended as soon as an
+		// update is committed.
 		// As the leader requirement for appending an epoch_delimiter is soft,
-		// it may happen that two epoch delimiters end up with no updates
-		// between them. In this case, all but the first delimiter are ignored.
-		// The value of the epoch delimiter is the canonical timestamp as of
-		// which the epoch was closed, determined by the leader.
-		uint64 epoch_delimiter = 2;
+		// it may happen that an epoch delimiter with a epoch number not higher
+		// than the previous gets committed to the log. It must be ignored.
+		message EpochDelimiter {
+			uint64 epoch_number = 1;
+			uint64 time = 2;
+		}
+		EpochDelimiter epoch_delimiter = 2;
 		// replica_ratification for the last epoch is appended to the log
-		// 1) when the epoch delimiter is committed
-		// 2) every RATIFICATION_VALIDITY-RATIFICATION_MARGIN after that
+		// when the epoch_delimiter is committed.
 		// After some majority of the replicas has ratified the state, their
 		// signatures make up the keyserver signature. As combining signatures
 		// is deterministic, no new log entry is appended to record that.
