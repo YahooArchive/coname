@@ -9,4 +9,5 @@ message ReplicaState {
 	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers
 	EpochDelimiter last_epoch_delimiter = 4 [(gogoproto.nullable) = false];
 	bool pending_updates = 5; // are there any updates after the last epoch delimiter?
+	// NOTE: this definition is incomplete and subject to change as implementation progresses
 }
