@@ -39,3 +39,7 @@ func (db *leveldbkv) Write(b kv.Batch) error {
 func (db *leveldbkv) NewIterator(rg *kv.Range) kv.Iterator {
 	return (*leveldb.DB)(db).NewIterator(&util.Range{rg.Start, rg.Limit}, nil)
 }
+
+func (db *leveldbkv) ErrNotFound() error {
+	return leveldb.ErrNotFound
+}

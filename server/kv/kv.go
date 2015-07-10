@@ -9,6 +9,8 @@ type DB interface {
 	NewBatch() Batch
 	Write(Batch) error
 	NewIterator(*Range) Iterator
+
+	ErrNotFound() error
 }
 
 type Batch interface {

@@ -1,4 +1,4 @@
-package leveldblog
+package kvlog
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/replication"
 )
 
@@ -29,8 +31,9 @@ func setupLevelDB(t *testing.T) (*leveldb.DB, func()) {
 
 var prefix15 = []byte{'l'}
 
-func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.DB, func()) {
-	db, teardown := setupLevelDB(t)
+func setupLog1through15Start(t *testing.T) (replication.LogReplicator, kv.DB, func()) {
+	ldb, teardown := setupLevelDB(t)
+	db := leveldbkv.Wrap(ldb)
 
 	l, err := NewLeveldbLog(db, prefix15)
 	if err != nil {
@@ -53,11 +56,11 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.
 
 // TestLeveldbLogProposeWait verifies that all Proposed values are returned by
 // WaitCommitted. This is not required to be true by the interface, but it is
-// true for leveldbLog and the tests in this module assume that.
+// true for kvLog and the tests in this module assume that.
 func TestLeveldbLogProposeWait(t *testing.T) {
 	db, teardown := setupLevelDB(t)
 	defer teardown()
-	l, err := NewLeveldbLog(db, []byte{})
+	l, err := NewLeveldbLog(leveldbkv.Wrap(db), []byte{})
 	if err != nil {
 		t.Fatal(err)
 	}
