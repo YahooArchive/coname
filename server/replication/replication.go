@@ -14,7 +14,7 @@ import (
 // support log compaction (it is intended for use when the entire log needs to
 // be kept around anyway). Returned nil entries should be ignored.
 // Start(lo) must be called exactly once before any other method is called, and
-// no methods must be called after Close is called. The other three methods may
+// no methods must be called after Stop is called. The other three methods may
 // be called concurrently.
 type LogReplicator interface {
 	// Start sets an internal field lo; later WaitCommitted will return entries
@@ -42,9 +42,9 @@ type LogReplicator interface {
 	// ch : chan (&[]byte) // all read values are read-only to the caller
 	WaitCommitted() <-chan []byte
 
-	// Close cleanly stops logging requests. No calls to Propose or
-	// GetCommitted must be started after Close has been called (and the values
+	// Stop cleanly stops logging requests. No calls to Propose or
+	// GetCommitted must be started after Stop has been called (and the values
 	// handed to ongoing Propose calls may not get committed). WaitCommitted
 	// channel is closed.
-	Close() error
+	Stop() error
 }

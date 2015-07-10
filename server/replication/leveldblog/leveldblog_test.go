@@ -27,10 +27,12 @@ func setupLevelDB(t *testing.T) (*leveldb.DB, func()) {
 	}
 }
 
+var prefix15 = []byte{'l'}
+
 func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.DB, func()) {
 	db, teardown := setupLevelDB(t)
 
-	l, err := NewLeveldbLog(db)
+	l, err := NewLeveldbLog(db, prefix15)
 	if err != nil {
 		teardown()
 		t.Fatal(err)
@@ -44,7 +46,7 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.
 		<-l.WaitCommitted()
 	}
 	return l, db, func() {
-		l.Close()
+		l.Stop()
 		teardown()
 	}
 }
@@ -55,12 +57,12 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, *leveldb.
 func TestLeveldbLogProposeWait(t *testing.T) {
 	db, teardown := setupLevelDB(t)
 	defer teardown()
-	l, err := NewLeveldbLog(db)
+	l, err := NewLeveldbLog(db, []byte{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	l.Start(0)
-	defer l.Close()
+	defer l.Stop()
 
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
@@ -92,9 +94,9 @@ func TestLeveldbLogProposeWait(t *testing.T) {
 func TestLeveldbLogStartHistoric(t *testing.T) {
 	l, db, teardown := setupLog1through15Start(t)
 	defer teardown()
-	l.Close()
+	l.Stop()
 
-	l, err := NewLeveldbLog(db)
+	l, err := NewLeveldbLog(db, prefix15)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +146,7 @@ func TestLeveldbLogGetCommittedRestart(t *testing.T) {
 
 	check()
 
-	l, err := NewLeveldbLog(db)
+	l, err := NewLeveldbLog(db, prefix15)
 	if err != nil {
 		t.Fatal(err)
 	}

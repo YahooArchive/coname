@@ -67,6 +67,8 @@ type Keyserver struct {
 
 	stop     chan struct{}
 	waitStop sync.WaitGroup
+
+	testingTraceStep chan *proto.KeyserverStep
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -76,7 +78,7 @@ func Open(cfg *Config) (ks *Keyserver, err error) {
 	if err != nil {
 		return nil, err
 	}
-	log, err := leveldblog.NewLeveldbLog(db)
+	log, err := leveldblog.NewLeveldbLog(db, []byte{tableReplicationLogPrefix})
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +178,7 @@ func (ks *Keyserver) Stop() {
 	ks.canEpochSet.Stop()
 	ks.mustEpochSet.Stop()
 	ks.retryEpoch.Stop()
-	ks.log.Close()
+	ks.log.Stop()
 	ks.db.Close()
 }
 
@@ -193,7 +195,7 @@ func (ks *Keyserver) run() {
 			return
 		case stepBytes := <-ks.log.WaitCommitted():
 			if stepBytes == nil {
-				continue // allow logs to skip slots for inddexing purposes
+				continue // allow logs to skip slots for indexing purposes
 			}
 			if err := step.Unmarshal(stepBytes); err != nil {
 				log.Panicf("invalid step pb in replicated log: %s", err)
