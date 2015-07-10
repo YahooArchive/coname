@@ -10,12 +10,11 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/replication"
-	"github.com/yahoo/coname/server/replication/leveldblog"
+	"github.com/yahoo/coname/server/replication/kvlog"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -30,8 +29,6 @@ type Config struct {
 	ID                   uint64
 	RatificationVerifier *proto.SignatureVerifier_ThresholdVerifier
 	RatificationKey      *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-
-	LeveldbDir string
 
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
@@ -49,7 +46,7 @@ type Keyserver struct {
 	thresholdSigningIndex uint32
 	ratificationKey       *[ed25519.PrivateKeySize]byte
 
-	db  *leveldb.DB
+	db  kv.DB
 	log replication.LogReplicator
 	proto.ReplicaState
 
@@ -73,12 +70,8 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *Config) (ks *Keyserver, err error) {
-	db, err := leveldb.OpenFile(cfg.LeveldbDir, nil)
-	if err != nil {
-		return nil, err
-	}
-	log, err := leveldblog.NewLeveldbLog(db, []byte{tableReplicationLogPrefix})
+func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
+	log, err := kvlog.New(db, []byte{tableReplicationLogPrefix})
 	if err != nil {
 		return nil, err
 	}
@@ -104,8 +97,8 @@ func Open(cfg *Config) (ks *Keyserver, err error) {
 		retryEpoch:   time.NewTimer(0),
 	}
 
-	switch replicaStateBytes, err := db.Get(tableReplicaState, nil); err {
-	case leveldb.ErrNotFound:
+	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
+	case ks.db.ErrNotFound():
 		// ReplicaState zero value is valid initialization
 	case nil:
 		if err := ks.ReplicaState.Unmarshal(replicaStateBytes); err != nil {
@@ -179,7 +172,6 @@ func (ks *Keyserver) Stop() {
 	ks.mustEpochSet.Stop()
 	ks.retryEpoch.Stop()
 	ks.log.Stop()
-	ks.db.Close()
 }
 
 // run is the CSP-style main loop of the keyserver. All code critical for safe
@@ -188,7 +180,7 @@ func (ks *Keyserver) Stop() {
 // network and disk, but not both.
 func (ks *Keyserver) run() {
 	var step proto.KeyserverStep
-	var wb leveldb.Batch
+	wb := ks.db.NewBatch()
 	for {
 		select {
 		case <-ks.stop:
@@ -201,9 +193,9 @@ func (ks *Keyserver) run() {
 				log.Panicf("invalid step pb in replicated log: %s", err)
 			}
 			ks.NextIndexLog++
-			ks.step(&step, &ks.ReplicaState, &wb)
+			ks.step(&step, &ks.ReplicaState, wb)
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.ReplicaState))
-			if err := ks.db.Write(&wb, &opt.WriteOptions{Sync: true}); err != nil {
+			if err := ks.db.Write(wb); err != nil {
 				log.Panicf("sync step to db: %s", err)
 			}
 			wb.Reset()
@@ -224,7 +216,7 @@ func (ks *Keyserver) run() {
 }
 
 // step is called by run and changes the in-memory state. No i/o allowed.
-func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb *leveldb.Batch) {
+func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) {
 	// ks: &const
 	// step, rs, wb: &mut
 	switch {
@@ -271,7 +263,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	case step.ReplicaRatification != nil:
 		rNew := step.ReplicaRatification
 		dbkey := tableRatifications(rNew.Ratification.Epoch, rNew.Ratifier)
-		switch rExistingBytes, err := ks.db.Get(dbkey, nil); err {
+		switch rExistingBytes, err := ks.db.Get(dbkey); err {
 		case nil:
 			rExisting := new(proto.SignedRatification)
 			if err := rExisting.Unmarshal(rExistingBytes); err != nil {
@@ -288,7 +280,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			common.MergeThresholdSignatures(sigExisting, sigNew)
 			rExisting.Signature = proto.MustMarshal(sigExisting)
 			wb.Put(dbkey, proto.MustMarshal(rExisting))
-		case leveldb.ErrNotFound:
+		case ks.db.ErrNotFound():
 			wb.Put(dbkey, proto.MustMarshal(rNew))
 		default:
 			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", rNew.Ratification.Epoch, rNew.Ratifier, err)

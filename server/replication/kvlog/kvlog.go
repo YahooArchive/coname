@@ -27,9 +27,8 @@ type kvLog struct {
 
 var _ replication.LogReplicator = (*kvLog)(nil)
 
-// NewLeveldbLog initializes a replication.LogReplicator using an already open
-// leveldb instance.
-func NewLeveldbLog(db kv.DB, prefix []byte) (replication.LogReplicator, error) {
+// New initializes a replication.LogReplicator using an already open kv.DB.
+func New(db kv.DB, prefix []byte) (replication.LogReplicator, error) {
 	nextIndex := uint64(0)
 	iter := db.NewIterator(kv.BytesPrefix(prefix))
 	if hasEntries := iter.Last(); hasEntries {

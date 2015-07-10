@@ -35,7 +35,7 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, kv.DB, fu
 	ldb, teardown := setupLevelDB(t)
 	db := leveldbkv.Wrap(ldb)
 
-	l, err := NewLeveldbLog(db, prefix15)
+	l, err := New(db, prefix15)
 	if err != nil {
 		teardown()
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, kv.DB, fu
 func TestLeveldbLogProposeWait(t *testing.T) {
 	db, teardown := setupLevelDB(t)
 	defer teardown()
-	l, err := NewLeveldbLog(leveldbkv.Wrap(db), []byte{})
+	l, err := New(leveldbkv.Wrap(db), []byte{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestLeveldbLogStartHistoric(t *testing.T) {
 	defer teardown()
 	l.Stop()
 
-	l, err := NewLeveldbLog(db, prefix15)
+	l, err := New(db, prefix15)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestLeveldbLogGetCommittedRestart(t *testing.T) {
 
 	check()
 
-	l, err := NewLeveldbLog(db, prefix15)
+	l, err := New(db, prefix15)
 	if err != nil {
 		t.Fatal(err)
 	}

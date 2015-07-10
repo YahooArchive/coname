@@ -11,8 +11,10 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/tlstestutil"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/server/kv/leveldbkv"
 )
 
 func TestKeyserverStartStop(t *testing.T) {
@@ -21,6 +23,11 @@ func TestKeyserverStartStop(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
+	ldb, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ldb.Close()
 
 	pk, sk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -38,7 +45,6 @@ func TestKeyserverStartStop(t *testing.T) {
 		RatificationVerifier: sv.Threshold,
 		ID:                   common.RatifierID(sv),
 		RatificationKey:      sk,
-		LeveldbDir:           dir,
 
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
@@ -51,12 +57,13 @@ func TestKeyserverStartStop(t *testing.T) {
 		MaxEpochInterval:   50 * time.Millisecond,
 		RetryEpochInterval: 10 * time.Millisecond,
 	}
-	ks, err := Open(cfg)
+	ks, err := Open(cfg, leveldbkv.Wrap(ldb))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ks.Start()
 	ks.Stop()
+	ldb.Close()
 	if testing.Verbose() {
 		time.Sleep(time.Millisecond)
 		n := runtime.NumGoroutine()
