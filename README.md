@@ -22,3 +22,9 @@ code generation tool and [grpc](http://www.grpc.io/) [for
 Go](https://github.com/grpc/grpc-go). On Arch Linux this comes down to `pacman
 -S go`, `aura -Ak protobuf3`, `go get github.com/yahoo/coname/...
 github.com/andres-erbsen/tlstestutil`.
+
+### disclaimer
+
+As this project includes code (from `dename`) that I wrote and released as open
+source when I was employed by Google, here is a little disclaimer that I was
+asked to attach to the code: `This is not a Google project.`
