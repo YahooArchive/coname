@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"io/ioutil"
 	"os"
@@ -8,7 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/tlstestutil"
+	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/proto"
 )
 
 func TestKeyserverStartStop(t *testing.T) {
@@ -18,10 +22,23 @@ func TestKeyserverStartStop(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
+	pk, sk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sv := &proto.SignatureVerifier{Threshold: &proto.SignatureVerifier_ThresholdVerifier{
+		Threshold: 1,
+		Verifiers: []*proto.SignatureVerifier{{Ed25519: pk[:]}},
+	}}
+
 	ca, caPool, caKey := tlstestutil.CA(t, nil)
 	cert := tlstestutil.Cert(t, ca, caKey, "127.0.0.1", nil)
 	cfg := &Config{
-		LeveldbDir: dir,
+		Realm:                "testing",
+		RatificationVerifier: sv.Threshold,
+		ID:                   common.RatifierID(sv),
+		RatificationKey:      sk,
+		LeveldbDir:           dir,
 
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
@@ -31,7 +48,7 @@ func TestKeyserverStartStop(t *testing.T) {
 		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
 
 		MinEpochInterval:   0,
-		MaxEpochInterval:   100 * time.Millisecond,
+		MaxEpochInterval:   50 * time.Millisecond,
 		RetryEpochInterval: 10 * time.Millisecond,
 	}
 	ks, err := Open(cfg)
