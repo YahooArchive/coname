@@ -4,7 +4,7 @@
 
 package proto
 
-import proto1 "github.com/golang/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
 
@@ -81,7 +81,7 @@ func (m *KeyserverStep) GetVerifierRatification() *SignedRatification {
 
 type EpochDelimiter struct {
 	EpochNumber uint64 `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
-	Time        uint64 `protobuf:"varint,2,opt,name=time,proto3" json:"time,omitempty"`
+	Timestamp   Time   `protobuf:"bytes,4,opt,name=timestamp,customtype=Time" json:"timestamp"`
 }
 
 func (m *EpochDelimiter) Reset()         { *m = EpochDelimiter{} }
@@ -274,21 +274,30 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Time", wireType)
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Time |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -424,9 +433,8 @@ func (m *EpochDelimiter) Size() (n int) {
 	if m.EpochNumber != 0 {
 		n += 1 + sovReplication(uint64(m.EpochNumber))
 	}
-	if m.Time != 0 {
-		n += 1 + sovReplication(uint64(m.Time))
-	}
+	l = m.Timestamp.Size()
+	n += 1 + l + sovReplication(uint64(l))
 	return n
 }
 
@@ -521,11 +529,14 @@ func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
 	}
-	if m.Time != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.Time))
+	data[i] = 0x22
+	i++
+	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
+	n5, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n5
 	return i, nil
 }
 

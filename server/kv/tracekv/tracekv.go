@@ -31,6 +31,18 @@ func WithTracing(db kv.DB, tracePut func(Put), traceBatch func([]Put)) kv.DB {
 	return tracekv{db, tracePut, traceBatch}
 }
 
+func mapPut(f func(Put)) func([]Put) {
+	return func(ps []Put) {
+		for _, p := range ps {
+			f(p)
+		}
+	}
+}
+
+func WithSimpleTracing(db kv.DB, tracePut func(Put)) kv.DB {
+	return WithTracing(db, tracePut, mapPut(tracePut))
+}
+
 func (db tracekv) Get(key []byte) ([]byte, error) {
 	return db.DB.Get(key)
 }

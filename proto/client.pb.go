@@ -9,6 +9,7 @@
 		client.proto
 		local.proto
 		replication.proto
+		timestamp.proto
 		verifier.proto
 
 	It has these top-level messages:
@@ -23,7 +24,7 @@
 */
 package proto
 
-import proto1 "github.com/golang/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
 
@@ -173,7 +174,7 @@ type SignedRatification_RatificationT struct {
 	Realm     string                                                                  `protobuf:"bytes,1,opt,name=realm,proto3" json:"realm,omitempty"`
 	Epoch     uint64                                                                  `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	Summary   SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding `protobuf:"bytes,3,opt,name=summary,customtype=SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding" json:"summary"`
-	Timestamp uint64                                                                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Timestamp Time                                                                    `protobuf:"bytes,4,opt,name=timestamp,customtype=Time" json:"timestamp"`
 }
 
 func (m *SignedRatification_RatificationT) Reset()         { *m = SignedRatification_RatificationT{} }
@@ -1078,20 +1079,29 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 4:
-			if wireType != 0 {
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Timestamp |= (uint64(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -1686,9 +1696,8 @@ func (m *SignedRatification_RatificationT) Size() (n int) {
 	}
 	l = m.Summary.Size()
 	n += 1 + l + sovClient(uint64(l))
-	if m.Timestamp != 0 {
-		n += 1 + sovClient(uint64(m.Timestamp))
-	}
+	l = m.Timestamp.Size()
+	n += 1 + l + sovClient(uint64(l))
 	return n
 }
 
@@ -2091,11 +2100,14 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 		return 0, err
 	}
 	i += n7
-	if m.Timestamp != 0 {
-		data[i] = 0x20
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Timestamp))
+	data[i] = 0x22
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n8, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n8
 	return i, nil
 }
 
@@ -2160,11 +2172,11 @@ func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n8, err := m.Threshold.MarshalTo(data[i:])
+		n9, err := m.Threshold.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n9
 	}
 	return i, nil
 }

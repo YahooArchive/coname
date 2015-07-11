@@ -16,6 +16,7 @@ syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "client.proto";
+import "timestamp.proto";
 
 // KeyserverStep denotes the input to a single step of the keyserver state
 // machine. Linearizable high-availability replication is achieved by
@@ -55,5 +56,6 @@ message KeyserverStep {
 
 message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
-	uint64 time = 2;
+	Timestamp timestamp = 4
+		[(gogoproto.customtype) = "Time", (gogoproto.nullable) = false];
 }

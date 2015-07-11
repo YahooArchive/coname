@@ -78,8 +78,6 @@ type Keyserver struct {
 
 	stop     chan struct{}
 	waitStop sync.WaitGroup
-
-	testingTraceStep chan *proto.KeyserverStep
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -163,7 +161,7 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
-	ks.resetEpochTimers()
+	ks.resetEpochTimers(ks.LastEpochDelimiter.Timestamp.Time())
 	ks.waitStop.Add(1)
 	go func() { ks.run(); ks.waitStop.Done() }()
 }
@@ -213,6 +211,7 @@ func (ks *Keyserver) run() {
 				log.Panicf("sync step to db: %s", err)
 			}
 			wb.Reset()
+			step.Reset()
 			// TODO: if we handled a client connected directly to us, reply
 		case ks.leaderHint = <-ks.leaderHintSet:
 			ks.maybeEpoch()
@@ -243,10 +242,13 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// TODO: update verifier log index structure
 		// TODO: figure out how to do epoch delimiter timers
 		rs.PendingUpdates = true
-	case step.EpochDelimiter != nil && step.EpochDelimiter.EpochNumber > rs.LastEpochDelimiter.EpochNumber:
+	case step.EpochDelimiter != nil:
+		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
+			return // a duplicate of this step has already been handled
+		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
-		ks.resetEpochTimers()
+		ks.resetEpochTimers(ks.LastEpochDelimiter.Timestamp.Time())
 		ratification := &proto.SignedRatification{
 			Ratifier: ks.id,
 			Ratification: proto.SignedRatification_RatificationT_PreserveEncoding{proto.SignedRatification_RatificationT{
@@ -256,7 +258,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 					RootHash:            nil, // TODO: merklemap.GetRootHash()
 					PreviousSummaryHash: nil, // TODO: rs.PreviousSummaryHash, and update it
 				}, nil},
-				Timestamp: step.EpochDelimiter.Time,
+				Timestamp: step.EpochDelimiter.Timestamp,
 			}, nil},
 		}
 		ratification.Ratification.Summary.UpdateEncoding()
@@ -322,15 +324,17 @@ func (ks *Keyserver) maybeEpoch() {
 		return
 	}
 	ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
-		EpochNumber: ks.ReplicaState.LastEpochDelimiter.EpochNumber + 1,
-		Time:        uint64(time.Now().Unix()),
+		EpochNumber: ks.LastEpochDelimiter.EpochNumber + 1,
+		Timestamp:   proto.Time(time.Now()),
 	}}))
+	ks.canEpochSet.Stop()
+	ks.mustEpochSet.Stop()
 	ks.retryEpoch.Reset(ks.retryEpochInterval)
 }
 
-func (ks *Keyserver) resetEpochTimers() {
-	ks.canEpochSet.Reset(time.Unix(int64(ks.ReplicaState.LastEpochDelimiter.Time), 0).Add(ks.minEpochInterval).Sub(time.Now()))
-	ks.mustEpochSet.Reset(time.Unix(int64(ks.ReplicaState.LastEpochDelimiter.Time), 0).Add(ks.maxEpochInterval).Sub(time.Now()))
+func (ks *Keyserver) resetEpochTimers(t time.Time) {
+	ks.canEpochSet.Reset(t.Add(ks.minEpochInterval).Sub(time.Now()))
+	ks.mustEpochSet.Reset(t.Add(ks.maxEpochInterval).Sub(time.Now()))
 	ks.retryEpoch.Stop()
 	ks.canEpoch = false
 	ks.mustEpoch = false

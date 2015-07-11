@@ -18,8 +18,10 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"io/ioutil"
+	"log"
 	"os"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,9 +31,11 @@ import (
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
+	"github.com/yahoo/coname/server/kv/logkv"
+	"github.com/yahoo/coname/server/kv/tracekv"
 )
 
-func TestKeyserverStartStop(t *testing.T) {
+func TestKeyserverStartProgressStop(t *testing.T) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
@@ -68,16 +72,39 @@ func TestKeyserverStartStop(t *testing.T) {
 		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
 
 		MinEpochInterval:   0,
-		MaxEpochInterval:   50 * time.Millisecond,
-		RetryEpochInterval: 10 * time.Millisecond,
+		MaxEpochInterval:   0 * time.Millisecond,
+		RetryEpochInterval: 1 * time.Millisecond,
 	}
-	ks, err := Open(cfg, leveldbkv.Wrap(ldb))
+
+	db := leveldbkv.Wrap(ldb)
+	if testing.Verbose() {
+		db = logkv.WithLogging(db, log.New(os.Stdout, "", log.LstdFlags))
+	}
+
+	// the db writes are test output. We are waiting for epoch 2 to be ratified
+	// as a primitive progress check.
+	progressCh := make(chan struct{})
+	var closeOnce sync.Once
+	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+			return
+		}
+		var sr proto.SignedRatification
+		sr.Unmarshal(put.Value)
+		if sr.Ratification.Epoch == 2 {
+			closeOnce.Do(func() { close(progressCh) })
+		}
+	})
+
+	ks, err := Open(cfg, db)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ks.Start()
+	<-progressCh
 	ks.Stop()
 	ldb.Close()
+
 	if testing.Verbose() {
 		time.Sleep(time.Millisecond)
 		n := runtime.NumGoroutine()

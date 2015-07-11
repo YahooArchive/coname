@@ -4,7 +4,7 @@
 
 package proto
 
-import proto1 "github.com/golang/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
 

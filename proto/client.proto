@@ -15,6 +15,7 @@
 syntax = "proto3";
 package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "timestamp.proto";
 
 service E2EKSLookup {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
@@ -104,7 +105,8 @@ message SignedRatification {
 		}
 		KeyserverStateSummary summary = 3 // hashed field, do not re-encode
 			[(gogoproto.customtype) = "SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding", (gogoproto.nullable) = false];
-		uint64 timestamp = 4; // google.protobuf.Timestamp timestamp = 3;
+		Timestamp timestamp = 4
+			[(gogoproto.customtype) = "Time", (gogoproto.nullable) = false];
 	}
 	uint64 ratifier = 1; // unique ID, hash of public key by convention
 	RatificationT ratification = 2 // signed field, do not re-encode
