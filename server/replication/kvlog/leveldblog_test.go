@@ -162,14 +162,15 @@ func TestLeveldbLogGetCommittedRestart(t *testing.T) {
 	}
 
 	check()
+	l.Stop()
 
 	l, err := New(db, prefix15)
 	if err != nil {
 		t.Fatal(err)
 	}
 	l.Start(0)
-
 	check()
+	l.Stop()
 }
 
 func TestLeveldbLogGetCommittedRange(t *testing.T) {
