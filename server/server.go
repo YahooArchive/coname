@@ -76,6 +76,7 @@ type Keyserver struct {
 	canEpochSet, mustEpochSet, retryEpoch *time.Timer
 	// proto.ReplicaState.PendingUpdates is used as well
 
+	stopOnce sync.Once
 	stop     chan struct{}
 	waitStop sync.WaitGroup
 }
@@ -169,21 +170,23 @@ func (ks *Keyserver) Start() {
 /// Stop cleanly shuts down the keyserver and then returns.
 // TODO: figure out what will happen to connected clients?
 func (ks *Keyserver) Stop() {
-	if ks.updateServer != nil {
-		ks.updateServer.Stop()
-	}
-	if ks.lookupServer != nil {
-		ks.lookupServer.Stop()
-	}
-	if ks.verifierServer != nil {
-		ks.verifierServer.Stop()
-	}
-	close(ks.stop)
-	ks.waitStop.Wait()
-	ks.canEpochSet.Stop()
-	ks.mustEpochSet.Stop()
-	ks.retryEpoch.Stop()
-	ks.log.Stop()
+	ks.stopOnce.Do(func() {
+		if ks.updateServer != nil {
+			ks.updateServer.Stop()
+		}
+		if ks.lookupServer != nil {
+			ks.lookupServer.Stop()
+		}
+		if ks.verifierServer != nil {
+			ks.verifierServer.Stop()
+		}
+		close(ks.stop)
+		ks.waitStop.Wait()
+		ks.canEpochSet.Stop()
+		ks.mustEpochSet.Stop()
+		ks.retryEpoch.Stop()
+		ks.log.Stop()
+	})
 }
 
 // run is the CSP-style main loop of the keyserver. All code critical for safe

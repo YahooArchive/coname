@@ -101,6 +101,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 		t.Fatal(err)
 	}
 	ks.Start()
+	defer ks.Stop()
 	<-progressCh
 	ks.Stop()
 	ldb.Close()
