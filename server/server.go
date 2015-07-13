@@ -207,6 +207,8 @@ func (ks *Keyserver) run() {
 			if err := step.Unmarshal(stepBytes); err != nil {
 				log.Panicf("invalid step pb in replicated log: %s", err)
 			}
+			// TODO: allow multiple steps per log entry (pipelining). Maybe
+			// this would be better implemented at the log level?
 			ks.NextIndexLog++
 			ks.step(&step, &ks.ReplicaState, wb)
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.ReplicaState))
@@ -243,7 +245,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		// TODO: set entry in tree
 		// TODO: update verifier log index structure
-		// TODO: figure out how to do epoch delimiter timers
 		rs.PendingUpdates = true
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
