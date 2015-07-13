@@ -14,7 +14,8 @@ The lifecycle of an update is as follows:
 
 1. TODO: The client calls the update RPC
 2. TODO: Calls to update that are close together in time are combined into
-a batch for reducing the number of log entries. 3. TODO: The update (batch) is
+a batch for reducing the number of log entries.
+3. TODO: The update (batch) is
 `Propose`-d and appended to the log
 4. `run` gets the update from `Wait`, calls `step` with it. `step` prepares an
 atomic change (`kv.Batch`) to the local database.
