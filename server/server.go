@@ -62,7 +62,7 @@ type Keyserver struct {
 
 	db  kv.DB
 	log replication.LogReplicator
-	proto.ReplicaState
+	rs  proto.ReplicaState
 
 	updateServer, lookupServer, verifierServer *grpc.Server
 	updateListen, lookupListen, verifierListen net.Listener
@@ -74,7 +74,9 @@ type Keyserver struct {
 	leaderHint, canEpoch, mustEpoch       bool
 	leaderHintSet                         <-chan bool
 	canEpochSet, mustEpochSet, retryEpoch *time.Timer
-	// proto.ReplicaState.PendingUpdates is used as well
+	// rs.PendingUpdates is used as well
+
+	vmb *verifierBroadcast
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -114,12 +116,14 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 	case ks.db.ErrNotFound():
 		// ReplicaState zero value is valid initialization
 	case nil:
-		if err := ks.ReplicaState.Unmarshal(replicaStateBytes); err != nil {
+		if err := ks.rs.Unmarshal(replicaStateBytes); err != nil {
 			return nil, err
 		}
 	default:
 		return nil, err
 	}
+
+	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
 	if cfg.UpdateAddr != "" {
 		ks.updateServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.UpdateTLS)))
@@ -150,9 +154,9 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 	return ks, nil
 }
 
-/// Start makes the keyserver start handling requests (forks goroutines).
+// Start makes the keyserver start handling requests (forks goroutines).
 func (ks *Keyserver) Start() {
-	ks.log.Start(ks.NextIndexLog)
+	ks.log.Start(ks.rs.NextIndexLog)
 	if ks.updateServer != nil {
 		go ks.updateServer.Serve(ks.updateListen)
 	}
@@ -162,12 +166,12 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
-	ks.resetEpochTimers(ks.LastEpochDelimiter.Timestamp.Time())
+	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
 	ks.waitStop.Add(1)
 	go func() { ks.run(); ks.waitStop.Done() }()
 }
 
-/// Stop cleanly shuts down the keyserver and then returns.
+// Stop cleanly shuts down the keyserver and then returns.
 // TODO: figure out what will happen to connected clients?
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
@@ -209,15 +213,17 @@ func (ks *Keyserver) run() {
 			}
 			// TODO: allow multiple steps per log entry (pipelining). Maybe
 			// this would be better implemented at the log level?
-			ks.NextIndexLog++
-			ks.step(&step, &ks.ReplicaState, wb)
-			wb.Put(tableReplicaState, proto.MustMarshal(&ks.ReplicaState))
+			ks.rs.NextIndexLog++
+			deferredIO := ks.step(&step, &ks.rs, wb)
+			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
 				log.Panicf("sync step to db: %s", err)
 			}
 			wb.Reset()
 			step.Reset()
-			// TODO: if we handled a client connected directly to us, reply
+			if deferredIO != nil {
+				deferredIO()
+			}
 		case ks.leaderHint = <-ks.leaderHintSet:
 			ks.maybeEpoch()
 		case <-ks.canEpochSet.C:
@@ -234,7 +240,7 @@ func (ks *Keyserver) run() {
 }
 
 // step is called by run and changes the in-memory state. No i/o allowed.
-func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) {
+func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) (deferredIO func()) {
 	// ks: &const
 	// step, rs, wb: &mut
 	switch {
@@ -244,15 +250,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		// TODO: set entry in tree
-		// TODO: update verifier log index structure
 		rs.PendingUpdates = true
+		return ks.verifierLogAppend(&proto.VerifierStep{EntryChanged: step.Update}, rs, wb)
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
 			return // a duplicate of this step has already been handled
 		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
-		ks.resetEpochTimers(ks.LastEpochDelimiter.Timestamp.Time())
+		ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
 		ratification := &proto.SignedRatification{
 			Ratifier: ks.id,
 			Ratification: proto.SignedRatification_RatificationT_PreserveEncoding{proto.SignedRatification_RatificationT{
@@ -291,7 +297,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 			sigNew := new(proto.ThresholdSignature)
 			if err := sigNew.Unmarshal(rExisting.Signature); err != nil {
-				log.Panicf("log[%d].step.ReplicaRatification.Signature invalid protobuf: %s", ks.ReplicaState.NextIndexLog-1, err)
+				log.Panicf("log[%d].step.ReplicaRatification.Signature invalid protobuf: %s", ks.rs.NextIndexLog-1, err)
 			}
 			sigExisting := new(proto.ThresholdSignature)
 			if err := sigExisting.Unmarshal(rExisting.Signature); err != nil {
@@ -300,10 +306,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			common.MergeThresholdSignatures(sigExisting, sigNew)
 			rExisting.Signature = proto.MustMarshal(sigExisting)
 			wb.Put(dbkey, proto.MustMarshal(rExisting))
+			rNew = rExisting
 		case ks.db.ErrNotFound():
 			wb.Put(dbkey, proto.MustMarshal(rNew))
 		default:
 			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", rNew.Ratification.Epoch, rNew.Ratifier, err)
+		}
+		// TODO: check against the cluster configuration that the signatures we
+		// have are sufficient to pass verification. For now, 1 is a majority of 1.
+		if true {
+			return ks.verifierLogAppend(&proto.VerifierStep{KeyserverRatified: rNew}, rs, wb)
 		}
 	case step.VerifierRatification != nil:
 		rNew := step.VerifierRatification
@@ -314,12 +326,13 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
+	return
 }
 
 // shouldEpoch returns true if this node should append an epoch delimiter to the
 // log. see replication.proto for details.
 func (ks *Keyserver) shouldEpoch() bool {
-	return ks.leaderHint && (ks.mustEpoch || ks.canEpoch && ks.ReplicaState.PendingUpdates)
+	return ks.leaderHint && (ks.mustEpoch || ks.canEpoch && ks.rs.PendingUpdates)
 }
 
 // maybeEpoch proposes an epoch delimiter for inclusion in the log if necessary.
@@ -328,7 +341,7 @@ func (ks *Keyserver) maybeEpoch() {
 		return
 	}
 	ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
-		EpochNumber: ks.LastEpochDelimiter.EpochNumber + 1,
+		EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
 		Timestamp:   proto.Time(time.Now()),
 	}}))
 	ks.canEpochSet.Stop()
