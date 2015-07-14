@@ -36,6 +36,7 @@ type Iterator interface {
 	Key() []byte
 	Value() []byte
 	First() bool
+	Next() bool
 	Last() bool
 	Release()
 	Error() error

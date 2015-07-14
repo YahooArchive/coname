@@ -26,8 +26,8 @@ var _ = proto1.Marshal
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
 type VerifierStreamRequest struct {
-	LowIndex  int64 `protobuf:"varint,1,opt,name=low_index,proto3" json:"low_index,omitempty"`
-	HighIndex int64 `protobuf:"varint,2,opt,name=high_index,proto3" json:"high_index,omitempty"`
+	Start uint64 `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
+	Limit uint64 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 }
 
 func (m *VerifierStreamRequest) Reset()         { *m = VerifierStreamRequest{} }
@@ -89,7 +89,7 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LowIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
 			}
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
@@ -97,14 +97,14 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.LowIndex |= (int64(b) & 0x7F) << shift
+				m.Start |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HighIndex", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
 			}
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
@@ -112,7 +112,7 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.HighIndex |= (int64(b) & 0x7F) << shift
+				m.Limit |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -364,11 +364,11 @@ func skipVerifier(data []byte) (n int, err error) {
 func (m *VerifierStreamRequest) Size() (n int) {
 	var l int
 	_ = l
-	if m.LowIndex != 0 {
-		n += 1 + sovVerifier(uint64(m.LowIndex))
+	if m.Start != 0 {
+		n += 1 + sovVerifier(uint64(m.Start))
 	}
-	if m.HighIndex != 0 {
-		n += 1 + sovVerifier(uint64(m.HighIndex))
+	if m.Limit != 0 {
+		n += 1 + sovVerifier(uint64(m.Limit))
 	}
 	return n
 }
@@ -421,15 +421,15 @@ func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if m.LowIndex != 0 {
+	if m.Start != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintVerifier(data, i, uint64(m.LowIndex))
+		i = encodeVarintVerifier(data, i, uint64(m.Start))
 	}
-	if m.HighIndex != 0 {
+	if m.Limit != 0 {
 		data[i] = 0x10
 		i++
-		i = encodeVarintVerifier(data, i, uint64(m.HighIndex))
+		i = encodeVarintVerifier(data, i, uint64(m.Limit))
 	}
 	return i, nil
 }

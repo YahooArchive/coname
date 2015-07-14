@@ -39,8 +39,8 @@ service E2EKSVerification {
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
 message VerifierStreamRequest {
-	int64 low_index = 1; // required: index of the first entry requested (inclusive)
-	int64 high_index = 2; // index of the first entry not requested (not inclusive)
+	uint64 start = 1; // required: index of the first entry requested (inclusive)
+	uint64 limit = 2; // index of the first entry not requested (not inclusive)
 }
 
 // VerifierStep denotes the input to a single state transition of the verified
