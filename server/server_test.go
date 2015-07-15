@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"log"
 	"os"
 	"runtime"
 	"sync"
@@ -46,6 +45,7 @@ const (
 func chain(fs ...func()) func() {
 	ret := func() {}
 	for _, f := range fs {
+		// f is copied to the heap, the closure refers to a unique copy of its own
 		f = func() { ret(); f() }
 	}
 	return ret
@@ -113,7 +113,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	cfg, db, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
 	if testing.Verbose() {
-		db = logkv.WithLogging(db, log.New(os.Stdout, "", log.LstdFlags))
+		db = logkv.WithDefaultLogging(db)
 	}
 
 	// the db writes are test output. We are waiting for epoch 2 to be ratified
@@ -187,9 +187,32 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 	return
 }
 
-func TestVerifierStartStop(t *testing.T) {
+func TestVerifierStartProgressStop(t *testing.T) {
 	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
 	defer serverTeardown()
+	if testing.Verbose() {
+		db = logkv.WithDefaultLogging(db)
+	}
+
+	vcfgBarrier := make(chan struct{})
+	var vcfg *verifier.Config
+
+	// the db writes are test output. We are waiting for epoch 2 to be ratified
+	// by the verifier and pushed to the server as a primitive progress check.
+	progressCh := make(chan struct{})
+	var closeOnce sync.Once
+	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+			return
+		}
+		var sr proto.SignedRatification
+		sr.Unmarshal(put.Value)
+		<-vcfgBarrier
+		if sr.Ratification.Epoch == 2 && sr.Ratifier == vcfg.ID {
+			closeOnce.Do(func() { close(progressCh) })
+		}
+	})
+
 	ks, err := Open(cfg, db)
 	if err != nil {
 		t.Fatal(err)
@@ -199,30 +222,13 @@ func TestVerifierStartStop(t *testing.T) {
 
 	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
 	defer verifierTeardown()
-	vr, err := verifier.Start(vcfg, vdb)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer vr.Stop()
-}
+	close(vcfgBarrier)
 
-func TestVerifierStartSleepStop(t *testing.T) {
-	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
-	defer serverTeardown()
-	ks, err := Open(cfg, db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks.Start()
-	defer ks.Stop()
-
-	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
-	defer verifierTeardown()
 	vr, err := verifier.Start(vcfg, vdb)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer vr.Stop()
 
-	time.Sleep(time.Second)
+	<-progressCh
 }

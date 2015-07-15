@@ -321,6 +321,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		// TODO: check against the cluster configuration that the signatures we
 		// have are sufficient to pass verification. For now, 1 is a majority of 1.
+		// Only put signatures into the verifier log once.
 		if true {
 			return ks.verifierLogAppend(&proto.VerifierStep{KeyserverRatified: rNew}, rs, wb)
 		}
