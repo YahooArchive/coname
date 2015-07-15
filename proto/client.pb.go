@@ -21,6 +21,7 @@
 		SignedRatification
 		SignatureVerifier
 		ThresholdSignature
+		QuorumExpr
 */
 package proto
 
@@ -45,11 +46,27 @@ var _ = proto1.Marshal
 
 type LookupProfileRequest struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	// quorum_requirement specifies which verifiers must have ratified the
+	// result for it to be accepted. A server would fall back to an older
+	// directory state if the ratifications of the latest one do not satisfy
+	// the quourm requirement.
+	QuorumRequirement *QuorumExpr `protobuf:"bytes,2,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
+	// valid_at constrains the server to returning ratifications that will not
+	// expire before valid_at. A client might set this to its current time plus
+	// a lower bound of the round trip time to the server.
+	ValidAt *Time `protobuf:"bytes,3,opt,name=valid_at,customtype=Time" json:"valid_at,omitempty"`
 }
 
 func (m *LookupProfileRequest) Reset()         { *m = LookupProfileRequest{} }
 func (m *LookupProfileRequest) String() string { return proto1.CompactTextString(m) }
 func (*LookupProfileRequest) ProtoMessage()    {}
+
+func (m *LookupProfileRequest) GetQuorumRequirement() *QuorumExpr {
+	if m != nil {
+		return m.QuorumRequirement
+	}
+	return nil
+}
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
 // least one* of the ratifiers has been correctly following the rules of the
@@ -251,6 +268,29 @@ func (m *ThresholdSignature) Reset()         { *m = ThresholdSignature{} }
 func (m *ThresholdSignature) String() string { return proto1.CompactTextString(m) }
 func (*ThresholdSignature) ProtoMessage()    {}
 
+// QuorumExpr represents a function with type set<uint64> -> bool.  An
+// expression evaluates to true given args iff the sum of the following two
+// numbers is at least threshold:
+// a) number of entries in verifiers that are in args
+// b) number of subexpressions that evaluate to true
+// note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
+type QuorumExpr struct {
+	Threshold      uint32        `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Verifiers      []uint64      `protobuf:"varint,2,rep,name=verifiers" json:"verifiers,omitempty"`
+	Subexpressions []*QuorumExpr `protobuf:"bytes,3,rep,name=subexpressions" json:"subexpressions,omitempty"`
+}
+
+func (m *QuorumExpr) Reset()         { *m = QuorumExpr{} }
+func (m *QuorumExpr) String() string { return proto1.CompactTextString(m) }
+func (*QuorumExpr) ProtoMessage()    {}
+
+func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
+	if m != nil {
+		return m.Subexpressions
+	}
+	return nil
+}
+
 func init() {
 }
 func (m *LookupProfileRequest) Unmarshal(data []byte) error {
@@ -293,6 +333,60 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QuorumRequirement == nil {
+				m.QuorumRequirement = &QuorumExpr{}
+			}
+			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ValidAt", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ValidAt == nil {
+				m.ValidAt = &Timestamp{}
+			}
+			if err := m.ValidAt.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -1466,6 +1560,105 @@ func (m *ThresholdSignature) Unmarshal(data []byte) error {
 
 	return nil
 }
+func (m *QuorumExpr) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Threshold", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Threshold |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Verifiers", wireType)
+			}
+			var v uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Verifiers = append(m.Verifiers, v)
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Subexpressions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Subexpressions = append(m.Subexpressions, &QuorumExpr{})
+			if err := m.Subexpressions[len(m.Subexpressions)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
 func skipClient(data []byte) (n int, err error) {
 	l := len(data)
 	iNdEx := 0
@@ -1555,6 +1748,14 @@ func (m *LookupProfileRequest) Size() (n int) {
 	_ = l
 	l = len(m.UserId)
 	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.ValidAt != nil {
+		l = m.ValidAt.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
 	return n
@@ -1767,6 +1968,26 @@ func (m *ThresholdSignature) Size() (n int) {
 	return n
 }
 
+func (m *QuorumExpr) Size() (n int) {
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		n += 1 + sovClient(uint64(m.Threshold))
+	}
+	if len(m.Verifiers) > 0 {
+		for _, e := range m.Verifiers {
+			n += 1 + sovClient(uint64(e))
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, e := range m.Subexpressions {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
 func sovClient(x uint64) (n int) {
 	for {
 		n++
@@ -1800,6 +2021,26 @@ func (m *LookupProfileRequest) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
 		i += copy(data[i:], m.UserId)
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
+		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.ValidAt != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.ValidAt.Size()))
+		n2, err := m.ValidAt.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
 	return i, nil
 }
@@ -1857,11 +2098,11 @@ func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n1, err := m.Profile.MarshalTo(data[i:])
+		n3, err := m.Profile.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n1
+		i += n3
 	}
 	return i, nil
 }
@@ -1924,11 +2165,11 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n2, err := m.UpdateKey.MarshalTo(data[i:])
+		n4, err := m.UpdateKey.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n4
 	}
 	if m.ProfileHash != nil {
 		if len(m.ProfileHash) > 0 {
@@ -1959,11 +2200,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-	n3, err := m.Update.MarshalTo(data[i:])
+	n5, err := m.Update.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n3
+	i += n5
 	if m.NewSig != nil {
 		if len(m.NewSig) > 0 {
 			data[i] = 0x12
@@ -1984,11 +2225,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n4, err := m.Profile.MarshalTo(data[i:])
+		n6, err := m.Profile.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	return i, nil
 }
@@ -2019,11 +2260,11 @@ func (m *SignedEntryUpdate_EntryUpdateT) MarshalTo(data []byte) (n int, err erro
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n5, err := m.NewEntry.MarshalTo(data[i:])
+	n7, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n5
+	i += n7
 	return i, nil
 }
 
@@ -2050,11 +2291,11 @@ func (m *SignedRatification) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
-	n6, err := m.Ratification.MarshalTo(data[i:])
+	n8, err := m.Ratification.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n8
 	if m.Signature != nil {
 		if len(m.Signature) > 0 {
 			data[i] = 0x1a
@@ -2095,19 +2336,19 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 	data[i] = 0x1a
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
-	n7, err := m.Summary.MarshalTo(data[i:])
+	n9, err := m.Summary.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n7
+	i += n9
 	data[i] = 0x22
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n8, err := m.Timestamp.MarshalTo(data[i:])
+	n10, err := m.Timestamp.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n8
+	i += n10
 	return i, nil
 }
 
@@ -2172,11 +2413,11 @@ func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n9, err := m.Threshold.MarshalTo(data[i:])
+		n11, err := m.Threshold.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n9
+		i += n11
 	}
 	return i, nil
 }
@@ -2244,6 +2485,48 @@ func (m *ThresholdSignature) MarshalTo(data []byte) (n int, err error) {
 			i++
 			i = encodeVarintClient(data, i, uint64(len(b)))
 			i += copy(data[i:], b)
+		}
+	}
+	return i, nil
+}
+
+func (m *QuorumExpr) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Threshold))
+	}
+	if len(m.Verifiers) > 0 {
+		for _, num := range m.Verifiers {
+			data[i] = 0x10
+			i++
+			i = encodeVarintClient(data, i, uint64(num))
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, msg := range m.Subexpressions {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
 	return i, nil

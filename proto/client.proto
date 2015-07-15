@@ -27,6 +27,16 @@ service E2EKSUpdate {
 
 message LookupProfileRequest {
 	string user_id = 1; // TODO: should we allow lookups by index?
+	// quorum_requirement specifies which verifiers must have ratified the
+	// result for it to be accepted. A server would fall back to an older
+	// directory state if the ratifications of the latest one do not satisfy
+	// the quourm requirement.
+	QuorumExpr quorum_requirement = 2;
+	// valid_at constrains the server to returning ratifications that will not
+	// expire before valid_at. A client might set this to its current time plus
+	// a lower bound of the round trip time to the server.
+	Timestamp valid_at = 3
+		[(gogoproto.customtype) = "Time", (gogoproto.nullable) = true];
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
@@ -146,4 +156,16 @@ message SignatureVerifier {
 message ThresholdSignature {
 	repeated uint32 key_index = 1;
 	repeated bytes signature = 2;
+}
+
+// QuorumExpr represents a function with type set<uint64> -> bool.  An
+// expression evaluates to true given args iff the sum of the following two
+// numbers is at least threshold:
+// a) number of entries in verifiers that are in args
+// b) number of subexpressions that evaluate to true
+// note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
+message QuorumExpr {
+	uint32 threshold = 1; // required
+	repeated uint64 verifiers = 2;
+	repeated QuorumExpr subexpressions = 3;
 }
