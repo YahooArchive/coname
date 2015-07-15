@@ -27,6 +27,8 @@ type tracekv struct {
 	traceBatch func([]Put)
 }
 
+// WithTracing returns a kv.DB that calls tracePut on every Put and traceBatch
+// on every Write.
 func WithTracing(db kv.DB, tracePut func(Put), traceBatch func([]Put)) kv.DB {
 	return tracekv{db, tracePut, traceBatch}
 }
@@ -39,6 +41,8 @@ func mapPut(f func(Put)) func([]Put) {
 	}
 }
 
+// WithSimpleTracing returns a kv.DB that calls tracePut on every Put
+// (regardless of whether it is issued by itself or during a Batch Write).
 func WithSimpleTracing(db kv.DB, tracePut func(Put)) kv.DB {
 	return WithTracing(db, tracePut, mapPut(tracePut))
 }
@@ -79,6 +83,8 @@ type traceBatch struct {
 	operations []Put
 	b          kv.Batch
 }
+
+// Put represents a single change to a kv.DB.
 type Put struct {
 	Key, Value []byte
 }

@@ -26,6 +26,7 @@ import (
 
 type leveldbkv leveldb.DB
 
+// Wrap uses a leveldb.DB as a kv.DB the obvious way (and with Sync:true).
 func Wrap(db *leveldb.DB) kv.DB {
 	return (*leveldbkv)(db)
 }
@@ -51,7 +52,7 @@ func (db *leveldbkv) Write(b kv.Batch) error {
 }
 
 func (db *leveldbkv) NewIterator(rg *kv.Range) kv.Iterator {
-	return (*leveldb.DB)(db).NewIterator(&util.Range{rg.Start, rg.Limit}, nil)
+	return (*leveldb.DB)(db).NewIterator(&util.Range{Start: rg.Start, Limit: rg.Limit}, nil)
 }
 
 func (db *leveldbkv) ErrNotFound() error {

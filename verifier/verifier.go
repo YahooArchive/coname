@@ -67,6 +67,8 @@ type Verifier struct {
 	waitStop sync.WaitGroup
 }
 
+// Start initializes a new verifier based on config and db, or returns an error
+// if initialization fails. It then starts the worker goroutine(s).
 func Start(cfg *Config, db kv.DB) (*Verifier, error) {
 	vr := &Verifier{
 		realm:          cfg.Realm,

@@ -17,6 +17,14 @@
 // synchronously persistent.
 package kv
 
+// DB is an abstract ordered key-value store. All operations are assumed to be
+// synchronous, atomic and linearizable. This includes the following guarantee:
+// After Put(k, v) has returned, and as long as no other Put(k, ?) has been
+// called happened, Get(k) MUST return always v, regardless of whether the
+// process or the entire system has been reset in the meantime or very little
+// time has passed. To amortize the overhead of synchronous writes, DB offers
+// batch operations: Write(...) performs a series of Put-s atomically (and
+// possibly almost as fast as a single Put).
 type DB interface {
 	Get(key []byte) ([]byte, error)
 	Put(key, value []byte) error
@@ -27,11 +35,15 @@ type DB interface {
 	ErrNotFound() error
 }
 
+// A Batch contains a sequence of Put-s waiting to be Write-n to a DB.
 type Batch interface {
 	Reset()
 	Put(key, value []byte)
 }
 
+// Iterator is an abstract pointer to a DB entry. It must be valid to call
+// Error() after release. The boolean return values indicate whether the
+// requested entry exists.
 type Iterator interface {
 	Key() []byte
 	Value() []byte

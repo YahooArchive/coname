@@ -79,7 +79,7 @@ type Keyserver struct {
 	canEpochSet, mustEpochSet, retryEpoch *time.Timer
 	// rs.PendingUpdates is used as well
 
-	vmb *verifierBroadcast
+	vmb *VerifierBroadcast
 	wr  *WaitingRoom
 
 	stopOnce sync.Once

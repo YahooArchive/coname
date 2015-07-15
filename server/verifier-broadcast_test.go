@@ -44,19 +44,19 @@ func TestVerifierBroadcastFutureReceiveBlocks(t *testing.T) {
 	vmb := NewVerifierBroadcast(7)
 	ch := vmb.Receive(13, 1<<40)
 	if ch == nil {
-		t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) = nil, expected a channel", ch)
+		t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) = nil, expected a channel")
 	}
 	for i := 7; i < 13; i++ {
 		vmb.Send(nil)
 		select {
 		case <-ch:
-			t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) returned a value after send number %d", ch, i)
+			t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) returned a value after send number %d", i)
 		default:
 		}
 	}
 	vmb.Send(nil)
 	if _, ok := <-ch; !ok {
-		t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) did not return a value after send number 13", ch)
+		t.Errorf("NewVerifierBroadcast(7).Receive(13, 1<<40) did not return a value after send number 13")
 	}
 }
 
