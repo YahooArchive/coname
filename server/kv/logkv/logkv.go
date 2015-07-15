@@ -16,6 +16,7 @@ package logkv
 
 import (
 	"log"
+	"os"
 
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/tracekv"
@@ -33,6 +34,10 @@ func (l *traceLogger) batch(ps []tracekv.Put) {
 		(*log.Logger)(l).Printf("\t%q := %q", p.Key, p.Value)
 	}
 	(*log.Logger)(l).Printf("}")
+}
+
+func WithDefaultLogging(db kv.DB) kv.DB {
+	return WithLogging(db, log.New(os.Stdout, "", log.LstdFlags))
 }
 
 func WithLogging(db kv.DB, l *log.Logger) kv.DB {

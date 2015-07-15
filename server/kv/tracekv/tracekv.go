@@ -90,4 +90,5 @@ func (lb *traceBatch) Reset() {
 
 func (lb *traceBatch) Put(key, value []byte) {
 	lb.operations = append(lb.operations, Put{key, value})
+	lb.b.Put(key, value)
 }
