@@ -26,98 +26,83 @@ import (
 
 // VerifierStream implements the interfaceE@EKSVerification interface from proto/verifier.proto
 func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream proto.E2EKSVerification_VerifierStreamServer) error {
-	// Try a kv.Range range scan first, because it is the fastest. If this does
-	// not satisfy the entire request (because the future entries have not been
-	// generated yet), use ks.vmb to wait for new entries, falling back to raw
-	// kv.Get operations when this thread fails to meet the timing constraints
-	// of ks.vmb. All three methods of accessing verifier log entries are
-	// surfaced here due to flow control and memory allocation constraints: we
-	// cannot allow allocation of an unbounded queue.
-	idx, limit := rq.Start, rq.Limit
-	rq = nil
-	rnge := kv.Range{Start: tableVerifierLog(idx), Limit: tableVerifierLog(limit)}
-	iter := ks.db.NewIterator(&rnge)
-	var step proto.VerifierStep
-	for ; iter.Next(); idx++ {
-		select {
-		case <-stream.Context().Done():
-			return nil // TODO: what to do with context.Err()?
-		default:
-		}
-		dbIdx := binary.BigEndian.Uint64(iter.Key()[1:])
-		if dbIdx != idx {
-			log.Printf("ERROR: non-consecutive entries in verifier log (index %d)", idx)
-			return fmt.Errorf("internal error")
-		}
-		if err := step.Unmarshal(iter.Value()); err != nil {
-			log.Printf("ERROR: invalid protobuf entry in verifier log (index %d)", idx)
-			return fmt.Errorf("internal error")
-		}
-		if err := stream.Send(&step); err != nil {
-			return nil // TODO: return err?
-		}
-		step.Reset()
-	}
-	iter.Release()
-	if err := iter.Error(); err != nil && err != ks.db.ErrNotFound() {
-		return err
-	}
-
-	// range scan exhausted: the log has not been created yet
-subscribe_again:
-	for idx < limit {
-		select {
-		case <-stream.Context().Done():
-			return nil // TODO: what to do with context.Err()?
-		default:
-		}
-		ch := ks.vmb.Receive(idx, limit)
-	get_from_db:
-		if ch == nil {
-			stepBytes, err := ks.db.Get(tableVerifierLog(idx))
-			if err != nil { // vmb has already handled idx -> idx must be in db
-				log.Printf("ERROR: db read dailed: tableVerifierLog(%d)", idx)
+	var step proto.VerifierStep // stack-allocate db read buffer
+	for start, limit := rq.Start, rq.Limit; start < limit; {
+		// Try a kv.Range range scan first because it is the fastest. If this
+		// does not satisfy the entire request (because the future entries have
+		// not been generated yet), use ks.vmb to wait for new entries, falling
+		// back to range scans when this thread fails to meet the timing
+		// constraints of ks.vmb. Both methods of accessing verifier log
+		// entries are surfaced here due to flow control and memory allocation
+		// constraints: we cannot allow allocation of an unbounded queue.
+		iter := ks.db.NewIterator(&kv.Range{Start: tableVerifierLog(start), Limit: tableVerifierLog(limit)})
+		for ; iter.Next() && start < limit; start++ {
+			select {
+			case <-stream.Context().Done():
+				return stream.Context().Err() // TODO: what to do with stream.Context().Err()?
+			default:
+			}
+			dbIdx := binary.BigEndian.Uint64(iter.Key()[1:])
+			if dbIdx != start {
+				log.Printf("ERROR: non-consecutive entries in verifier log (wanted %d, got %d)", start, dbIdx)
 				return fmt.Errorf("internal error")
 			}
-			if err := step.Unmarshal(stepBytes); err != nil {
-				log.Printf("ERROR: invalid protobuf entry in verifier log (index %d)", idx)
+			if err := step.Unmarshal(iter.Value()); err != nil {
+				log.Printf("ERROR: invalid protobuf entry in verifier log (index %d)", start)
 				return fmt.Errorf("internal error")
 			}
 			if err := stream.Send(&step); err != nil {
-				return nil // TODO: return err?
+				return err // TODO: return err?
 			}
-			idx++
 			step.Reset()
-			continue subscribe_again
 		}
-		for {
+		iter.Release()
+		if err := iter.Error(); err != nil {
+			log.Printf("ERROR: range [tableVerifierLog(%d), tableVerifierLog(%d)) ended at %d (not included) with error %s", rq.Start, limit, start, err)
+			return fmt.Errorf("internal error")
+		}
+
+		// the requested entries are not in the db yet, so let's try to collect
+		// them from the vmb. ch=nil -> the desired log entry was sent after we
+		// did the db range scan but before we called Receive -> it's in db now.
+		for ch := ks.vmb.Receive(start, limit); ch != nil && start < limit; start++ {
 			select {
 			case <-stream.Context().Done():
-				return nil // TODO: what to do with context.Err()?
+				return stream.Context().Err()
 			case vmbStep, ok := <-ch: // declares new variable, a &const
-				if idx < limit && !ok {
-					// This client was slow and vmb does not wait for laggards
+				if !ok {
+					// vmb closed the connection. This must be because this
+					// client was slow and vmb does not wait for laggards.
 					// This is okay though: if vmb does not have the step
-					// anymore, the db must: let's get it from there
-					ch = nil
-					goto get_from_db
+					// anymore, the db must: let's get it from there.
+					break
 				}
 				if err := stream.Send(vmbStep); err != nil {
-					return nil // TODO: return err?
+					return err
 				}
-				idx++
 			}
 		}
 	}
 	return nil
 }
 
-// PushRatification implements the interfaceE@EKSVerification interface from proto/verifier.proto
+// PushRatification implements the interfaceE2EKSVerification interface from proto/verifier.proto
 func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedRatification) (*proto.Nothing, error) {
-	return nil, fmt.Errorf("PushRatification not implemented")
+	// FIXME: verify the ratifier signature (tricky: where do we keep verifier pk-s?)
+	uid := genUID()
+	ch := ks.wr.Wait(uid)
+	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{
+		UID:                  uid,
+		VerifierRatification: r,
+	}))
+	select {
+	case <-ctx.Done():
+		ks.wr.Notify(uid, nil)
+		return nil, ctx.Err()
+	case <-ch:
+		return nil, nil
+	}
 }
-
-var _ (proto.E2EKSVerificationServer) = (*Keyserver)(nil)
 
 // verifierLogAppend censors an entry and prepares the commands to:
 // 1) store it to local persistent storage

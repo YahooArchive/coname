@@ -15,7 +15,10 @@
 package server
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/binary"
 	"log"
 	"net"
 	"sync"
@@ -51,7 +54,7 @@ type Config struct {
 	// FIXME: tls.Config is not serializable, replicate relevant fields
 }
 
-// Keyserver either manages or verifies a single end-to-end keyserver realm.
+// Keyserver manages a single end-to-end keyserver realm.
 type Keyserver struct {
 	realm                string
 	ratificationVerifier *proto.SignatureVerifier_ThresholdVerifier
@@ -77,6 +80,7 @@ type Keyserver struct {
 	// rs.PendingUpdates is used as well
 
 	vmb *verifierBroadcast
+	wr  *WaitingRoom
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -102,6 +106,7 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 		db:                   db,
 		log:                  log,
 		stop:                 make(chan struct{}),
+		wr:                   NewWaitingRoom(),
 
 		// TODO: change when using actual replication
 		leaderHint:    true,
@@ -144,6 +149,7 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 	}
 	if cfg.VerifierAddr != "" {
 		ks.verifierServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.VerifierTLS)))
+		proto.RegisterE2EKSVerificationServer(ks.verifierServer, ks)
 		ks.verifierListen, err = net.Listen("tcp", cfg.VerifierAddr)
 		if err != nil {
 			ks.updateListen.Close()
@@ -213,8 +219,8 @@ func (ks *Keyserver) run() {
 			}
 			// TODO: allow multiple steps per log entry (pipelining). Maybe
 			// this would be better implemented at the log level?
-			ks.rs.NextIndexLog++
 			deferredIO := ks.step(&step, &ks.rs, wb)
+			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
 				log.Panicf("sync step to db: %s", err)
@@ -235,7 +241,6 @@ func (ks *Keyserver) run() {
 		case <-ks.retryEpoch.C:
 			ks.maybeEpoch()
 		}
-		// TODO: case pushRatification
 	}
 }
 
@@ -245,11 +250,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	// step, rs, wb: &mut
 	switch {
 	case step.Update != nil:
-		if err := common.VerifyUpdate( /*TODO: tree lookup*/ nil, step.Update); err != nil {
+		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update); err != nil {
 			// TODO: return the client-bound error code
 			return
 		}
-		// TODO: set entry in tree
+		// TODO(dmz): set entry in tree
 		rs.PendingUpdates = true
 		return ks.verifierLogAppend(&proto.VerifierStep{EntryChanged: step.Update}, rs, wb)
 	case step.EpochDelimiter != nil:
@@ -265,13 +270,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				Realm: ks.realm,
 				Epoch: step.EpochDelimiter.EpochNumber,
 				Summary: proto.SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding{proto.SignedRatification_RatificationT_KeyserverStateSummary{
-					RootHash:            nil, // TODO: merklemap.GetRootHash()
-					PreviousSummaryHash: nil, // TODO: rs.PreviousSummaryHash, and update it
+					RootHash:            nil, // TODO(dmz): merklemap.GetRootHash()
+					PreviousSummaryHash: rs.PreviousSummaryHash,
 				}, nil},
 				Timestamp: step.EpochDelimiter.Timestamp,
 			}, nil},
 		}
 		ratification.Ratification.Summary.UpdateEncoding()
+		h := sha256.Sum256(ratification.Ratification.Summary.PreservedEncoding)
+		rs.PreviousSummaryHash = h[:]
 		ratification.Ratification.UpdateEncoding()
 		ratification.Signature = proto.MustMarshal(&proto.ThresholdSignature{
 			KeyIndex:  []uint32{ks.thresholdSigningIndex},
@@ -297,7 +304,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 			sigNew := new(proto.ThresholdSignature)
 			if err := sigNew.Unmarshal(rExisting.Signature); err != nil {
-				log.Panicf("log[%d].step.ReplicaRatification.Signature invalid protobuf: %s", ks.rs.NextIndexLog-1, err)
+				log.Panicf("log[%d].step.ReplicaRatification.Signature invalid protobuf: %s", ks.rs.NextIndexLog, err)
 			}
 			sigExisting := new(proto.ThresholdSignature)
 			if err := sigExisting.Unmarshal(rExisting.Signature); err != nil {
@@ -319,10 +326,12 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 	case step.VerifierRatification != nil:
 		rNew := step.VerifierRatification
-		// TODO: only valid ratifications should get here. re-validate anyway?
-		// TODO: should we check if there already is a ratification? Then what?
 		dbkey := tableRatifications(rNew.Ratification.Epoch, rNew.Ratifier)
 		wb.Put(dbkey, proto.MustMarshal(rNew))
+		uid := step.UID // use the literal uint64 in the closure, not step ptr
+		return func() {
+			ks.wr.Notify(uid, nil)
+		}
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
@@ -355,4 +364,12 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	ks.retryEpoch.Stop()
 	ks.canEpoch = false
 	ks.mustEpoch = false
+}
+
+func genUID() uint64 {
+	var buf [8]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		log.Panicf("rand.Read: %s", err)
+	}
+	return binary.BigEndian.Uint64(buf[:])
 }

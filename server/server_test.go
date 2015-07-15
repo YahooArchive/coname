@@ -15,8 +15,10 @@
 package server
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"io/ioutil"
 	"log"
 	"os"
@@ -30,25 +32,41 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/kv/logkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
+	"github.com/yahoo/coname/verifier"
 )
 
-func TestKeyserverStartProgressStop(t *testing.T) {
+const (
+	testingRealm = "testing"
+)
+
+func chain(fs ...func()) func() {
+	ret := func() {}
+	for _, f := range fs {
+		f = func() { ret(); f() }
+	}
+	return ret
+}
+
+func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
+		teardown()
 		t.Fatal(err)
 	}
-	defer ldb.Close()
+	teardown = chain(func() { ldb.Close() }, teardown)
 
 	pk, sk, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
+		teardown()
 		t.Fatal(err)
 	}
 	sv := &proto.SignatureVerifier{Threshold: &proto.SignatureVerifier_ThresholdVerifier{
@@ -56,10 +74,10 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 		Verifiers: []*proto.SignatureVerifier{{Ed25519: pk[:]}},
 	}}
 
-	ca, caPool, caKey := tlstestutil.CA(t, nil)
-	cert := tlstestutil.Cert(t, ca, caKey, "127.0.0.1", nil)
-	cfg := &Config{
-		Realm:                "testing",
+	caCert, caPool, caKey = tlstestutil.CA(t, nil)
+	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
+	cfg = &Config{
+		Realm:                testingRealm,
 		RatificationVerifier: sv.Threshold,
 		ID:                   common.RatifierID(sv),
 		RatificationKey:      sk,
@@ -69,14 +87,31 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 		VerifierAddr: "localhost:0",
 		UpdateTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
 		LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
-		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
+		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
+		//VerifierTLS: &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAnyClientCert},
 
 		MinEpochInterval:   0,
 		MaxEpochInterval:   0 * time.Millisecond,
 		RetryEpochInterval: 1 * time.Millisecond,
 	}
+	db = leveldbkv.Wrap(ldb)
+	return
+}
 
-	db := leveldbkv.Wrap(ldb)
+func TestKeyserverStartStop(t *testing.T) {
+	cfg, db, _, _, _, teardown := setupKeyserver(t)
+	defer teardown()
+	ks, err := Open(cfg, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+}
+
+func TestKeyserverStartProgressStop(t *testing.T) {
+	cfg, db, _, _, _, teardown := setupKeyserver(t)
+	defer teardown()
 	if testing.Verbose() {
 		db = logkv.WithLogging(db, log.New(os.Stdout, "", log.LstdFlags))
 	}
@@ -104,7 +139,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	defer ks.Stop()
 	<-progressCh
 	ks.Stop()
-	ldb.Close()
+	teardown()
 
 	if testing.Verbose() {
 		time.Sleep(time.Millisecond)
@@ -116,4 +151,78 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 		}
 		t.Logf("%d goroutines in existance after Stop:\n%s", n, stackBuf[:l])
 	}
+}
+
+func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
+	dir, err := ioutil.TempDir("", "verifier")
+	if err != nil {
+		t.Fatal(err)
+	}
+	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
+	ldb, err := leveldb.OpenFile(dir, nil)
+	if err != nil {
+		teardown()
+		t.Fatal(err)
+	}
+	teardown = chain(func() { ldb.Close() }, teardown)
+
+	pk, sk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		teardown()
+		t.Fatal(err)
+	}
+	sv := &proto.SignatureVerifier{Ed25519: pk[:]}
+
+	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
+	cfg = &verifier.Config{
+		Realm:          testingRealm,
+		KeyserverVerif: keyserverVerif,
+		KeyserverAddr:  keyserverAddr,
+
+		ID:              common.RatifierID(sv),
+		RatificationKey: sk,
+		TLS:             &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool},
+	}
+	db = leveldbkv.Wrap(ldb)
+	return
+}
+
+func TestVerifierStartStop(t *testing.T) {
+	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
+	defer serverTeardown()
+	ks, err := Open(cfg, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+
+	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+	defer verifierTeardown()
+	vr, err := verifier.Start(vcfg, vdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer vr.Stop()
+}
+
+func TestVerifierStartSleepStop(t *testing.T) {
+	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
+	defer serverTeardown()
+	ks, err := Open(cfg, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+
+	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+	defer verifierTeardown()
+	vr, err := verifier.Start(vcfg, vdb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer vr.Stop()
+
+	time.Sleep(time.Second)
 }

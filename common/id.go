@@ -23,5 +23,6 @@ import (
 
 // RatifierID computes the ID of a retifier by the hash-of-public-key convention.
 func RatifierID(sv *proto.SignatureVerifier) uint64 {
-	return binary.LittleEndian.Uint64(sha256.New().Sum(proto.MustMarshal(sv))[:8])
+	h := sha256.Sum256(proto.MustMarshal(sv))
+	return binary.LittleEndian.Uint64(h[:8])
 }

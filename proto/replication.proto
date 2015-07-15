@@ -23,6 +23,7 @@ import "timestamp.proto";
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 message KeyserverStep {
+	uint64 UID = 1; // optional, for matching replies to clients. TODO: fixed64?
 	// TODO: should all fields in a oneof have their own types for extensibility?
 	oneof type {
 		// update is appended to the log when it is received from a client and
@@ -31,7 +32,7 @@ message KeyserverStep {
 		// update has been applied and ratified.
 		// update is applied to the keyserver state as soon as it has been
 		// committed to the log.
-		SignedEntryUpdate update = 1;
+		SignedEntryUpdate update = 2;
 		// epoch_delimiter is appended to the log by a leader (not necessarily
 		// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
 		// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
@@ -40,17 +41,17 @@ message KeyserverStep {
 		// As the leader requirement for appending an epoch_delimiter is soft,
 		// it may happen that an epoch delimiter with a epoch number not higher
 		// than the previous gets committed to the log. It must be ignored.
-		EpochDelimiter epoch_delimiter = 2;
+		EpochDelimiter epoch_delimiter = 3;
 		// replica_ratification for the last epoch is appended to the log
 		// when the epoch_delimiter is committed.
 		// After some majority of the replicas has ratified the state, their
 		// signatures make up the keyserver signature. As combining signatures
 		// is deterministic, no new log entry is appended to record that.
-		SignedRatification replica_ratification = 3;
+		SignedRatification replica_ratification = 4;
 		// verifier_ratification is appended for each new ratification received
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
-		SignedRatification verifier_ratification = 4;
+		SignedRatification verifier_ratification = 5;
 	}
 }
 

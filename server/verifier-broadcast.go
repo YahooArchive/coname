@@ -2,6 +2,7 @@ package server
 
 import (
 	"container/list"
+	"log"
 	"sync"
 
 	"github.com/yahoo/coname/proto"
@@ -66,12 +67,20 @@ func (vmb *verifierBroadcast) Send(m *proto.VerifierStep) {
 // consume the values from the returned channel quickly, if it blocks, the
 // channel may be closed before the limit is reached.
 func (vmb *verifierBroadcast) Receive(start, limit uint64) <-chan *proto.VerifierStep {
+	if start > limit {
+		log.Panicf("vmb.Receive(%d, %d) (start > limit", start, limit)
+	}
+	ch := make(chan *proto.VerifierStep, verifierBroadcastBufferSize)
+	if start == limit {
+		close(ch)
+		return ch
+	}
+
 	vmb.Lock()
 	defer vmb.Unlock()
 	if start < vmb.nextIndex {
 		return nil // already broadcast, will never be sent again
 	}
-	ch := make(chan *proto.VerifierStep, verifierBroadcastBufferSize)
 	vmb.subscribers.PushBack(verifierSubscription{ch: ch, start: start, limit: limit})
 	return ch
 }

@@ -19,13 +19,14 @@ var _ = proto1.Marshal
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 type KeyserverStep struct {
+	UID uint64 `protobuf:"varint,1,opt,proto3" json:"UID,omitempty"`
 	// update is appended to the log when it is received from a client and
 	// has passed pre-validation. However, since pre-validation is not
 	// final, "success" should not be returned to the client until after the
 	// update has been applied and ratified.
 	// update is applied to the keyserver state as soon as it has been
 	// committed to the log.
-	Update *SignedEntryUpdate `protobuf:"bytes,1,opt,name=update" json:"update,omitempty"`
+	Update *SignedEntryUpdate `protobuf:"bytes,2,opt,name=update" json:"update,omitempty"`
 	// epoch_delimiter is appended to the log by a leader (not necessarily
 	// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
 	// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
@@ -34,17 +35,17 @@ type KeyserverStep struct {
 	// As the leader requirement for appending an epoch_delimiter is soft,
 	// it may happen that an epoch delimiter with a epoch number not higher
 	// than the previous gets committed to the log. It must be ignored.
-	EpochDelimiter *EpochDelimiter `protobuf:"bytes,2,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
+	EpochDelimiter *EpochDelimiter `protobuf:"bytes,3,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
 	// replica_ratification for the last epoch is appended to the log
 	// when the epoch_delimiter is committed.
 	// After some majority of the replicas has ratified the state, their
 	// signatures make up the keyserver signature. As combining signatures
 	// is deterministic, no new log entry is appended to record that.
-	ReplicaRatification *SignedRatification `protobuf:"bytes,3,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
+	ReplicaRatification *SignedRatification `protobuf:"bytes,4,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
 	// verifier_ratification is appended for each new ratification received
 	// from a verifier; these are used to provide proof of verification to
 	// clients.
-	VerifierRatification *SignedRatification `protobuf:"bytes,4,opt,name=verifier_ratification" json:"verifier_ratification,omitempty"`
+	VerifierRatification *SignedRatification `protobuf:"bytes,5,opt,name=verifier_ratification" json:"verifier_ratification,omitempty"`
 }
 
 func (m *KeyserverStep) Reset()         { *m = KeyserverStep{} }
@@ -110,6 +111,21 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UID", wireType)
+			}
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.UID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
 			}
@@ -136,7 +152,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EpochDelimiter", wireType)
 			}
@@ -163,7 +179,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaRatification", wireType)
 			}
@@ -190,7 +206,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field VerifierRatification", wireType)
 			}
@@ -408,6 +424,9 @@ func skipReplication(data []byte) (n int, err error) {
 func (m *KeyserverStep) Size() (n int) {
 	var l int
 	_ = l
+	if m.UID != 0 {
+		n += 1 + sovReplication(uint64(m.UID))
+	}
 	if m.Update != nil {
 		l = m.Update.Size()
 		n += 1 + l + sovReplication(uint64(l))
@@ -466,8 +485,13 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
+	if m.UID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.UID))
+	}
 	if m.Update != nil {
-		data[i] = 0xa
+		data[i] = 0x12
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
 		n1, err := m.Update.MarshalTo(data[i:])
@@ -477,7 +501,7 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		i += n1
 	}
 	if m.EpochDelimiter != nil {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
 		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
@@ -487,7 +511,7 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		i += n2
 	}
 	if m.ReplicaRatification != nil {
-		data[i] = 0x1a
+		data[i] = 0x22
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
 		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
@@ -497,7 +521,7 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		i += n3
 	}
 	if m.VerifierRatification != nil {
-		data[i] = 0x22
+		data[i] = 0x2a
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
 		n4, err := m.VerifierRatification.MarshalTo(data[i:])
