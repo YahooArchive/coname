@@ -24,7 +24,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// VerifierStream implements the interfaceE@EKSVerification interface from proto/verifier.proto
+// VerifierStream implements the interfaceE2EKSVerification interface from proto/verifier.proto
 func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream proto.E2EKSVerification_VerifierStreamServer) error {
 	var step proto.VerifierStep // stack-allocate db read buffer
 	for start, limit := rq.Start, rq.Limit; start < limit; {
