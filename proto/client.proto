@@ -161,8 +161,8 @@ message ThresholdSignature {
 // QuorumExpr represents a function with type set<uint64> -> bool.  An
 // expression evaluates to true given args iff the sum of the following two
 // numbers is at least threshold:
-// a) number of entries in verifiers that are in args
-// b) number of subexpressions that evaluate to true
+// - number of entries in verifiers that are in args
+// - number of subexpressions that evaluate to true
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 message QuorumExpr {
 	uint32 threshold = 1; // required

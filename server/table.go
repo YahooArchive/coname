@@ -20,6 +20,7 @@ var (
 	tableReplicationLogPrefix byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
 	tableVerifierLogPrefix    byte = 'v' // index uint64 -> proto.VerifierStep
 	tableRatificationsPrefix  byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedRatification
+	tableSignedUpdatesPrefix  byte = 'u' // vrfidx [32]byte -> epoch uint64 -> proto.SignedRatification
 
 	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
