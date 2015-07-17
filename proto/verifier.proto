@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 import "client.proto";
 
 service E2EKSVerification {
