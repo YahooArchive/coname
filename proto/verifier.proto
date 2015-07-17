@@ -16,6 +16,9 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.stringer_all) = true;
 
 service E2EKSVerification {
 	// VerifierStream accesses the public inputs to a keyserver state machine.
@@ -52,4 +55,6 @@ message VerifierStep {
 	}
 }
 
-message Nothing {}
+message Nothing {
+	option (gogoproto.gostring) = false;
+}

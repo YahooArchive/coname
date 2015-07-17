@@ -8,8 +8,14 @@ import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
 import fmt "fmt"
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -23,9 +29,8 @@ type ReplicaState struct {
 	PendingUpdates      bool           `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
 }
 
-func (m *ReplicaState) Reset()         { *m = ReplicaState{} }
-func (m *ReplicaState) String() string { return proto1.CompactTextString(m) }
-func (*ReplicaState) ProtoMessage()    {}
+func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
+func (*ReplicaState) ProtoMessage() {}
 
 func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 	if m != nil {
@@ -41,10 +46,56 @@ type VerifierState struct {
 	PreviousSummaryHash []byte `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 }
 
-func (m *VerifierState) Reset()         { *m = VerifierState{} }
-func (m *VerifierState) String() string { return proto1.CompactTextString(m) }
-func (*VerifierState) ProtoMessage()    {}
+func (m *VerifierState) Reset()      { *m = VerifierState{} }
+func (*VerifierState) ProtoMessage() {}
 
+func (this *ReplicaState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.ReplicaState{` +
+		`NextIndexLog:` + fmt.Sprintf("%#v", this.NextIndexLog),
+		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
+		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates) + `}`}, ", ")
+	return s
+}
+func (this *VerifierState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierState{` +
+		`NextIndex:` + fmt.Sprintf("%#v", this.NextIndex),
+		`NextEpoch:` + fmt.Sprintf("%#v", this.NextEpoch),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
+	return s
+}
+func valueToGoStringLocal(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringLocal(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
 func (m *ReplicaState) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -215,6 +266,40 @@ func sovLocal(x uint64) (n int) {
 }
 func sozLocal(x uint64) (n int) {
 	return sovLocal(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *ReplicaState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaState{`,
+		`NextIndexLog:` + fmt.Sprintf("%v", this.NextIndexLog) + `,`,
+		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
+		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierState{`,
+		`NextIndex:` + fmt.Sprintf("%v", this.NextIndex) + `,`,
+		`NextEpoch:` + fmt.Sprintf("%v", this.NextEpoch) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringLocal(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *ReplicaState) Unmarshal(data []byte) error {
 	l := len(data)

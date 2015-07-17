@@ -17,6 +17,9 @@ package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
 import "timestamp.proto";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.stringer_all) = true;
 
 // KeyserverStep denotes the input to a single step of the keyserver state
 // machine. Linearizable high-availability replication is achieved by

@@ -13,8 +13,14 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import io "io"
 import fmt "fmt"
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -26,9 +32,8 @@ type VerifierStreamRequest struct {
 	Limit uint64 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 }
 
-func (m *VerifierStreamRequest) Reset()         { *m = VerifierStreamRequest{} }
-func (m *VerifierStreamRequest) String() string { return proto1.CompactTextString(m) }
-func (*VerifierStreamRequest) ProtoMessage()    {}
+func (m *VerifierStreamRequest) Reset()      { *m = VerifierStreamRequest{} }
+func (*VerifierStreamRequest) ProtoMessage() {}
 
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
@@ -37,9 +42,8 @@ type VerifierStep struct {
 	KeyserverRatified *SignedRatification `protobuf:"bytes,2,opt,name=keyserver_ratified" json:"keyserver_ratified,omitempty"`
 }
 
-func (m *VerifierStep) Reset()         { *m = VerifierStep{} }
-func (m *VerifierStep) String() string { return proto1.CompactTextString(m) }
-func (*VerifierStep) ProtoMessage()    {}
+func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
+func (*VerifierStep) ProtoMessage() {}
 
 func (m *VerifierStep) GetEntryChanged() *SignedEntryUpdate {
 	if m != nil {
@@ -58,9 +62,8 @@ func (m *VerifierStep) GetKeyserverRatified() *SignedRatification {
 type Nothing struct {
 }
 
-func (m *Nothing) Reset()         { *m = Nothing{} }
-func (m *Nothing) String() string { return proto1.CompactTextString(m) }
-func (*Nothing) ProtoMessage()    {}
+func (m *Nothing) Reset()      { *m = Nothing{} }
+func (*Nothing) ProtoMessage() {}
 
 // Client API for E2EKSVerification service
 
@@ -208,6 +211,49 @@ var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
 	},
 }
 
+func (this *VerifierStreamRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
+		`Start:` + fmt.Sprintf("%#v", this.Start),
+		`Limit:` + fmt.Sprintf("%#v", this.Limit) + `}`}, ", ")
+	return s
+}
+func (this *VerifierStep) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStep{` +
+		`EntryChanged:` + fmt.Sprintf("%#v", this.EntryChanged),
+		`KeyserverRatified:` + fmt.Sprintf("%#v", this.KeyserverRatified) + `}`}, ", ")
+	return s
+}
+func valueToGoStringVerifier(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringVerifier(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
 func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -363,6 +409,45 @@ func sovVerifier(x uint64) (n int) {
 }
 func sozVerifier(x uint64) (n int) {
 	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *VerifierStreamRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStreamRequest{`,
+		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
+		`Limit:` + fmt.Sprintf("%v", this.Limit) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep{`,
+		`EntryChanged:` + strings.Replace(fmt.Sprintf("%v", this.EntryChanged), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`KeyserverRatified:` + strings.Replace(fmt.Sprintf("%v", this.KeyserverRatified), "SignedRatification", "SignedRatification", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Nothing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Nothing{`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringVerifier(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 	l := len(data)
