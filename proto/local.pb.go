@@ -6,10 +6,16 @@ package proto
 
 import proto1 "github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "gogoproto"
+
+import fmt "fmt"
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
 
 import io "io"
-import fmt "fmt"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -23,16 +29,8 @@ type ReplicaState struct {
 	PendingUpdates      bool           `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
 }
 
-func (m *ReplicaState) Reset()         { *m = ReplicaState{} }
-func (m *ReplicaState) String() string { return proto1.CompactTextString(m) }
-func (*ReplicaState) ProtoMessage()    {}
-
-func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
-	if m != nil {
-		return m.LastEpochDelimiter
-	}
-	return EpochDelimiter{}
-}
+func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
+func (*ReplicaState) ProtoMessage() {}
 
 // Verifier contains the persistent internal state of a verifier.
 type VerifierState struct {
@@ -41,11 +39,260 @@ type VerifierState struct {
 	PreviousSummaryHash []byte `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 }
 
-func (m *VerifierState) Reset()         { *m = VerifierState{} }
-func (m *VerifierState) String() string { return proto1.CompactTextString(m) }
-func (*VerifierState) ProtoMessage()    {}
+func (m *VerifierState) Reset()      { *m = VerifierState{} }
+func (*VerifierState) ProtoMessage() {}
 
-func init() {
+func (this *ReplicaState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.ReplicaState{` +
+		`NextIndexLog:` + fmt.Sprintf("%#v", this.NextIndexLog),
+		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
+		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates) + `}`}, ", ")
+	return s
+}
+func (this *VerifierState) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierState{` +
+		`NextIndex:` + fmt.Sprintf("%#v", this.NextIndex),
+		`NextEpoch:` + fmt.Sprintf("%#v", this.NextEpoch),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
+	return s
+}
+func valueToGoStringLocal(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringLocal(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *ReplicaState) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.NextIndexLog != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.NextIndexLog))
+	}
+	if m.NextIndexVerifier != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.NextIndexVerifier))
+	}
+	if m.PreviousSummaryHash != nil {
+		if len(m.PreviousSummaryHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintLocal(data, i, uint64(len(m.PreviousSummaryHash)))
+			i += copy(data[i:], m.PreviousSummaryHash)
+		}
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintLocal(data, i, uint64(m.LastEpochDelimiter.Size()))
+	n1, err := m.LastEpochDelimiter.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n1
+	if m.PendingUpdates {
+		data[i] = 0x28
+		i++
+		if m.PendingUpdates {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	return i, nil
+}
+
+func (m *VerifierState) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierState) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.NextIndex != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.NextIndex))
+	}
+	if m.NextEpoch != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.NextEpoch))
+	}
+	if m.PreviousSummaryHash != nil {
+		if len(m.PreviousSummaryHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintLocal(data, i, uint64(len(m.PreviousSummaryHash)))
+			i += copy(data[i:], m.PreviousSummaryHash)
+		}
+	}
+	return i, nil
+}
+
+func encodeFixed64Local(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Local(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintLocal(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (m *ReplicaState) Size() (n int) {
+	var l int
+	_ = l
+	if m.NextIndexLog != 0 {
+		n += 1 + sovLocal(uint64(m.NextIndexLog))
+	}
+	if m.NextIndexVerifier != 0 {
+		n += 1 + sovLocal(uint64(m.NextIndexVerifier))
+	}
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovLocal(uint64(l))
+		}
+	}
+	l = m.LastEpochDelimiter.Size()
+	n += 1 + l + sovLocal(uint64(l))
+	if m.PendingUpdates {
+		n += 2
+	}
+	return n
+}
+
+func (m *VerifierState) Size() (n int) {
+	var l int
+	_ = l
+	if m.NextIndex != 0 {
+		n += 1 + sovLocal(uint64(m.NextIndex))
+	}
+	if m.NextEpoch != 0 {
+		n += 1 + sovLocal(uint64(m.NextEpoch))
+	}
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovLocal(uint64(l))
+		}
+	}
+	return n
+}
+
+func sovLocal(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozLocal(x uint64) (n int) {
+	return sovLocal(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *ReplicaState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaState{`,
+		`NextIndexLog:` + fmt.Sprintf("%v", this.NextIndexLog) + `,`,
+		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
+		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierState) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierState{`,
+		`NextIndex:` + fmt.Sprintf("%v", this.NextIndex) + `,`,
+		`NextEpoch:` + fmt.Sprintf("%v", this.NextEpoch) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringLocal(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *ReplicaState) Unmarshal(data []byte) error {
 	l := len(data)
@@ -70,6 +317,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexLog", wireType)
 			}
+			m.NextIndexLog = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -85,6 +333,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexVerifier", wireType)
 			}
+			m.NextIndexVerifier = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -205,6 +454,7 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NextIndex", wireType)
 			}
+			m.NextIndex = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -220,6 +470,7 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NextEpoch", wireType)
 			}
+			m.NextEpoch = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -359,175 +610,4 @@ func skipLocal(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (m *ReplicaState) Size() (n int) {
-	var l int
-	_ = l
-	if m.NextIndexLog != 0 {
-		n += 1 + sovLocal(uint64(m.NextIndexLog))
-	}
-	if m.NextIndexVerifier != 0 {
-		n += 1 + sovLocal(uint64(m.NextIndexVerifier))
-	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovLocal(uint64(l))
-		}
-	}
-	l = m.LastEpochDelimiter.Size()
-	n += 1 + l + sovLocal(uint64(l))
-	if m.PendingUpdates {
-		n += 2
-	}
-	return n
-}
-
-func (m *VerifierState) Size() (n int) {
-	var l int
-	_ = l
-	if m.NextIndex != 0 {
-		n += 1 + sovLocal(uint64(m.NextIndex))
-	}
-	if m.NextEpoch != 0 {
-		n += 1 + sovLocal(uint64(m.NextEpoch))
-	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovLocal(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovLocal(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozLocal(x uint64) (n int) {
-	return sovLocal(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *ReplicaState) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.NextIndexLog != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.NextIndexLog))
-	}
-	if m.NextIndexVerifier != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.NextIndexVerifier))
-	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintLocal(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
-	}
-	data[i] = 0x22
-	i++
-	i = encodeVarintLocal(data, i, uint64(m.LastEpochDelimiter.Size()))
-	n1, err := m.LastEpochDelimiter.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n1
-	if m.PendingUpdates {
-		data[i] = 0x28
-		i++
-		if m.PendingUpdates {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
-	return i, nil
-}
-
-func (m *VerifierState) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierState) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.NextIndex != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.NextIndex))
-	}
-	if m.NextEpoch != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintLocal(data, i, uint64(m.NextEpoch))
-	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintLocal(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
-	}
-	return i, nil
-}
-
-func encodeFixed64Local(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Local(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintLocal(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
 }

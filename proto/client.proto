@@ -14,8 +14,12 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 import "timestamp.proto";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.goproto_getters_all) = false;
 
 service E2EKSLookup {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
@@ -26,16 +30,19 @@ service E2EKSUpdate {
 }
 
 message LookupProfileRequest {
-	string user_id = 1; // TODO: should we allow lookups by index?
+	oneof target { 
+		string user_id = 1;
+		bytes index = 2;
+	}
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
 	// the quourm requirement.
-	QuorumExpr quorum_requirement = 2;
+	QuorumExpr quorum_requirement = 3;
 	// valid_at constrains the server to returning ratifications that will not
 	// expire before valid_at. A client might set this to its current time plus
 	// a lower bound of the round trip time to the server.
-	Timestamp valid_at = 3
+	Timestamp valid_at = 4
 		[(gogoproto.customtype) = "Time", (gogoproto.nullable) = true];
 }
 
@@ -47,11 +54,13 @@ message LookupProfileRequest {
 // used for any other purpose than debugging.
 message LookupProof {
 	string user_id = 1;
-	// index proof gives an index idx, and shows that the index is a result of
-	// applying a globally fixed bijection VRF to user_id: idx = VRF(user_ID).
-	// If this proof checks out, we can safely continue by looking up the
-	// keyserver entry corresponding to index to get the public key of user_id.
+	// index proof that index is a result of applying a globally fixed
+	// bijection VRF to user_id: idx = VRF(user_ID). If this proof checks out,
+	// we can safely continue by looking up the keyserver entry corresponding
+	// to index to get the public key of user_id.
 	bytes index_proof = 2;
+	// index is the key used for the authenticated mapping data structure.
+	bytes index = 3;
 	// ratifications contains signed directory state summaries for consecutive
 	// epochs, starting with the one as of which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
@@ -63,80 +72,167 @@ message LookupProof {
 	// through directory state summary hash chaining. Only the latest valid
 	// signature from each verifier is provided, so some returned ratifications
 	// may have no signatures on them.
-	repeated SignedRatification ratifications = 3;
+	repeated SignedRatification ratifications = 4;
 	// tree_proof contains an authenticated data structure lookup trace,
-	// arguing that in the data structure with hash
-	// ratifications[0].ratification.summary.root_hash, the index from
-	// index_proof maps to entry (which is given in the proof).
-	bytes tree_proof = 4;
+	// arguing that index maps to entry in the data structure with hash
+	// ratifications[0].ratification.summary.root_hash.
+	bytes tree_proof = 5;
 	// entry specifies profile by hash(profile) = entry.profile_hash
-	Profile profile = 5;
+	Profile profile = 6;
 }
 
 // A user's profile, containing public keys and other information.
+// A new field will be added here for each application, with the TCP/UDP port
+// number as field number whenever possible to avoid collisions.
 message Profile {
-	bytes nonce = 1; // 16 bytes. no two honest profiles should hash the same
-	repeated bytes email_pgp_publickey = 2; // non-ascii-armored public key packet
-	// A new field will be added here for each application, with the TCP/UDP
-	// port number as field number whenever possible to avoid collisions.
+	// 16 bytes. Ensures that somebody curious guess-and-check somebody's
+	// profile contents using Entry.profile_hash. It is the client's
+	// responsibility to generate a random nonce to protect the privacy of its
+	// profile, thus the presence of this field is not checked by the server.
+	bytes nonce = 1;
+	// PGP public key packet (not ASCII-armored)
+	repeated bytes email_pgp_publickey = 2;
 }
 
-message Entry { // all fields required
-	uint64 version = 1; // version is a non-decresing field that must start at 0 at registration
-	SignatureVerifier update_key = 2; // signing key authorized to change the profile
-	bytes profile_hash = 3; // the content fields ("profile") are only referenced by hash because they main contain private data
+// Entry is the value type in the authenticated mapping data structure.  The
+// contents of all entries should be considered public (they are served to
+// verifiers).
+message Entry {
+	// Version starts at 0 at registration and must not decrease. The keyserver
+	// and verifiers MUST reject SignedEntryUpdates which violate these rules.
+	// The purpose of this is to prevent an attacker from replaying a
+	// SignedEntryUpdate that publishes a key that the attacker has gained
+	// control of. On the other hand, increases by more than one are allowed: a
+	// user should be allowed to generate a long-lived offline revocation
+	// certificate that is valid even after they make some other change to
+	// their profile. Nevertheless, unless explicitly required otherwise,
+	// clients should increase the version number by exactly one on each
+	// update.
+	uint64 version = 1;
+	// UpdateKey will be used to verify SignedEntryUpdates to this
+	// entry. It is NOT used for encryption, and SHOULD be ignored by
+	// applications that do not intend to manage the user's profile. It has
+	// also been called "the public key of the profile signing key" or "the
+	// public identity key". A keyserver MUST NOT discriminate users based on
+	// ther structure of their update_key other than (1) as specified in
+	// SignedEntryUpdate and (2) common-sense limits on the total size of an
+	// entry to limit storage cost.
+	SignatureVerifier update_key = 2;
+	// The entry uniquely specifies the profile using a collision-resistant
+	// hash function.
+	bytes profile_hash = 3;
 }
 
+// SignedEntryUpdate is the minimal self-contained structure to justify
+// changing the value of an entry. In the state machine model of a namespace,
+// SignedEntryUpdate is the main input type.
 message SignedEntryUpdate {
 	message EntryUpdateT {
-		bytes index = 1; // VRF(name)
-		Entry new_entry = 2 // hashed field, do not re-encode
+		// Index specifies the location of the profile in the authenticated
+		// mapping data structure. It is computed as a verifiable random
+		// function of the name: the keyserver can prove that index=vrf(name)
+		// to anybody, but nobody else can compute vrf(name1). This is to
+		// maintain the privacy of usernames.
+		bytes index = 1;
+		// NewEntry is the value index will be mapped to after this update.
+		Entry new_entry = 2
 			[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
 	}
-	EntryUpdateT update = 1 // signed field, do not re-encode
+	EntryUpdateT update = 1
 		[(gogoproto.customtype) = "SignedEntryUpdate_EntryUpdateT_PreserveEncoding", (gogoproto.nullable) = false];
-	bytes new_sig  = 2; // required: signature by an update key in new entry
-	bytes old_sig = 3; // signature by an update key in old entry; required if old entry exists
-	Profile profile = 4; // optional (required by service providers, not shown to verifiers)
+	// NewSig, if successfully verified using update.new_entry.update_key,
+	// confirms that the new entry is willing to be bound to this index.
+	// Both the keyserver and verifiers MUST check this signature.
+	bytes new_sig  = 2;
+	// OldSig, if successfully verified using the update_key of the entry
+	// currently bound to update.index, confirms that the old entry is willing
+	// to be replaced by the new entry.  Both the keyserver and verifiers MUST
+	// check this signature.
+	bytes old_sig = 3;
+	// Profile is included in the update request from the client to the
+	// keyserver, but not passed on to the verifiers. The keyserver SHOULD
+	// store it locally and include it in LookupProofs returned for lookups.
+	// The verifiers MUST NOT try to read this field.
+	// A keyserver MUST NOT discriminate users based on ther structure of their
+	// profile other than enforcing a common-sense size limit. In particular, a
+	// profile with fields that the keyserver does not understand or whose
+	// values it considers invalid MUST be accepted.
+	Profile profile = 4;
 }
 
 // SignedRatification messages are used by auditors and the service provider to
-// vouch that the SummaryHash represents the unique global state at the end of
-// Epoch.
+// vouch that the SummaryHash represents the correct unique global state at the
+// end of epoch. In particular, it means that the signer has enforced the
+// profile update policy specified in the doc-comments of SignedEntryUpdate and
+// Profile for the specified epoch AND all prior epochs. A Ratification MUST
+// NOT be signed in any other circumstances.
 message SignedRatification {
 	message RatificationT {
-		string realm = 1; // (space context) fully-qualified domain name of the entity handling registrations
-		uint64 epoch = 2; // (time context) sequence number
+		// Realm is the fully-qualified domain name of the keyserver whose
+		// state is being ratified.
+		string realm = 1;
+		// Epoch is a sequence number tracking distinct ratified states.
+		uint64 epoch = 2;
+		// KeyserverStateSummary specifies the entire state and history of the
+		// realm. 
 		message KeyserverStateSummary {
+			// RootHash specifies the authenticated data stru
 			bytes root_hash = 1;
-			// Chaining is used to allow signatures from different epochs in the same quorum:
-			// a signature vouches for all epochs chained to that in addition to the one listed.
+			// PreviousSummaryHash chaining is used to allow signatures from
+			// different epochs in the same quorum: a signature vouches for all
+			// epochs chained to that in addition to the one listed.
+			// Each PreviousSummaryHash depends on PreviousSummary, therefore
+			// (by induction on the hash-pointer structure) a
+			// PreviousSummeryHash for some epoch specifies the states of all
+			// previous epochs.
 			bytes previous_summary_hash = 2;
 		}
 		KeyserverStateSummary summary = 3 // hashed field, do not re-encode
 			[(gogoproto.customtype) = "SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding", (gogoproto.nullable) = false];
+		// Timestamp specifies when the requirements for SignedRatification
+		// were checked. Clients will accept a SignedRatification timestamped
+		// with at most a fixed amount of time into the past, and MUST fail
+		// secure if the timestamp is not fresh because the directory state may
+		// have changed. The signature expiration tolerance plus the maximum
+		// clock skew between a pair of clients is the maximum propogation time
+		// of a change from one to another after which even a malicious
+		// keyserve will not be able to convince a client to a accept the
+		// previous state (assuming that all quorums it considers sufficient
+		// containt a correct and honest server).
 		Timestamp timestamp = 4
 			[(gogoproto.customtype) = "Time", (gogoproto.nullable) = false];
 	}
+	// Ratifier contains the globally unique 64-bit identification number of
+	// the signer (the keyserver or the verifier). Each ratifier SHOULD be
+	// generate this by hashing a canonical representation of its own public
+	// key, but others MUST NOT assume that this convention is followed.
 	uint64 ratifier = 1; // unique ID, hash of public key by convention
 	RatificationT ratification = 2 // signed field, do not re-encode
 			[(gogoproto.customtype) = "SignedRatification_RatificationT_PreserveEncoding", (gogoproto.nullable) = false];
+	// Signature is used for authentication of ratification and MUST be
+	// verified before interpreting any contents of ratification.
 	bytes signature = 3;
 }
 
 // SignatureVerifier wraps a public key of a cryptographically secure signature
 // scheme and verification metadata. Each verifier can have its own signature
 // format and needs to implement serialization and deserialization of its own
-// signatures.
+// signatures. It is intentional that the SignatureVerifier implementations ARE
+// ALLOWED to interpret the content of the message whose signature is being
+// verified.
 message SignatureVerifier {
-	// ThresholdVerifiers returns "OK" if any threshould of verifers do.
+	// ThresholdVerifier returns "OK" if any threshold of verifers do.
 	// This is used to implement
-	// 1. Account Recovery through service provider: if an user's entry
-	// contains has the update key set to
-	// threshold(1,user,serviceprovider), the service provider can perform
-	// account recovery.
-	// 2. Service providers with servers in geographically diverse locations,
-	// for example threshold(2,freedonia,gilead,mordor).
+	// 1. Account Recovery through service provider: if an user's entry has the
+	// update key set to threshold(1,user,serviceprovider), the service
+	// provider can perform account recovery. Note that a third party will not
+	// necessarily know who the subkeys are held by. Thus, the client
+	// implementation MUST require a signed certificate confirming possession
+	// of the secret key and promising to do no evil from every trustee whose
+	// key is used for recovery in this manner.
+	// 2. Service providers with servers in geographically diverse locations
+	// can use a threshold to limit the damage the compromise or loss of one
+	// replica can do. Example threshold(2,freedonia,gilead,mordor).
 	message ThresholdVerifier {
 		uint32 threshold = 1; // required
 		repeated SignatureVerifier verifiers = 2;
@@ -151,8 +247,9 @@ message SignatureVerifier {
 	// This would make running a server without HSM significantly safer
 }
 
-// Unlike cryptographic anonymous threshold signatures, the signature
-// simply contains the signatures from the specified keys.
+// ThresholdSignature in its trivial implementation here, simply contains the
+// signatures from the specified keys.
+// TODO: make sure this is wire-format-compatible with a proto3 map
 message ThresholdSignature {
 	repeated uint32 key_index = 1;
 	repeated bytes signature = 2;
@@ -161,8 +258,8 @@ message ThresholdSignature {
 // QuorumExpr represents a function with type set<uint64> -> bool.  An
 // expression evaluates to true given args iff the sum of the following two
 // numbers is at least threshold:
-// a) number of entries in verifiers that are in args
-// b) number of subexpressions that evaluate to true
+// - number of entries in verifiers that are in args
+// - number of subexpressions that evaluate to true
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 message QuorumExpr {
 	uint32 threshold = 1; // required

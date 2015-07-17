@@ -1,6 +1,9 @@
 package proto
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Time time.Time
 
@@ -29,4 +32,12 @@ func (t *Time) Size() int {
 
 func (t *Time) Time() time.Time {
 	return *(*time.Time)(t)
+}
+
+func (t *Time) String() string {
+	return fmt.Sprint(*((*time.Time)(t)))
+}
+
+func (t *Time) GoString() string {
+	return fmt.Sprintf("%#v", (*time.Time)(t))
 }

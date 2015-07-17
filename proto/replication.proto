@@ -14,9 +14,13 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 import "client.proto";
 import "timestamp.proto";
+option (gogoproto.goproto_stringer_all) = false;
+option (gogoproto.gostring_all) = true;
+option (gogoproto.stringer_all) = true;
+option (gogoproto.goproto_getters_all) = false;
 
 // KeyserverStep denotes the input to a single step of the keyserver state
 // machine. Linearizable high-availability replication is achieved by
