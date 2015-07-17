@@ -6,19 +6,21 @@ package proto
 
 import proto1 "github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
-
-import io "io"
-import fmt "fmt"
+// discarding unused import gogoproto "gogoproto"
 
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
 
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
+import fmt "fmt"
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -30,9 +32,8 @@ type VerifierStreamRequest struct {
 	Limit uint64 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 }
 
-func (m *VerifierStreamRequest) Reset()         { *m = VerifierStreamRequest{} }
-func (m *VerifierStreamRequest) String() string { return proto1.CompactTextString(m) }
-func (*VerifierStreamRequest) ProtoMessage()    {}
+func (m *VerifierStreamRequest) Reset()      { *m = VerifierStreamRequest{} }
+func (*VerifierStreamRequest) ProtoMessage() {}
 
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
@@ -41,32 +42,398 @@ type VerifierStep struct {
 	KeyserverRatified *SignedRatification `protobuf:"bytes,2,opt,name=keyserver_ratified" json:"keyserver_ratified,omitempty"`
 }
 
-func (m *VerifierStep) Reset()         { *m = VerifierStep{} }
-func (m *VerifierStep) String() string { return proto1.CompactTextString(m) }
-func (*VerifierStep) ProtoMessage()    {}
-
-func (m *VerifierStep) GetEntryChanged() *SignedEntryUpdate {
-	if m != nil {
-		return m.EntryChanged
-	}
-	return nil
-}
-
-func (m *VerifierStep) GetKeyserverRatified() *SignedRatification {
-	if m != nil {
-		return m.KeyserverRatified
-	}
-	return nil
-}
+func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
+func (*VerifierStep) ProtoMessage() {}
 
 type Nothing struct {
 }
 
-func (m *Nothing) Reset()         { *m = Nothing{} }
-func (m *Nothing) String() string { return proto1.CompactTextString(m) }
-func (*Nothing) ProtoMessage()    {}
+func (m *Nothing) Reset()      { *m = Nothing{} }
+func (*Nothing) ProtoMessage() {}
 
-func init() {
+// Client API for E2EKSVerification service
+
+type E2EKSVerificationClient interface {
+	// VerifierStream accesses the public inputs to a keyserver state machine.
+	// The returned stream is gives a limited view of the log the keyserver
+	// that is being verified uses to replicate its state internally.
+	// However, private user data such as usernames and profile details
+	// is not included (the relevant fields are set to nil).
+	// note: the keyserver implementation also uses the same log to presist
+	// verifier ratifications, but as they do not affect any username:profile
+	// mappings, they are excluded as well.
+	VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error)
+	// PushRatification is called each time a verifier who has been
+	// successfully replaying the log returned by VerifierStream interprets a
+	// keyserver_ratified step and agrees that the keyserver state summarized
+	// by it is the unique result of applying all the previous update steps.
+	// The SignedRatification will be stored by the server and used to
+	// argue the correctness of future lookups in front of clients.
+	PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error)
+}
+
+type e2EKSVerificationClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSVerificationClient(cc *grpc.ClientConn) E2EKSVerificationClient {
+	return &e2EKSVerificationClient{cc}
+}
+
+func (c *e2EKSVerificationClient) VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_E2EKSVerification_serviceDesc.Streams[0], c.cc, "/proto.E2EKSVerification/VerifierStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &e2EKSVerificationVerifierStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type E2EKSVerification_VerifierStreamClient interface {
+	Recv() (*VerifierStep, error)
+	grpc.ClientStream
+}
+
+type e2EKSVerificationVerifierStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *e2EKSVerificationVerifierStreamClient) Recv() (*VerifierStep, error) {
+	m := new(VerifierStep)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *e2EKSVerificationClient) PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/proto.E2EKSVerification/PushRatification", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSVerification service
+
+type E2EKSVerificationServer interface {
+	// VerifierStream accesses the public inputs to a keyserver state machine.
+	// The returned stream is gives a limited view of the log the keyserver
+	// that is being verified uses to replicate its state internally.
+	// However, private user data such as usernames and profile details
+	// is not included (the relevant fields are set to nil).
+	// note: the keyserver implementation also uses the same log to presist
+	// verifier ratifications, but as they do not affect any username:profile
+	// mappings, they are excluded as well.
+	VerifierStream(*VerifierStreamRequest, E2EKSVerification_VerifierStreamServer) error
+	// PushRatification is called each time a verifier who has been
+	// successfully replaying the log returned by VerifierStream interprets a
+	// keyserver_ratified step and agrees that the keyserver state summarized
+	// by it is the unique result of applying all the previous update steps.
+	// The SignedRatification will be stored by the server and used to
+	// argue the correctness of future lookups in front of clients.
+	PushRatification(context.Context, *SignedRatification) (*Nothing, error)
+}
+
+func RegisterE2EKSVerificationServer(s *grpc.Server, srv E2EKSVerificationServer) {
+	s.RegisterService(&_E2EKSVerification_serviceDesc, srv)
+}
+
+func _E2EKSVerification_VerifierStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(VerifierStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(E2EKSVerificationServer).VerifierStream(m, &e2EKSVerificationVerifierStreamServer{stream})
+}
+
+type E2EKSVerification_VerifierStreamServer interface {
+	Send(*VerifierStep) error
+	grpc.ServerStream
+}
+
+type e2EKSVerificationVerifierStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *e2EKSVerificationVerifierStreamServer) Send(m *VerifierStep) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _E2EKSVerification_PushRatification_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(SignedRatification)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSVerificationServer).PushRatification(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSVerification",
+	HandlerType: (*E2EKSVerificationServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PushRatification",
+			Handler:    _E2EKSVerification_PushRatification_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "VerifierStream",
+			Handler:       _E2EKSVerification_VerifierStream_Handler,
+			ServerStreams: true,
+		},
+	},
+}
+
+func (this *VerifierStreamRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
+		`Start:` + fmt.Sprintf("%#v", this.Start),
+		`Limit:` + fmt.Sprintf("%#v", this.Limit) + `}`}, ", ")
+	return s
+}
+func (this *VerifierStep) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStep{` +
+		`EntryChanged:` + fmt.Sprintf("%#v", this.EntryChanged),
+		`KeyserverRatified:` + fmt.Sprintf("%#v", this.KeyserverRatified) + `}`}, ", ")
+	return s
+}
+func valueToGoStringVerifier(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringVerifier(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Start != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Start))
+	}
+	if m.Limit != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Limit))
+	}
+	return i, nil
+}
+
+func (m *VerifierStep) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.EntryChanged != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.EntryChanged.Size()))
+		n1, err := m.EntryChanged.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.KeyserverRatified != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.KeyserverRatified.Size()))
+		n2, err := m.KeyserverRatified.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+
+func (m *Nothing) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintVerifier(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (m *VerifierStreamRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Start != 0 {
+		n += 1 + sovVerifier(uint64(m.Start))
+	}
+	if m.Limit != 0 {
+		n += 1 + sovVerifier(uint64(m.Limit))
+	}
+	return n
+}
+
+func (m *VerifierStep) Size() (n int) {
+	var l int
+	_ = l
+	if m.EntryChanged != nil {
+		l = m.EntryChanged.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	if m.KeyserverRatified != nil {
+		l = m.KeyserverRatified.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	return n
+}
+
+func (m *Nothing) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func sovVerifier(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozVerifier(x uint64) (n int) {
+	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *VerifierStreamRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStreamRequest{`,
+		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
+		`Limit:` + fmt.Sprintf("%v", this.Limit) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep{`,
+		`EntryChanged:` + strings.Replace(fmt.Sprintf("%v", this.EntryChanged), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`KeyserverRatified:` + strings.Replace(fmt.Sprintf("%v", this.KeyserverRatified), "SignedRatification", "SignedRatification", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Nothing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Nothing{`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringVerifier(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
 }
 func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 	l := len(data)
@@ -91,6 +458,7 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
 			}
+			m.Start = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -106,6 +474,7 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
 			}
+			m.Limit = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -360,306 +729,4 @@ func skipVerifier(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (m *VerifierStreamRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Start != 0 {
-		n += 1 + sovVerifier(uint64(m.Start))
-	}
-	if m.Limit != 0 {
-		n += 1 + sovVerifier(uint64(m.Limit))
-	}
-	return n
-}
-
-func (m *VerifierStep) Size() (n int) {
-	var l int
-	_ = l
-	if m.EntryChanged != nil {
-		l = m.EntryChanged.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	if m.KeyserverRatified != nil {
-		l = m.KeyserverRatified.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	return n
-}
-
-func (m *Nothing) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func sovVerifier(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozVerifier(x uint64) (n int) {
-	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Start != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Start))
-	}
-	if m.Limit != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Limit))
-	}
-	return i, nil
-}
-
-func (m *VerifierStep) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.EntryChanged != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.EntryChanged.Size()))
-		n1, err := m.EntryChanged.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.KeyserverRatified != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.KeyserverRatified.Size()))
-		n2, err := m.KeyserverRatified.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func (m *Nothing) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintVerifier(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-
-// Client API for E2EKSVerification service
-
-type E2EKSVerificationClient interface {
-	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
-	VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error)
-	// PushRatification is called each time a verifier who has been
-	// successfully replaying the log returned by VerifierStream interprets a
-	// keyserver_ratified step and agrees that the keyserver state summarized
-	// by it is the unique result of applying all the previous update steps.
-	// The SignedRatification will be stored by the server and used to
-	// argue the correctness of future lookups in front of clients.
-	PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error)
-}
-
-type e2EKSVerificationClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSVerificationClient(cc *grpc.ClientConn) E2EKSVerificationClient {
-	return &e2EKSVerificationClient{cc}
-}
-
-func (c *e2EKSVerificationClient) VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_E2EKSVerification_serviceDesc.Streams[0], c.cc, "/proto.E2EKSVerification/VerifierStream", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &e2EKSVerificationVerifierStreamClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type E2EKSVerification_VerifierStreamClient interface {
-	Recv() (*VerifierStep, error)
-	grpc.ClientStream
-}
-
-type e2EKSVerificationVerifierStreamClient struct {
-	grpc.ClientStream
-}
-
-func (x *e2EKSVerificationVerifierStreamClient) Recv() (*VerifierStep, error) {
-	m := new(VerifierStep)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *e2EKSVerificationClient) PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/proto.E2EKSVerification/PushRatification", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSVerification service
-
-type E2EKSVerificationServer interface {
-	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
-	VerifierStream(*VerifierStreamRequest, E2EKSVerification_VerifierStreamServer) error
-	// PushRatification is called each time a verifier who has been
-	// successfully replaying the log returned by VerifierStream interprets a
-	// keyserver_ratified step and agrees that the keyserver state summarized
-	// by it is the unique result of applying all the previous update steps.
-	// The SignedRatification will be stored by the server and used to
-	// argue the correctness of future lookups in front of clients.
-	PushRatification(context.Context, *SignedRatification) (*Nothing, error)
-}
-
-func RegisterE2EKSVerificationServer(s *grpc.Server, srv E2EKSVerificationServer) {
-	s.RegisterService(&_E2EKSVerification_serviceDesc, srv)
-}
-
-func _E2EKSVerification_VerifierStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(VerifierStreamRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(E2EKSVerificationServer).VerifierStream(m, &e2EKSVerificationVerifierStreamServer{stream})
-}
-
-type E2EKSVerification_VerifierStreamServer interface {
-	Send(*VerifierStep) error
-	grpc.ServerStream
-}
-
-type e2EKSVerificationVerifierStreamServer struct {
-	grpc.ServerStream
-}
-
-func (x *e2EKSVerificationVerifierStreamServer) Send(m *VerifierStep) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _E2EKSVerification_PushRatification_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(SignedRatification)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSVerificationServer).PushRatification(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSVerification",
-	HandlerType: (*E2EKSVerificationServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "PushRatification",
-			Handler:    _E2EKSVerification_PushRatification_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "VerifierStream",
-			Handler:       _E2EKSVerification_VerifierStream_Handler,
-			ServerStreams: true,
-		},
-	},
 }

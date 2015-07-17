@@ -1,0 +1,13 @@
+diff --git a/proto/client.pb.go b/proto/client.pb.go
+index 43c3114..c90a5ea 100644
+--- a/proto/client.pb.go
++++ b/proto/client.pb.go
+@@ -1333,7 +1333,7 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
+ 				return io.ErrUnexpectedEOF
+ 			}
+ 			if m.ValidAt == nil {
+-				m.ValidAt = &Timestamp{}
++				m.ValidAt = &Time{}
+ 			}
+ 			if err := m.ValidAt.Unmarshal(data[iNdEx:postIndex]); err != nil {
+ 				return err

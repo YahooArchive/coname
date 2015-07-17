@@ -33,7 +33,6 @@ import (
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
-	"github.com/yahoo/coname/server/kv/logkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
 	"github.com/yahoo/coname/verifier"
 )
@@ -45,8 +44,9 @@ const (
 func chain(fs ...func()) func() {
 	ret := func() {}
 	for _, f := range fs {
-		// f is copied to the heap, the closure refers to a unique copy of its own
-		f = func() { ret(); f() }
+		// the functions are copied to the heap, the closure refers to a unique copy of its own
+		oldRet := ret
+		ret = func() { oldRet(); f() }
 	}
 	return ret
 }
@@ -56,7 +56,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
+	teardown = chain(func() { os.RemoveAll(dir) })
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
@@ -112,9 +112,7 @@ func TestKeyserverStartStop(t *testing.T) {
 func TestKeyserverStartProgressStop(t *testing.T) {
 	cfg, db, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
-	if testing.Verbose() {
-		db = logkv.WithDefaultLogging(db)
-	}
+	// db = logkv.WithDefaultLogging(db)
 
 	// the db writes are test output. We are waiting for epoch 2 to be ratified
 	// as a primitive progress check.
@@ -158,7 +156,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
+	teardown = chain(func() { os.RemoveAll(dir) })
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
@@ -190,9 +188,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 func TestVerifierStartProgressStop(t *testing.T) {
 	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
 	defer serverTeardown()
-	if testing.Verbose() {
-		db = logkv.WithDefaultLogging(db)
-	}
+	// db = logkv.WithDefaultLogging(db)
 
 	vcfgBarrier := make(chan struct{})
 	var vcfg *verifier.Config
