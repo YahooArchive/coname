@@ -44,8 +44,9 @@ const (
 func chain(fs ...func()) func() {
 	ret := func() {}
 	for _, f := range fs {
-		// f is copied to the heap, the closure refers to a unique copy of its own
-		f = func() { ret(); f() }
+		// the functions are copied to the heap, the closure refers to a unique copy of its own
+		oldRet := ret
+		ret = func() { oldRet(); f() }
 	}
 	return ret
 }
@@ -55,7 +56,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
+	teardown = chain(func() { os.RemoveAll(dir) })
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
@@ -155,7 +156,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) }, teardown)
+	teardown = chain(func() { os.RemoveAll(dir) })
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
