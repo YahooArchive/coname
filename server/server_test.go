@@ -33,7 +33,6 @@ import (
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
-	"github.com/yahoo/coname/server/kv/logkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
 	"github.com/yahoo/coname/verifier"
 )
@@ -112,9 +111,7 @@ func TestKeyserverStartStop(t *testing.T) {
 func TestKeyserverStartProgressStop(t *testing.T) {
 	cfg, db, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
-	if testing.Verbose() {
-		db = logkv.WithDefaultLogging(db)
-	}
+	// db = logkv.WithDefaultLogging(db)
 
 	// the db writes are test output. We are waiting for epoch 2 to be ratified
 	// as a primitive progress check.
@@ -190,9 +187,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 func TestVerifierStartProgressStop(t *testing.T) {
 	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
 	defer serverTeardown()
-	if testing.Verbose() {
-		db = logkv.WithDefaultLogging(db)
-	}
+	// db = logkv.WithDefaultLogging(db)
 
 	vcfgBarrier := make(chan struct{})
 	var vcfg *verifier.Config
