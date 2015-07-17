@@ -6,7 +6,7 @@ package proto
 
 import proto1 "github.com/gogo/protobuf/proto"
 
-// discarding unused import gogoproto "github.com/gogo/protobuf/gogoproto/gogo.pb"
+// discarding unused import gogoproto "gogoproto"
 
 import io "io"
 import fmt "fmt"
@@ -89,7 +89,175 @@ func (m *EpochDelimiter) Reset()         { *m = EpochDelimiter{} }
 func (m *EpochDelimiter) String() string { return proto1.CompactTextString(m) }
 func (*EpochDelimiter) ProtoMessage()    {}
 
-func init() {
+func (m *KeyserverStep) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.UID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.UID))
+	}
+	if m.Update != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
+		n1, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.EpochDelimiter != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
+		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.ReplicaRatification != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
+		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.VerifierRatification != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
+		n4, err := m.VerifierRatification.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *EpochDelimiter) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
+	n5, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n5
+	return i, nil
+}
+
+func encodeFixed64Replication(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Replication(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintReplication(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (m *KeyserverStep) Size() (n int) {
+	var l int
+	_ = l
+	if m.UID != 0 {
+		n += 1 + sovReplication(uint64(m.UID))
+	}
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.EpochDelimiter != nil {
+		l = m.EpochDelimiter.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.ReplicaRatification != nil {
+		l = m.ReplicaRatification.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.VerifierRatification != nil {
+		l = m.VerifierRatification.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	return n
+}
+
+func (m *EpochDelimiter) Size() (n int) {
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		n += 1 + sovReplication(uint64(m.EpochNumber))
+	}
+	l = m.Timestamp.Size()
+	n += 1 + l + sovReplication(uint64(l))
+	return n
+}
+
+func sovReplication(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozReplication(x uint64) (n int) {
+	return sovReplication(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func (m *KeyserverStep) Unmarshal(data []byte) error {
 	l := len(data)
@@ -114,6 +282,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UID", wireType)
 			}
+			m.UID = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -279,6 +448,7 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EpochNumber", wireType)
 			}
+			m.EpochNumber = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -420,174 +590,4 @@ func skipReplication(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (m *KeyserverStep) Size() (n int) {
-	var l int
-	_ = l
-	if m.UID != 0 {
-		n += 1 + sovReplication(uint64(m.UID))
-	}
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.EpochDelimiter != nil {
-		l = m.EpochDelimiter.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.ReplicaRatification != nil {
-		l = m.ReplicaRatification.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.VerifierRatification != nil {
-		l = m.VerifierRatification.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	return n
-}
-
-func (m *EpochDelimiter) Size() (n int) {
-	var l int
-	_ = l
-	if m.EpochNumber != 0 {
-		n += 1 + sovReplication(uint64(m.EpochNumber))
-	}
-	l = m.Timestamp.Size()
-	n += 1 + l + sovReplication(uint64(l))
-	return n
-}
-
-func sovReplication(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozReplication(x uint64) (n int) {
-	return sovReplication(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *KeyserverStep) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.UID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.UID))
-	}
-	if m.Update != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
-		n1, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.EpochDelimiter != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
-		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	if m.ReplicaRatification != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
-		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	if m.VerifierRatification != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
-		n4, err := m.VerifierRatification.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	return i, nil
-}
-
-func (m *EpochDelimiter) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.EpochNumber != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
-	}
-	data[i] = 0x22
-	i++
-	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
-	n5, err := m.Timestamp.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	return i, nil
-}
-
-func encodeFixed64Replication(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Replication(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintReplication(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
 }

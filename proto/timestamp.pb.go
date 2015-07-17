@@ -81,7 +81,85 @@ func (m *Timestamp) Reset()         { *m = Timestamp{} }
 func (m *Timestamp) String() string { return proto1.CompactTextString(m) }
 func (*Timestamp) ProtoMessage()    {}
 
-func init() {
+func (m *Timestamp) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Timestamp) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Seconds != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintTimestamp(data, i, uint64(m.Seconds))
+	}
+	if m.Nanos != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintTimestamp(data, i, uint64(m.Nanos))
+	}
+	return i, nil
+}
+
+func encodeFixed64Timestamp(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Timestamp(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintTimestamp(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (m *Timestamp) Size() (n int) {
+	var l int
+	_ = l
+	if m.Seconds != 0 {
+		n += 1 + sovTimestamp(uint64(m.Seconds))
+	}
+	if m.Nanos != 0 {
+		n += 1 + sovTimestamp(uint64(m.Nanos))
+	}
+	return n
+}
+
+func sovTimestamp(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozTimestamp(x uint64) (n int) {
+	return sovTimestamp(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
 func (m *Timestamp) Unmarshal(data []byte) error {
 	l := len(data)
@@ -106,6 +184,7 @@ func (m *Timestamp) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Seconds", wireType)
 			}
+			m.Seconds = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -121,6 +200,7 @@ func (m *Timestamp) Unmarshal(data []byte) error {
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Nanos", wireType)
 			}
+			m.Nanos = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
@@ -238,84 +318,4 @@ func skipTimestamp(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (m *Timestamp) Size() (n int) {
-	var l int
-	_ = l
-	if m.Seconds != 0 {
-		n += 1 + sovTimestamp(uint64(m.Seconds))
-	}
-	if m.Nanos != 0 {
-		n += 1 + sovTimestamp(uint64(m.Nanos))
-	}
-	return n
-}
-
-func sovTimestamp(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozTimestamp(x uint64) (n int) {
-	return sovTimestamp(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *Timestamp) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Timestamp) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Seconds != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintTimestamp(data, i, uint64(m.Seconds))
-	}
-	if m.Nanos != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintTimestamp(data, i, uint64(m.Nanos))
-	}
-	return i, nil
-}
-
-func encodeFixed64Timestamp(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Timestamp(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintTimestamp(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
 }
