@@ -32,13 +32,6 @@ type ReplicaState struct {
 func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
 func (*ReplicaState) ProtoMessage() {}
 
-func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
-	if m != nil {
-		return m.LastEpochDelimiter
-	}
-	return EpochDelimiter{}
-}
-
 // Verifier contains the persistent internal state of a verifier.
 type VerifierState struct {
 	NextIndex           uint64 `protobuf:"varint,1,opt,name=next_index,proto3" json:"next_index,omitempty"`

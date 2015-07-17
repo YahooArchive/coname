@@ -63,13 +63,6 @@ type LookupProfileRequest struct {
 func (m *LookupProfileRequest) Reset()      { *m = LookupProfileRequest{} }
 func (*LookupProfileRequest) ProtoMessage() {}
 
-func (m *LookupProfileRequest) GetQuorumRequirement() *QuorumExpr {
-	if m != nil {
-		return m.QuorumRequirement
-	}
-	return nil
-}
-
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
 // least one* of the ratifiers has been correctly following the rules of the
 // keyserver protocol then profile contains the latest public keys and metadata
@@ -107,20 +100,6 @@ type LookupProof struct {
 
 func (m *LookupProof) Reset()      { *m = LookupProof{} }
 func (*LookupProof) ProtoMessage() {}
-
-func (m *LookupProof) GetRatifications() []*SignedRatification {
-	if m != nil {
-		return m.Ratifications
-	}
-	return nil
-}
-
-func (m *LookupProof) GetProfile() *Profile {
-	if m != nil {
-		return m.Profile
-	}
-	return nil
-}
 
 // A user's profile, containing public keys and other information.
 // A new field will be added here for each application, with the TCP/UDP port
@@ -170,13 +149,6 @@ type Entry struct {
 func (m *Entry) Reset()      { *m = Entry{} }
 func (*Entry) ProtoMessage() {}
 
-func (m *Entry) GetUpdateKey() *SignatureVerifier {
-	if m != nil {
-		return m.UpdateKey
-	}
-	return nil
-}
-
 // SignedEntryUpdate is the minimal self-contained structure to justify
 // changing the value of an entry. In the state machine model of a namespace,
 // SignedEntryUpdate is the main input type.
@@ -204,13 +176,6 @@ type SignedEntryUpdate struct {
 
 func (m *SignedEntryUpdate) Reset()      { *m = SignedEntryUpdate{} }
 func (*SignedEntryUpdate) ProtoMessage() {}
-
-func (m *SignedEntryUpdate) GetProfile() *Profile {
-	if m != nil {
-		return m.Profile
-	}
-	return nil
-}
 
 type SignedEntryUpdate_EntryUpdateT struct {
 	// Index specifies the location of the profile in the authenticated
@@ -304,13 +269,6 @@ type SignatureVerifier struct {
 func (m *SignatureVerifier) Reset()      { *m = SignatureVerifier{} }
 func (*SignatureVerifier) ProtoMessage() {}
 
-func (m *SignatureVerifier) GetThreshold() *SignatureVerifier_ThresholdVerifier {
-	if m != nil {
-		return m.Threshold
-	}
-	return nil
-}
-
 // ThresholdVerifier returns "OK" if any threshold of verifers do.
 // This is used to implement
 // 1. Account Recovery through service provider: if an user's entry has the
@@ -330,13 +288,6 @@ type SignatureVerifier_ThresholdVerifier struct {
 
 func (m *SignatureVerifier_ThresholdVerifier) Reset()      { *m = SignatureVerifier_ThresholdVerifier{} }
 func (*SignatureVerifier_ThresholdVerifier) ProtoMessage() {}
-
-func (m *SignatureVerifier_ThresholdVerifier) GetVerifiers() []*SignatureVerifier {
-	if m != nil {
-		return m.Verifiers
-	}
-	return nil
-}
 
 // ThresholdSignature in its trivial implementation here, simply contains the
 // signatures from the specified keys.
@@ -363,13 +314,6 @@ type QuorumExpr struct {
 
 func (m *QuorumExpr) Reset()      { *m = QuorumExpr{} }
 func (*QuorumExpr) ProtoMessage() {}
-
-func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
-	if m != nil {
-		return m.Subexpressions
-	}
-	return nil
-}
 
 // Client API for E2EKSLookup service
 

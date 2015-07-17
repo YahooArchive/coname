@@ -57,34 +57,6 @@ type KeyserverStep struct {
 func (m *KeyserverStep) Reset()      { *m = KeyserverStep{} }
 func (*KeyserverStep) ProtoMessage() {}
 
-func (m *KeyserverStep) GetUpdate() *SignedEntryUpdate {
-	if m != nil {
-		return m.Update
-	}
-	return nil
-}
-
-func (m *KeyserverStep) GetEpochDelimiter() *EpochDelimiter {
-	if m != nil {
-		return m.EpochDelimiter
-	}
-	return nil
-}
-
-func (m *KeyserverStep) GetReplicaRatification() *SignedRatification {
-	if m != nil {
-		return m.ReplicaRatification
-	}
-	return nil
-}
-
-func (m *KeyserverStep) GetVerifierRatification() *SignedRatification {
-	if m != nil {
-		return m.VerifierRatification
-	}
-	return nil
-}
-
 type EpochDelimiter struct {
 	EpochNumber uint64 `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
 	Timestamp   Time   `protobuf:"bytes,4,opt,name=timestamp,customtype=Time" json:"timestamp"`

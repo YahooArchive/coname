@@ -19,6 +19,7 @@ import "timestamp.proto";
 option (gogoproto.goproto_stringer_all) = false;
 option (gogoproto.gostring_all) = true;
 option (gogoproto.stringer_all) = true;
+option (gogoproto.goproto_getters_all) = false;
 
 service E2EKSLookup {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);

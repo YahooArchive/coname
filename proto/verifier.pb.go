@@ -45,20 +45,6 @@ type VerifierStep struct {
 func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
 func (*VerifierStep) ProtoMessage() {}
 
-func (m *VerifierStep) GetEntryChanged() *SignedEntryUpdate {
-	if m != nil {
-		return m.EntryChanged
-	}
-	return nil
-}
-
-func (m *VerifierStep) GetKeyserverRatified() *SignedRatification {
-	if m != nil {
-		return m.KeyserverRatified
-	}
-	return nil
-}
-
 type Nothing struct {
 }
 
