@@ -14,13 +14,17 @@
 
 package server
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+
+	"github.com/yahoo/coname/common/vrf"
+)
 
 var (
 	tableReplicationLogPrefix byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
 	tableVerifierLogPrefix    byte = 'v' // index uint64 -> proto.VerifierStep
 	tableRatificationsPrefix  byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedRatification
-	tableSignedUpdatesPrefix  byte = 'u' // vrfidx [32]byte -> epoch uint64 -> proto.SignedRatification
+	tableSignedUpdatesPrefix  byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedRatification
 
 	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
@@ -37,5 +41,13 @@ func tableVerifierLog(index uint64) []byte {
 	ret := make([]byte, 1+8)
 	ret[0] = tableVerifierLogPrefix
 	binary.BigEndian.PutUint64(ret[1:1+8], index)
+	return ret
+}
+
+func tableSignedUpdates(vrfidx []byte, epoch uint64) []byte {
+	ret := make([]byte, 1+vrf.Size+8)
+	ret[0] = tableSignedUpdatesPrefix
+	copy(ret[1:1+vrf.Size], vrfidx)
+	binary.BigEndian.PutUint64(ret[1+vrf.Size:1+vrf.Size+8], epoch)
 	return ret
 }

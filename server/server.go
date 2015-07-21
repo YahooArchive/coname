@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"runtime"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/replication"
@@ -46,6 +48,7 @@ type Config struct {
 	ID                   uint64
 	RatificationVerifier *proto.SignatureVerifier_ThresholdVerifier
 	RatificationKey      *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
+	VRFSecret            *[vrf.SecretKeySize]byte
 
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
@@ -62,6 +65,7 @@ type Keyserver struct {
 
 	thresholdSigningIndex uint32
 	ratificationKey       *[ed25519.PrivateKeySize]byte
+	vrfSecret             *[vrf.SecretKeySize]byte
 
 	db  kv.DB
 	log replication.LogReplicator
@@ -100,6 +104,7 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 		id:                   cfg.ID,
 		ratificationVerifier: cfg.RatificationVerifier,
 		ratificationKey:      cfg.RatificationKey,
+		vrfSecret:            cfg.VRFSecret,
 		minEpochInterval:     cfg.MinEpochInterval,
 		maxEpochInterval:     cfg.MaxEpochInterval,
 		retryEpochInterval:   cfg.RetryEpochInterval,
@@ -241,6 +246,7 @@ func (ks *Keyserver) run() {
 		case <-ks.retryEpoch.C:
 			ks.maybeEpoch()
 		}
+		runtime.Gosched()
 	}
 }
 
@@ -256,6 +262,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		// TODO(dmz): set entry in tree
 		rs.PendingUpdates = true
+		wb.Put(tableSignedUpdates(step.Update.Update.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
 		return ks.verifierLogAppend(&proto.VerifierStep{EntryChanged: step.Update}, rs, wb)
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -263,14 +270,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
-		ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
+		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
 		ratification := &proto.SignedRatification{
 			Ratifier: ks.id,
 			Ratification: proto.SignedRatification_RatificationT_PreserveEncoding{proto.SignedRatification_RatificationT{
 				Realm: ks.realm,
 				Epoch: step.EpochDelimiter.EpochNumber,
 				Summary: proto.SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding{proto.SignedRatification_RatificationT_KeyserverStateSummary{
-					RootHash:            nil, // TODO(dmz): merklemap.GetRootHash()
+					RootHash:            nil, // TODO(dmz): ret.TreeProof = merklemap.GetRootHash()
 					PreviousSummaryHash: rs.PreviousSummaryHash,
 				}, nil},
 				Timestamp: step.EpochDelimiter.Timestamp,
@@ -323,6 +330,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// have are sufficient to pass verification. For now, 1 is a majority of 1.
 		// Only put signatures into the verifier log once.
 		if true {
+			// FIXME: make sure ratifications in verifier log are ordered by epoch
 			return ks.verifierLogAppend(&proto.VerifierStep{KeyserverRatified: rNew}, rs, wb)
 		}
 	case step.VerifierRatification != nil:
