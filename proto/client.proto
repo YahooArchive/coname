@@ -26,7 +26,7 @@ service E2EKSLookup {
 }
 service E2EKSUpdate {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
-	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof);
+	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof); // FIXME: include a LookupProfileRequest that will be executed right after the update
 }
 
 message LookupProfileRequest {
