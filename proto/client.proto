@@ -26,7 +26,7 @@ service E2EKSLookup {
 }
 service E2EKSUpdate {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
-	rpc UpdateProfile(SignedEntryUpdate) returns (LookupProof); // FIXME: include a LookupProfileRequest that will be executed right after the update
+	rpc UpdateProfile(UpdateProfileRequest) returns (LookupProof);
 }
 
 message LookupProfileRequest {
@@ -44,6 +44,15 @@ message LookupProfileRequest {
 	// a lower bound of the round trip time to the server.
 	Timestamp valid_at = 4
 		[(gogoproto.customtype) = "Time", (gogoproto.nullable) = true];
+}
+
+// UpdateProfileRequest specifies an update and the quorum required for
+// considering the update successful. The server should respond with a lookup
+// of the updated name when the update has been ratified by a sufficient
+// quorum.
+message UpdateProfileRequest {
+	SignedEntryUpdate update = 1;
+	QuorumExpr quorum_requirement = 3;
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
@@ -71,7 +80,9 @@ message LookupProof {
 	// The ratifications of the later epochs indirectly vouch for the first one
 	// through directory state summary hash chaining. Only the latest valid
 	// signature from each verifier is provided, so some returned ratifications
-	// may have no signatures on them.
+	// may have no signatures on them. A client MUST ignore a proof if the
+	// ratifications do not satisfy its quorum requirement and MUST require the
+	// keyserver itself to be in the quorum.
 	repeated SignedRatification ratifications = 4;
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash

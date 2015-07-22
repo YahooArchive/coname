@@ -14,6 +14,7 @@
 
 	It has these top-level messages:
 		LookupProfileRequest
+		UpdateProfileRequest
 		LookupProof
 		Profile
 		Entry
@@ -63,6 +64,18 @@ type LookupProfileRequest struct {
 func (m *LookupProfileRequest) Reset()      { *m = LookupProfileRequest{} }
 func (*LookupProfileRequest) ProtoMessage() {}
 
+// UpdateProfileRequest specifies an update and the quorum required for
+// considering the update successful. The server should respond with a lookup
+// of the updated name when the update has been ratified by a sufficient
+// quorum.
+type UpdateProfileRequest struct {
+	Update            *SignedEntryUpdate `protobuf:"bytes,1,opt,name=update" json:"update,omitempty"`
+	QuorumRequirement *QuorumExpr        `protobuf:"bytes,3,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
+}
+
+func (m *UpdateProfileRequest) Reset()      { *m = UpdateProfileRequest{} }
+func (*UpdateProfileRequest) ProtoMessage() {}
+
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
 // least one* of the ratifiers has been correctly following the rules of the
 // keyserver protocol then profile contains the latest public keys and metadata
@@ -88,7 +101,9 @@ type LookupProof struct {
 	// The ratifications of the later epochs indirectly vouch for the first one
 	// through directory state summary hash chaining. Only the latest valid
 	// signature from each verifier is provided, so some returned ratifications
-	// may have no signatures on them.
+	// may have no signatures on them. A client MUST ignore a proof if the
+	// ratifications do not satisfy its quorum requirement and MUST require the
+	// keyserver itself to be in the quorum.
 	Ratifications []*SignedRatification `protobuf:"bytes,4,rep,name=ratifications" json:"ratifications,omitempty"`
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
@@ -376,7 +391,7 @@ var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
 
 type E2EKSUpdateClient interface {
 	LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
-	UpdateProfile(ctx context.Context, in *SignedEntryUpdate, opts ...grpc.CallOption) (*LookupProof, error)
+	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
 }
 
 type e2EKSUpdateClient struct {
@@ -396,7 +411,7 @@ func (c *e2EKSUpdateClient) LookupProfile(ctx context.Context, in *LookupProfile
 	return out, nil
 }
 
-func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *SignedEntryUpdate, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
 	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/UpdateProfile", in, out, c.cc, opts...)
 	if err != nil {
@@ -409,7 +424,7 @@ func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *SignedEntryUp
 
 type E2EKSUpdateServer interface {
 	LookupProfile(context.Context, *LookupProfileRequest) (*LookupProof, error)
-	UpdateProfile(context.Context, *SignedEntryUpdate) (*LookupProof, error)
+	UpdateProfile(context.Context, *UpdateProfileRequest) (*LookupProof, error)
 }
 
 func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
@@ -429,7 +444,7 @@ func _E2EKSUpdate_LookupProfile_Handler(srv interface{}, ctx context.Context, co
 }
 
 func _E2EKSUpdate_UpdateProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(SignedEntryUpdate)
+	in := new(UpdateProfileRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
@@ -465,6 +480,15 @@ func (this *LookupProfileRequest) GoString() string {
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement),
 		`ValidAt:` + fmt.Sprintf("%#v", this.ValidAt) + `}`}, ", ")
+	return s
+}
+func (this *UpdateProfileRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateProfileRequest{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
 	return s
 }
 func (this *LookupProof) GoString() string {
@@ -663,6 +687,44 @@ func (m *LookupProfileRequest) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
+func (m *UpdateProfileRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateProfileRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
+		n3, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
+		n4, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
 func (m *LookupProof) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -724,11 +786,11 @@ func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x32
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n3, err := m.Profile.MarshalTo(data[i:])
+		n5, err := m.Profile.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n3
+		i += n5
 	}
 	return i, nil
 }
@@ -791,11 +853,11 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n4, err := m.UpdateKey.MarshalTo(data[i:])
+		n6, err := m.UpdateKey.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n6
 	}
 	if m.ProfileHash != nil {
 		if len(m.ProfileHash) > 0 {
@@ -826,11 +888,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-	n5, err := m.Update.MarshalTo(data[i:])
+	n7, err := m.Update.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n5
+	i += n7
 	if m.NewSig != nil {
 		if len(m.NewSig) > 0 {
 			data[i] = 0x12
@@ -851,11 +913,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x22
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n6, err := m.Profile.MarshalTo(data[i:])
+		n8, err := m.Profile.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n8
 	}
 	return i, nil
 }
@@ -886,11 +948,11 @@ func (m *SignedEntryUpdate_EntryUpdateT) MarshalTo(data []byte) (n int, err erro
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n7, err := m.NewEntry.MarshalTo(data[i:])
+	n9, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n7
+	i += n9
 	return i, nil
 }
 
@@ -917,11 +979,11 @@ func (m *SignedRatification) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
-	n8, err := m.Ratification.MarshalTo(data[i:])
+	n10, err := m.Ratification.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n8
+	i += n10
 	if m.Signature != nil {
 		if len(m.Signature) > 0 {
 			data[i] = 0x1a
@@ -962,19 +1024,19 @@ func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err er
 	data[i] = 0x1a
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
-	n9, err := m.Summary.MarshalTo(data[i:])
+	n11, err := m.Summary.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n9
+	i += n11
 	data[i] = 0x22
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n10, err := m.Timestamp.MarshalTo(data[i:])
+	n12, err := m.Timestamp.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n10
+	i += n12
 	return i, nil
 }
 
@@ -1039,11 +1101,11 @@ func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n11, err := m.Threshold.MarshalTo(data[i:])
+		n13, err := m.Threshold.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n13
 	}
 	return i, nil
 }
@@ -1204,6 +1266,20 @@ func (m *LookupProfileRequest) Size() (n int) {
 	}
 	if m.ValidAt != nil {
 		l = m.ValidAt.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateProfileRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
 	return n
@@ -1464,6 +1540,17 @@ func (this *LookupProfileRequest) String() string {
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`ValidAt:` + strings.Replace(fmt.Sprintf("%v", this.ValidAt), "Timestamp", "Timestamp", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateProfileRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateProfileRequest{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1733,6 +1820,102 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 				m.ValidAt = &Time{}
 			}
 			if err := m.ValidAt.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *UpdateProfileRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Update == nil {
+				m.Update = &SignedEntryUpdate{}
+			}
+			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QuorumRequirement == nil {
+				m.QuorumRequirement = &QuorumExpr{}
+			}
+			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
