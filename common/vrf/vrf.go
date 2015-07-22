@@ -3,23 +3,25 @@
 package vrf
 
 import (
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/subtle"
 	"io"
 	"math/big"
 
-	"github.com/yahoo/coname/common/icart"
+	"github.com/agl/ed25519/extra25519"
+	"golang.org/x/crypto/curve25519"
 )
 
 const (
-	PublicKeySize    = 1 + 48 + 48
+	PublicKeySize    = 32
 	SecretKeySize    = 32 + PublicKeySize
 	Size             = 32
 	intermediateSize = PublicKeySize
-	ProofSize        = 48 + 48 + intermediateSize
+	ProofSize        = 32 + 32 + intermediateSize
 )
+
+var p25519, _ = new(big.Int).SetString("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed", 16)
 
 // GenerateKey creates a public/private key pair. rnd is used for randomness.
 // If it is nil, `crypto/rand` is used.
@@ -32,145 +34,118 @@ func GenerateKey(rnd io.Reader) (pk []byte, sk *[SecretKeySize]byte, err error) 
 		return nil, nil, err
 	}
 
-	h := sha512.New()
-	h.Write(sk[:32])
-	ecsk := h.Sum(nil)[:48]
-
-	x, y := elliptic.P384().ScalarBaseMult(ecsk)
-	pk = elliptic.Marshal(elliptic.P384(), x, y)
-	if len(pk) != PublicKeySize || copy(sk[32:], pk) != len(pk) {
-		panic("vrf GenerateKey space accounting failed")
-	}
-	return pk, sk, err
+	ecsk := sha256.Sum256(sk[:32])
+	var ecpk [32]byte
+	curve25519.ScalarBaseMult(&ecpk, &ecsk)
+	copy(sk[32:32+PublicKeySize], ecpk[0:PublicKeySize])
+	return pk[:], sk, nil
 }
 
 // Compute returns the value of a veirifiable random function of m using key k.
 // H(m, H'(m)^k). TODO: I think length extension does not matter because the
 // value we are trying to hide is last, but maybe we should double up anyway?
 func Compute(m []byte, sk *[SecretKeySize]byte) []byte {
-	vrf := sha512.New()
-	vrf.Write(compute(m, sk)) // const length
+	vrf := sha256.New()
+	vrf.Write(compute(m, sk)[:]) // const length: Size
 	vrf.Write(m)
-	return vrf.Sum(nil)[:32]
+	return vrf.Sum(nil)
 }
 
-func compute(m []byte, sk *[SecretKeySize]byte) []byte {
-	h := sha512.New()
-	h.Write(sk[:32])
-	k := h.Sum(nil)[:48]
+func compute(m []byte, sk *[SecretKeySize]byte) *[32]byte {
+	k := sha256.Sum256(sk[:32])
+	hm := hashToCurve(m)
+	curve25519.ScalarMult(hm, &k, hm)
+	return hm
+}
 
-	mx, my := hashToCurve(m)
-	mkx, mky := elliptic.P384().ScalarMult(mx, my, k)
-	if !elliptic.P384().Params().IsOnCurve(mkx, mky) {
-		panic("computed intermediate VRF is not on curve")
+func swapEndian(k []byte) {
+	for i := 0; i < len(k)/2; i++ {
+		k[i], k[len(k)-i-1] = k[len(k)-i-1], k[i]
 	}
-	return elliptic.Marshal(elliptic.P384(), mkx, mky)
 }
 
 // Prove returns a proof that will pass Verify, len(proof)=ProofSize.
 func Prove(m []byte, sk *[SecretKeySize]byte) []byte {
-	h := sha512.New()
-	h.Write(sk[:32])
+	k := sha256.Sum256(sk[:32])
+	hskForR := sha256.Sum256(sk[:64])
+	var hr, gr, r, cH [32]byte
 
-	var hsk, hm, cH [sha512.Size]byte
-	h.Sum(hsk[:0])
-	k := hsk[:48]
+	hash := sha256.New()
+	hash.Write(hskForR[:])
+	hash.Write(m)
+	hash.Sum(r[:0])
 
-	h.Reset()
-	h.Write(hsk[32:])
-	h.Write(m)
-	h.Sum(hm[:0])
-	r := hm[:48]
+	curve25519.ScalarBaseMult(&gr, &r)
+	h := hashToCurve(m)
+	curve25519.ScalarMult(&hr, h, &r)
 
-	grx, gry := elliptic.P384().ScalarBaseMult(r)
-	hx, hy := hashToCurve(m)
-	hrx, hry := elliptic.P384().ScalarMult(hx, hy, r)
+	hash.Reset()
+	hash.Write(gr[:])
+	hash.Write(hr[:])
+	hash.Write(m)
+	hash.Sum(cH[:0])
 
-	h.Reset()
-	h.Write(m)
-	h.Write(elliptic.Marshal(elliptic.P384(), grx, gry)) // const length
-	h.Write(elliptic.Marshal(elliptic.P384(), hrx, hry)) // const length
-	h.Sum(cH[:0])
+	// FIXME: move away from math.big, it is not constant-time
 	var t, c big.Int
-	c.SetBytes(cH[:48]) // c
-	c.Mul(&c, new(big.Int).SetBytes(k))
-	c.Mod(&c, elliptic.P384().Params().N) // c*k
-	t.SetBytes(r)
+	swapEndian(k[:]) // math.big is big-endian, Curve25519 is little-endian
+	swapEndian(cH[:])
+	c.SetBytes(cH[:32]) // c
+	c.Mul(&c, new(big.Int).SetBytes(k[:]))
+	c.Mod(&c, p25519) // c*k
+	t.SetBytes(r[:])
 	t.Sub(&t, &c)
-	t.Mod(&t, elliptic.P384().Params().N) // r - c*k
-	return append(append(cH[:48], t.Bytes()...), compute(m, sk)...)
+	t.Mod(&t, p25519) // r - c*k
+
+	var ret [ProofSize]byte
+	copy(ret[:32], cH[:32])
+	copy(ret[:32], t.Bytes())
+	swapEndian(ret[0:32])
+	swapEndian(ret[32:64])
+	copy(ret[64:96], compute(m, sk)[:])
+	return ret[:]
 }
 
 // Verify returns true iff vrf=Compute(m, sk) for the sk that corresponds to pk.
-func Verify(pk, m, vrf, proof []byte) bool {
-	if len(proof) != ProofSize || len(vrf) != Size || len(pk) != PublicKeySize {
+func Verify(pkBytes, m, vrfBytes, proof []byte) bool {
+	if len(proof) != ProofSize || len(vrfBytes) != Size || len(pkBytes) != PublicKeySize {
 		return false
 	}
-	c, t, vIntermediate := proof[:48], proof[48:96], proof[96:]
-	h := sha512.New()
+	var pk, c, t, vrf [32]byte
+	copy(vrf[:], vrfBytes)
+	copy(pk[:], pkBytes)
+	copy(c[:32], proof[:32])
+	copy(t[:32], proof[32:64])
+	vIntermediate := proof[64:]
+
+	h := sha256.New()
 	h.Write(vIntermediate) // const length
 	h.Write(m)
-	if subtle.ConstantTimeCompare(h.Sum(nil)[:32], vrf) != 1 {
+	if subtle.ConstantTimeCompare(h.Sum(nil)[:32], vrf[:32]) != 1 {
 		return false
 	}
 
-	pkx, pky := elliptic.Unmarshal(elliptic.P384(), pk[:])
-	_ = "breakpoint"
-	vx, vy := elliptic.Unmarshal(elliptic.P384(), vIntermediate[:])
-	if vx == nil {
-		return false
-	}
-	// some of these checks may be redundant. When one is proven redundant, it
-	// should be removed.
-	if pkx.Cmp(elliptic.P384().Params().P) >= 0 {
-		return false
-	}
-	if pky.Cmp(elliptic.P384().Params().P) >= 0 {
-		return false
-	}
-	if !elliptic.P384().Params().IsOnCurve(pkx, pky) {
-		return false
-	}
-	if vx.Cmp(elliptic.P384().Params().P) >= 0 {
-		return false
-	}
-	if vy.Cmp(elliptic.P384().Params().P) >= 0 {
-		return false
-	}
-	if !elliptic.P384().Params().IsOnCurve(vx, vy) {
-		return false
-	}
-	Gcx, Gcy := elliptic.P384().ScalarMult(pkx, pky, c)
-	gtx, gty := elliptic.P384().ScalarBaseMult(t)
-	grx, gry := elliptic.P384().Add(gtx, gty, Gcx, Gcy)
-	mx, my := hashToCurve(m)
-	mtx, mty := elliptic.P384().ScalarMult(mx, my, t)
-	vcx, vcy := elliptic.P384().ScalarMult(vx, vy, c)
-	hrx, hry := elliptic.P384().Add(mtx, mty, vcx, vcy)
+	var Pc, gt, gr, mt, vc, hr [32]byte
+	curve25519.ScalarMult(&Pc, &pk, &c)
+	curve25519.ScalarBaseMult(&gt, &t)
+	curve25519.Add(&gr, &gt, &Pc)
+	hm := hashToCurve(m)
+	curve25519.ScalarMult(&mt, hm, &t)
+	curve25519.ScalarMult(&mt, hm, &t)
+	curve25519.ScalarMult(&vc, &vrf, &c)
+	curve25519.Add(&hr, &mt, &vc)
 
-	var cH [64]byte
-	h.Reset()
+	var cH [32]byte
 	h.Write(m)
-	h.Write(elliptic.Marshal(elliptic.P384(), grx, gry)) // const length
-	h.Write(elliptic.Marshal(elliptic.P384(), hrx, hry)) // const length
+	h.Write(gr[:]) // const length
+	h.Write(hr[:]) // const length
+	h.Reset()
 	h.Sum(cH[:0])
-	return subtle.ConstantTimeCompare(cH[:48], c) == 1
+	return subtle.ConstantTimeCompare(cH[:], c[:]) == 1
 }
 
-func hashToCurve(m []byte) (x, y *big.Int) {
-	// Construction from <https://www.iacr.org/archive/crypto2010/62230238/62230238.pdf> section 4
-	// "[...] if h1, h2 are two hash functions in the random oracle model, then
-	// the hash function H defined by
-	//     H(m) := f(h1(m)) + f(h2(m))
-	// is indifferentiable from a random oracle into the elliptic curve."
-	// Here, we use SHA512, SHA384, the icart function, and P384.
-	// SHA384 and SHA512 are initialized differently according to
-	// <http://csrc.nist.gov/publications/fips/fips180-4/fips-180-4.pdf>.
-	h1, h2 := sha512.Sum512(m), sha512.Sum384(m)
-	var x1, y1, x2, y2, u big.Int
-	u.SetBytes(h1[:48])
-	icart.ToP384(&x1, &y1, &u)
-	u.SetBytes(h2[:48])
-	icart.ToP384(&x2, &y2, &u)
-	return elliptic.P384().Add(&x1, &y1, &x2, &y2)
+func hashToCurve(m []byte) (x *[32]byte) {
+	h := sha256.Sum256(m)
+	var p [32]byte
+	extra25519.RepresentativeToPublicKey(&p, &h)
+	return &p
 }
