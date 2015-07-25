@@ -1,17 +1,22 @@
 package vrf
 
-import "testing"
+import (
+	"github.com/davecheney/profile"
+	"testing"
+)
 
 func TestHonestComplete(t *testing.T) {
-	pk, sk, err := GenerateKey(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	alice := []byte("alice")
-	aliceVRF := Compute(alice, sk)
-	aliceProof := Prove(alice, sk)
-	if !Verify(pk, alice, aliceVRF, aliceProof) {
-		t.Fatal("Gen -> Compute -> Prove -> Verify -> FALSE")
+	for i := 0; i < 100; i++ {
+		pk, sk, err := GenerateKey(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		alice := []byte("alice")
+		aliceVRF := Compute(alice, sk)
+		aliceProof := Prove(alice, sk)
+		if !Verify(pk, alice, aliceVRF, aliceProof) {
+			t.Fatalf("Gen -> Compute -> Prove -> Verify -> FALSE")
+		}
 	}
 }
 
@@ -53,6 +58,7 @@ func BenchmarkCompute(b *testing.B) {
 }
 
 func BenchmarkProve(b *testing.B) {
+	defer profile.Start(profile.CPUProfile).Stop()
 	_, sk, err := GenerateKey(nil)
 	if err != nil {
 		b.Fatal(err)

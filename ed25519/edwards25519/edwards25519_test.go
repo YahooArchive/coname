@@ -9,6 +9,27 @@ import (
 	"testing"
 )
 
+func TestScNegMulAddIdentity(t *testing.T) {
+	N := 10000
+	if testing.Short() {
+		N /= 20
+	}
+	for i := 0; i < N; i++ {
+		one := [32]byte{1}
+		var seed [64]byte
+		var a, minusA, x [32]byte
+
+		rand.Reader.Read(seed[:])
+		ScReduce(&a, &seed)
+		copy(minusA[:], a[:])
+		ScNeg(&minusA, &minusA)
+		ScMulAdd(&x, &one, &a, &minusA)
+		if x != [32]byte{} {
+			t.Errorf("%x --neg--> %x --sum--> %x", a, minusA, x)
+		}
+	}
+}
+
 func TestGeAddAgainstgeAdd(t *testing.T) {
 	N := 1000
 	if testing.Short() {

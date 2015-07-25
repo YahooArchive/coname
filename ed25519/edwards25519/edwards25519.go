@@ -1024,6 +1024,12 @@ func (p *ProjectiveGroupElement) Double(r *CompletedGroupElement) {
 	FeSub(&r.T, &r.T, &r.Z)
 }
 
+func (p *ProjectiveGroupElement) ToExtended(s *ExtendedGroupElement) {
+	var b [32]byte
+	p.ToBytes(&b)
+	s.FromBytes(&b)
+}
+
 func (p *ProjectiveGroupElement) ToBytes(s *[32]byte) {
 	var recip, x, y FieldElement
 
@@ -1121,7 +1127,7 @@ func (p *ExtendedGroupElement) FromParityAndY(bit byte, y *FieldElement) bool {
 		}
 	}
 
-	if FeIsNegative(&p.X) == bit {
+	if FeIsNegative(&p.X) != bit {
 		FeNeg(&p.X, &p.X)
 	}
 
@@ -1249,6 +1255,13 @@ func GeAdd(r, a, b *ExtendedGroupElement) {
 	rc.ToExtended(r)
 }
 
+func ExtendedGroupElementCopy(t, u *ExtendedGroupElement) {
+	FeCopy(&t.X, &u.X)
+	FeCopy(&t.Y, &u.Y)
+	FeCopy(&t.Z, &u.Z)
+	FeCopy(&t.T, &u.T)
+}
+
 func ExtendedGroupElementCMove(t, u *ExtendedGroupElement, b int32) {
 	FeCMove(&t.X, &u.X, b)
 	FeCMove(&t.Y, &u.Y, b)
@@ -1261,7 +1274,7 @@ func ExtendedGroupElementCMove(t, u *ExtendedGroupElement, b int32) {
 func GeScalarMult(r *ExtendedGroupElement, a *[32]byte, A *ExtendedGroupElement) {
 	var p, q ExtendedGroupElement
 	q.Zero()
-	ExtendedGroupElementCMove(&p, A, 1)
+	ExtendedGroupElementCopy(&p, A)
 	for i := uint(0); i < 256; i++ {
 		bit := int32(a[i>>3]>>(i&7)) & 1
 		var t ExtendedGroupElement
@@ -1269,7 +1282,7 @@ func GeScalarMult(r *ExtendedGroupElement, a *[32]byte, A *ExtendedGroupElement)
 		ExtendedGroupElementCMove(&q, &t, bit)
 		GeDouble(&p, &p)
 	}
-	ExtendedGroupElementCMove(r, &q, 1)
+	ExtendedGroupElementCopy(r, &q)
 }
 
 // GeDoubleScalarMultVartime sets r = a*A + b*B
@@ -1845,6 +1858,39 @@ func ScMulAdd(s, a, b, c *[32]byte) {
 	s[29] = byte(s11 >> 1)
 	s[30] = byte(s11 >> 9)
 	s[31] = byte(s11 >> 17)
+}
+
+// Input:
+//   s[0]+256*s[1]+...+256^63*s[63] = s
+//   s <= l
+//
+// Output:
+//   s[0]+256*s[1]+...+256^31*s[31] = l - s
+//   where l = 2^252 + 27742317777372353535851937790883648493.
+func ScNeg(r, s *[32]byte) {
+	l := [32]byte{237, 211, 245, 92, 26, 99, 18, 88, 214, 156, 247, 162, 222, 249, 222, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16}
+	var carry int32
+	for i := 0; i < 32; i++ {
+		carry = carry + int32(l[i]) - int32(s[i])
+		mask := carry >> 31
+		absCarry := (carry + mask) ^ mask
+		negative := carry - absCarry
+		// negative = 0 if carry was positive or 0
+		// negative = -2*carry if carry was negative
+		// now we set the bits in the lower half if carry was negative
+		negative |= negative >> 16
+		negative |= negative >> 8
+		negative |= negative >> 4
+		negative |= negative >> 2
+		negative |= negative >> 1
+		carry += negative & 256 // +=256 if negative, unmodified
+		r[i] = byte(carry)
+		// carry for next iteration
+		carry = negative & (-1) // -1 if negative, 0 otherwise
+	}
+	if carry != 0 {
+		panic("ScNeg: s > l")
+	}
 }
 
 // Input:
