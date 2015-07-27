@@ -39,7 +39,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 		for ; iter.Next() && start < limit; start++ {
 			select {
 			case <-stream.Context().Done():
-				return stream.Context().Err() // TODO: what to do with stream.Context().Err()?
+				return stream.Context().Err()
 			default:
 			}
 			dbIdx := binary.BigEndian.Uint64(iter.Key()[1:])
@@ -52,7 +52,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 				return fmt.Errorf("internal error")
 			}
 			if err := stream.Send(&step); err != nil {
-				return err // TODO: return err?
+				return err
 			}
 			step.Reset()
 		}
