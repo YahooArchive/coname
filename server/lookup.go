@@ -83,6 +83,9 @@ func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfile
 	if seu != nil {
 		ret.Profile = seu.Profile
 	}
+	if !common.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
+		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
+	}
 	return ret, nil
 }
 

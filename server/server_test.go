@@ -97,8 +97,8 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
 
 		MinEpochInterval:   0,
-		MaxEpochInterval:   300 * time.Microsecond,
-		RetryEpochInterval: 100 * time.Microsecond,
+		MaxEpochInterval:   5 * time.Millisecond,
+		RetryEpochInterval: 500 * time.Microsecond,
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
