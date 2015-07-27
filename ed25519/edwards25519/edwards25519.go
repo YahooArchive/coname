@@ -7,6 +7,8 @@
 // http://ed25519.cr.yp.to/.
 package edwards25519
 
+import "math"
+
 // This code is a port of the public domain, "ref10" implementation of ed25519
 // from SUPERCOP.
 
@@ -1872,18 +1874,13 @@ func ScNeg(r, s *[32]byte) {
 	var carry int32
 	for i := 0; i < 32; i++ {
 		carry = carry + int32(l[i]) - int32(s[i])
-		mask := carry >> 31
-		absCarry := (carry + mask) ^ mask
-		negative := carry - absCarry
-		// negative = 0 if carry was positive or 0
-		// negative = -2*carry if carry was negative
-		// now we set the bits in the lower half if carry was negative
+		negative := carry & math.MinInt32 // extract the sign bit (min=0b100...)
 		negative |= negative >> 16
 		negative |= negative >> 8
 		negative |= negative >> 4
 		negative |= negative >> 2
 		negative |= negative >> 1
-		carry += negative & 256 // +=256 if negative, unmodified
+		carry += negative & 256 // +=256 if negative, unmodified otherwise
 		r[i] = byte(carry)
 		// carry for next iteration
 		carry = negative & (-1) // -1 if negative, 0 otherwise
