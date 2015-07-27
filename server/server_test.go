@@ -225,63 +225,6 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 	return
 }
 
-func testVerifierStartProgressStop(t *testing.T, progress uint64) {
-	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
-	defer serverTeardown()
-	// db = logkv.WithDefaultLogging(db)
-
-	vcfgBarrier := make(chan struct{})
-	var vcfg *verifier.Config
-
-	// the db writes are test output. We are waiting for epoch 2 to be ratified
-	// by the verifier and pushed to the server as a primitive progress check.
-	progressCh := make(chan struct{})
-	var closeOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
-		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
-			return
-		}
-		var sr proto.SignedRatification
-		sr.Unmarshal(put.Value)
-		<-vcfgBarrier
-		if sr.Ratification.Epoch == progress && sr.Ratifier == vcfg.ID {
-			closeOnce.Do(func() { close(progressCh) })
-		}
-	})
-
-	ks, err := Open(cfg, db)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks.Start()
-	defer ks.Stop()
-
-	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
-	defer verifierTeardown()
-	close(vcfgBarrier)
-
-	vr, err := verifier.Start(vcfg, vdb)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer vr.Stop()
-
-	<-progressCh
-}
-
-func TestVerifierStartProgress1Stop(t *testing.T) {
-	testVerifierStartProgressStop(t, 1)
-}
-func TestVerifierStartProgress2Stop(t *testing.T) {
-	testVerifierStartProgressStop(t, 2)
-}
-func TestVerifierStartProgress100Stop(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	testVerifierStartProgressStop(t, 100)
-}
-
 // setupRealm initializes one keyserver and nVerifiers verifiers, and then
 // waits until each one of them has signed an epoch.
 func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, verifiers []uint64, teardown func()) {
