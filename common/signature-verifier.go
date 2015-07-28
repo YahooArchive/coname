@@ -35,21 +35,23 @@ func VerifySignature(verifier *proto.SignatureVerifier, message []byte, sig []by
 		if err := sigs.Unmarshal(sig); err != nil {
 			return false
 		}
-		remaining := verifier.Threshold.Threshold
-	next_key:
+		var n uint32
 		for idx, ver := range verifier.Threshold.Verifiers {
-			for i := 0; i < len(sigs.Signature) && i < len(sigs.KeyIndex); i++ {
-				if sigs.KeyIndex[i] == uint32(idx) && VerifySignature(ver, message, sigs.Signature[i]) {
-					remaining--
-					if remaining == 0 {
-						return true
-					}
-					continue next_key
-				}
+			if hasSigned(idx, ver, message, sigs) {
+				n++
 			}
 		}
-		return remaining == 0
+		return n >= verifier.Threshold.Threshold
 	default:
 		return false
 	}
+}
+
+func hasSigned(idx int, ver *proto.SignatureVerifier, message []byte, sigs *proto.ThresholdSignature) bool {
+	for i := 0; i < len(sigs.Signature) && i < len(sigs.KeyIndex); i++ {
+		if sigs.KeyIndex[i] == uint32(idx) && VerifySignature(ver, message, sigs.Signature[i]) {
+			return true
+		}
+	}
+	return false
 }

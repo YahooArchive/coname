@@ -6,27 +6,20 @@ import "github.com/yahoo/coname/proto"
 // by ratifications of the verifiers in have.
 func CheckQuorum(want *proto.QuorumExpr, have map[uint64]struct{}) bool {
 	if want == nil {
-		return true
+		return true // no requirements
 	}
-	remaining := want.Threshold // unsigned
-	if remaining == 0 {
-		return true
-	}
+	var n uint32
 	for _, verifier := range want.Verifiers {
 		if _, yes := have[verifier]; yes {
-			if remaining--; remaining == 0 {
-				return true
-			}
+			n++
 		}
 	}
 	for _, e := range want.Subexpressions {
 		if CheckQuorum(e, have) {
-			if remaining--; remaining == 0 {
-				return true
-			}
+			n++
 		}
 	}
-	return false
+	return n >= want.Threshold
 }
 
 // ListQuorum inserts all verifiers mentioned in e to out. If out is nil, a new
