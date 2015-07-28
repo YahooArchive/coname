@@ -31,7 +31,7 @@ service E2EKSUpdate {
 
 message LookupProfileRequest {
 	oneof target { 
-		string user_id = 1;
+		string user = 1;
 		bytes index = 2;
 	}
 	// quorum_requirement specifies which verifiers must have ratified the

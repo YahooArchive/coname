@@ -177,7 +177,7 @@ func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{UserId: alice})
+	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{User: alice})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +304,7 @@ func TestKeyserverLookupRequireKeyserver(t *testing.T) {
 	}
 	c := proto.NewE2EKSLookupClient(conn)
 	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{
-		UserId: alice,
+		User: alice,
 		QuorumRequirement: &proto.QuorumExpr{
 			Threshold: 1,
 			Verifiers: []uint64{ks.id},
@@ -334,7 +334,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	}
 	c := proto.NewE2EKSLookupClient(conn)
 	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{
-		UserId: alice,
+		User: alice,
 		QuorumRequirement: &proto.QuorumExpr{
 			Threshold: uint32(len(verifiers)),
 			Verifiers: verifiers,

@@ -30,11 +30,11 @@ const lookupMaxChainLength = 100
 
 // LookupProfile implements proto.E2EKSLookupServer
 func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfileRequest) (*proto.LookupProof, error) {
-	ret := &proto.LookupProof{UserId: req.UserId}
+	ret := &proto.LookupProof{UserId: req.User}
 	index := req.Index
 	if index == nil {
-		index = vrf.Compute([]byte(req.UserId), ks.vrfSecret)
-		ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
+		index = vrf.Compute([]byte(req.User), ks.vrfSecret)
+		ret.IndexProof = vrf.Prove([]byte(req.User), ks.vrfSecret)
 	}
 	remainingVerifiers := common.ListQuorum(req.QuorumRequirement, nil)
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))

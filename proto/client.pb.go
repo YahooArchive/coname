@@ -48,8 +48,8 @@ import io "io"
 var _ = proto1.Marshal
 
 type LookupProfileRequest struct {
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
-	Index  []byte `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
+	User  string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	Index []byte `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
@@ -476,7 +476,7 @@ func (this *LookupProfileRequest) GoString() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&proto.LookupProfileRequest{` +
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`UserId:` + fmt.Sprintf("%#v", this.User),
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement),
 		`ValidAt:` + fmt.Sprintf("%#v", this.ValidAt) + `}`}, ", ")
@@ -650,11 +650,11 @@ func (m *LookupProfileRequest) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.UserId) > 0 {
+	if len(m.User) > 0 {
 		data[i] = 0xa
 		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
+		i = encodeVarintClient(data, i, uint64(len(m.User)))
+		i += copy(data[i:], m.User)
 	}
 	if m.Index != nil {
 		if len(m.Index) > 0 {
@@ -1250,7 +1250,7 @@ func encodeVarintClient(data []byte, offset int, v uint64) int {
 func (m *LookupProfileRequest) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.UserId)
+	l = len(m.User)
 	if l > 0 {
 		n += 1 + l + sovClient(uint64(l))
 	}
@@ -1536,7 +1536,7 @@ func (this *LookupProfileRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&LookupProfileRequest{`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`UserId:` + fmt.Sprintf("%v", this.User) + `,`,
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`ValidAt:` + strings.Replace(fmt.Sprintf("%v", this.ValidAt), "Timestamp", "Timestamp", 1) + `,`,
@@ -1745,7 +1745,7 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.UserId = string(data[iNdEx:postIndex])
+			m.User = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
