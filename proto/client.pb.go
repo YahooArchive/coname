@@ -7,6 +7,7 @@
 
 	It is generated from these files:
 		client.proto
+		config.proto
 		local.proto
 		replication.proto
 		timestamp.proto
@@ -48,7 +49,7 @@ import io "io"
 var _ = proto1.Marshal
 
 type LookupProfileRequest struct {
-	User  string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	User  string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
 	Index []byte `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
@@ -476,7 +477,7 @@ func (this *LookupProfileRequest) GoString() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&proto.LookupProfileRequest{` +
-		`UserId:` + fmt.Sprintf("%#v", this.User),
+		`User:` + fmt.Sprintf("%#v", this.User),
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement),
 		`ValidAt:` + fmt.Sprintf("%#v", this.ValidAt) + `}`}, ", ")
@@ -1536,7 +1537,7 @@ func (this *LookupProfileRequest) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&LookupProfileRequest{`,
-		`UserId:` + fmt.Sprintf("%v", this.User) + `,`,
+		`User:` + fmt.Sprintf("%v", this.User) + `,`,
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`ValidAt:` + strings.Replace(fmt.Sprintf("%v", this.ValidAt), "Timestamp", "Timestamp", 1) + `,`,
@@ -1727,7 +1728,7 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field User", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
