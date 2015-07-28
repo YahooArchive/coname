@@ -108,7 +108,7 @@ func (ks *Keyserver) lastRatifiedEpoch() uint64 {
 // If there is no such update, (nil, nil) is returned.
 func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.SignedEntryUpdate, error) {
 	// idx: []&const
-	prefixIdxEpoch := make([]byte, 1+32+8) // TODO(VRF): 32 = VRF_SIZE
+	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
 	prefixIdxEpoch[0] = tableSignedUpdatesPrefix
 	copy(prefixIdxEpoch[1:], idx)
 	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch+1)
