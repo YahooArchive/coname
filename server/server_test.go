@@ -26,10 +26,16 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
@@ -39,6 +45,7 @@ import (
 
 const (
 	testingRealm = "testing"
+	alice        = "alice"
 )
 
 func chain(fs ...func()) func() {
@@ -51,6 +58,8 @@ func chain(fs ...func()) func() {
 	return ret
 }
 
+// setupKeyserver initializes a keyserver, but does not start it and does not
+// wait for it to sign anything.
 func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
@@ -79,7 +88,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 	cfg = &Config{
 		Realm:                testingRealm,
 		RatificationVerifier: sv.Threshold,
-		ID:                   common.RatifierID(sv),
+		ID:                   common.RatifierID(sv) << 32, // mark the keyserver
 		RatificationKey:      sk,
 
 		UpdateAddr:   "localhost:0",
@@ -88,10 +97,9 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 		UpdateTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
 		LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
 		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
-		//VerifierTLS: &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAnyClientCert},
 
 		MinEpochInterval:   0,
-		MaxEpochInterval:   0 * time.Millisecond,
+		MaxEpochInterval:   5 * time.Millisecond,
 		RetryEpochInterval: 1 * time.Millisecond,
 	}
 	db = leveldbkv.Wrap(ldb)
@@ -151,6 +159,38 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	}
 }
 
+func withServer(func(*testing.T, *Keyserver)) {
+}
+
+func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
+	cfg, db, _, caPool, _, teardown := setupKeyserver(t)
+	defer teardown()
+	ks, err := Open(cfg, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+
+	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := proto.NewE2EKSLookupClient(conn)
+	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{User: alice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != alice {
+		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+}
+
+// setupVerifier initializes a verifier, but does not start it and does not
+// wait for it to sign anything.
 func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
 	dir, err := ioutil.TempDir("", "verifier")
 	if err != nil {
@@ -185,46 +225,138 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.SignatureVerifier, keyser
 	return
 }
 
-func TestVerifierStartProgressStop(t *testing.T) {
-	cfg, db, caCert, caPool, caKey, serverTeardown := setupKeyserver(t)
-	defer serverTeardown()
-	// db = logkv.WithDefaultLogging(db)
-
-	vcfgBarrier := make(chan struct{})
-	var vcfg *verifier.Config
-
-	// the db writes are test output. We are waiting for epoch 2 to be ratified
-	// by the verifier and pushed to the server as a primitive progress check.
-	progressCh := make(chan struct{})
-	var closeOnce sync.Once
+// setupRealm initializes one keyserver and nVerifiers verifiers, and then
+// waits until each one of them has signed an epoch.
+func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, verifiers []uint64, teardown func()) {
+	cfg, db, caCert, caPool, caKey, teardown := setupKeyserver(t)
+	ksDone := make(chan struct{})
+	var ksDoneOnce sync.Once
 	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+		// We are waiting for an epoch to be ratified (in case there are no
+		// verifiers, blocking on them does not help).
 		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
 			return
 		}
-		var sr proto.SignedRatification
-		sr.Unmarshal(put.Value)
-		<-vcfgBarrier
-		if sr.Ratification.Epoch == 2 && sr.Ratifier == vcfg.ID {
-			closeOnce.Do(func() { close(progressCh) })
-		}
+		ksDoneOnce.Do(func() { close(ksDone) })
 	})
 
+	type doneVerifier struct {
+		teardown func()
+		id       uint64
+	}
+	ksBarrier := make(chan struct{})
+	doneVerifiers := make(chan doneVerifier, nVerifiers)
+	for i := 0; i < nVerifiers; i++ {
+		vrBarrier := make(chan struct{})
+		var verifierTeardown func()
+		var vcfg *verifier.Config
+		var doneOnce sync.Once
+		db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+			// We are waiting for epoch 1 to be ratified by the verifier and
+			// reach the client because before that lookups requiring this
+			// verifier will immediately fail.
+			if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+				return
+			}
+			var sr proto.SignedRatification
+			sr.Unmarshal(put.Value)
+			<-vrBarrier
+			if sr.Ratification.Epoch == 1 && sr.Ratifier == vcfg.ID {
+				doneOnce.Do(func() { doneVerifiers <- doneVerifier{verifierTeardown, vcfg.ID} })
+			}
+		})
+		go func(i int) {
+			var vdb kv.DB
+			<-ksBarrier
+			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			close(vrBarrier)
+
+			_, err := verifier.Start(vcfg, vdb)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}(i)
+	}
 	ks, err := Open(cfg, db)
 	if err != nil {
 		t.Fatal(err)
 	}
+	close(ksBarrier)
 	ks.Start()
-	defer ks.Stop()
+	teardown = chain(ks.Stop, teardown)
 
-	vcfg, vdb, verifierTeardown := setupVerifier(t, &proto.SignatureVerifier{Threshold: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
-	defer verifierTeardown()
-	close(vcfgBarrier)
+	<-ksDone
+	for i := 0; i < nVerifiers; i++ {
+		v := <-doneVerifiers
+		verifiers = append(verifiers, v.id)
+		teardown = chain(v.teardown, teardown)
+	}
+	return ks, caPool, verifiers, teardown
+}
 
-	vr, err := verifier.Start(vcfg, vdb)
+func TestKeyserverLookupRequireKeyserver(t *testing.T) {
+	ks, caPool, _, teardown := setupRealm(t, 0)
+	defer teardown()
+
+	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer vr.Stop()
+	c := proto.NewE2EKSLookupClient(conn)
+	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{
+		User: alice,
+		QuorumRequirement: &proto.QuorumExpr{
+			Threshold: 1,
+			Verifiers: []uint64{ks.id},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != alice {
+		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if len(proof.Ratifications) < 1 {
+		t.Errorf("expected 1 ratification, got %d", len(proof.Ratifications))
+	}
+}
 
-	<-progressCh
+func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
+	ks, caPool, verifiers, teardown := setupRealm(t, 3)
+	defer teardown()
+
+	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := proto.NewE2EKSLookupClient(conn)
+	proof, err := c.LookupProfile(context.TODO(), &proto.LookupProfileRequest{
+		User: alice,
+		QuorumRequirement: &proto.QuorumExpr{
+			Threshold: uint32(len(verifiers)),
+			Verifiers: verifiers,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != alice {
+		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if len(proof.Ratifications) < len(verifiers) {
+		t.Errorf("expected %d ratifications, got %d", len(verifiers), len(proof.Ratifications))
+	}
+	lastEpoch := uint64(0)
+	for i, r := range proof.Ratifications {
+		if lastEpoch > r.Ratification.Epoch {
+			t.Errorf("proof.Ratifications[%d].Ratification.Epoch > proof.Ratifications[%d].Ratification.Epoch (%d > %d), but the list is supposed to be oldest-first", i-1, i, lastEpoch, r.Ratification.Epoch)
+		}
+		lastEpoch = r.Ratification.Epoch
+	}
 }

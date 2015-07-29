@@ -6,6 +6,7 @@ message descriptors are split into three files:
 - `client.proto` -- all messages that are required for operation of a
   lightweight (stateful or stateless) client. Keyserver entries and server
   signature structures.
+- `config.proto` -- the client configuration.
 - `verifier.proto` -- everything that a verifier needs to use but a client does
   not. Pushing signatures, downloading update logs, etc.
 - `replication.proto` -- service-provider internal protocol, included here as a

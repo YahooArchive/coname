@@ -1,0 +1,42 @@
+// Copyright 2014-2015 The Dename Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
+//
+// 	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
+
+syntax = "proto3";
+package proto;
+import "gogoproto/gogo.proto";
+import "client.proto";
+
+message Config {
+	repeated RealmConfig realms = 1;
+}
+
+message RealmConfig {
+	// Domains specifies a list of domains that belong to this realm.
+	// Configuring one domain to belong to multiple realms is considered an
+	// error.
+	// TODO: support TLS-style wildcards.
+	repeated string domains = 1;
+	// Addr is the TCP (host:port) address of the keyserver GRPC interface.
+	string addr = 2;
+	// URL is the location of the secondary, HTTP-based interface to the
+	// keyserver. It is not necessarily on the same host as addr.
+	string URL = 3;
+	// Verifiers lists all verifiers from the keyserver itself to internal
+	// replicas of a single verifier operator.
+	map<uint64, SignatureVerifier> verifiers = 4;
+	// quorum_requirement specifies which verifiers must have ratified the
+	// result for it to be accepted. It is the convention to always require the
+	// keyserver's ratification here.
+	QuorumExpr quorum_requirement = 5;
+}

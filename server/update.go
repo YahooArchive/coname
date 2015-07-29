@@ -21,6 +21,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (ks *Keyserver) UpdateProfile(ctx context.Context, req *proto.SignedEntryUpdate) (*proto.LookupProof, error) {
+func (ks *Keyserver) UpdateProfile(ctx context.Context, req *proto.UpdateProfileRequest) (*proto.LookupProof, error) {
 	return nil, fmt.Errorf("UpdateProfile not implemented")
 }
