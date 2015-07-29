@@ -16,10 +16,6 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "timestamp.proto";
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.gostring_all) = true;
-option (gogoproto.stringer_all) = true;
-option (gogoproto.goproto_getters_all) = false;
 
 service E2EKSLookup {
 	rpc LookupProfile(LookupProfileRequest) returns (LookupProof);
@@ -42,8 +38,7 @@ message LookupProfileRequest {
 	// valid_at constrains the server to returning ratifications that will not
 	// expire before valid_at. A client might set this to its current time plus
 	// a lower bound of the round trip time to the server.
-	Timestamp valid_at = 4
-		[(gogoproto.customtype) = "Time", (gogoproto.nullable) = true];
+	Timestamp valid_at = 4;
 }
 
 // UpdateProfileRequest specifies an update and the quorum required for
@@ -210,8 +205,7 @@ message SignedRatification {
 		// keyserve will not be able to convince a client to a accept the
 		// previous state (assuming that all quorums it considers sufficient
 		// containt a correct and honest server).
-		Timestamp timestamp = 4
-			[(gogoproto.customtype) = "Time", (gogoproto.nullable) = false];
+		Timestamp timestamp = 4 [(gogoproto.nullable) = false];
 	}
 	// Ratifier contains the globally unique 64-bit identification number of
 	// the signer (the keyserver or the verifier). Each ratifier SHOULD be

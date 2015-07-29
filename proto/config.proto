@@ -16,10 +16,6 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
-option (gogoproto.goproto_stringer_all) = false;
-option (gogoproto.gostring_all) = true;
-option (gogoproto.stringer_all) = true;
-option (gogoproto.goproto_getters_all) = false;
 
 message Config {
 	repeated RealmConfig realms = 1;
