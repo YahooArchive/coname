@@ -72,8 +72,6 @@ message LookupProof {
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
 	bytes index_proof = 2;
-	// index is the key used for the authenticated mapping data structure.
-	bytes index = 3;
 	// ratifications contains signed directory state summaries for consecutive
 	// epochs, starting with the one as of which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
@@ -87,14 +85,14 @@ message LookupProof {
 	// may have no signatures on them. A client MUST ignore a proof if the
 	// ratifications do not satisfy its quorum requirement and MUST require the
 	// keyserver itself to be in the quorum.
-	repeated SignedEpochHead ratifications = 4;
+	repeated SignedEpochHead ratifications = 3;
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
-	bytes tree_proof = 5;
+	bytes tree_proof = 4;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry entry = 6;
-	Profile profile = 7;
+	Entry entry = 5;
+	Profile profile = 6;
 }
 
 // Entry is the value type in the authenticated mapping data structure.  The
