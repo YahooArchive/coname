@@ -28,7 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
-	"github.com/benbjohnson/clock"
+	"github.com/andres-erbsen/clock"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"

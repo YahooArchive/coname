@@ -32,8 +32,8 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/agl/ed25519"
+	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
-	"github.com/benbjohnson/clock"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/common/vrf"
