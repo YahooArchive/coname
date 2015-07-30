@@ -22,7 +22,7 @@ import (
 // log is a mapping from uint64 slot indices to []byte entries in which all
 // entries that have been committed are reliably persistent even throughout
 // machine crashes and data losses at a limited number of replicas. This is
-// achieved by trading off availability: proposing a new netry does not
+// achieved by trading off availability: proposing a new entry does not
 // necessarily mean it will be committed. One would use this interface
 // similarly to a local write-ahead log, except that this interface does not
 // support log compaction (it is intended for use when the entire log needs to

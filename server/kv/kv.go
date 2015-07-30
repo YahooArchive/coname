@@ -28,6 +28,7 @@ package kv
 type DB interface {
 	Get(key []byte) ([]byte, error)
 	Put(key, value []byte) error
+	Delete(key []byte) error
 	NewBatch() Batch
 	Write(Batch) error
 	NewIterator(*Range) Iterator
@@ -39,6 +40,7 @@ type DB interface {
 type Batch interface {
 	Reset()
 	Put(key, value []byte)
+	Delete(key []byte)
 }
 
 // Iterator is an abstract pointer to a DB entry. It must be valid to call
