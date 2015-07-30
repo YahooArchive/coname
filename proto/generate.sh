@@ -35,7 +35,7 @@ preserve EpochHead
 preserve PublicKey
 
 # preserve the encoding of repeated public keys
-sed -i 's/append(m.PulicKeys, &PublicKey{})/append(m.PulicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
+sed -i 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
 
 # skip the text format tests (we never use the text format)
 sed -i '/Test.*Text.*testing/a	t.Skip()' *_test.go

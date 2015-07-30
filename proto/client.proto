@@ -18,11 +18,11 @@ import "gogoproto/gogo.proto";
 import "timestamp.proto";
 
 service E2EKSLookup {
-	rpc LookupProfile(LookupRequest) returns (LookupProof);
+	rpc Lookup(LookupRequest) returns (LookupProof);
 }
 service E2EKSUpdate {
-	rpc LookupProfile(LookupRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
-	rpc UpdateProfile(UpdateRequest) returns (LookupProof);
+	rpc Lookup(LookupRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
+	rpc Update(UpdateRequest) returns (LookupProof);
 }
 
 message LookupRequest {
@@ -251,7 +251,7 @@ message PublicKey {
 message QuorumPublicKey {
 	QuorumExpr quorum = 1;
 	// PublicKeys must not contain a QuorumPublicKey.
-	repeated PublicKey pulic_keys = 2
+	repeated PublicKey public_keys = 2
 			[(gogoproto.customtype) = "PublicKey_PreserveEncoding"];
 }
 
@@ -263,7 +263,7 @@ message QuorumPublicKey {
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 message QuorumExpr {
 	uint32 threshold = 1; // required
-	repeated uint64 verifiers = 2;
+	repeated uint64 candidates = 2;
 	// QuorumExpr allows expressing contitions of the form "two out of these
 	// and three out of those".
 	// If an implementation chooses to ban recursive thresholding, it can do so

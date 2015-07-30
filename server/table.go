@@ -23,8 +23,8 @@ import (
 var (
 	tableReplicationLogPrefix byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
 	tableVerifierLogPrefix    byte = 'v' // index uint64 -> proto.VerifierStep
-	tableRatificationsPrefix  byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedRatification
-	tableSignedUpdatesPrefix  byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedRatification
+	tableRatificationsPrefix  byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedEpochHead
+	tableUpdateRequestsPrefix byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedEpochHead
 
 	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
@@ -44,9 +44,9 @@ func tableVerifierLog(index uint64) []byte {
 	return ret
 }
 
-func tableSignedUpdates(vrfidx []byte, epoch uint64) []byte {
+func tableUpdateRequests(vrfidx []byte, epoch uint64) []byte {
 	ret := make([]byte, 1+vrf.Size+8)
-	ret[0] = tableSignedUpdatesPrefix
+	ret[0] = tableUpdateRequestsPrefix
 	copy(ret[1:1+vrf.Size], vrfidx)
 	binary.BigEndian.PutUint64(ret[1+vrf.Size:1+vrf.Size+8], epoch)
 	return ret

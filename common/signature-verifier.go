@@ -36,7 +36,7 @@ func VerifySignature(pk *proto.PublicKey, message []byte, sigs map[uint64][]byte
 		return ed25519.Verify(&edpk, message, &copySig)
 	case pk.Quorum != nil:
 		have := make(map[uint64]struct{})
-		for _, pk2 := range pk.Quorum.PulicKeys {
+		for _, pk2 := range pk.Quorum.PublicKeys {
 			if VerifySignature(&pk2.PublicKey, message, sigs) {
 				have[KeyID(&pk2.PublicKey)] = struct{}{}
 			}

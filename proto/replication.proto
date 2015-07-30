@@ -26,14 +26,14 @@ message KeyserverStep {
 	uint64 UID = 1; // optional, for matching replies to clients. TODO: fixed64?
 	// TODO: should all fields in a oneof have their own types for extensibility?
 	oneof type {
-		// update is appended to the log when it is received from a client and
+		// Update is appended to the log when it is received from a client and
 		// has passed pre-validation. However, since pre-validation is not
 		// final, "success" should not be returned to the client until after the
 		// update has been applied and ratified.
 		// update is applied to the keyserver state as soon as it has been
 		// committed to the log.
-		SignedEntryUpdate update = 2;
-		// epoch_delimiter is appended to the log by a leader (not necessarily
+		UpdateRequest update = 2;
+		// EpochDelimiter is appended to the log by a leader (not necessarily
 		// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
 		// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
 		// Between these times, an epoch delimiter is appended as soon as an
@@ -42,16 +42,17 @@ message KeyserverStep {
 		// it may happen that an epoch delimiter with a epoch number not higher
 		// than the previous gets committed to the log. It must be ignored.
 		EpochDelimiter epoch_delimiter = 3;
-		// replica_ratification for the last epoch is appended to the log
+		// ReplicaSigned for the last epoch is appended to the log
 		// when the epoch_delimiter is committed.
-		// After some majority of the replicas has ratified the state, their
-		// signatures make up the keyserver signature. As combining signatures
-		// is deterministic, no new log entry is appended to record that.
-		SignedEpochHead replica_ratification = 4;
-		// verifier_ratification is appended for each new ratification received
+		// After some majority of the replicas has signed the next
+		// TimestampedEpochHead; their signatures make up the keyserver
+		// signature. As combining signatures is deterministic, no new log
+		// entry is appended to record that.
+		SignedEpochHead replica_signed = 4;
+		// VerifierSigned is appended for each new SignedEpochHead received
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
-		SignedEpochHead verifier_ratification = 5;
+		SignedEpochHead verifier_signed = 5;
 	}
 }
 

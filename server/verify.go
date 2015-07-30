@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
 
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
@@ -27,7 +28,7 @@ import (
 // VerifierStream implements the interfaceE2EKSVerification interface from proto/verifier.proto
 func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream proto.E2EKSVerification_VerifierStreamServer) error {
 	var step proto.VerifierStep // stack-allocate db read buffer
-	for start, limit := rq.Start, rq.Limit; start < limit; {
+	for start, limit := rq.Start, saturatingAdd(rq.Start, rq.PageSize); start < limit; {
 		// Try a kv.Range range scan first because it is the fastest. If this
 		// does not satisfy the entire request (because the future entries have
 		// not been generated yet), use ks.vmb to wait for new entries, falling
@@ -87,13 +88,13 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 }
 
 // PushRatification implements the interfaceE2EKSVerification interface from proto/verifier.proto
-func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedRatification) (*proto.Nothing, error) {
+func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedEpochHead) (*proto.Nothing, error) {
 	// FIXME: verify the ratifier signature (tricky: where do we keep verifier pk-s?)
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{
-		UID:                  uid,
-		VerifierRatification: r,
+		UID:            uid,
+		VerifierSigned: r,
 	}))
 	select {
 	case <-ctx.Done():
@@ -113,12 +114,17 @@ func (ks *Keyserver) verifierLogAppend(m *proto.VerifierStep, rs *proto.ReplicaS
 	// m : *mut // RECURSIVE transfer of ownership
 	// ks : &const // read-only
 	// rs, wb : &mut
-	if m.EntryChanged != nil {
-		m.EntryChanged.Profile = nil
-	}
 	wb.Put(tableVerifierLog(rs.NextIndexVerifier), proto.MustMarshal(m))
 	rs.NextIndexVerifier++
 	return func() {
 		ks.vmb.Send(m)
 	}
+}
+
+func saturatingAdd(a, b uint64) uint64 {
+	ret := a + b
+	if ret < a || ret < b {
+		return math.MaxUint64
+	}
+	return ret
 }

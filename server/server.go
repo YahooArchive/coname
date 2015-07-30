@@ -28,6 +28,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
+	"github.com/benbjohnson/clock"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
@@ -45,8 +46,8 @@ import (
 type Config struct {
 	Realm string
 
-	ID                   uint64
-	RatificationVerifier *proto.SignatureVerifier_ThresholdVerifier
+	ServerID, ReplicaID  uint64
+	RatificationVerifier *proto.QuorumPublicKey
 	RatificationKey      *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
 	VRFSecret            *[vrf.SecretKeySize]byte
 
@@ -59,12 +60,12 @@ type Config struct {
 
 // Keyserver manages a single end-to-end keyserver realm.
 type Keyserver struct {
-	realm                string
-	ratificationVerifier *proto.SignatureVerifier_ThresholdVerifier
-	id                   uint64
+	realm               string
+	sehVerifier         *proto.QuorumPublicKey
+	serverID, replicaID uint64
 
 	thresholdSigningIndex uint32
-	ratificationKey       *[ed25519.PrivateKeySize]byte
+	sehKey                *[ed25519.PrivateKeySize]byte
 	vrfSecret             *[vrf.SecretKeySize]byte
 
 	db  kv.DB
@@ -76,11 +77,12 @@ type Keyserver struct {
 
 	minEpochInterval, maxEpochInterval, retryEpochInterval time.Duration
 
+	clk clock.Clock
 	// state used for determining whether we should start a new epoch.
 	// see replication.proto for explanation.
 	leaderHint, canEpoch, mustEpoch       bool
 	leaderHintSet                         <-chan bool
-	canEpochSet, mustEpochSet, retryEpoch *time.Timer
+	canEpochSet, mustEpochSet, retryEpoch *clock.Timer
 	// rs.PendingUpdates is used as well
 
 	vmb *VerifierBroadcast
@@ -93,33 +95,35 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
+func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	log, err := kvlog.New(db, []byte{tableReplicationLogPrefix})
 	if err != nil {
 		return nil, err
 	}
 
 	ks = &Keyserver{
-		realm:                cfg.Realm,
-		id:                   cfg.ID,
-		ratificationVerifier: cfg.RatificationVerifier,
-		ratificationKey:      cfg.RatificationKey,
-		vrfSecret:            cfg.VRFSecret,
-		minEpochInterval:     cfg.MinEpochInterval,
-		maxEpochInterval:     cfg.MaxEpochInterval,
-		retryEpochInterval:   cfg.RetryEpochInterval,
-		db:                   db,
-		log:                  log,
-		stop:                 make(chan struct{}),
-		wr:                   NewWaitingRoom(),
+		realm:              cfg.Realm,
+		serverID:           cfg.ServerID,
+		replicaID:          cfg.ReplicaID,
+		sehVerifier:        cfg.RatificationVerifier,
+		sehKey:             cfg.RatificationKey,
+		vrfSecret:          cfg.VRFSecret,
+		minEpochInterval:   cfg.MinEpochInterval,
+		maxEpochInterval:   cfg.MaxEpochInterval,
+		retryEpochInterval: cfg.RetryEpochInterval,
+		db:                 db,
+		log:                log,
+		stop:               make(chan struct{}),
+		wr:                 NewWaitingRoom(),
 
 		// TODO: change when using actual replication
 		leaderHint:    true,
 		leaderHintSet: nil,
 
-		canEpochSet:  time.NewTimer(0),
-		mustEpochSet: time.NewTimer(0),
-		retryEpoch:   time.NewTimer(0),
+		clk:          clk,
+		canEpochSet:  clk.Timer(0),
+		mustEpochSet: clk.Timer(0),
+		retryEpoch:   clk.Timer(0),
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
@@ -132,6 +136,7 @@ func Open(cfg *Config, db kv.DB) (ks *Keyserver, err error) {
 	default:
 		return nil, err
 	}
+	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
 
 	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
@@ -177,7 +182,6 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
-	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
 	ks.waitStop.Add(1)
 	go func() { ks.run(); ks.waitStop.Done() }()
 }
@@ -256,14 +260,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	// step, rs, wb: &mut
 	switch {
 	case step.Update != nil:
-		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update); err != nil {
+		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update.Update); err != nil {
 			// TODO: return the client-bound error code
 			return
 		}
 		// TODO(dmz): set entry in tree
 		rs.PendingUpdates = true
-		wb.Put(tableSignedUpdates(step.Update.Update.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
-		return ks.verifierLogAppend(&proto.VerifierStep{EntryChanged: step.Update}, rs, wb)
+		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
+		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
 			return // a duplicate of this step has already been handled
@@ -271,27 +276,27 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
-		ratification := &proto.SignedRatification{
-			Ratifier: ks.id,
-			Ratification: proto.SignedRatification_RatificationT_PreserveEncoding{proto.SignedRatification_RatificationT{
-				Realm: ks.realm,
-				Epoch: step.EpochDelimiter.EpochNumber,
-				Summary: proto.SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding{proto.SignedRatification_RatificationT_KeyserverStateSummary{
+
+		seh := &proto.SignedEpochHead{
+			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
+				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
 					RootHash:            nil, // TODO(dmz): ret.TreeProof = merklemap.GetRootHash()
 					PreviousSummaryHash: rs.PreviousSummaryHash,
+					Realm:               ks.realm,
+					Epoch:               step.EpochDelimiter.EpochNumber,
 				}, nil},
 				Timestamp: step.EpochDelimiter.Timestamp,
 			}, nil},
+			Signature: make(map[uint64][]byte, 1),
 		}
-		ratification.Ratification.Summary.UpdateEncoding()
-		h := sha256.Sum256(ratification.Ratification.Summary.PreservedEncoding)
+
+		seh.Head.Head.UpdateEncoding()
+		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
 		rs.PreviousSummaryHash = h[:]
-		ratification.Ratification.UpdateEncoding()
-		ratification.Signature = proto.MustMarshal(&proto.ThresholdSignature{
-			KeyIndex:  []uint32{ks.thresholdSigningIndex},
-			Signature: [][]byte{ed25519.Sign(ks.ratificationKey, proto.MustMarshal(&ratification.Ratification))[:]},
-		})
-		ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{ReplicaRatification: ratification}))
+
+		seh.Head.UpdateEncoding()
+		seh.Signature[ks.replicaID] = ed25519.Sign(ks.sehKey, proto.MustMarshal(&seh.Head))[:]
+		ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
 		// TODO: Propose may fail silently when replicas crash. We want to
 		// keep retrying ReplicaRatifications because if not enough of
 		// them go in, the epoch will not be properly signed. Note that it
@@ -300,46 +305,51 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// verifiers will block indefinitely. It may or may not be worth
 		// unifying this with epoch delimiter retry logic -- we need one epoch
 		// delimiter per cluster but a majority of replicas need to sign.
-	case step.ReplicaRatification != nil:
-		rNew := step.ReplicaRatification
-		dbkey := tableRatifications(rNew.Ratification.Epoch, rNew.Ratifier)
+
+	case step.ReplicaSigned != nil:
+		rNew := step.ReplicaSigned
+		dbkey := tableRatifications(rNew.Head.Head.Epoch, ks.serverID)
 		switch rExistingBytes, err := ks.db.Get(dbkey); err {
-		case nil:
-			rExisting := new(proto.SignedRatification)
-			if err := rExisting.Unmarshal(rExistingBytes); err != nil {
-				log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s", rNew.Ratification.Epoch, rNew.Ratifier, err)
-			}
-			sigNew := new(proto.ThresholdSignature)
-			if err := sigNew.Unmarshal(rExisting.Signature); err != nil {
-				log.Panicf("log[%d].step.ReplicaRatification.Signature invalid protobuf: %s", ks.rs.NextIndexLog, err)
-			}
-			sigExisting := new(proto.ThresholdSignature)
-			if err := sigExisting.Unmarshal(rExisting.Signature); err != nil {
-				log.Panicf("tableRatifications(%d, %d).Signature invalid protobuf (this is our ID!): %s", rExisting.Ratification.Epoch, rExisting.Ratifier, err)
-			}
-			common.MergeThresholdSignatures(sigExisting, sigNew)
-			rExisting.Signature = proto.MustMarshal(sigExisting)
-			wb.Put(dbkey, proto.MustMarshal(rExisting))
-			rNew = rExisting
+		default: // not nil and not ignored
+			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", rNew.Head.Head.Epoch, ks.serverID, err)
 		case ks.db.ErrNotFound():
 			wb.Put(dbkey, proto.MustMarshal(rNew))
-		default:
-			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", rNew.Ratification.Epoch, rNew.Ratifier, err)
+		case nil:
+			rExisting := new(proto.SignedEpochHead)
+			if err := rExisting.Unmarshal(rExistingBytes); err != nil {
+				log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s", rNew.Head.Head.Epoch, ks.serverID, err)
+			}
+			if !rExisting.Head.Equal(rNew.Head) {
+				log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)", rNew.Head.Head.Epoch, ks.serverID, rExisting.Head.VerboseEqual(rNew.Head), rExisting.Head, rNew.Head)
+			}
+			for id, sig := range rNew.Signature {
+				if _, already := rExisting.Signature[id]; !already {
+					rExisting.Signature[id] = sig
+				}
+			}
+			wb.Put(dbkey, proto.MustMarshal(rExisting))
+			rNew = rExisting
 		}
 		// TODO: check against the cluster configuration that the signatures we
 		// have are sufficient to pass verification. For now, 1 is a majority of 1.
 		// Only put signatures into the verifier log once.
 		if true {
-			// FIXME: make sure ratifications in verifier log are ordered by epoch
-			return ks.verifierLogAppend(&proto.VerifierStep{KeyserverRatified: rNew}, rs, wb)
+			// FIXME: make sure sehs in verifier log are ordered by epoch
+			return ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
 		}
-	case step.VerifierRatification != nil:
-		rNew := step.VerifierRatification
-		dbkey := tableRatifications(rNew.Ratification.Epoch, rNew.Ratifier)
-		wb.Put(dbkey, proto.MustMarshal(rNew))
-		uid := step.UID // use the literal uint64 in the closure, not step ptr
-		return func() {
-			ks.wr.Notify(uid, nil)
+	case step.VerifierSigned != nil:
+		rNew := step.VerifierSigned
+		for id := range rNew.Signature {
+			if id == ks.serverID {
+				log.Printf("verifier sent us an acclaimed signature with our id :/")
+				continue
+			}
+			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
+			wb.Put(dbkey, proto.MustMarshal(rNew))
+			uid := step.UID // use a copy of the uint64 in the closure, not pass-by-reference
+			return func() {
+				ks.wr.Notify(uid, nil)
+			}
 		}
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
@@ -360,7 +370,7 @@ func (ks *Keyserver) maybeEpoch() {
 	}
 	ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
 		EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
-		Timestamp:   proto.Time(time.Now()),
+		Timestamp:   proto.Time(ks.clk.Now()),
 	}}))
 	ks.canEpochSet.Stop()
 	ks.mustEpochSet.Stop()
@@ -368,8 +378,10 @@ func (ks *Keyserver) maybeEpoch() {
 }
 
 func (ks *Keyserver) resetEpochTimers(t time.Time) {
-	ks.canEpochSet.Reset(t.Add(ks.minEpochInterval).Sub(time.Now()))
-	ks.mustEpochSet.Reset(t.Add(ks.maxEpochInterval).Sub(time.Now()))
+	t2 := t.Add(ks.minEpochInterval)
+	d := t2.Sub(ks.clk.Now())
+	ks.canEpochSet.Reset(d)
+	ks.mustEpochSet.Reset(d)
 	ks.retryEpoch.Stop()
 	ks.canEpoch = false
 	ks.mustEpoch = false

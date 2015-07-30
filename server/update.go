@@ -21,6 +21,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (ks *Keyserver) UpdateProfile(ctx context.Context, req *proto.UpdateProfileRequest) (*proto.LookupProof, error) {
+// Update implements proto.E2EKS.UpdateServer
+func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
 	return nil, fmt.Errorf("UpdateProfile not implemented")
 }

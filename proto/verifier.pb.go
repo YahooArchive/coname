@@ -29,8 +29,12 @@ var _ = proto1.Marshal
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
 type VerifierStreamRequest struct {
+	// Start identifies the first epoch for which verifier steps should be
+	// returned.
 	Start uint64 `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
-	Limit uint64 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// PageSize specifies number of entries to be returned, MaxUint64 for
+	// unlimited.
+	PageSize uint64 `protobuf:"varint,2,opt,name=page_size,proto3" json:"page_size,omitempty"`
 }
 
 func (m *VerifierStreamRequest) Reset()      { *m = VerifierStreamRequest{} }
@@ -39,23 +43,23 @@ func (*VerifierStreamRequest) ProtoMessage() {}
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
 type VerifierStep struct {
-	EntryChanged      *SignedEntryUpdate `protobuf:"bytes,1,opt,name=entry_changed" json:"entry_changed,omitempty"`
-	KeyserverRatified *SignedEpochHead   `protobuf:"bytes,2,opt,name=keyserver_ratified" json:"keyserver_ratified,omitempty"`
+	Update *SignedEntryUpdate `protobuf:"bytes,1,opt" json:"Update,omitempty"`
+	Epoch  *SignedEpochHead   `protobuf:"bytes,2,opt" json:"Epoch,omitempty"`
 }
 
 func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
 func (*VerifierStep) ProtoMessage() {}
 
-func (m *VerifierStep) GetEntryChanged() *SignedEntryUpdate {
+func (m *VerifierStep) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
-		return m.EntryChanged
+		return m.Update
 	}
 	return nil
 }
 
-func (m *VerifierStep) GetKeyserverRatified() *SignedEpochHead {
+func (m *VerifierStep) GetEpoch() *SignedEpochHead {
 	if m != nil {
-		return m.KeyserverRatified
+		return m.Epoch
 	}
 	return nil
 }
@@ -235,8 +239,8 @@ func (this *VerifierStreamRequest) VerboseEqual(that interface{}) error {
 	if this.Start != that1.Start {
 		return fmt.Errorf("Start this(%v) Not Equal that(%v)", this.Start, that1.Start)
 	}
-	if this.Limit != that1.Limit {
-		return fmt.Errorf("Limit this(%v) Not Equal that(%v)", this.Limit, that1.Limit)
+	if this.PageSize != that1.PageSize {
+		return fmt.Errorf("PageSize this(%v) Not Equal that(%v)", this.PageSize, that1.PageSize)
 	}
 	return nil
 }
@@ -263,7 +267,7 @@ func (this *VerifierStreamRequest) Equal(that interface{}) bool {
 	if this.Start != that1.Start {
 		return false
 	}
-	if this.Limit != that1.Limit {
+	if this.PageSize != that1.PageSize {
 		return false
 	}
 	return true
@@ -288,11 +292,11 @@ func (this *VerifierStep) VerboseEqual(that interface{}) error {
 	} else if this == nil {
 		return fmt.Errorf("that is type *VerifierStepbut is not nil && this == nil")
 	}
-	if !this.EntryChanged.Equal(that1.EntryChanged) {
-		return fmt.Errorf("EntryChanged this(%v) Not Equal that(%v)", this.EntryChanged, that1.EntryChanged)
+	if !this.Update.Equal(that1.Update) {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
 	}
-	if !this.KeyserverRatified.Equal(that1.KeyserverRatified) {
-		return fmt.Errorf("KeyserverRatified this(%v) Not Equal that(%v)", this.KeyserverRatified, that1.KeyserverRatified)
+	if !this.Epoch.Equal(that1.Epoch) {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
 	}
 	return nil
 }
@@ -316,10 +320,10 @@ func (this *VerifierStep) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
-	if !this.EntryChanged.Equal(that1.EntryChanged) {
+	if !this.Update.Equal(that1.Update) {
 		return false
 	}
-	if !this.KeyserverRatified.Equal(that1.KeyserverRatified) {
+	if !this.Epoch.Equal(that1.Epoch) {
 		return false
 	}
 	return true
@@ -374,7 +378,7 @@ func (this *VerifierStreamRequest) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
 		`Start:` + fmt.Sprintf("%#v", this.Start),
-		`Limit:` + fmt.Sprintf("%#v", this.Limit) + `}`}, ", ")
+		`PageSize:` + fmt.Sprintf("%#v", this.PageSize) + `}`}, ", ")
 	return s
 }
 func (this *VerifierStep) GoString() string {
@@ -382,8 +386,8 @@ func (this *VerifierStep) GoString() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&proto.VerifierStep{` +
-		`EntryChanged:` + fmt.Sprintf("%#v", this.EntryChanged),
-		`KeyserverRatified:` + fmt.Sprintf("%#v", this.KeyserverRatified) + `}`}, ", ")
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch) + `}`}, ", ")
 	return s
 }
 func valueToGoStringVerifier(v interface{}, typ string) string {
@@ -431,10 +435,10 @@ func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintVerifier(data, i, uint64(m.Start))
 	}
-	if m.Limit != 0 {
+	if m.PageSize != 0 {
 		data[i] = 0x10
 		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Limit))
+		i = encodeVarintVerifier(data, i, uint64(m.PageSize))
 	}
 	return i, nil
 }
@@ -454,21 +458,21 @@ func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if m.EntryChanged != nil {
+	if m.Update != nil {
 		data[i] = 0xa
 		i++
-		i = encodeVarintVerifier(data, i, uint64(m.EntryChanged.Size()))
-		n1, err := m.EntryChanged.MarshalTo(data[i:])
+		i = encodeVarintVerifier(data, i, uint64(m.Update.Size()))
+		n1, err := m.Update.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
 	}
-	if m.KeyserverRatified != nil {
+	if m.Epoch != nil {
 		data[i] = 0x12
 		i++
-		i = encodeVarintVerifier(data, i, uint64(m.KeyserverRatified.Size()))
-		n2, err := m.KeyserverRatified.MarshalTo(data[i:])
+		i = encodeVarintVerifier(data, i, uint64(m.Epoch.Size()))
+		n2, err := m.Epoch.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -525,7 +529,7 @@ func encodeVarintVerifier(data []byte, offset int, v uint64) int {
 func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStreamRequest {
 	this := &VerifierStreamRequest{}
 	this.Start = uint64(uint64(r.Uint32()))
-	this.Limit = uint64(uint64(r.Uint32()))
+	this.PageSize = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -534,10 +538,10 @@ func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStre
 func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
 	this := &VerifierStep{}
 	if r.Intn(10) != 0 {
-		this.EntryChanged = NewPopulatedSignedEntryUpdate(r, easy)
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
 	}
 	if r.Intn(10) != 0 {
-		this.KeyserverRatified = NewPopulatedSignedEpochHead(r, easy)
+		this.Epoch = NewPopulatedSignedEpochHead(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -629,8 +633,8 @@ func (m *VerifierStreamRequest) Size() (n int) {
 	if m.Start != 0 {
 		n += 1 + sovVerifier(uint64(m.Start))
 	}
-	if m.Limit != 0 {
-		n += 1 + sovVerifier(uint64(m.Limit))
+	if m.PageSize != 0 {
+		n += 1 + sovVerifier(uint64(m.PageSize))
 	}
 	return n
 }
@@ -638,12 +642,12 @@ func (m *VerifierStreamRequest) Size() (n int) {
 func (m *VerifierStep) Size() (n int) {
 	var l int
 	_ = l
-	if m.EntryChanged != nil {
-		l = m.EntryChanged.Size()
+	if m.Update != nil {
+		l = m.Update.Size()
 		n += 1 + l + sovVerifier(uint64(l))
 	}
-	if m.KeyserverRatified != nil {
-		l = m.KeyserverRatified.Size()
+	if m.Epoch != nil {
+		l = m.Epoch.Size()
 		n += 1 + l + sovVerifier(uint64(l))
 	}
 	return n
@@ -674,7 +678,7 @@ func (this *VerifierStreamRequest) String() string {
 	}
 	s := strings.Join([]string{`&VerifierStreamRequest{`,
 		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
-		`Limit:` + fmt.Sprintf("%v", this.Limit) + `,`,
+		`PageSize:` + fmt.Sprintf("%v", this.PageSize) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -684,8 +688,8 @@ func (this *VerifierStep) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&VerifierStep{`,
-		`EntryChanged:` + strings.Replace(fmt.Sprintf("%v", this.EntryChanged), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`KeyserverRatified:` + strings.Replace(fmt.Sprintf("%v", this.KeyserverRatified), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Epoch:` + strings.Replace(fmt.Sprintf("%v", this.Epoch), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -744,16 +748,16 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PageSize", wireType)
 			}
-			m.Limit = 0
+			m.PageSize = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Limit |= (uint64(b) & 0x7F) << shift
+				m.PageSize |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -802,7 +806,7 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EntryChanged", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -820,16 +824,16 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.EntryChanged == nil {
-				m.EntryChanged = &SignedEntryUpdate{}
+			if m.Update == nil {
+				m.Update = &SignedEntryUpdate{}
 			}
-			if err := m.EntryChanged.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field KeyserverRatified", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -847,10 +851,10 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.KeyserverRatified == nil {
-				m.KeyserverRatified = &SignedEpochHead{}
+			if m.Epoch == nil {
+				m.Epoch = &SignedEpochHead{}
 			}
-			if err := m.KeyserverRatified.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Epoch.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

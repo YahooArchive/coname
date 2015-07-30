@@ -9,7 +9,7 @@ func CheckQuorum(want *proto.QuorumExpr, have map[uint64]struct{}) bool {
 		return true // no requirements
 	}
 	var n uint32
-	for _, verifier := range want.Verifiers {
+	for _, verifier := range want.Candidates {
 		if _, yes := have[verifier]; yes {
 			n++
 		}
@@ -30,12 +30,12 @@ func ListQuorum(e *proto.QuorumExpr, out map[uint64]struct{}) map[uint64]struct{
 	}
 	if out == nil {
 		var l int
-		if e.Verifiers != nil {
-			l = len(e.Verifiers)
+		if e.Candidates != nil {
+			l = len(e.Candidates)
 		}
 		out = make(map[uint64]struct{}, l)
 	}
-	for _, verifier := range e.Verifiers {
+	for _, verifier := range e.Candidates {
 		out[verifier] = struct{}{}
 	}
 	for _, e := range e.Subexpressions {

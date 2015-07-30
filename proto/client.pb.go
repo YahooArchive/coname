@@ -394,7 +394,7 @@ func (m *PublicKey) GetQuorum() *QuorumPublicKey {
 type QuorumPublicKey struct {
 	Quorum *QuorumExpr `protobuf:"bytes,1,opt,name=quorum" json:"quorum,omitempty"`
 	// PublicKeys must not contain a QuorumPublicKey.
-	PulicKeys []*PublicKey_PreserveEncoding `protobuf:"bytes,2,rep,name=pulic_keys,customtype=PublicKey_PreserveEncoding" json:"pulic_keys,omitempty"`
+	PublicKeys []*PublicKey_PreserveEncoding `protobuf:"bytes,2,rep,name=public_keys,customtype=PublicKey_PreserveEncoding" json:"public_keys,omitempty"`
 }
 
 func (m *QuorumPublicKey) Reset()      { *m = QuorumPublicKey{} }
@@ -414,8 +414,8 @@ func (m *QuorumPublicKey) GetQuorum() *QuorumExpr {
 // - number of subexpressions that evaluate to true
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 type QuorumExpr struct {
-	Threshold uint32   `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Verifiers []uint64 `protobuf:"varint,2,rep,name=verifiers" json:"verifiers,omitempty"`
+	Threshold  uint32   `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Candidates []uint64 `protobuf:"varint,2,rep,name=candidates" json:"candidates,omitempty"`
 	// QuorumExpr allows expressing contitions of the form "two out of these
 	// and three out of those".
 	// If an implementation chooses to ban recursive thresholding, it can do so
@@ -436,7 +436,7 @@ func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 // Client API for E2EKSLookup service
 
 type E2EKSLookupClient interface {
-	LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
 }
 
 type e2EKSLookupClient struct {
@@ -447,9 +447,9 @@ func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
 	return &e2EKSLookupClient{cc}
 }
 
-func (c *e2EKSLookupClient) LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSLookupClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/LookupProfile", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -459,19 +459,19 @@ func (c *e2EKSLookupClient) LookupProfile(ctx context.Context, in *LookupRequest
 // Server API for E2EKSLookup service
 
 type E2EKSLookupServer interface {
-	LookupProfile(context.Context, *LookupRequest) (*LookupProof, error)
+	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
 }
 
 func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
 	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
 }
 
-func _E2EKSLookup_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _E2EKSLookup_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(LookupRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSLookupServer).LookupProfile(ctx, in)
+	out, err := srv.(E2EKSLookupServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -483,8 +483,8 @@ var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*E2EKSLookupServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "LookupProfile",
-			Handler:    _E2EKSLookup_LookupProfile_Handler,
+			MethodName: "Lookup",
+			Handler:    _E2EKSLookup_Lookup_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -493,8 +493,8 @@ var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
 // Client API for E2EKSUpdate service
 
 type E2EKSUpdateClient interface {
-	LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
-	UpdateProfile(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
 }
 
 type e2EKSUpdateClient struct {
@@ -505,18 +505,18 @@ func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
 	return &e2EKSUpdateClient{cc}
 }
 
-func (c *e2EKSUpdateClient) LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSUpdateClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/LookupProfile", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSUpdateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/UpdateProfile", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Update", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -526,32 +526,32 @@ func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *UpdateRequest
 // Server API for E2EKSUpdate service
 
 type E2EKSUpdateServer interface {
-	LookupProfile(context.Context, *LookupRequest) (*LookupProof, error)
-	UpdateProfile(context.Context, *UpdateRequest) (*LookupProof, error)
+	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
+	Update(context.Context, *UpdateRequest) (*LookupProof, error)
 }
 
 func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
 	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
 }
 
-func _E2EKSUpdate_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _E2EKSUpdate_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(LookupRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSUpdateServer).LookupProfile(ctx, in)
+	out, err := srv.(E2EKSUpdateServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _E2EKSUpdate_UpdateProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _E2EKSUpdate_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(UpdateRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSUpdateServer).UpdateProfile(ctx, in)
+	out, err := srv.(E2EKSUpdateServer).Update(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -563,12 +563,12 @@ var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*E2EKSUpdateServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "LookupProfile",
-			Handler:    _E2EKSUpdate_LookupProfile_Handler,
+			MethodName: "Lookup",
+			Handler:    _E2EKSUpdate_Lookup_Handler,
 		},
 		{
-			MethodName: "UpdateProfile",
-			Handler:    _E2EKSUpdate_UpdateProfile_Handler,
+			MethodName: "Update",
+			Handler:    _E2EKSUpdate_Update_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},
@@ -1279,12 +1279,12 @@ func (this *QuorumPublicKey) VerboseEqual(that interface{}) error {
 	if !this.Quorum.Equal(that1.Quorum) {
 		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
 	}
-	if len(this.PulicKeys) != len(that1.PulicKeys) {
-		return fmt.Errorf("PulicKeys this(%v) Not Equal that(%v)", len(this.PulicKeys), len(that1.PulicKeys))
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
 	}
-	for i := range this.PulicKeys {
-		if !this.PulicKeys[i].Equal(that1.PulicKeys[i]) {
-			return fmt.Errorf("PulicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PulicKeys[i], i, that1.PulicKeys[i])
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
 		}
 	}
 	return nil
@@ -1312,11 +1312,11 @@ func (this *QuorumPublicKey) Equal(that interface{}) bool {
 	if !this.Quorum.Equal(that1.Quorum) {
 		return false
 	}
-	if len(this.PulicKeys) != len(that1.PulicKeys) {
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
 		return false
 	}
-	for i := range this.PulicKeys {
-		if !this.PulicKeys[i].Equal(that1.PulicKeys[i]) {
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
 			return false
 		}
 	}
@@ -1345,12 +1345,12 @@ func (this *QuorumExpr) VerboseEqual(that interface{}) error {
 	if this.Threshold != that1.Threshold {
 		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
 	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return fmt.Errorf("Verifiers this(%v) Not Equal that(%v)", len(this.Verifiers), len(that1.Verifiers))
+	if len(this.Candidates) != len(that1.Candidates) {
+		return fmt.Errorf("Candidates this(%v) Not Equal that(%v)", len(this.Candidates), len(that1.Candidates))
 	}
-	for i := range this.Verifiers {
-		if this.Verifiers[i] != that1.Verifiers[i] {
-			return fmt.Errorf("Verifiers this[%v](%v) Not Equal that[%v](%v)", i, this.Verifiers[i], i, that1.Verifiers[i])
+	for i := range this.Candidates {
+		if this.Candidates[i] != that1.Candidates[i] {
+			return fmt.Errorf("Candidates this[%v](%v) Not Equal that[%v](%v)", i, this.Candidates[i], i, that1.Candidates[i])
 		}
 	}
 	if len(this.Subexpressions) != len(that1.Subexpressions) {
@@ -1386,11 +1386,11 @@ func (this *QuorumExpr) Equal(that interface{}) bool {
 	if this.Threshold != that1.Threshold {
 		return false
 	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
+	if len(this.Candidates) != len(that1.Candidates) {
 		return false
 	}
-	for i := range this.Verifiers {
-		if this.Verifiers[i] != that1.Verifiers[i] {
+	for i := range this.Candidates {
+		if this.Candidates[i] != that1.Candidates[i] {
 			return false
 		}
 	}
@@ -1552,7 +1552,7 @@ func (this *QuorumPublicKey) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.QuorumPublicKey{` +
 		`Quorum:` + fmt.Sprintf("%#v", this.Quorum),
-		`PulicKeys:` + fmt.Sprintf("%#v", this.PulicKeys) + `}`}, ", ")
+		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys) + `}`}, ", ")
 	return s
 }
 func (this *QuorumExpr) GoString() string {
@@ -1561,7 +1561,7 @@ func (this *QuorumExpr) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.QuorumExpr{` +
 		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
-		`Verifiers:` + fmt.Sprintf("%#v", this.Verifiers),
+		`Candidates:` + fmt.Sprintf("%#v", this.Candidates),
 		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
 	return s
 }
@@ -2109,8 +2109,8 @@ func (m *QuorumPublicKey) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n13
 	}
-	if len(m.PulicKeys) > 0 {
-		for _, msg := range m.PulicKeys {
+	if len(m.PublicKeys) > 0 {
+		for _, msg := range m.PublicKeys {
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(msg.Size()))
@@ -2144,8 +2144,8 @@ func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Threshold))
 	}
-	if len(m.Verifiers) > 0 {
-		for _, num := range m.Verifiers {
+	if len(m.Candidates) > 0 {
+		for _, num := range m.Candidates {
 			data[i] = 0x10
 			i++
 			i = encodeVarintClient(data, i, uint64(num))
@@ -2408,9 +2408,9 @@ func NewPopulatedQuorumPublicKey(r randyClient, easy bool) *QuorumPublicKey {
 	}
 	if r.Intn(10) != 0 {
 		v27 := r.Intn(2)
-		this.PulicKeys = make([]*PublicKey_PreserveEncoding, v27)
+		this.PublicKeys = make([]*PublicKey_PreserveEncoding, v27)
 		for i := 0; i < v27; i++ {
-			this.PulicKeys[i] = NewPopulatedPublicKey_PreserveEncoding(r, easy)
+			this.PublicKeys[i] = NewPopulatedPublicKey_PreserveEncoding(r, easy)
 		}
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2422,9 +2422,9 @@ func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
 	v28 := r.Intn(100)
-	this.Verifiers = make([]uint64, v28)
+	this.Candidates = make([]uint64, v28)
 	for i := 0; i < v28; i++ {
-		this.Verifiers[i] = uint64(uint64(r.Uint32()))
+		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
 		v29 := r.Intn(2)
@@ -2730,8 +2730,8 @@ func (m *QuorumPublicKey) Size() (n int) {
 		l = m.Quorum.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if len(m.PulicKeys) > 0 {
-		for _, e := range m.PulicKeys {
+	if len(m.PublicKeys) > 0 {
+		for _, e := range m.PublicKeys {
 			l = e.Size()
 			n += 1 + l + sovClient(uint64(l))
 		}
@@ -2745,8 +2745,8 @@ func (m *QuorumExpr) Size() (n int) {
 	if m.Threshold != 0 {
 		n += 1 + sovClient(uint64(m.Threshold))
 	}
-	if len(m.Verifiers) > 0 {
-		for _, e := range m.Verifiers {
+	if len(m.Candidates) > 0 {
+		for _, e := range m.Candidates {
 			n += 1 + sovClient(uint64(e))
 		}
 	}
@@ -2940,7 +2940,7 @@ func (this *QuorumPublicKey) String() string {
 	}
 	s := strings.Join([]string{`&QuorumPublicKey{`,
 		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`PulicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PulicKeys), "PublicKey", "PublicKey", 1) + `,`,
+		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2951,7 +2951,7 @@ func (this *QuorumExpr) String() string {
 	}
 	s := strings.Join([]string{`&QuorumExpr{`,
 		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
-		`Verifiers:` + fmt.Sprintf("%v", this.Verifiers) + `,`,
+		`Candidates:` + fmt.Sprintf("%v", this.Candidates) + `,`,
 		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`}`,
 	}, "")
@@ -4408,7 +4408,7 @@ func (m *QuorumPublicKey) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PulicKeys", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4426,8 +4426,8 @@ func (m *QuorumPublicKey) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PulicKeys = append(m.PulicKeys, &PublicKey_PreserveEncoding{})
-			if err := m.PulicKeys[len(m.PulicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			m.PublicKeys = append(m.PublicKeys, &PublicKey_PreserveEncoding{})
+			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4491,7 +4491,7 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Verifiers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
 			}
 			var v uint64
 			for shift := uint(0); ; shift += 7 {
@@ -4505,7 +4505,7 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 					break
 				}
 			}
-			m.Verifiers = append(m.Verifiers, v)
+			m.Candidates = append(m.Candidates, v)
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Subexpressions", wireType)

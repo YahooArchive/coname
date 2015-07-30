@@ -27,14 +27,14 @@ var _ = proto1.Marshal
 // the state from them.
 type KeyserverStep struct {
 	UID uint64 `protobuf:"varint,1,opt,proto3" json:"UID,omitempty"`
-	// update is appended to the log when it is received from a client and
+	// Update is appended to the log when it is received from a client and
 	// has passed pre-validation. However, since pre-validation is not
 	// final, "success" should not be returned to the client until after the
 	// update has been applied and ratified.
 	// update is applied to the keyserver state as soon as it has been
 	// committed to the log.
-	Update *SignedEntryUpdate `protobuf:"bytes,2,opt,name=update" json:"update,omitempty"`
-	// epoch_delimiter is appended to the log by a leader (not necessarily
+	Update *UpdateRequest `protobuf:"bytes,2,opt,name=update" json:"update,omitempty"`
+	// EpochDelimiter is appended to the log by a leader (not necessarily
 	// unique) node when at least the duration EPOCH_INTERVAL_MIN and at
 	// most EPOCH_INTERVAL_MAX after the previous epoch_delimiter has passed.
 	// Between these times, an epoch delimiter is appended as soon as an
@@ -43,22 +43,23 @@ type KeyserverStep struct {
 	// it may happen that an epoch delimiter with a epoch number not higher
 	// than the previous gets committed to the log. It must be ignored.
 	EpochDelimiter *EpochDelimiter `protobuf:"bytes,3,opt,name=epoch_delimiter" json:"epoch_delimiter,omitempty"`
-	// replica_ratification for the last epoch is appended to the log
+	// ReplicaSigned for the last epoch is appended to the log
 	// when the epoch_delimiter is committed.
-	// After some majority of the replicas has ratified the state, their
-	// signatures make up the keyserver signature. As combining signatures
-	// is deterministic, no new log entry is appended to record that.
-	ReplicaRatification *SignedEpochHead `protobuf:"bytes,4,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
-	// verifier_ratification is appended for each new ratification received
+	// After some majority of the replicas has signed the next
+	// TimestampedEpochHead; their signatures make up the keyserver
+	// signature. As combining signatures is deterministic, no new log
+	// entry is appended to record that.
+	ReplicaSigned *SignedEpochHead `protobuf:"bytes,4,opt,name=replica_signed" json:"replica_signed,omitempty"`
+	// VerifierSigned is appended for each new SignedEpochHead received
 	// from a verifier; these are used to provide proof of verification to
 	// clients.
-	VerifierRatification *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_ratification" json:"verifier_ratification,omitempty"`
+	VerifierSigned *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_signed" json:"verifier_signed,omitempty"`
 }
 
 func (m *KeyserverStep) Reset()      { *m = KeyserverStep{} }
 func (*KeyserverStep) ProtoMessage() {}
 
-func (m *KeyserverStep) GetUpdate() *SignedEntryUpdate {
+func (m *KeyserverStep) GetUpdate() *UpdateRequest {
 	if m != nil {
 		return m.Update
 	}
@@ -72,16 +73,16 @@ func (m *KeyserverStep) GetEpochDelimiter() *EpochDelimiter {
 	return nil
 }
 
-func (m *KeyserverStep) GetReplicaRatification() *SignedEpochHead {
+func (m *KeyserverStep) GetReplicaSigned() *SignedEpochHead {
 	if m != nil {
-		return m.ReplicaRatification
+		return m.ReplicaSigned
 	}
 	return nil
 }
 
-func (m *KeyserverStep) GetVerifierRatification() *SignedEpochHead {
+func (m *KeyserverStep) GetVerifierSigned() *SignedEpochHead {
 	if m != nil {
-		return m.VerifierRatification
+		return m.VerifierSigned
 	}
 	return nil
 }
@@ -130,11 +131,11 @@ func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
 		return fmt.Errorf("EpochDelimiter this(%v) Not Equal that(%v)", this.EpochDelimiter, that1.EpochDelimiter)
 	}
-	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
-		return fmt.Errorf("ReplicaRatification this(%v) Not Equal that(%v)", this.ReplicaRatification, that1.ReplicaRatification)
+	if !this.ReplicaSigned.Equal(that1.ReplicaSigned) {
+		return fmt.Errorf("ReplicaSigned this(%v) Not Equal that(%v)", this.ReplicaSigned, that1.ReplicaSigned)
 	}
-	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
-		return fmt.Errorf("VerifierRatification this(%v) Not Equal that(%v)", this.VerifierRatification, that1.VerifierRatification)
+	if !this.VerifierSigned.Equal(that1.VerifierSigned) {
+		return fmt.Errorf("VerifierSigned this(%v) Not Equal that(%v)", this.VerifierSigned, that1.VerifierSigned)
 	}
 	return nil
 }
@@ -167,10 +168,10 @@ func (this *KeyserverStep) Equal(that interface{}) bool {
 	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
 		return false
 	}
-	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
+	if !this.ReplicaSigned.Equal(that1.ReplicaSigned) {
 		return false
 	}
-	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
+	if !this.VerifierSigned.Equal(that1.VerifierSigned) {
 		return false
 	}
 	return true
@@ -239,8 +240,8 @@ func (this *KeyserverStep) GoString() string {
 		`UID:` + fmt.Sprintf("%#v", this.UID),
 		`Update:` + fmt.Sprintf("%#v", this.Update),
 		`EpochDelimiter:` + fmt.Sprintf("%#v", this.EpochDelimiter),
-		`ReplicaRatification:` + fmt.Sprintf("%#v", this.ReplicaRatification),
-		`VerifierRatification:` + fmt.Sprintf("%#v", this.VerifierRatification) + `}`}, ", ")
+		`ReplicaSigned:` + fmt.Sprintf("%#v", this.ReplicaSigned),
+		`VerifierSigned:` + fmt.Sprintf("%#v", this.VerifierSigned) + `}`}, ", ")
 	return s
 }
 func (this *EpochDelimiter) GoString() string {
@@ -317,21 +318,21 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n2
 	}
-	if m.ReplicaRatification != nil {
+	if m.ReplicaSigned != nil {
 		data[i] = 0x22
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
-		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
+		i = encodeVarintReplication(data, i, uint64(m.ReplicaSigned.Size()))
+		n3, err := m.ReplicaSigned.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n3
 	}
-	if m.VerifierRatification != nil {
+	if m.VerifierSigned != nil {
 		data[i] = 0x2a
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
-		n4, err := m.VerifierRatification.MarshalTo(data[i:])
+		i = encodeVarintReplication(data, i, uint64(m.VerifierSigned.Size()))
+		n4, err := m.VerifierSigned.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -402,16 +403,16 @@ func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
 	this := &KeyserverStep{}
 	this.UID = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+		this.Update = NewPopulatedUpdateRequest(r, easy)
 	}
 	if r.Intn(10) != 0 {
 		this.EpochDelimiter = NewPopulatedEpochDelimiter(r, easy)
 	}
 	if r.Intn(10) != 0 {
-		this.ReplicaRatification = NewPopulatedSignedEpochHead(r, easy)
+		this.ReplicaSigned = NewPopulatedSignedEpochHead(r, easy)
 	}
 	if r.Intn(10) != 0 {
-		this.VerifierRatification = NewPopulatedSignedEpochHead(r, easy)
+		this.VerifierSigned = NewPopulatedSignedEpochHead(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -514,12 +515,12 @@ func (m *KeyserverStep) Size() (n int) {
 		l = m.EpochDelimiter.Size()
 		n += 1 + l + sovReplication(uint64(l))
 	}
-	if m.ReplicaRatification != nil {
-		l = m.ReplicaRatification.Size()
+	if m.ReplicaSigned != nil {
+		l = m.ReplicaSigned.Size()
 		n += 1 + l + sovReplication(uint64(l))
 	}
-	if m.VerifierRatification != nil {
-		l = m.VerifierRatification.Size()
+	if m.VerifierSigned != nil {
+		l = m.VerifierSigned.Size()
 		n += 1 + l + sovReplication(uint64(l))
 	}
 	return n
@@ -555,10 +556,10 @@ func (this *KeyserverStep) String() string {
 	}
 	s := strings.Join([]string{`&KeyserverStep{`,
 		`UID:` + fmt.Sprintf("%v", this.UID) + `,`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "UpdateRequest", "UpdateRequest", 1) + `,`,
 		`EpochDelimiter:` + strings.Replace(fmt.Sprintf("%v", this.EpochDelimiter), "EpochDelimiter", "EpochDelimiter", 1) + `,`,
-		`ReplicaRatification:` + strings.Replace(fmt.Sprintf("%v", this.ReplicaRatification), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
-		`VerifierRatification:` + strings.Replace(fmt.Sprintf("%v", this.VerifierRatification), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`ReplicaSigned:` + strings.Replace(fmt.Sprintf("%v", this.ReplicaSigned), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`VerifierSigned:` + strings.Replace(fmt.Sprintf("%v", this.VerifierSigned), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -638,7 +639,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Update == nil {
-				m.Update = &SignedEntryUpdate{}
+				m.Update = &UpdateRequest{}
 			}
 			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -673,7 +674,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaRatification", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaSigned", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -691,16 +692,16 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.ReplicaRatification == nil {
-				m.ReplicaRatification = &SignedEpochHead{}
+			if m.ReplicaSigned == nil {
+				m.ReplicaSigned = &SignedEpochHead{}
 			}
-			if err := m.ReplicaRatification.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ReplicaSigned.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VerifierRatification", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field VerifierSigned", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -718,10 +719,10 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.VerifierRatification == nil {
-				m.VerifierRatification = &SignedEpochHead{}
+			if m.VerifierSigned == nil {
+				m.VerifierSigned = &SignedEpochHead{}
 			}
-			if err := m.VerifierRatification.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.VerifierSigned.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
