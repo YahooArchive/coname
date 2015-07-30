@@ -92,8 +92,9 @@ message LookupProof {
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
 	bytes tree_proof = 5;
-	// entry specifies profile by hash(profile) = entry.profile_hash
-	Profile profile = 6;
+	// Entry specifies profile by hash(profile) = entry.profile_hash
+	Entry entry = 6;
+	Profile profile = 7;
 }
 
 // Entry is the value type in the authenticated mapping data structure.  The

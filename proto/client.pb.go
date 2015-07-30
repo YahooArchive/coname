@@ -152,8 +152,9 @@ type LookupProof struct {
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
 	TreeProof []byte `protobuf:"bytes,5,opt,name=tree_proof,proto3" json:"tree_proof,omitempty"`
-	// entry specifies profile by hash(profile) = entry.profile_hash
-	Profile *Profile `protobuf:"bytes,6,opt,name=profile" json:"profile,omitempty"`
+	// Entry specifies profile by hash(profile) = entry.profile_hash
+	Entry   *Entry   `protobuf:"bytes,6,opt,name=entry" json:"entry,omitempty"`
+	Profile *Profile `protobuf:"bytes,7,opt,name=profile" json:"profile,omitempty"`
 }
 
 func (m *LookupProof) Reset()      { *m = LookupProof{} }
@@ -162,6 +163,13 @@ func (*LookupProof) ProtoMessage() {}
 func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	if m != nil {
 		return m.Ratifications
+	}
+	return nil
+}
+
+func (m *LookupProof) GetEntry() *Entry {
+	if m != nil {
+		return m.Entry
 	}
 	return nil
 }
@@ -738,6 +746,9 @@ func (this *LookupProof) VerboseEqual(that interface{}) error {
 	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
 		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
 	}
+	if !this.Entry.Equal(that1.Entry) {
+		return fmt.Errorf("Entry this(%v) Not Equal that(%v)", this.Entry, that1.Entry)
+	}
 	if !this.Profile.Equal(that1.Profile) {
 		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
 	}
@@ -781,6 +792,9 @@ func (this *LookupProof) Equal(that interface{}) bool {
 		}
 	}
 	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+		return false
+	}
+	if !this.Entry.Equal(that1.Entry) {
 		return false
 	}
 	if !this.Profile.Equal(that1.Profile) {
@@ -1429,6 +1443,7 @@ func (this *LookupProof) GoString() string {
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
 		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
+		`Entry:` + fmt.Sprintf("%#v", this.Entry),
 		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
 	return s
 }
@@ -1736,15 +1751,25 @@ func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
 			i += copy(data[i:], m.TreeProof)
 		}
 	}
-	if m.Profile != nil {
+	if m.Entry != nil {
 		data[i] = 0x32
 		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n5, err := m.Profile.MarshalTo(data[i:])
+		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
+		n5, err := m.Entry.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n5
+	}
+	if m.Profile != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n6, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
 	}
 	return i, nil
 }
@@ -1781,11 +1806,11 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n6, err := m.UpdateKey.MarshalTo(data[i:])
+		n7, err := m.UpdateKey.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n7
 	}
 	if m.ProfileHash != nil {
 		if len(m.ProfileHash) > 0 {
@@ -1816,11 +1841,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n7, err := m.NewEntry.MarshalTo(data[i:])
+	n8, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n7
+	i += n8
 	if len(m.NewSig) > 0 {
 		keysForNewSig := make([]uint64, 0, len(m.NewSig))
 		for k, _ := range m.NewSig {
@@ -1932,11 +1957,11 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n8, err := m.Head.MarshalTo(data[i:])
+	n9, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n8
+	i += n9
 	if len(m.Signature) > 0 {
 		keysForSignature := make([]uint64, 0, len(m.Signature))
 		for k, _ := range m.Signature {
@@ -1979,19 +2004,19 @@ func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n9, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n9
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n10, err := m.Timestamp.MarshalTo(data[i:])
+	n10, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n10
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n11, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n11
 	return i, nil
 }
 
@@ -2059,11 +2084,11 @@ func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n11, err := m.Quorum.MarshalTo(data[i:])
+		n12, err := m.Quorum.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n11
+		i += n12
 	}
 	if m.Ed25519 != nil {
 		if len(m.Ed25519) > 0 {
@@ -2095,11 +2120,11 @@ func (m *QuorumPublicKey) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0xa
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n12, err := m.Quorum.MarshalTo(data[i:])
+		n13, err := m.Quorum.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n12
+		i += n13
 	}
 	if len(m.PulicKeys) > 0 {
 		for _, msg := range m.PulicKeys {
@@ -2242,6 +2267,9 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	this.TreeProof = make([]byte, v5)
 	for i := 0; i < v5; i++ {
 		this.TreeProof[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		this.Entry = NewPopulatedEntry(r, easy)
 	}
 	if r.Intn(10) != 0 {
 		this.Profile = NewPopulatedProfile(r, easy)
@@ -2576,6 +2604,10 @@ func (m *LookupProof) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
+	if m.Entry != nil {
+		l = m.Entry.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
 	if m.Profile != nil {
 		l = m.Profile.Size()
 		n += 1 + l + sovClient(uint64(l))
@@ -2803,6 +2835,7 @@ func (this *LookupProof) String() string {
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
 		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
+		`Entry:` + strings.Replace(fmt.Sprintf("%v", this.Entry), "Entry", "Entry", 1) + `,`,
 		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
 		`}`,
 	}, "")
@@ -3346,6 +3379,33 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			m.TreeProof = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Entry", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Entry == nil {
+				m.Entry = &Entry{}
+			}
+			if err := m.Entry.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
 			}
