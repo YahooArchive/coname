@@ -21,8 +21,8 @@ import (
 	"github.com/yahoo/coname/proto"
 )
 
-// RatifierID computes the ID of a retifier by the hash-of-public-key convention.
-func RatifierID(sv *proto.SignatureVerifier) uint64 {
+// KeyID computes the ID of public key.
+func KeyID(sv *proto.PublicKey) uint64 {
 	h := sha256.Sum256(proto.MustMarshal(sv))
 	return binary.LittleEndian.Uint64(h[:8])
 }

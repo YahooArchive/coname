@@ -14,15 +14,17 @@ It is generated from these files:
 	verifier.proto
 
 It has these top-level messages:
-	LookupProfileRequest
-	UpdateProfileRequest
+	LookupRequest
+	UpdateRequest
 	LookupProof
-	Profile
 	Entry
 	SignedEntryUpdate
-	SignedRatification
-	SignatureVerifier
-	ThresholdSignature
+	Profile
+	SignedEpochHead
+	TimestampedEpochHead
+	EpochHead
+	PublicKey
+	QuorumPublicKey
 	QuorumExpr
 */
 package proto
@@ -41,14 +43,14 @@ import proto1 "github.com/gogo/protobuf/proto"
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
-func TestLookupProfileRequestProto(t *testing.T) {
+func TestLookupRequestProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, false)
+	p := NewPopulatedLookupRequest(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -63,9 +65,9 @@ func TestLookupProfileRequestProto(t *testing.T) {
 	}
 }
 
-func TestLookupProfileRequestMarshalTo(t *testing.T) {
+func TestLookupRequestMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, false)
+	p := NewPopulatedLookupRequest(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -75,7 +77,7 @@ func TestLookupProfileRequestMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -90,12 +92,12 @@ func TestLookupProfileRequestMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkLookupProfileRequestProtoMarshal(b *testing.B) {
+func BenchmarkLookupRequestProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*LookupProfileRequest, 10000)
+	pops := make([]*LookupRequest, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedLookupProfileRequest(popr, false)
+		pops[i] = NewPopulatedLookupRequest(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -108,18 +110,18 @@ func BenchmarkLookupProfileRequestProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkLookupProfileRequestProtoUnmarshal(b *testing.B) {
+func BenchmarkLookupRequestProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedLookupProfileRequest(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedLookupRequest(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -130,14 +132,14 @@ func BenchmarkLookupProfileRequestProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestUpdateProfileRequestProto(t *testing.T) {
+func TestUpdateRequestProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, false)
+	p := NewPopulatedUpdateRequest(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -152,9 +154,9 @@ func TestUpdateProfileRequestProto(t *testing.T) {
 	}
 }
 
-func TestUpdateProfileRequestMarshalTo(t *testing.T) {
+func TestUpdateRequestMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, false)
+	p := NewPopulatedUpdateRequest(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -164,7 +166,7 @@ func TestUpdateProfileRequestMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -179,12 +181,12 @@ func TestUpdateProfileRequestMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkUpdateProfileRequestProtoMarshal(b *testing.B) {
+func BenchmarkUpdateRequestProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*UpdateProfileRequest, 10000)
+	pops := make([]*UpdateRequest, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedUpdateProfileRequest(popr, false)
+		pops[i] = NewPopulatedUpdateRequest(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -197,18 +199,18 @@ func BenchmarkUpdateProfileRequestProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkUpdateProfileRequestProtoUnmarshal(b *testing.B) {
+func BenchmarkUpdateRequestProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedUpdateProfileRequest(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedUpdateRequest(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -298,95 +300,6 @@ func BenchmarkLookupProofProtoUnmarshal(b *testing.B) {
 		datas[i] = data
 	}
 	msg := &LookupProof{}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
-			panic(err)
-		}
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func TestProfileProto(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &Profile{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestProfileMarshalTo(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, false)
-	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	_, err := p.MarshalTo(data)
-	if err != nil {
-		panic(err)
-	}
-	msg := &Profile{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func BenchmarkProfileProtoMarshal(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	pops := make([]*Profile, 10000)
-	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedProfile(popr, false)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
-		if err != nil {
-			panic(err)
-		}
-		total += len(data)
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func BenchmarkProfileProtoUnmarshal(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	datas := make([][]byte, 10000)
-	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedProfile(popr, false))
-		if err != nil {
-			panic(err)
-		}
-		datas[i] = data
-	}
-	msg := &Profile{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -575,14 +488,14 @@ func BenchmarkSignedEntryUpdateProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedEntryUpdate_EntryUpdateTProto(t *testing.T) {
+func TestProfileProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
+	p := NewPopulatedProfile(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -597,9 +510,9 @@ func TestSignedEntryUpdate_EntryUpdateTProto(t *testing.T) {
 	}
 }
 
-func TestSignedEntryUpdate_EntryUpdateTMarshalTo(t *testing.T) {
+func TestProfileMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
+	p := NewPopulatedProfile(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -609,7 +522,7 @@ func TestSignedEntryUpdate_EntryUpdateTMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -624,12 +537,12 @@ func TestSignedEntryUpdate_EntryUpdateTMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedEntryUpdate_EntryUpdateTProtoMarshal(b *testing.B) {
+func BenchmarkProfileProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedEntryUpdate_EntryUpdateT, 10000)
+	pops := make([]*Profile, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
+		pops[i] = NewPopulatedProfile(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -642,18 +555,18 @@ func BenchmarkSignedEntryUpdate_EntryUpdateTProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignedEntryUpdate_EntryUpdateTProtoUnmarshal(b *testing.B) {
+func BenchmarkProfileProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedProfile(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -664,14 +577,14 @@ func BenchmarkSignedEntryUpdate_EntryUpdateTProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatificationProto(t *testing.T) {
+func TestSignedEpochHeadProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, false)
+	p := NewPopulatedSignedEpochHead(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -686,9 +599,9 @@ func TestSignedRatificationProto(t *testing.T) {
 	}
 }
 
-func TestSignedRatificationMarshalTo(t *testing.T) {
+func TestSignedEpochHeadMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, false)
+	p := NewPopulatedSignedEpochHead(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -698,7 +611,7 @@ func TestSignedRatificationMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -713,12 +626,12 @@ func TestSignedRatificationMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedRatificationProtoMarshal(b *testing.B) {
+func BenchmarkSignedEpochHeadProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification, 10000)
+	pops := make([]*SignedEpochHead, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignedRatification(popr, false)
+		pops[i] = NewPopulatedSignedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -731,18 +644,18 @@ func BenchmarkSignedRatificationProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignedRatificationProtoUnmarshal(b *testing.B) {
+func BenchmarkSignedEpochHeadProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignedRatification(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -753,14 +666,14 @@ func BenchmarkSignedRatificationProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatification_RatificationTProto(t *testing.T) {
+func TestTimestampedEpochHeadProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, false)
+	p := NewPopulatedTimestampedEpochHead(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -775,9 +688,9 @@ func TestSignedRatification_RatificationTProto(t *testing.T) {
 	}
 }
 
-func TestSignedRatification_RatificationTMarshalTo(t *testing.T) {
+func TestTimestampedEpochHeadMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, false)
+	p := NewPopulatedTimestampedEpochHead(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -787,7 +700,7 @@ func TestSignedRatification_RatificationTMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -802,12 +715,12 @@ func TestSignedRatification_RatificationTMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedRatification_RatificationTProtoMarshal(b *testing.B) {
+func BenchmarkTimestampedEpochHeadProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification_RatificationT, 10000)
+	pops := make([]*TimestampedEpochHead, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignedRatification_RatificationT(popr, false)
+		pops[i] = NewPopulatedTimestampedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -820,18 +733,18 @@ func BenchmarkSignedRatification_RatificationTProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignedRatification_RatificationTProtoUnmarshal(b *testing.B) {
+func BenchmarkTimestampedEpochHeadProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignedRatification_RatificationT(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedTimestampedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -842,14 +755,14 @@ func BenchmarkSignedRatification_RatificationTProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatification_RatificationT_KeyserverStateSummaryProto(t *testing.T) {
+func TestEpochHeadProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
+	p := NewPopulatedEpochHead(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -864,9 +777,9 @@ func TestSignedRatification_RatificationT_KeyserverStateSummaryProto(t *testing.
 	}
 }
 
-func TestSignedRatification_RatificationT_KeyserverStateSummaryMarshalTo(t *testing.T) {
+func TestEpochHeadMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
+	p := NewPopulatedEpochHead(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -876,7 +789,7 @@ func TestSignedRatification_RatificationT_KeyserverStateSummaryMarshalTo(t *test
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -891,12 +804,12 @@ func TestSignedRatification_RatificationT_KeyserverStateSummaryMarshalTo(t *test
 	}
 }
 
-func BenchmarkSignedRatification_RatificationT_KeyserverStateSummaryProtoMarshal(b *testing.B) {
+func BenchmarkEpochHeadProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification_RatificationT_KeyserverStateSummary, 10000)
+	pops := make([]*EpochHead, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
+		pops[i] = NewPopulatedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -909,18 +822,18 @@ func BenchmarkSignedRatification_RatificationT_KeyserverStateSummaryProtoMarshal
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignedRatification_RatificationT_KeyserverStateSummaryProtoUnmarshal(b *testing.B) {
+func BenchmarkEpochHeadProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -931,14 +844,14 @@ func BenchmarkSignedRatification_RatificationT_KeyserverStateSummaryProtoUnmarsh
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignatureVerifierProto(t *testing.T) {
+func TestPublicKeyProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, false)
+	p := NewPopulatedPublicKey(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -953,9 +866,9 @@ func TestSignatureVerifierProto(t *testing.T) {
 	}
 }
 
-func TestSignatureVerifierMarshalTo(t *testing.T) {
+func TestPublicKeyMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, false)
+	p := NewPopulatedPublicKey(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -965,7 +878,7 @@ func TestSignatureVerifierMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -980,12 +893,12 @@ func TestSignatureVerifierMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkSignatureVerifierProtoMarshal(b *testing.B) {
+func BenchmarkPublicKeyProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignatureVerifier, 10000)
+	pops := make([]*PublicKey, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignatureVerifier(popr, false)
+		pops[i] = NewPopulatedPublicKey(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -998,18 +911,18 @@ func BenchmarkSignatureVerifierProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignatureVerifierProtoUnmarshal(b *testing.B) {
+func BenchmarkPublicKeyProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignatureVerifier(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedPublicKey(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -1020,14 +933,14 @@ func BenchmarkSignatureVerifierProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignatureVerifier_ThresholdVerifierProto(t *testing.T) {
+func TestQuorumPublicKeyProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
+	p := NewPopulatedQuorumPublicKey(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignatureVerifier_ThresholdVerifier{}
+	msg := &QuorumPublicKey{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -1042,9 +955,9 @@ func TestSignatureVerifier_ThresholdVerifierProto(t *testing.T) {
 	}
 }
 
-func TestSignatureVerifier_ThresholdVerifierMarshalTo(t *testing.T) {
+func TestQuorumPublicKeyMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
+	p := NewPopulatedQuorumPublicKey(popr, false)
 	size := p.Size()
 	data := make([]byte, size)
 	for i := range data {
@@ -1054,7 +967,7 @@ func TestSignatureVerifier_ThresholdVerifierMarshalTo(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignatureVerifier_ThresholdVerifier{}
+	msg := &QuorumPublicKey{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -1069,12 +982,12 @@ func TestSignatureVerifier_ThresholdVerifierMarshalTo(t *testing.T) {
 	}
 }
 
-func BenchmarkSignatureVerifier_ThresholdVerifierProtoMarshal(b *testing.B) {
+func BenchmarkQuorumPublicKeyProtoMarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignatureVerifier_ThresholdVerifier, 10000)
+	pops := make([]*QuorumPublicKey, 10000)
 	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
+		pops[i] = NewPopulatedQuorumPublicKey(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -1087,107 +1000,18 @@ func BenchmarkSignatureVerifier_ThresholdVerifierProtoMarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func BenchmarkSignatureVerifier_ThresholdVerifierProtoUnmarshal(b *testing.B) {
+func BenchmarkQuorumPublicKeyProtoUnmarshal(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false))
+		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedQuorumPublicKey(popr, false))
 		if err != nil {
 			panic(err)
 		}
 		datas[i] = data
 	}
-	msg := &SignatureVerifier_ThresholdVerifier{}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
-			panic(err)
-		}
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func TestThresholdSignatureProto(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &ThresholdSignature{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestThresholdSignatureMarshalTo(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, false)
-	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	_, err := p.MarshalTo(data)
-	if err != nil {
-		panic(err)
-	}
-	msg := &ThresholdSignature{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func BenchmarkThresholdSignatureProtoMarshal(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	pops := make([]*ThresholdSignature, 10000)
-	for i := 0; i < 10000; i++ {
-		pops[i] = NewPopulatedThresholdSignature(popr, false)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
-		if err != nil {
-			panic(err)
-		}
-		total += len(data)
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func BenchmarkThresholdSignatureProtoUnmarshal(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	datas := make([][]byte, 10000)
-	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedThresholdSignature(popr, false))
-		if err != nil {
-			panic(err)
-		}
-		datas[i] = data
-	}
-	msg := &ThresholdSignature{}
+	msg := &QuorumPublicKey{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
@@ -1287,15 +1111,15 @@ func BenchmarkQuorumExprProtoUnmarshal(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestLookupProfileRequestJSON(t *testing.T) {
+func TestLookupRequestJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, true)
+	p := NewPopulatedLookupRequest(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1307,15 +1131,15 @@ func TestLookupProfileRequestJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestUpdateProfileRequestJSON(t *testing.T) {
+func TestUpdateRequestJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, true)
+	p := NewPopulatedUpdateRequest(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1336,26 +1160,6 @@ func TestLookupProofJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	msg := &LookupProof{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Json Equal %#v", msg, p)
-	}
-}
-func TestProfileJSON(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
-	jsondata, err := marshaler.MarshalToString(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	msg := &Profile{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1407,15 +1211,15 @@ func TestSignedEntryUpdateJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignedEntryUpdate_EntryUpdateTJSON(t *testing.T) {
+func TestProfileJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, true)
+	p := NewPopulatedProfile(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1427,15 +1231,15 @@ func TestSignedEntryUpdate_EntryUpdateTJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignedRatificationJSON(t *testing.T) {
+func TestSignedEpochHeadJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, true)
+	p := NewPopulatedSignedEpochHead(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1447,15 +1251,15 @@ func TestSignedRatificationJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignedRatification_RatificationTJSON(t *testing.T) {
+func TestTimestampedEpochHeadJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, true)
+	p := NewPopulatedTimestampedEpochHead(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1467,15 +1271,15 @@ func TestSignedRatification_RatificationTJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignedRatification_RatificationT_KeyserverStateSummaryJSON(t *testing.T) {
+func TestEpochHeadJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, true)
+	p := NewPopulatedEpochHead(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1487,15 +1291,15 @@ func TestSignedRatification_RatificationT_KeyserverStateSummaryJSON(t *testing.T
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignatureVerifierJSON(t *testing.T) {
+func TestPublicKeyJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, true)
+	p := NewPopulatedPublicKey(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1507,35 +1311,15 @@ func TestSignatureVerifierJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestSignatureVerifier_ThresholdVerifierJSON(t *testing.T) {
+func TestQuorumPublicKeyJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, true)
+	p := NewPopulatedQuorumPublicKey(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &SignatureVerifier_ThresholdVerifier{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Json Equal %#v", msg, p)
-	}
-}
-func TestThresholdSignatureJSON(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
-	jsondata, err := marshaler.MarshalToString(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	msg := &ThresholdSignature{}
+	msg := &QuorumPublicKey{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
@@ -1567,12 +1351,12 @@ func TestQuorumExprJSON(t *testing.T) {
 		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }
-func TestLookupProfileRequestProtoText(t *testing.T) {
+func TestLookupRequestProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, true)
+	p := NewPopulatedLookupRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1584,12 +1368,12 @@ t.Skip()
 	}
 }
 
-func TestLookupProfileRequestProtoCompactText(t *testing.T) {
+func TestLookupRequestProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, true)
+	p := NewPopulatedLookupRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &LookupProfileRequest{}
+	msg := &LookupRequest{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1601,12 +1385,12 @@ t.Skip()
 	}
 }
 
-func TestUpdateProfileRequestProtoText(t *testing.T) {
+func TestUpdateRequestProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, true)
+	p := NewPopulatedUpdateRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1618,12 +1402,12 @@ t.Skip()
 	}
 }
 
-func TestUpdateProfileRequestProtoCompactText(t *testing.T) {
+func TestUpdateRequestProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, true)
+	p := NewPopulatedUpdateRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &UpdateProfileRequest{}
+	msg := &UpdateRequest{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1658,40 +1442,6 @@ t.Skip()
 	p := NewPopulatedLookupProof(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &LookupProof{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestProfileProtoText(t *testing.T) {
-t.Skip()
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &Profile{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestProfileProtoCompactText(t *testing.T) {
-t.Skip()
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &Profile{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1771,12 +1521,12 @@ t.Skip()
 	}
 }
 
-func TestSignedEntryUpdate_EntryUpdateTProtoText(t *testing.T) {
+func TestProfileProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, true)
+	p := NewPopulatedProfile(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1788,12 +1538,12 @@ t.Skip()
 	}
 }
 
-func TestSignedEntryUpdate_EntryUpdateTProtoCompactText(t *testing.T) {
+func TestProfileProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, true)
+	p := NewPopulatedProfile(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignedEntryUpdate_EntryUpdateT{}
+	msg := &Profile{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1805,12 +1555,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatificationProtoText(t *testing.T) {
+func TestSignedEpochHeadProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, true)
+	p := NewPopulatedSignedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1822,12 +1572,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatificationProtoCompactText(t *testing.T) {
+func TestSignedEpochHeadProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, true)
+	p := NewPopulatedSignedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignedRatification{}
+	msg := &SignedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1839,12 +1589,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatification_RatificationTProtoText(t *testing.T) {
+func TestTimestampedEpochHeadProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, true)
+	p := NewPopulatedTimestampedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1856,12 +1606,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatification_RatificationTProtoCompactText(t *testing.T) {
+func TestTimestampedEpochHeadProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, true)
+	p := NewPopulatedTimestampedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignedRatification_RatificationT{}
+	msg := &TimestampedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1873,12 +1623,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatification_RatificationT_KeyserverStateSummaryProtoText(t *testing.T) {
+func TestEpochHeadProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, true)
+	p := NewPopulatedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1890,12 +1640,12 @@ t.Skip()
 	}
 }
 
-func TestSignedRatification_RatificationT_KeyserverStateSummaryProtoCompactText(t *testing.T) {
+func TestEpochHeadProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, true)
+	p := NewPopulatedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
+	msg := &EpochHead{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1907,12 +1657,12 @@ t.Skip()
 	}
 }
 
-func TestSignatureVerifierProtoText(t *testing.T) {
+func TestPublicKeyProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, true)
+	p := NewPopulatedPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1924,12 +1674,12 @@ t.Skip()
 	}
 }
 
-func TestSignatureVerifierProtoCompactText(t *testing.T) {
+func TestPublicKeyProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, true)
+	p := NewPopulatedPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignatureVerifier{}
+	msg := &PublicKey{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1941,12 +1691,12 @@ t.Skip()
 	}
 }
 
-func TestSignatureVerifier_ThresholdVerifierProtoText(t *testing.T) {
+func TestQuorumPublicKeyProtoText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, true)
+	p := NewPopulatedQuorumPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &SignatureVerifier_ThresholdVerifier{}
+	msg := &QuorumPublicKey{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -1958,46 +1708,12 @@ t.Skip()
 	}
 }
 
-func TestSignatureVerifier_ThresholdVerifierProtoCompactText(t *testing.T) {
+func TestQuorumPublicKeyProtoCompactText(t *testing.T) {
 t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, true)
+	p := NewPopulatedQuorumPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &SignatureVerifier_ThresholdVerifier{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestThresholdSignatureProtoText(t *testing.T) {
-t.Skip()
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
-	msg := &ThresholdSignature{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
-	}
-	if !p.Equal(msg) {
-		t.Fatalf("%#v !Proto %#v", msg, p)
-	}
-}
-
-func TestThresholdSignatureProtoCompactText(t *testing.T) {
-t.Skip()
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
-	msg := &ThresholdSignature{}
+	msg := &QuorumPublicKey{}
 	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
@@ -2043,135 +1759,345 @@ t.Skip()
 	}
 }
 
-func TestLookupProfileRequestStringer(t *testing.T) {
+func TestLookupRequestVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedLookupRequest(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &LookupRequest{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestUpdateProfileRequestStringer(t *testing.T) {
+func TestUpdateRequestVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedUpdateRequest(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &UpdateRequest{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestLookupProofStringer(t *testing.T) {
+func TestLookupProofVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupProof(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &LookupProof{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestProfileStringer(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
-	}
-}
-func TestEntryStringer(t *testing.T) {
+func TestEntryVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEntry(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &Entry{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignedEntryUpdateStringer(t *testing.T) {
+func TestSignedEntryUpdateVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEntryUpdate(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &SignedEntryUpdate{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignedEntryUpdate_EntryUpdateTStringer(t *testing.T) {
+func TestProfileVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedProfile(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &Profile{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignedRatificationStringer(t *testing.T) {
+func TestSignedEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedSignedEpochHead(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &SignedEpochHead{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignedRatification_RatificationTStringer(t *testing.T) {
+func TestTimestampedEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedTimestampedEpochHead(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &TimestampedEpochHead{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignedRatification_RatificationT_KeyserverStateSummaryStringer(t *testing.T) {
+func TestEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedEpochHead(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &EpochHead{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignatureVerifierStringer(t *testing.T) {
+func TestPublicKeyVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedPublicKey(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &PublicKey{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestSignatureVerifier_ThresholdVerifierStringer(t *testing.T) {
+func TestQuorumPublicKeyVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	p := NewPopulatedQuorumPublicKey(popr, false)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &QuorumPublicKey{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestThresholdSignatureStringer(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
-	}
-}
-func TestQuorumExprStringer(t *testing.T) {
+func TestQuorumExprVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumExpr(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
-	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &QuorumExpr{}
+	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
-func TestLookupProfileRequestSize(t *testing.T) {
+func TestLookupRequestGoString(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, true)
+	p := NewPopulatedLookupRequest(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestUpdateRequestGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedUpdateRequest(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestLookupProofGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedLookupProof(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestEntryGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedEntry(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestSignedEntryUpdateGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedSignedEntryUpdate(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestProfileGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedProfile(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestSignedEpochHeadGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedSignedEpochHead(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestTimestampedEpochHeadGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedTimestampedEpochHead(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestEpochHeadGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedEpochHead(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestPublicKeyGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedPublicKey(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestQuorumPublicKeyGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedQuorumPublicKey(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestQuorumExprGoString(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedQuorumExpr(popr, false)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
+	if s1 != s2 {
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestLookupRequestSize(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedLookupRequest(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2190,12 +2116,12 @@ func TestLookupProfileRequestSize(t *testing.T) {
 	}
 }
 
-func BenchmarkLookupProfileRequestSize(b *testing.B) {
+func BenchmarkLookupRequestSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*LookupProfileRequest, 1000)
+	pops := make([]*LookupRequest, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedLookupProfileRequest(popr, false)
+		pops[i] = NewPopulatedLookupRequest(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2204,9 +2130,9 @@ func BenchmarkLookupProfileRequestSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestUpdateProfileRequestSize(t *testing.T) {
+func TestUpdateRequestSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, true)
+	p := NewPopulatedUpdateRequest(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2225,12 +2151,12 @@ func TestUpdateProfileRequestSize(t *testing.T) {
 	}
 }
 
-func BenchmarkUpdateProfileRequestSize(b *testing.B) {
+func BenchmarkUpdateRequestSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*UpdateProfileRequest, 1000)
+	pops := make([]*UpdateRequest, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedUpdateProfileRequest(popr, false)
+		pops[i] = NewPopulatedUpdateRequest(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2266,41 +2192,6 @@ func BenchmarkLookupProofSize(b *testing.B) {
 	pops := make([]*LookupProof, 1000)
 	for i := 0; i < 1000; i++ {
 		pops[i] = NewPopulatedLookupProof(popr, false)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		total += pops[i%1000].Size()
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func TestProfileSize(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	size := p.Size()
-	if len(data) != size {
-		t.Errorf("size %v != marshalled size %v", size, len(data))
-	}
-	if size2 != size {
-		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
-	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
-	if size3 != size {
-		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
-	}
-}
-
-func BenchmarkProfileSize(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	pops := make([]*Profile, 1000)
-	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedProfile(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2379,9 +2270,9 @@ func BenchmarkSignedEntryUpdateSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedEntryUpdate_EntryUpdateTSize(t *testing.T) {
+func TestProfileSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, true)
+	p := NewPopulatedProfile(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2400,12 +2291,12 @@ func TestSignedEntryUpdate_EntryUpdateTSize(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedEntryUpdate_EntryUpdateTSize(b *testing.B) {
+func BenchmarkProfileSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedEntryUpdate_EntryUpdateT, 1000)
+	pops := make([]*Profile, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
+		pops[i] = NewPopulatedProfile(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2414,9 +2305,9 @@ func BenchmarkSignedEntryUpdate_EntryUpdateTSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatificationSize(t *testing.T) {
+func TestSignedEpochHeadSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, true)
+	p := NewPopulatedSignedEpochHead(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2435,12 +2326,12 @@ func TestSignedRatificationSize(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedRatificationSize(b *testing.B) {
+func BenchmarkSignedEpochHeadSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification, 1000)
+	pops := make([]*SignedEpochHead, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignedRatification(popr, false)
+		pops[i] = NewPopulatedSignedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2449,9 +2340,9 @@ func BenchmarkSignedRatificationSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatification_RatificationTSize(t *testing.T) {
+func TestTimestampedEpochHeadSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, true)
+	p := NewPopulatedTimestampedEpochHead(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2470,12 +2361,12 @@ func TestSignedRatification_RatificationTSize(t *testing.T) {
 	}
 }
 
-func BenchmarkSignedRatification_RatificationTSize(b *testing.B) {
+func BenchmarkTimestampedEpochHeadSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification_RatificationT, 1000)
+	pops := make([]*TimestampedEpochHead, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignedRatification_RatificationT(popr, false)
+		pops[i] = NewPopulatedTimestampedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2484,9 +2375,9 @@ func BenchmarkSignedRatification_RatificationTSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignedRatification_RatificationT_KeyserverStateSummarySize(t *testing.T) {
+func TestEpochHeadSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, true)
+	p := NewPopulatedEpochHead(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2505,12 +2396,12 @@ func TestSignedRatification_RatificationT_KeyserverStateSummarySize(t *testing.T
 	}
 }
 
-func BenchmarkSignedRatification_RatificationT_KeyserverStateSummarySize(b *testing.B) {
+func BenchmarkEpochHeadSize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignedRatification_RatificationT_KeyserverStateSummary, 1000)
+	pops := make([]*EpochHead, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
+		pops[i] = NewPopulatedEpochHead(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2519,9 +2410,9 @@ func BenchmarkSignedRatification_RatificationT_KeyserverStateSummarySize(b *test
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignatureVerifierSize(t *testing.T) {
+func TestPublicKeySize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, true)
+	p := NewPopulatedPublicKey(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2540,12 +2431,12 @@ func TestSignatureVerifierSize(t *testing.T) {
 	}
 }
 
-func BenchmarkSignatureVerifierSize(b *testing.B) {
+func BenchmarkPublicKeySize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignatureVerifier, 1000)
+	pops := make([]*PublicKey, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignatureVerifier(popr, false)
+		pops[i] = NewPopulatedPublicKey(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2554,9 +2445,9 @@ func BenchmarkSignatureVerifierSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestSignatureVerifier_ThresholdVerifierSize(t *testing.T) {
+func TestQuorumPublicKeySize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, true)
+	p := NewPopulatedQuorumPublicKey(popr, true)
 	size2 := github_com_gogo_protobuf_proto.Size(p)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
@@ -2575,47 +2466,12 @@ func TestSignatureVerifier_ThresholdVerifierSize(t *testing.T) {
 	}
 }
 
-func BenchmarkSignatureVerifier_ThresholdVerifierSize(b *testing.B) {
+func BenchmarkQuorumPublicKeySize(b *testing.B) {
 	popr := math_rand.New(math_rand.NewSource(616))
 	total := 0
-	pops := make([]*SignatureVerifier_ThresholdVerifier, 1000)
+	pops := make([]*QuorumPublicKey, 1000)
 	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
-	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		total += pops[i%1000].Size()
-	}
-	b.SetBytes(int64(total / b.N))
-}
-
-func TestThresholdSignatureSize(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	size := p.Size()
-	if len(data) != size {
-		t.Errorf("size %v != marshalled size %v", size, len(data))
-	}
-	if size2 != size {
-		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
-	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
-	if size3 != size {
-		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
-	}
-}
-
-func BenchmarkThresholdSignatureSize(b *testing.B) {
-	popr := math_rand.New(math_rand.NewSource(616))
-	total := 0
-	pops := make([]*ThresholdSignature, 1000)
-	for i := 0; i < 1000; i++ {
-		pops[i] = NewPopulatedThresholdSignature(popr, false)
+		pops[i] = NewPopulatedQuorumPublicKey(popr, false)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2659,396 +2515,112 @@ func BenchmarkQuorumExprSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestLookupProfileRequestGoString(t *testing.T) {
+func TestLookupRequestStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	p := NewPopulatedLookupRequest(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestUpdateProfileRequestGoString(t *testing.T) {
+func TestUpdateRequestStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	p := NewPopulatedUpdateRequest(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestLookupProofGoString(t *testing.T) {
+func TestLookupProofStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupProof(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestProfileGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedProfile(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestEntryGoString(t *testing.T) {
+func TestEntryStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEntry(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedEntryUpdateGoString(t *testing.T) {
+func TestSignedEntryUpdateStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEntryUpdate(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedEntryUpdate_EntryUpdateTGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestSignedRatificationGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestSignedRatification_RatificationTGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestSignedRatification_RatificationT_KeyserverStateSummaryGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestSignatureVerifierGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestSignatureVerifier_ThresholdVerifierGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestThresholdSignatureGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestQuorumExprGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedQuorumExpr(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestLookupProfileRequestVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProfileRequest(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &LookupProfileRequest{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestUpdateProfileRequestVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedUpdateProfileRequest(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &UpdateProfileRequest{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestLookupProofVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedLookupProof(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &LookupProof{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestProfileVerboseEqual(t *testing.T) {
+func TestProfileStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedProfile(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &Profile{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestEntryVerboseEqual(t *testing.T) {
+func TestSignedEpochHeadStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedEntry(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &Entry{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	p := NewPopulatedSignedEpochHead(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedEntryUpdateVerboseEqual(t *testing.T) {
+func TestTimestampedEpochHeadStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignedEntryUpdate{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	p := NewPopulatedTimestampedEpochHead(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedEntryUpdate_EntryUpdateTVerboseEqual(t *testing.T) {
+func TestEpochHeadStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignedEntryUpdate_EntryUpdateT{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	p := NewPopulatedEpochHead(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedRatificationVerboseEqual(t *testing.T) {
+func TestPublicKeyStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignedRatification{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	p := NewPopulatedPublicKey(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedRatification_RatificationTVerboseEqual(t *testing.T) {
+func TestQuorumPublicKeyStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignedRatification_RatificationT{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	p := NewPopulatedQuorumPublicKey(popr, false)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestSignedRatification_RatificationT_KeyserverStateSummaryVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestSignatureVerifierVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignatureVerifier{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestSignatureVerifier_ThresholdVerifierVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignatureVerifier_ThresholdVerifier(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &SignatureVerifier_ThresholdVerifier{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestThresholdSignatureVerboseEqual(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedThresholdSignature(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &ThresholdSignature{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestQuorumExprVerboseEqual(t *testing.T) {
+func TestQuorumExprStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumExpr(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &QuorumExpr{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
 

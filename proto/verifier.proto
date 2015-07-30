@@ -33,22 +33,26 @@ service E2EKSVerification {
 	// by it is the unique result of applying all the previous update steps.
 	// The SignedRatification will be stored by the server and used to
 	// argue the correctness of future lookups in front of clients.
-	rpc PushRatification(SignedRatification) returns (Nothing);
+	rpc PushRatification(SignedEpochHead) returns (Nothing);
 }
 
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
 message VerifierStreamRequest {
-	uint64 start = 1; // required: index of the first entry requested (inclusive)
-	uint64 limit = 2; // index of the first entry not requested (not inclusive)
+	// Start identifies the first epoch for which verifier steps should be
+	// returned.
+	uint64 start = 1;
+	// PageSize specifies number of entries to be returned, MaxUint64 for
+	// unlimited.
+	uint64 page_size = 2; 
 }
 
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
 message VerifierStep {
 	oneof type {
-		SignedEntryUpdate entry_changed = 1;
-		SignedRatification keyserver_ratified = 2;
+		SignedEntryUpdate Update = 1;
+		SignedEpochHead Epoch = 2;
 	}
 }
 

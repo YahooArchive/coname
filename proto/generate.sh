@@ -18,18 +18,36 @@ set -euo pipefail
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd "$DIR"
 
-go install ./protoc-gen-coname
+# go install ./protoc-gen-coname
 
 protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/gogo/protobuf" *.proto
-patch < less-recursion.patch
 
-sed 's/Thing/Entry/g' < preserve.go.template > preserveEntry.go
-sed 's/Thing/Entry/g' < preserve_test.go.template > preserveEntry_test.go
-sed 's/Thing/SignedEntryUpdate_EntryUpdateT/g' < preserve.go.template > preserveEntryUpdate.go
-sed 's/Thing/SignedEntryUpdate_EntryUpdateT/g' < preserve_test.go.template > preserveEntryUpdate_test.go
-sed 's/Thing/SignedRatification_RatificationT_KeyserverStateSummary/g' < preserve.go.template > preserveKeyserverStateSummary.go
-sed 's/Thing/SignedRatification_RatificationT_KeyserverStateSummary/g' < preserve_test.go.template > preserveKeyserverStateSummary_test.go
-sed 's/Thing/SignedRatification_RatificationT/g' < preserve.go.template > preserveRatificationT.go
-sed 's/Thing/SignedRatification_RatificationT/g' < preserve_test.go.template > preserveRatificationT_test.go
 
+function preserve {
+	sed "s/Thing/$1/g" < preserve.go.template > "$1.pr.go"
+	sed "s/Thing/$1/g" < preserve_test.go.template > "$1pr_test.go"
+}
+
+preserve Entry
+preserve SignedEntryUpdate
+preserve TimestampedEpochHead
+preserve EpochHead
+preserve PublicKey
+
+# preserve the encoding of repeated public keys
+sed -i 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
+
+# skip the text format tests (we never use the text format)
 sed -i '/Test.*Text.*testing/a	t.Skip()' *_test.go
+
+# bound the branching factor of quorum expressions to avoid infinite recursion.
+awk '{
+    if ( $0 ~ /^func NewPopulatedQuorumExpr/ ) {f = 1}
+    if ( f == 1 && $0 ~ /:= r\.Intn\(10\)/) { f = 0; sub(10,2,$0) }
+    print($0)
+}' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go
+awk '{
+    if ( $0 ~ /^func NewPopulatedPublicKey/ ) {f = 1}
+    if ( f == 1 && $0 ~ /:= r\.Intn\(10\)/) { f = 0; sub(10,2,$0) }
+    print($0)
+}' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go

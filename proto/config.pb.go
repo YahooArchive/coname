@@ -8,18 +8,18 @@ import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
 import fmt "fmt"
 
 import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
 import reflect "reflect"
 import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import errors "errors"
 
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -49,9 +49,9 @@ type RealmConfig struct {
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
 	URL string `protobuf:"bytes,3,opt,proto3" json:"URL,omitempty"`
-	// Verifiers lists all verifiers from the keyserver itself to internal
-	// replicas of a single verifier operator.
-	Verifiers map[uint64]*SignatureVerifier `protobuf:"bytes,4,rep,name=verifiers" json:"verifiers,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	// PublicKeys contains public keys of all verifiers of this realm,
+	// including the keyserver.
+	PublicKeys map[uint64]*PublicKey `protobuf:"bytes,4,rep,name=public_keys" json:"public_keys,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. It is the convention to always require the
 	// keyserver's ratification here.
@@ -61,9 +61,9 @@ type RealmConfig struct {
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
 func (*RealmConfig) ProtoMessage() {}
 
-func (m *RealmConfig) GetVerifiers() map[uint64]*SignatureVerifier {
+func (m *RealmConfig) GetPublicKeys() map[uint64]*PublicKey {
 	if m != nil {
-		return m.Verifiers
+		return m.PublicKeys
 	}
 	return nil
 }
@@ -75,6 +75,569 @@ func (m *RealmConfig) GetQuorumRequirement() *QuorumExpr {
 	return nil
 }
 
+func (this *Config) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Config)
+	if !ok {
+		return fmt.Errorf("that is not of type *Config")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Config but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Configbut is not nil && this == nil")
+	}
+	if len(this.Realms) != len(that1.Realms) {
+		return fmt.Errorf("Realms this(%v) Not Equal that(%v)", len(this.Realms), len(that1.Realms))
+	}
+	for i := range this.Realms {
+		if !this.Realms[i].Equal(that1.Realms[i]) {
+			return fmt.Errorf("Realms this[%v](%v) Not Equal that[%v](%v)", i, this.Realms[i], i, that1.Realms[i])
+		}
+	}
+	return nil
+}
+func (this *Config) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Config)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Realms) != len(that1.Realms) {
+		return false
+	}
+	for i := range this.Realms {
+		if !this.Realms[i].Equal(that1.Realms[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *RealmConfig) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*RealmConfig)
+	if !ok {
+		return fmt.Errorf("that is not of type *RealmConfig")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *RealmConfig but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *RealmConfigbut is not nil && this == nil")
+	}
+	if len(this.Domains) != len(that1.Domains) {
+		return fmt.Errorf("Domains this(%v) Not Equal that(%v)", len(this.Domains), len(that1.Domains))
+	}
+	for i := range this.Domains {
+		if this.Domains[i] != that1.Domains[i] {
+			return fmt.Errorf("Domains this[%v](%v) Not Equal that[%v](%v)", i, this.Domains[i], i, that1.Domains[i])
+		}
+	}
+	if this.Addr != that1.Addr {
+		return fmt.Errorf("Addr this(%v) Not Equal that(%v)", this.Addr, that1.Addr)
+	}
+	if this.URL != that1.URL {
+		return fmt.Errorf("URL this(%v) Not Equal that(%v)", this.URL, that1.URL)
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
+		}
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
+	}
+	return nil
+}
+func (this *RealmConfig) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*RealmConfig)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Domains) != len(that1.Domains) {
+		return false
+	}
+	for i := range this.Domains {
+		if this.Domains[i] != that1.Domains[i] {
+			return false
+		}
+	}
+	if this.Addr != that1.Addr {
+		return false
+	}
+	if this.URL != that1.URL {
+		return false
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return false
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return false
+		}
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return false
+	}
+	return true
+}
+func (this *Config) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.Config{` +
+		`Realms:` + fmt.Sprintf("%#v", this.Realms) + `}`}, ", ")
+	return s
+}
+func (this *RealmConfig) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&proto.RealmConfig{` +
+		`Domains:` + fmt.Sprintf("%#v", this.Domains),
+		`Addr:` + fmt.Sprintf("%#v", this.Addr),
+		`URL:` + fmt.Sprintf("%#v", this.URL),
+		`PublicKeys:` + mapStringForPublicKeys,
+		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
+	return s
+}
+func valueToGoStringConfig(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringConfig(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *Config) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Config) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Realms) > 0 {
+		for _, msg := range m.Realms {
+			data[i] = 0xa
+			i++
+			i = encodeVarintConfig(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *RealmConfig) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Domains) > 0 {
+		for _, s := range m.Domains {
+			data[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.Addr) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintConfig(data, i, uint64(len(m.Addr)))
+		i += copy(data[i:], m.Addr)
+	}
+	if len(m.URL) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
+		i += copy(data[i:], m.URL)
+	}
+	if len(m.PublicKeys) > 0 {
+		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
+		for k, _ := range m.PublicKeys {
+			keysForPublicKeys = append(keysForPublicKeys, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+		for _, k := range keysForPublicKeys {
+			data[i] = 0x22
+			i++
+			v := m.PublicKeys[k]
+			if v == nil {
+				return 0, errors.New("proto: map has nil element")
+			}
+			msgSize := v.Size()
+			mapSize := 1 + sovConfig(uint64(k)) + 1 + msgSize + sovConfig(uint64(msgSize))
+			i = encodeVarintConfig(data, i, uint64(mapSize))
+			data[i] = 0x8
+			i++
+			i = encodeVarintConfig(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintConfig(data, i, uint64(v.Size()))
+			n1, err := v.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n1
+		}
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintConfig(data, i, uint64(m.QuorumRequirement.Size()))
+		n2, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+
+func encodeFixed64Config(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Config(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintConfig(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedConfig(r randyConfig, easy bool) *Config {
+	this := &Config{}
+	if r.Intn(10) != 0 {
+		v1 := r.Intn(10)
+		this.Realms = make([]*RealmConfig, v1)
+		for i := 0; i < v1; i++ {
+			this.Realms[i] = NewPopulatedRealmConfig(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
+	this := &RealmConfig{}
+	v2 := r.Intn(10)
+	this.Domains = make([]string, v2)
+	for i := 0; i < v2; i++ {
+		this.Domains[i] = randStringConfig(r)
+	}
+	this.Addr = randStringConfig(r)
+	this.URL = randStringConfig(r)
+	if r.Intn(10) != 0 {
+		v3 := r.Intn(10)
+		this.PublicKeys = make(map[uint64]*PublicKey)
+		for i := 0; i < v3; i++ {
+			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyConfig interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneConfig(r randyConfig) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringConfig(r randyConfig) string {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
+		tmps[i] = randUTF8RuneConfig(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedConfig(r randyConfig, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldConfig(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateConfig(data, uint64(key))
+		v5 := r.Int63()
+		if r.Intn(2) == 0 {
+			v5 *= -1
+		}
+		data = encodeVarintPopulateConfig(data, uint64(v5))
+	case 1:
+		data = encodeVarintPopulateConfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateConfig(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateConfig(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateConfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateConfig(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *Config) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Realms) > 0 {
+		for _, e := range m.Realms {
+			l = e.Size()
+			n += 1 + l + sovConfig(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *RealmConfig) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Domains) > 0 {
+		for _, s := range m.Domains {
+			l = len(s)
+			n += 1 + l + sovConfig(uint64(l))
+		}
+	}
+	l = len(m.Addr)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	l = len(m.URL)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	if len(m.PublicKeys) > 0 {
+		for k, v := range m.PublicKeys {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+			}
+			mapEntrySize := 1 + sovConfig(uint64(k)) + 1 + l + sovConfig(uint64(l))
+			n += mapEntrySize + 1 + sovConfig(uint64(mapEntrySize))
+		}
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	return n
+}
+
+func sovConfig(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozConfig(x uint64) (n int) {
+	return sovConfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *Config) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Config{`,
+		`Realms:` + strings.Replace(fmt.Sprintf("%v", this.Realms), "RealmConfig", "RealmConfig", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *RealmConfig) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&RealmConfig{`,
+		`Domains:` + fmt.Sprintf("%v", this.Domains) + `,`,
+		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
+		`PublicKeys:` + mapStringForPublicKeys + `,`,
+		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringConfig(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
 func (m *Config) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -229,7 +792,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Verifiers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -299,15 +862,15 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postmsgIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			mapvalue := &SignatureVerifier{}
+			mapvalue := &PublicKey{}
 			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
 				return err
 			}
 			iNdEx = postmsgIndex
-			if m.Verifiers == nil {
-				m.Verifiers = make(map[uint64]*SignatureVerifier)
+			if m.PublicKeys == nil {
+				m.PublicKeys = make(map[uint64]*PublicKey)
 			}
-			m.Verifiers[mapkey] = mapvalue
+			m.PublicKeys[mapkey] = mapvalue
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -442,567 +1005,4 @@ func skipConfig(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (this *Config) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Config{`,
-		`Realms:` + strings.Replace(fmt.Sprintf("%v", this.Realms), "RealmConfig", "RealmConfig", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *RealmConfig) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForVerifiers := make([]uint64, 0, len(this.Verifiers))
-	for k, _ := range this.Verifiers {
-		keysForVerifiers = append(keysForVerifiers, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForVerifiers)
-	mapStringForVerifiers := "map[uint64]*SignatureVerifier{"
-	for _, k := range keysForVerifiers {
-		mapStringForVerifiers += fmt.Sprintf("%v: %v,", k, this.Verifiers[k])
-	}
-	mapStringForVerifiers += "}"
-	s := strings.Join([]string{`&RealmConfig{`,
-		`Domains:` + fmt.Sprintf("%v", this.Domains) + `,`,
-		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
-		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
-		`Verifiers:` + mapStringForVerifiers + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringConfig(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *Config) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Realms) > 0 {
-		for _, e := range m.Realms {
-			l = e.Size()
-			n += 1 + l + sovConfig(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *RealmConfig) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Domains) > 0 {
-		for _, s := range m.Domains {
-			l = len(s)
-			n += 1 + l + sovConfig(uint64(l))
-		}
-	}
-	l = len(m.Addr)
-	if l > 0 {
-		n += 1 + l + sovConfig(uint64(l))
-	}
-	l = len(m.URL)
-	if l > 0 {
-		n += 1 + l + sovConfig(uint64(l))
-	}
-	if len(m.Verifiers) > 0 {
-		for k, v := range m.Verifiers {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-			}
-			mapEntrySize := 1 + sovConfig(uint64(k)) + 1 + l + sovConfig(uint64(l))
-			n += mapEntrySize + 1 + sovConfig(uint64(mapEntrySize))
-		}
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
-		n += 1 + l + sovConfig(uint64(l))
-	}
-	return n
-}
-
-func sovConfig(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozConfig(x uint64) (n int) {
-	return sovConfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedConfig(r randyConfig, easy bool) *Config {
-	this := &Config{}
-	if r.Intn(10) != 0 {
-		v1 := r.Intn(10)
-		this.Realms = make([]*RealmConfig, v1)
-		for i := 0; i < v1; i++ {
-			this.Realms[i] = NewPopulatedRealmConfig(r, easy)
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
-	this := &RealmConfig{}
-	v2 := r.Intn(10)
-	this.Domains = make([]string, v2)
-	for i := 0; i < v2; i++ {
-		this.Domains[i] = randStringConfig(r)
-	}
-	this.Addr = randStringConfig(r)
-	this.URL = randStringConfig(r)
-	if r.Intn(10) != 0 {
-		v3 := r.Intn(10)
-		this.Verifiers = make(map[uint64]*SignatureVerifier)
-		for i := 0; i < v3; i++ {
-			this.Verifiers[uint64(uint64(r.Uint32()))] = NewPopulatedSignatureVerifier(r, easy)
-		}
-	}
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyConfig interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneConfig(r randyConfig) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringConfig(r randyConfig) string {
-	v4 := r.Intn(100)
-	tmps := make([]rune, v4)
-	for i := 0; i < v4; i++ {
-		tmps[i] = randUTF8RuneConfig(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedConfig(r randyConfig, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldConfig(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		v5 := r.Int63()
-		if r.Intn(2) == 0 {
-			v5 *= -1
-		}
-		data = encodeVarintPopulateConfig(data, uint64(v5))
-	case 1:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateConfig(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateConfig(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *Config) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Config) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Realms) > 0 {
-		for _, msg := range m.Realms {
-			data[i] = 0xa
-			i++
-			i = encodeVarintConfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func (m *RealmConfig) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Domains) > 0 {
-		for _, s := range m.Domains {
-			data[i] = 0xa
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.Addr) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.Addr)))
-		i += copy(data[i:], m.Addr)
-	}
-	if len(m.URL) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
-		i += copy(data[i:], m.URL)
-	}
-	if len(m.Verifiers) > 0 {
-		keysForVerifiers := make([]uint64, 0, len(m.Verifiers))
-		for k, _ := range m.Verifiers {
-			keysForVerifiers = append(keysForVerifiers, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForVerifiers)
-		for _, k := range keysForVerifiers {
-			data[i] = 0x22
-			i++
-			v := m.Verifiers[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
-			}
-			msgSize := v.Size()
-			mapSize := 1 + sovConfig(uint64(k)) + 1 + msgSize + sovConfig(uint64(msgSize))
-			i = encodeVarintConfig(data, i, uint64(mapSize))
-			data[i] = 0x8
-			i++
-			i = encodeVarintConfig(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintConfig(data, i, uint64(v.Size()))
-			n1, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n1
-		}
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintConfig(data, i, uint64(m.QuorumRequirement.Size()))
-		n2, err := m.QuorumRequirement.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func encodeFixed64Config(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Config(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintConfig(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *Config) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Config{` +
-		`Realms:` + fmt.Sprintf("%#v", this.Realms) + `}`}, ", ")
-	return s
-}
-func (this *RealmConfig) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForVerifiers := make([]uint64, 0, len(this.Verifiers))
-	for k, _ := range this.Verifiers {
-		keysForVerifiers = append(keysForVerifiers, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForVerifiers)
-	mapStringForVerifiers := "map[uint64]*SignatureVerifier{"
-	for _, k := range keysForVerifiers {
-		mapStringForVerifiers += fmt.Sprintf("%#v: %#v,", k, this.Verifiers[k])
-	}
-	mapStringForVerifiers += "}"
-	s := strings.Join([]string{`&proto.RealmConfig{` +
-		`Domains:` + fmt.Sprintf("%#v", this.Domains),
-		`Addr:` + fmt.Sprintf("%#v", this.Addr),
-		`URL:` + fmt.Sprintf("%#v", this.URL),
-		`Verifiers:` + mapStringForVerifiers,
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
-	return s
-}
-func valueToGoStringConfig(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringConfig(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *Config) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Config)
-	if !ok {
-		return fmt.Errorf("that is not of type *Config")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Config but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Configbut is not nil && this == nil")
-	}
-	if len(this.Realms) != len(that1.Realms) {
-		return fmt.Errorf("Realms this(%v) Not Equal that(%v)", len(this.Realms), len(that1.Realms))
-	}
-	for i := range this.Realms {
-		if !this.Realms[i].Equal(that1.Realms[i]) {
-			return fmt.Errorf("Realms this[%v](%v) Not Equal that[%v](%v)", i, this.Realms[i], i, that1.Realms[i])
-		}
-	}
-	return nil
-}
-func (this *Config) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Config)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if len(this.Realms) != len(that1.Realms) {
-		return false
-	}
-	for i := range this.Realms {
-		if !this.Realms[i].Equal(that1.Realms[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *RealmConfig) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*RealmConfig)
-	if !ok {
-		return fmt.Errorf("that is not of type *RealmConfig")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *RealmConfig but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *RealmConfigbut is not nil && this == nil")
-	}
-	if len(this.Domains) != len(that1.Domains) {
-		return fmt.Errorf("Domains this(%v) Not Equal that(%v)", len(this.Domains), len(that1.Domains))
-	}
-	for i := range this.Domains {
-		if this.Domains[i] != that1.Domains[i] {
-			return fmt.Errorf("Domains this[%v](%v) Not Equal that[%v](%v)", i, this.Domains[i], i, that1.Domains[i])
-		}
-	}
-	if this.Addr != that1.Addr {
-		return fmt.Errorf("Addr this(%v) Not Equal that(%v)", this.Addr, that1.Addr)
-	}
-	if this.URL != that1.URL {
-		return fmt.Errorf("URL this(%v) Not Equal that(%v)", this.URL, that1.URL)
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return fmt.Errorf("Verifiers this(%v) Not Equal that(%v)", len(this.Verifiers), len(that1.Verifiers))
-	}
-	for i := range this.Verifiers {
-		if !this.Verifiers[i].Equal(that1.Verifiers[i]) {
-			return fmt.Errorf("Verifiers this[%v](%v) Not Equal that[%v](%v)", i, this.Verifiers[i], i, that1.Verifiers[i])
-		}
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
-	}
-	return nil
-}
-func (this *RealmConfig) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*RealmConfig)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if len(this.Domains) != len(that1.Domains) {
-		return false
-	}
-	for i := range this.Domains {
-		if this.Domains[i] != that1.Domains[i] {
-			return false
-		}
-	}
-	if this.Addr != that1.Addr {
-		return false
-	}
-	if this.URL != that1.URL {
-		return false
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return false
-	}
-	for i := range this.Verifiers {
-		if !this.Verifiers[i].Equal(that1.Verifiers[i]) {
-			return false
-		}
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return false
-	}
-	return true
 }

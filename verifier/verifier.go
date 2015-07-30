@@ -38,7 +38,7 @@ import (
 // TODO: make this a protobuf, Unmarshal from JSON
 type Config struct {
 	Realm          string
-	KeyserverVerif *proto.SignatureVerifier
+	KeyserverVerif *proto.PublicKey
 	KeyserverAddr  string
 
 	ID              uint64
@@ -50,7 +50,7 @@ type Config struct {
 // The veirifier is not replicated because one can just run several.
 type Verifier struct {
 	realm          string
-	keyserverVerif *proto.SignatureVerifier
+	keyserverVerif *proto.PublicKey
 	keyserverAddr  string
 	auth           credentials.TransportAuthenticator
 
@@ -130,8 +130,8 @@ func (vr *Verifier) run() {
 		}
 		vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
 		stream, err := vr.keyserver.VerifierStream(context.TODO(), &proto.VerifierStreamRequest{
-			Start: vr.vs.NextIndex,
-			Limit: math.MaxUint64,
+			Start:    vr.vs.NextIndex,
+			PageSize: math.MaxUint64,
 		})
 		if err != nil {
 			keyserverConnection.Close()
@@ -167,55 +167,55 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 	// vr: &const
 	// step, vs, wb: &mut
 	switch {
-	case step.EntryChanged != nil:
-		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.EntryChanged); err != nil {
+	case step.Update != nil:
+		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update); err != nil {
 			return // TODO: decide whether keyserver should guarantee that verifiers don't see bad updates
 		}
 		// TODO(dmz): set entry in tree
-	case step.KeyserverRatified != nil:
+	case step.Epoch != nil:
 		ok := common.VerifySignature(
 			vr.keyserverVerif,
-			step.KeyserverRatified.Ratification.PreservedEncoding,
-			step.KeyserverRatified.Signature)
+			step.Epoch.Head.PreservedEncoding,
+			step.Epoch.Signature)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
 			log.Fatalf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
 		}
-		r := step.KeyserverRatified.Ratification
-		if r.Realm != vr.realm {
-			log.Fatalf("%d: ratification for realm %q, expected %q: %#v", vr.vs.NextEpoch, r.Realm, vr.realm, *step)
+		r := step.Epoch.Head
+		if r.Head.Realm != vr.realm {
+			log.Fatalf("%d: seh for realm %q, expected %q: %#v", vr.vs.NextEpoch, r.Head.Realm, vr.realm, *step)
 		}
-		if r.Epoch != vr.vs.NextEpoch {
-			log.Fatalf("%d: got epoch %d instead: %#v", vr.vs.NextEpoch, r.Epoch, *step)
+		if r.Head.Epoch != vr.vs.NextEpoch {
+			log.Fatalf("%d: got epoch %d instead: %#v", vr.vs.NextEpoch, r.Head.Epoch, *step)
 		}
-		s := &r.Summary
+		s := &r.Head
 		if !bytes.Equal(s.PreviousSummaryHash, vr.vs.PreviousSummaryHash) {
-			log.Fatalf("%d: ratification with previous summary hash %q, expected %q: %#v", vr.vs.NextEpoch, s.PreviousSummaryHash, vr.vs.PreviousSummaryHash, *step)
+			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vr.vs.NextEpoch, s.PreviousSummaryHash, vr.vs.PreviousSummaryHash, *step)
 		}
 		if s.RootHash != nil /*TODO(dmz): merkletree.GetRootHash()*/ {
-			log.Fatalf("%d: ratification with root hash %q, expected nil: %#v", vr.vs.NextEpoch, s.RootHash /*, TODO*/, *step)
+			log.Fatalf("%d: seh with root hash %q, expected nil: %#v", vr.vs.NextEpoch, s.RootHash /*, TODO*/, *step)
 		}
-		ratification := &proto.SignedRatification{
-			Ratifier: vr.id,
-			Ratification: proto.SignedRatification_RatificationT_PreserveEncoding{proto.SignedRatification_RatificationT{
-				Realm: vr.realm,
-				Epoch: vr.vs.NextEpoch,
-				Summary: proto.SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding{proto.SignedRatification_RatificationT_KeyserverStateSummary{
+		seh := &proto.SignedEpochHead{
+			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
+				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
 					RootHash:            nil, // TODO(dmz): merklemap.GetRootHash()
 					PreviousSummaryHash: vr.vs.PreviousSummaryHash,
+					Realm:               vr.realm,
+					Epoch:               vr.vs.NextEpoch,
 				}, nil},
 				Timestamp: proto.Time(time.Now()),
 			}, nil},
+			Signature: make(map[uint64][]byte, 1),
 		}
-		ratification.Ratification.Summary.UpdateEncoding()
-		h := sha256.Sum256(ratification.Ratification.Summary.PreservedEncoding)
+		seh.Head.Head.UpdateEncoding()
+		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
 		vr.vs.PreviousSummaryHash = h[:]
-		ratification.Ratification.UpdateEncoding()
-		ratification.Signature = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&ratification.Ratification))[:]
-		wb.Put(tableRatifications(vr.vs.NextEpoch, ratification.Ratifier), proto.MustMarshal(ratification))
+		seh.Head.UpdateEncoding()
+		seh.Signature[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
+		wb.Put(tableRatifications(vr.vs.NextEpoch, vr.id), proto.MustMarshal(seh))
 		vs.NextEpoch++
 		return func() {
-			_, err := vr.keyserver.PushRatification(context.TODO(), ratification)
+			_, err := vr.keyserver.PushRatification(context.TODO(), seh)
 			if err != nil { // TODO: how should this error be handled (grpc issue #238 may be relevant)
 				log.Printf("PushRatification: %s", err)
 			}

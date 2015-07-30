@@ -8,20 +8,20 @@ import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
-
-import strings "strings"
-import reflect "reflect"
-
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
-
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
+
+import fmt "fmt"
+
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -29,8 +29,12 @@ var _ = proto1.Marshal
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
 type VerifierStreamRequest struct {
+	// Start identifies the first epoch for which verifier steps should be
+	// returned.
 	Start uint64 `protobuf:"varint,1,opt,name=start,proto3" json:"start,omitempty"`
-	Limit uint64 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// PageSize specifies number of entries to be returned, MaxUint64 for
+	// unlimited.
+	PageSize uint64 `protobuf:"varint,2,opt,name=page_size,proto3" json:"page_size,omitempty"`
 }
 
 func (m *VerifierStreamRequest) Reset()      { *m = VerifierStreamRequest{} }
@@ -39,23 +43,23 @@ func (*VerifierStreamRequest) ProtoMessage() {}
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
 type VerifierStep struct {
-	EntryChanged      *SignedEntryUpdate  `protobuf:"bytes,1,opt,name=entry_changed" json:"entry_changed,omitempty"`
-	KeyserverRatified *SignedRatification `protobuf:"bytes,2,opt,name=keyserver_ratified" json:"keyserver_ratified,omitempty"`
+	Update *SignedEntryUpdate `protobuf:"bytes,1,opt" json:"Update,omitempty"`
+	Epoch  *SignedEpochHead   `protobuf:"bytes,2,opt" json:"Epoch,omitempty"`
 }
 
 func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
 func (*VerifierStep) ProtoMessage() {}
 
-func (m *VerifierStep) GetEntryChanged() *SignedEntryUpdate {
+func (m *VerifierStep) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
-		return m.EntryChanged
+		return m.Update
 	}
 	return nil
 }
 
-func (m *VerifierStep) GetKeyserverRatified() *SignedRatification {
+func (m *VerifierStep) GetEpoch() *SignedEpochHead {
 	if m != nil {
-		return m.KeyserverRatified
+		return m.Epoch
 	}
 	return nil
 }
@@ -66,6 +70,647 @@ type Nothing struct {
 func (m *Nothing) Reset()      { *m = Nothing{} }
 func (*Nothing) ProtoMessage() {}
 
+// Client API for E2EKSVerification service
+
+type E2EKSVerificationClient interface {
+	// VerifierStream accesses the public inputs to a keyserver state machine.
+	// The returned stream is gives a limited view of the log the keyserver
+	// that is being verified uses to replicate its state internally.
+	// However, private user data such as usernames and profile details
+	// is not included (the relevant fields are set to nil).
+	// note: the keyserver implementation also uses the same log to presist
+	// verifier ratifications, but as they do not affect any username:profile
+	// mappings, they are excluded as well.
+	VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error)
+	// PushRatification is called each time a verifier who has been
+	// successfully replaying the log returned by VerifierStream interprets a
+	// keyserver_ratified step and agrees that the keyserver state summarized
+	// by it is the unique result of applying all the previous update steps.
+	// The SignedRatification will be stored by the server and used to
+	// argue the correctness of future lookups in front of clients.
+	PushRatification(ctx context.Context, in *SignedEpochHead, opts ...grpc.CallOption) (*Nothing, error)
+}
+
+type e2EKSVerificationClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSVerificationClient(cc *grpc.ClientConn) E2EKSVerificationClient {
+	return &e2EKSVerificationClient{cc}
+}
+
+func (c *e2EKSVerificationClient) VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error) {
+	stream, err := grpc.NewClientStream(ctx, &_E2EKSVerification_serviceDesc.Streams[0], c.cc, "/proto.E2EKSVerification/VerifierStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &e2EKSVerificationVerifierStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type E2EKSVerification_VerifierStreamClient interface {
+	Recv() (*VerifierStep, error)
+	grpc.ClientStream
+}
+
+type e2EKSVerificationVerifierStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *e2EKSVerificationVerifierStreamClient) Recv() (*VerifierStep, error) {
+	m := new(VerifierStep)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *e2EKSVerificationClient) PushRatification(ctx context.Context, in *SignedEpochHead, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/proto.E2EKSVerification/PushRatification", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSVerification service
+
+type E2EKSVerificationServer interface {
+	// VerifierStream accesses the public inputs to a keyserver state machine.
+	// The returned stream is gives a limited view of the log the keyserver
+	// that is being verified uses to replicate its state internally.
+	// However, private user data such as usernames and profile details
+	// is not included (the relevant fields are set to nil).
+	// note: the keyserver implementation also uses the same log to presist
+	// verifier ratifications, but as they do not affect any username:profile
+	// mappings, they are excluded as well.
+	VerifierStream(*VerifierStreamRequest, E2EKSVerification_VerifierStreamServer) error
+	// PushRatification is called each time a verifier who has been
+	// successfully replaying the log returned by VerifierStream interprets a
+	// keyserver_ratified step and agrees that the keyserver state summarized
+	// by it is the unique result of applying all the previous update steps.
+	// The SignedRatification will be stored by the server and used to
+	// argue the correctness of future lookups in front of clients.
+	PushRatification(context.Context, *SignedEpochHead) (*Nothing, error)
+}
+
+func RegisterE2EKSVerificationServer(s *grpc.Server, srv E2EKSVerificationServer) {
+	s.RegisterService(&_E2EKSVerification_serviceDesc, srv)
+}
+
+func _E2EKSVerification_VerifierStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(VerifierStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(E2EKSVerificationServer).VerifierStream(m, &e2EKSVerificationVerifierStreamServer{stream})
+}
+
+type E2EKSVerification_VerifierStreamServer interface {
+	Send(*VerifierStep) error
+	grpc.ServerStream
+}
+
+type e2EKSVerificationVerifierStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *e2EKSVerificationVerifierStreamServer) Send(m *VerifierStep) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _E2EKSVerification_PushRatification_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(SignedEpochHead)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSVerificationServer).PushRatification(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSVerification",
+	HandlerType: (*E2EKSVerificationServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "PushRatification",
+			Handler:    _E2EKSVerification_PushRatification_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "VerifierStream",
+			Handler:       _E2EKSVerification_VerifierStream_Handler,
+			ServerStreams: true,
+		},
+	},
+}
+
+func (this *VerifierStreamRequest) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*VerifierStreamRequest)
+	if !ok {
+		return fmt.Errorf("that is not of type *VerifierStreamRequest")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *VerifierStreamRequest but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *VerifierStreamRequestbut is not nil && this == nil")
+	}
+	if this.Start != that1.Start {
+		return fmt.Errorf("Start this(%v) Not Equal that(%v)", this.Start, that1.Start)
+	}
+	if this.PageSize != that1.PageSize {
+		return fmt.Errorf("PageSize this(%v) Not Equal that(%v)", this.PageSize, that1.PageSize)
+	}
+	return nil
+}
+func (this *VerifierStreamRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*VerifierStreamRequest)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Start != that1.Start {
+		return false
+	}
+	if this.PageSize != that1.PageSize {
+		return false
+	}
+	return true
+}
+func (this *VerifierStep) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*VerifierStep)
+	if !ok {
+		return fmt.Errorf("that is not of type *VerifierStep")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *VerifierStep but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *VerifierStepbut is not nil && this == nil")
+	}
+	if !this.Update.Equal(that1.Update) {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	if !this.Epoch.Equal(that1.Epoch) {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
+	}
+	return nil
+}
+func (this *VerifierStep) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*VerifierStep)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Update.Equal(that1.Update) {
+		return false
+	}
+	if !this.Epoch.Equal(that1.Epoch) {
+		return false
+	}
+	return true
+}
+func (this *Nothing) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Nothing)
+	if !ok {
+		return fmt.Errorf("that is not of type *Nothing")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Nothing but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Nothingbut is not nil && this == nil")
+	}
+	return nil
+}
+func (this *Nothing) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Nothing)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	return true
+}
+func (this *VerifierStreamRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
+		`Start:` + fmt.Sprintf("%#v", this.Start),
+		`PageSize:` + fmt.Sprintf("%#v", this.PageSize) + `}`}, ", ")
+	return s
+}
+func (this *VerifierStep) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStep{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch) + `}`}, ", ")
+	return s
+}
+func valueToGoStringVerifier(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringVerifier(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Start != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Start))
+	}
+	if m.PageSize != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.PageSize))
+	}
+	return i, nil
+}
+
+func (m *VerifierStep) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Update.Size()))
+		n1, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.Epoch != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Epoch.Size()))
+		n2, err := m.Epoch.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+
+func (m *Nothing) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintVerifier(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStreamRequest {
+	this := &VerifierStreamRequest{}
+	this.Start = uint64(uint64(r.Uint32()))
+	this.PageSize = uint64(uint64(r.Uint32()))
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
+	this := &VerifierStep{}
+	if r.Intn(10) != 0 {
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.Epoch = NewPopulatedSignedEpochHead(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedNothing(r randyVerifier, easy bool) *Nothing {
+	this := &Nothing{}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyVerifier interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneVerifier(r randyVerifier) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringVerifier(r randyVerifier) string {
+	v1 := r.Intn(100)
+	tmps := make([]rune, v1)
+	for i := 0; i < v1; i++ {
+		tmps[i] = randUTF8RuneVerifier(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedVerifier(r randyVerifier, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldVerifier(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldVerifier(data []byte, r randyVerifier, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		v2 := r.Int63()
+		if r.Intn(2) == 0 {
+			v2 *= -1
+		}
+		data = encodeVarintPopulateVerifier(data, uint64(v2))
+	case 1:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateVerifier(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateVerifier(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *VerifierStreamRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Start != 0 {
+		n += 1 + sovVerifier(uint64(m.Start))
+	}
+	if m.PageSize != 0 {
+		n += 1 + sovVerifier(uint64(m.PageSize))
+	}
+	return n
+}
+
+func (m *VerifierStep) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	if m.Epoch != nil {
+		l = m.Epoch.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	return n
+}
+
+func (m *Nothing) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func sovVerifier(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozVerifier(x uint64) (n int) {
+	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *VerifierStreamRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStreamRequest{`,
+		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
+		`PageSize:` + fmt.Sprintf("%v", this.PageSize) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Epoch:` + strings.Replace(fmt.Sprintf("%v", this.Epoch), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Nothing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Nothing{`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringVerifier(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
 func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -103,16 +748,16 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 			}
 		case 2:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Limit", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PageSize", wireType)
 			}
-			m.Limit = 0
+			m.PageSize = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Limit |= (uint64(b) & 0x7F) << shift
+				m.PageSize |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -161,7 +806,7 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EntryChanged", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -179,16 +824,16 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.EntryChanged == nil {
-				m.EntryChanged = &SignedEntryUpdate{}
+			if m.Update == nil {
+				m.Update = &SignedEntryUpdate{}
 			}
-			if err := m.EntryChanged.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field KeyserverRatified", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -206,10 +851,10 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.KeyserverRatified == nil {
-				m.KeyserverRatified = &SignedRatification{}
+			if m.Epoch == nil {
+				m.Epoch = &SignedEpochHead{}
 			}
-			if err := m.KeyserverRatified.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Epoch.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -360,645 +1005,4 @@ func skipVerifier(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (this *VerifierStreamRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VerifierStreamRequest{`,
-		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
-		`Limit:` + fmt.Sprintf("%v", this.Limit) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *VerifierStep) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VerifierStep{`,
-		`EntryChanged:` + strings.Replace(fmt.Sprintf("%v", this.EntryChanged), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`KeyserverRatified:` + strings.Replace(fmt.Sprintf("%v", this.KeyserverRatified), "SignedRatification", "SignedRatification", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Nothing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Nothing{`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringVerifier(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *VerifierStreamRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Start != 0 {
-		n += 1 + sovVerifier(uint64(m.Start))
-	}
-	if m.Limit != 0 {
-		n += 1 + sovVerifier(uint64(m.Limit))
-	}
-	return n
-}
-
-func (m *VerifierStep) Size() (n int) {
-	var l int
-	_ = l
-	if m.EntryChanged != nil {
-		l = m.EntryChanged.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	if m.KeyserverRatified != nil {
-		l = m.KeyserverRatified.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	return n
-}
-
-func (m *Nothing) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func sovVerifier(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozVerifier(x uint64) (n int) {
-	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStreamRequest {
-	this := &VerifierStreamRequest{}
-	this.Start = uint64(uint64(r.Uint32()))
-	this.Limit = uint64(uint64(r.Uint32()))
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
-	this := &VerifierStep{}
-	if r.Intn(10) != 0 {
-		this.EntryChanged = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.KeyserverRatified = NewPopulatedSignedRatification(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedNothing(r randyVerifier, easy bool) *Nothing {
-	this := &Nothing{}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyVerifier interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneVerifier(r randyVerifier) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringVerifier(r randyVerifier) string {
-	v1 := r.Intn(100)
-	tmps := make([]rune, v1)
-	for i := 0; i < v1; i++ {
-		tmps[i] = randUTF8RuneVerifier(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedVerifier(r randyVerifier, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldVerifier(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldVerifier(data []byte, r randyVerifier, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		v2 := r.Int63()
-		if r.Intn(2) == 0 {
-			v2 *= -1
-		}
-		data = encodeVarintPopulateVerifier(data, uint64(v2))
-	case 1:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateVerifier(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateVerifier(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Start != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Start))
-	}
-	if m.Limit != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Limit))
-	}
-	return i, nil
-}
-
-func (m *VerifierStep) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.EntryChanged != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.EntryChanged.Size()))
-		n1, err := m.EntryChanged.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.KeyserverRatified != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.KeyserverRatified.Size()))
-		n2, err := m.KeyserverRatified.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func (m *Nothing) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintVerifier(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *VerifierStreamRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
-		`Start:` + fmt.Sprintf("%#v", this.Start),
-		`Limit:` + fmt.Sprintf("%#v", this.Limit) + `}`}, ", ")
-	return s
-}
-func (this *VerifierStep) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.VerifierStep{` +
-		`EntryChanged:` + fmt.Sprintf("%#v", this.EntryChanged),
-		`KeyserverRatified:` + fmt.Sprintf("%#v", this.KeyserverRatified) + `}`}, ", ")
-	return s
-}
-func valueToGoStringVerifier(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringVerifier(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *VerifierStreamRequest) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*VerifierStreamRequest)
-	if !ok {
-		return fmt.Errorf("that is not of type *VerifierStreamRequest")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *VerifierStreamRequest but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *VerifierStreamRequestbut is not nil && this == nil")
-	}
-	if this.Start != that1.Start {
-		return fmt.Errorf("Start this(%v) Not Equal that(%v)", this.Start, that1.Start)
-	}
-	if this.Limit != that1.Limit {
-		return fmt.Errorf("Limit this(%v) Not Equal that(%v)", this.Limit, that1.Limit)
-	}
-	return nil
-}
-func (this *VerifierStreamRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*VerifierStreamRequest)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Start != that1.Start {
-		return false
-	}
-	if this.Limit != that1.Limit {
-		return false
-	}
-	return true
-}
-func (this *VerifierStep) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*VerifierStep)
-	if !ok {
-		return fmt.Errorf("that is not of type *VerifierStep")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *VerifierStep but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *VerifierStepbut is not nil && this == nil")
-	}
-	if !this.EntryChanged.Equal(that1.EntryChanged) {
-		return fmt.Errorf("EntryChanged this(%v) Not Equal that(%v)", this.EntryChanged, that1.EntryChanged)
-	}
-	if !this.KeyserverRatified.Equal(that1.KeyserverRatified) {
-		return fmt.Errorf("KeyserverRatified this(%v) Not Equal that(%v)", this.KeyserverRatified, that1.KeyserverRatified)
-	}
-	return nil
-}
-func (this *VerifierStep) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*VerifierStep)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.EntryChanged.Equal(that1.EntryChanged) {
-		return false
-	}
-	if !this.KeyserverRatified.Equal(that1.KeyserverRatified) {
-		return false
-	}
-	return true
-}
-func (this *Nothing) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Nothing)
-	if !ok {
-		return fmt.Errorf("that is not of type *Nothing")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Nothing but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Nothingbut is not nil && this == nil")
-	}
-	return nil
-}
-func (this *Nothing) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Nothing)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	return true
-}
-
-// Client API for E2EKSVerification service
-
-type E2EKSVerificationClient interface {
-	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
-	VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error)
-	// PushRatification is called each time a verifier who has been
-	// successfully replaying the log returned by VerifierStream interprets a
-	// keyserver_ratified step and agrees that the keyserver state summarized
-	// by it is the unique result of applying all the previous update steps.
-	// The SignedRatification will be stored by the server and used to
-	// argue the correctness of future lookups in front of clients.
-	PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error)
-}
-
-type e2EKSVerificationClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSVerificationClient(cc *grpc.ClientConn) E2EKSVerificationClient {
-	return &e2EKSVerificationClient{cc}
-}
-
-func (c *e2EKSVerificationClient) VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error) {
-	stream, err := grpc.NewClientStream(ctx, &_E2EKSVerification_serviceDesc.Streams[0], c.cc, "/proto.E2EKSVerification/VerifierStream", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &e2EKSVerificationVerifierStreamClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type E2EKSVerification_VerifierStreamClient interface {
-	Recv() (*VerifierStep, error)
-	grpc.ClientStream
-}
-
-type e2EKSVerificationVerifierStreamClient struct {
-	grpc.ClientStream
-}
-
-func (x *e2EKSVerificationVerifierStreamClient) Recv() (*VerifierStep, error) {
-	m := new(VerifierStep)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *e2EKSVerificationClient) PushRatification(ctx context.Context, in *SignedRatification, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/proto.E2EKSVerification/PushRatification", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSVerification service
-
-type E2EKSVerificationServer interface {
-	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
-	VerifierStream(*VerifierStreamRequest, E2EKSVerification_VerifierStreamServer) error
-	// PushRatification is called each time a verifier who has been
-	// successfully replaying the log returned by VerifierStream interprets a
-	// keyserver_ratified step and agrees that the keyserver state summarized
-	// by it is the unique result of applying all the previous update steps.
-	// The SignedRatification will be stored by the server and used to
-	// argue the correctness of future lookups in front of clients.
-	PushRatification(context.Context, *SignedRatification) (*Nothing, error)
-}
-
-func RegisterE2EKSVerificationServer(s *grpc.Server, srv E2EKSVerificationServer) {
-	s.RegisterService(&_E2EKSVerification_serviceDesc, srv)
-}
-
-func _E2EKSVerification_VerifierStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(VerifierStreamRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(E2EKSVerificationServer).VerifierStream(m, &e2EKSVerificationVerifierStreamServer{stream})
-}
-
-type E2EKSVerification_VerifierStreamServer interface {
-	Send(*VerifierStep) error
-	grpc.ServerStream
-}
-
-type e2EKSVerificationVerifierStreamServer struct {
-	grpc.ServerStream
-}
-
-func (x *e2EKSVerificationVerifierStreamServer) Send(m *VerifierStep) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _E2EKSVerification_PushRatification_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(SignedRatification)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSVerificationServer).PushRatification(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSVerification",
-	HandlerType: (*E2EKSVerificationServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "PushRatification",
-			Handler:    _E2EKSVerification_PushRatification_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "VerifierStream",
-			Handler:       _E2EKSVerification_VerifierStream_Handler,
-			ServerStreams: true,
-		},
-	},
 }

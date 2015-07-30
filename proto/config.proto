@@ -32,9 +32,9 @@ message RealmConfig {
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
 	string URL = 3;
-	// Verifiers lists all verifiers from the keyserver itself to internal
-	// replicas of a single verifier operator.
-	map<uint64, SignatureVerifier> verifiers = 4;
+	// PublicKeys contains public keys of all verifiers of this realm,
+	// including the keyserver.
+	map<uint64,PublicKey> public_keys = 4;
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. It is the convention to always require the
 	// keyserver's ratification here.

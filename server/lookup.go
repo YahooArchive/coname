@@ -28,13 +28,13 @@ import (
 
 const lookupMaxChainLength = 100
 
-// LookupProfile implements proto.E2EKSLookupServer
-func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfileRequest) (*proto.LookupProof, error) {
-	ret := &proto.LookupProof{UserId: req.User}
+// Lookup implements proto.E2EKSLookupServer
+func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
+	ret := &proto.LookupProof{UserId: req.UserId}
 	index := req.Index
 	if index == nil {
-		index = vrf.Compute([]byte(req.User), ks.vrfSecret)
-		ret.IndexProof = vrf.Prove([]byte(req.User), ks.vrfSecret)
+		index = vrf.Compute([]byte(req.UserId), ks.vrfSecret)
+		ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	}
 	remainingVerifiers := common.ListQuorum(req.QuorumRequirement, nil)
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
@@ -49,7 +49,7 @@ func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfile
 		!common.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
 		len(remainingVerifiers) != 0; epoch-- {
 		for verifier := range remainingVerifiers {
-			ratificationBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
+			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
 			switch err {
 			case nil:
 			case ks.db.ErrNotFound():
@@ -58,12 +58,12 @@ func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfile
 				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
 				return nil, fmt.Errorf("internal error")
 			}
-			ratification := new(proto.SignedRatification)
-			if err := ratification.Unmarshal(ratificationBytes); err != nil {
-				log.Printf("ERROR: invalid protobuf in ratifications db (epoch %d, verifier %d): %s", epoch, verifier, err)
+			seh := new(proto.SignedEpochHead)
+			if err := seh.Unmarshal(sehBytes); err != nil {
+				log.Printf("ERROR: invalid protobuf in sehs db (epoch %d, verifier %d): %s", epoch, verifier, err)
 				return nil, fmt.Errorf("internal error")
 			}
-			ret.Ratifications = append(ret.Ratifications, ratification)
+			ret.Ratifications = append(ret.Ratifications, seh)
 			lookupEpoch = epoch
 			delete(remainingVerifiers, verifier)
 			haveVerifiers[verifier] = struct{}{}
@@ -75,13 +75,13 @@ func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfile
 		ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i] = b, a
 	}
 	// TODO(dmz): ret.TreeProof = ks.merkletreeForEpoch(lookupEpoch).Lookup(index)
-	seu, err := ks.getUpdate(index, lookupEpoch)
+	urq, err := ks.getUpdate(index, lookupEpoch)
 	if err != nil {
 		log.Printf("ERROR: getProfile of %x at or before epoch %d: %s", index, lookupEpoch, err)
 		return nil, fmt.Errorf("internal error")
 	}
-	if seu != nil {
-		ret.Profile = seu.Profile
+	if urq != nil {
+		ret.Profile = urq.Profile
 	}
 	if !common.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
 		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
@@ -89,7 +89,7 @@ func (ks *Keyserver) LookupProfile(ctx context.Context, req *proto.LookupProfile
 	return ret, nil
 }
 
-// lastRatifiedEpoch returns the last epoch for which we have a ratification.
+// lastRatifiedEpoch returns the last epoch for which we have a seh.
 func (ks *Keyserver) lastRatifiedEpoch() uint64 {
 	iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableRatificationsPrefix}))
 	if !iter.Last() {
@@ -98,7 +98,7 @@ func (ks *Keyserver) lastRatifiedEpoch() uint64 {
 	ret := binary.BigEndian.Uint64(iter.Key()[1 : 1+8])
 	iter.Release()
 	if iter.Error() != nil {
-		log.Printf("ERROR: db scan for last ratification: %s", iter.Error())
+		log.Printf("ERROR: db scan for last seh: %s", iter.Error())
 		return 0
 	}
 	return ret
@@ -106,10 +106,10 @@ func (ks *Keyserver) lastRatifiedEpoch() uint64 {
 
 // getUpdate returns the last update to profile of idx during or before epoch.
 // If there is no such update, (nil, nil) is returned.
-func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.SignedEntryUpdate, error) {
+func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, error) {
 	// idx: []&const
 	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
-	prefixIdxEpoch[0] = tableSignedUpdatesPrefix
+	prefixIdxEpoch[0] = tableUpdateRequestsPrefix
 	copy(prefixIdxEpoch[1:], idx)
 	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch+1)
 	iter := ks.db.NewIterator(&kv.Range{
@@ -122,7 +122,7 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.SignedEntryUpda
 		}
 		return nil, nil
 	}
-	ret := new(proto.SignedEntryUpdate)
+	ret := new(proto.UpdateRequest)
 	if err := ret.Unmarshal(iter.Value()); err != nil {
 		return nil, iter.Error()
 	}

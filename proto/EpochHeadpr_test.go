@@ -21,14 +21,14 @@ import (
 	"time"
 )
 
-func TestSignedRatification_RatificationT_KeyserverStateSummary_PreserveEncodingProto(t *testing.T) {
+func TestEpochHead_PreserveEncodingProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding(popr, false)
+	p := NewPopulatedEpochHead_PreserveEncoding(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding{}
+	msg := &EpochHead_PreserveEncoding{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
