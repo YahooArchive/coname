@@ -22,36 +22,27 @@ import (
 // VerifySignature returns true iff sig is a valid signature of message by
 // verifier.  verifier, message, sig : &const // none of the inputs are
 // modified
-func VerifySignature(verifier *proto.SignatureVerifier, message []byte, sig []byte) bool {
+func VerifySignature(pk *proto.PublicKey, message []byte, sigs map[uint64][]byte) bool {
 	switch {
-	case verifier.Ed25519 != nil:
-		var pk [32]byte
+	case pk.Ed25519 != nil:
+		var edpk [32]byte
 		var copySig [64]byte
-		copy(pk[:], verifier.Ed25519[:])
-		copy(copySig[:], sig)
-		return ed25519.Verify(&pk, message, &copySig)
-	case verifier.Threshold != nil:
-		sigs := new(proto.ThresholdSignature)
-		if err := sigs.Unmarshal(sig); err != nil {
+		copy(edpk[:], pk.Ed25519[:])
+		sig, present := sigs[KeyID(pk)]
+		if !present {
 			return false
 		}
-		var n uint32
-		for idx, ver := range verifier.Threshold.Verifiers {
-			if hasSigned(idx, ver, message, sigs) {
-				n++
+		copy(copySig[:], sig)
+		return ed25519.Verify(&edpk, message, &copySig)
+	case pk.Quorum != nil:
+		have := make(map[uint64]struct{})
+		for _, pk2 := range pk.Quorum.PulicKeys {
+			if VerifySignature(&pk2.PublicKey, message, sigs) {
+				have[KeyID(&pk2.PublicKey)] = struct{}{}
 			}
 		}
-		return n >= verifier.Threshold.Threshold
+		return CheckQuorum(pk.Quorum.Quorum, have)
 	default:
 		return false
 	}
-}
-
-func hasSigned(idx int, ver *proto.SignatureVerifier, message []byte, sigs *proto.ThresholdSignature) bool {
-	for i := 0; i < len(sigs.Signature) && i < len(sigs.KeyIndex); i++ {
-		if sigs.KeyIndex[i] == uint32(idx) && VerifySignature(ver, message, sigs.Signature[i]) {
-			return true
-		}
-	}
-	return false
 }
