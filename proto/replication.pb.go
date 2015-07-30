@@ -8,15 +8,15 @@ import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
 import fmt "fmt"
 
 import strings "strings"
-import reflect "reflect"
-
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -48,11 +48,11 @@ type KeyserverStep struct {
 	// After some majority of the replicas has ratified the state, their
 	// signatures make up the keyserver signature. As combining signatures
 	// is deterministic, no new log entry is appended to record that.
-	ReplicaRatification *SignedRatification `protobuf:"bytes,4,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
+	ReplicaRatification *SignedEpochHead `protobuf:"bytes,4,opt,name=replica_ratification" json:"replica_ratification,omitempty"`
 	// verifier_ratification is appended for each new ratification received
 	// from a verifier; these are used to provide proof of verification to
 	// clients.
-	VerifierRatification *SignedRatification `protobuf:"bytes,5,opt,name=verifier_ratification" json:"verifier_ratification,omitempty"`
+	VerifierRatification *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_ratification" json:"verifier_ratification,omitempty"`
 }
 
 func (m *KeyserverStep) Reset()      { *m = KeyserverStep{} }
@@ -72,14 +72,14 @@ func (m *KeyserverStep) GetEpochDelimiter() *EpochDelimiter {
 	return nil
 }
 
-func (m *KeyserverStep) GetReplicaRatification() *SignedRatification {
+func (m *KeyserverStep) GetReplicaRatification() *SignedEpochHead {
 	if m != nil {
 		return m.ReplicaRatification
 	}
 	return nil
 }
 
-func (m *KeyserverStep) GetVerifierRatification() *SignedRatification {
+func (m *KeyserverStep) GetVerifierRatification() *SignedEpochHead {
 	if m != nil {
 		return m.VerifierRatification
 	}
@@ -101,6 +101,487 @@ func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	return Timestamp{}
 }
 
+func (this *KeyserverStep) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*KeyserverStep)
+	if !ok {
+		return fmt.Errorf("that is not of type *KeyserverStep")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *KeyserverStep but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *KeyserverStepbut is not nil && this == nil")
+	}
+	if this.UID != that1.UID {
+		return fmt.Errorf("UID this(%v) Not Equal that(%v)", this.UID, that1.UID)
+	}
+	if !this.Update.Equal(that1.Update) {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
+		return fmt.Errorf("EpochDelimiter this(%v) Not Equal that(%v)", this.EpochDelimiter, that1.EpochDelimiter)
+	}
+	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
+		return fmt.Errorf("ReplicaRatification this(%v) Not Equal that(%v)", this.ReplicaRatification, that1.ReplicaRatification)
+	}
+	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
+		return fmt.Errorf("VerifierRatification this(%v) Not Equal that(%v)", this.VerifierRatification, that1.VerifierRatification)
+	}
+	return nil
+}
+func (this *KeyserverStep) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*KeyserverStep)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.UID != that1.UID {
+		return false
+	}
+	if !this.Update.Equal(that1.Update) {
+		return false
+	}
+	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
+		return false
+	}
+	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
+		return false
+	}
+	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
+		return false
+	}
+	return true
+}
+func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*EpochDelimiter)
+	if !ok {
+		return fmt.Errorf("that is not of type *EpochDelimiter")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *EpochDelimiter but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *EpochDelimiterbut is not nil && this == nil")
+	}
+	if this.EpochNumber != that1.EpochNumber {
+		return fmt.Errorf("EpochNumber this(%v) Not Equal that(%v)", this.EpochNumber, that1.EpochNumber)
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
+	}
+	return nil
+}
+func (this *EpochDelimiter) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*EpochDelimiter)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.EpochNumber != that1.EpochNumber {
+		return false
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return false
+	}
+	return true
+}
+func (this *KeyserverStep) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.KeyserverStep{` +
+		`UID:` + fmt.Sprintf("%#v", this.UID),
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`EpochDelimiter:` + fmt.Sprintf("%#v", this.EpochDelimiter),
+		`ReplicaRatification:` + fmt.Sprintf("%#v", this.ReplicaRatification),
+		`VerifierRatification:` + fmt.Sprintf("%#v", this.VerifierRatification) + `}`}, ", ")
+	return s
+}
+func (this *EpochDelimiter) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.EpochDelimiter{` +
+		`EpochNumber:` + fmt.Sprintf("%#v", this.EpochNumber),
+		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func valueToGoStringReplication(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringReplication(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *KeyserverStep) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.UID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.UID))
+	}
+	if m.Update != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
+		n1, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	if m.EpochDelimiter != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
+		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.ReplicaRatification != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
+		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.VerifierRatification != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
+		n4, err := m.VerifierRatification.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *EpochDelimiter) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
+	n5, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n5
+	return i, nil
+}
+
+func encodeFixed64Replication(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Replication(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintReplication(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
+	this := &KeyserverStep{}
+	this.UID = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.EpochDelimiter = NewPopulatedEpochDelimiter(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.ReplicaRatification = NewPopulatedSignedEpochHead(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.VerifierRatification = NewPopulatedSignedEpochHead(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEpochDelimiter(r randyReplication, easy bool) *EpochDelimiter {
+	this := &EpochDelimiter{}
+	this.EpochNumber = uint64(uint64(r.Uint32()))
+	v1 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v1
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyReplication interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneReplication(r randyReplication) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringReplication(r randyReplication) string {
+	v2 := r.Intn(100)
+	tmps := make([]rune, v2)
+	for i := 0; i < v2; i++ {
+		tmps[i] = randUTF8RuneReplication(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedReplication(r randyReplication, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldReplication(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldReplication(data []byte, r randyReplication, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateReplication(data, uint64(key))
+		v3 := r.Int63()
+		if r.Intn(2) == 0 {
+			v3 *= -1
+		}
+		data = encodeVarintPopulateReplication(data, uint64(v3))
+	case 1:
+		data = encodeVarintPopulateReplication(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateReplication(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateReplication(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateReplication(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateReplication(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *KeyserverStep) Size() (n int) {
+	var l int
+	_ = l
+	if m.UID != 0 {
+		n += 1 + sovReplication(uint64(m.UID))
+	}
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.EpochDelimiter != nil {
+		l = m.EpochDelimiter.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.ReplicaRatification != nil {
+		l = m.ReplicaRatification.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.VerifierRatification != nil {
+		l = m.VerifierRatification.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	return n
+}
+
+func (m *EpochDelimiter) Size() (n int) {
+	var l int
+	_ = l
+	if m.EpochNumber != 0 {
+		n += 1 + sovReplication(uint64(m.EpochNumber))
+	}
+	l = m.Timestamp.Size()
+	n += 1 + l + sovReplication(uint64(l))
+	return n
+}
+
+func sovReplication(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozReplication(x uint64) (n int) {
+	return sovReplication(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *KeyserverStep) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&KeyserverStep{`,
+		`UID:` + fmt.Sprintf("%v", this.UID) + `,`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`EpochDelimiter:` + strings.Replace(fmt.Sprintf("%v", this.EpochDelimiter), "EpochDelimiter", "EpochDelimiter", 1) + `,`,
+		`ReplicaRatification:` + strings.Replace(fmt.Sprintf("%v", this.ReplicaRatification), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`VerifierRatification:` + strings.Replace(fmt.Sprintf("%v", this.VerifierRatification), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EpochDelimiter) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EpochDelimiter{`,
+		`EpochNumber:` + fmt.Sprintf("%v", this.EpochNumber) + `,`,
+		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringReplication(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
 func (m *KeyserverStep) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -211,7 +692,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.ReplicaRatification == nil {
-				m.ReplicaRatification = &SignedRatification{}
+				m.ReplicaRatification = &SignedEpochHead{}
 			}
 			if err := m.ReplicaRatification.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -238,7 +719,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.VerifierRatification == nil {
-				m.VerifierRatification = &SignedRatification{}
+				m.VerifierRatification = &SignedEpochHead{}
 			}
 			if err := m.VerifierRatification.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -432,485 +913,4 @@ func skipReplication(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (this *KeyserverStep) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&KeyserverStep{`,
-		`UID:` + fmt.Sprintf("%v", this.UID) + `,`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`EpochDelimiter:` + strings.Replace(fmt.Sprintf("%v", this.EpochDelimiter), "EpochDelimiter", "EpochDelimiter", 1) + `,`,
-		`ReplicaRatification:` + strings.Replace(fmt.Sprintf("%v", this.ReplicaRatification), "SignedRatification", "SignedRatification", 1) + `,`,
-		`VerifierRatification:` + strings.Replace(fmt.Sprintf("%v", this.VerifierRatification), "SignedRatification", "SignedRatification", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *EpochDelimiter) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&EpochDelimiter{`,
-		`EpochNumber:` + fmt.Sprintf("%v", this.EpochNumber) + `,`,
-		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringReplication(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *KeyserverStep) Size() (n int) {
-	var l int
-	_ = l
-	if m.UID != 0 {
-		n += 1 + sovReplication(uint64(m.UID))
-	}
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.EpochDelimiter != nil {
-		l = m.EpochDelimiter.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.ReplicaRatification != nil {
-		l = m.ReplicaRatification.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	if m.VerifierRatification != nil {
-		l = m.VerifierRatification.Size()
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	return n
-}
-
-func (m *EpochDelimiter) Size() (n int) {
-	var l int
-	_ = l
-	if m.EpochNumber != 0 {
-		n += 1 + sovReplication(uint64(m.EpochNumber))
-	}
-	l = m.Timestamp.Size()
-	n += 1 + l + sovReplication(uint64(l))
-	return n
-}
-
-func sovReplication(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozReplication(x uint64) (n int) {
-	return sovReplication(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
-	this := &KeyserverStep{}
-	this.UID = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.EpochDelimiter = NewPopulatedEpochDelimiter(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.ReplicaRatification = NewPopulatedSignedRatification(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.VerifierRatification = NewPopulatedSignedRatification(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEpochDelimiter(r randyReplication, easy bool) *EpochDelimiter {
-	this := &EpochDelimiter{}
-	this.EpochNumber = uint64(uint64(r.Uint32()))
-	v1 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v1
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyReplication interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneReplication(r randyReplication) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringReplication(r randyReplication) string {
-	v2 := r.Intn(100)
-	tmps := make([]rune, v2)
-	for i := 0; i < v2; i++ {
-		tmps[i] = randUTF8RuneReplication(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedReplication(r randyReplication, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldReplication(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldReplication(data []byte, r randyReplication, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		v3 := r.Int63()
-		if r.Intn(2) == 0 {
-			v3 *= -1
-		}
-		data = encodeVarintPopulateReplication(data, uint64(v3))
-	case 1:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateReplication(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateReplication(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *KeyserverStep) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.UID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.UID))
-	}
-	if m.Update != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
-		n1, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.EpochDelimiter != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
-		n2, err := m.EpochDelimiter.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	if m.ReplicaRatification != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.ReplicaRatification.Size()))
-		n3, err := m.ReplicaRatification.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	if m.VerifierRatification != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.VerifierRatification.Size()))
-		n4, err := m.VerifierRatification.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	return i, nil
-}
-
-func (m *EpochDelimiter) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.EpochNumber != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
-	}
-	data[i] = 0x22
-	i++
-	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
-	n5, err := m.Timestamp.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	return i, nil
-}
-
-func encodeFixed64Replication(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Replication(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintReplication(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *KeyserverStep) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.KeyserverStep{` +
-		`UID:` + fmt.Sprintf("%#v", this.UID),
-		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`EpochDelimiter:` + fmt.Sprintf("%#v", this.EpochDelimiter),
-		`ReplicaRatification:` + fmt.Sprintf("%#v", this.ReplicaRatification),
-		`VerifierRatification:` + fmt.Sprintf("%#v", this.VerifierRatification) + `}`}, ", ")
-	return s
-}
-func (this *EpochDelimiter) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.EpochDelimiter{` +
-		`EpochNumber:` + fmt.Sprintf("%#v", this.EpochNumber),
-		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func valueToGoStringReplication(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringReplication(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *KeyserverStep) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*KeyserverStep)
-	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *KeyserverStep but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStepbut is not nil && this == nil")
-	}
-	if this.UID != that1.UID {
-		return fmt.Errorf("UID this(%v) Not Equal that(%v)", this.UID, that1.UID)
-	}
-	if !this.Update.Equal(that1.Update) {
-		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
-	}
-	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
-		return fmt.Errorf("EpochDelimiter this(%v) Not Equal that(%v)", this.EpochDelimiter, that1.EpochDelimiter)
-	}
-	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
-		return fmt.Errorf("ReplicaRatification this(%v) Not Equal that(%v)", this.ReplicaRatification, that1.ReplicaRatification)
-	}
-	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
-		return fmt.Errorf("VerifierRatification this(%v) Not Equal that(%v)", this.VerifierRatification, that1.VerifierRatification)
-	}
-	return nil
-}
-func (this *KeyserverStep) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*KeyserverStep)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.UID != that1.UID {
-		return false
-	}
-	if !this.Update.Equal(that1.Update) {
-		return false
-	}
-	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
-		return false
-	}
-	if !this.ReplicaRatification.Equal(that1.ReplicaRatification) {
-		return false
-	}
-	if !this.VerifierRatification.Equal(that1.VerifierRatification) {
-		return false
-	}
-	return true
-}
-func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*EpochDelimiter)
-	if !ok {
-		return fmt.Errorf("that is not of type *EpochDelimiter")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *EpochDelimiter but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *EpochDelimiterbut is not nil && this == nil")
-	}
-	if this.EpochNumber != that1.EpochNumber {
-		return fmt.Errorf("EpochNumber this(%v) Not Equal that(%v)", this.EpochNumber, that1.EpochNumber)
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
-	}
-	return nil
-}
-func (this *EpochDelimiter) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*EpochDelimiter)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.EpochNumber != that1.EpochNumber {
-		return false
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return false
-	}
-	return true
 }

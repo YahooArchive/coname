@@ -14,15 +14,17 @@
 		verifier.proto
 
 	It has these top-level messages:
-		LookupProfileRequest
-		UpdateProfileRequest
+		LookupRequest
+		UpdateRequest
 		LookupProof
-		Profile
 		Entry
 		SignedEntryUpdate
-		SignedRatification
-		SignatureVerifier
-		ThresholdSignature
+		Profile
+		SignedEpochHead
+		TimestampedEpochHead
+		EpochHead
+		PublicKey
+		QuorumPublicKey
 		QuorumExpr
 */
 package proto
@@ -31,79 +33,88 @@ import proto1 "github.com/gogo/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
-
-import strings "strings"
-import reflect "reflect"
-
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
-
-import bytes "bytes"
-
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
 
+import fmt "fmt"
+import bytes "bytes"
+
+import strings "strings"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+import reflect "reflect"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+
+import io "io"
+
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
 
-type LookupProfileRequest struct {
-	User  string `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
-	Index []byte `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
+type LookupRequest struct {
+	// Epoch as of which to perform the lookup ("latest" if not specified)
+	Epoch uint64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
+	// UserId will be mapped to an index by the server using VRF
+	UserId string `protobuf:"bytes,2,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	// The client specifies it
+	Index []byte `protobuf:"bytes,3,opt,name=index,proto3" json:"index,omitempty"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
 	// the quourm requirement.
-	QuorumRequirement *QuorumExpr `protobuf:"bytes,3,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
-	// valid_at constrains the server to returning ratifications that will not
-	// expire before valid_at. A client might set this to its current time plus
-	// a lower bound of the round trip time to the server.
-	ValidAt *Timestamp `protobuf:"bytes,4,opt,name=valid_at" json:"valid_at,omitempty"`
+	QuorumRequirement *QuorumExpr `protobuf:"bytes,4,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
 }
 
-func (m *LookupProfileRequest) Reset()      { *m = LookupProfileRequest{} }
-func (*LookupProfileRequest) ProtoMessage() {}
+func (m *LookupRequest) Reset()      { *m = LookupRequest{} }
+func (*LookupRequest) ProtoMessage() {}
 
-func (m *LookupProfileRequest) GetQuorumRequirement() *QuorumExpr {
+func (m *LookupRequest) GetQuorumRequirement() *QuorumExpr {
 	if m != nil {
 		return m.QuorumRequirement
 	}
 	return nil
 }
 
-func (m *LookupProfileRequest) GetValidAt() *Timestamp {
-	if m != nil {
-		return m.ValidAt
-	}
-	return nil
-}
-
-// UpdateProfileRequest specifies an update and the quorum required for
+// UpdateRequest specifies an update and the quorum required for
 // considering the update successful. The server should respond with a lookup
-// of the updated name when the update has been ratified by a sufficient
-// quorum.
-type UpdateProfileRequest struct {
-	Update            *SignedEntryUpdate `protobuf:"bytes,1,opt,name=update" json:"update,omitempty"`
-	QuorumRequirement *QuorumExpr        `protobuf:"bytes,3,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
+// of the updated name with the specified parameters.
+type UpdateRequest struct {
+	// Update is passed on to verifiers.
+	Update *SignedEntryUpdate `protobuf:"bytes,1,opt,name=update" json:"update,omitempty"`
+	// Profile is included in the update request from the client to the
+	// keyserver, but not passed on to the verifiers. The keyserver SHOULD
+	// store it locally and include it in LookupProofs returned for lookups.
+	// The verifiers MUST NOT try to read this field.
+	// A keyserver MUST NOT discriminate users based on ther structure of their
+	// profile other than enforcing a common-sense size limit. In particular, a
+	// profile with fields that the keyserver does not understand or whose
+	// values it considers invalid MUST be accepted.
+	Profile          *Profile       `protobuf:"bytes,2,opt,name=profile" json:"profile,omitempty"`
+	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
 }
 
-func (m *UpdateProfileRequest) Reset()      { *m = UpdateProfileRequest{} }
-func (*UpdateProfileRequest) ProtoMessage() {}
+func (m *UpdateRequest) Reset()      { *m = UpdateRequest{} }
+func (*UpdateRequest) ProtoMessage() {}
 
-func (m *UpdateProfileRequest) GetUpdate() *SignedEntryUpdate {
+func (m *UpdateRequest) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
 		return m.Update
 	}
 	return nil
 }
 
-func (m *UpdateProfileRequest) GetQuorumRequirement() *QuorumExpr {
+func (m *UpdateRequest) GetProfile() *Profile {
 	if m != nil {
-		return m.QuorumRequirement
+		return m.Profile
+	}
+	return nil
+}
+
+func (m *UpdateRequest) GetLookupParameters() *LookupRequest {
+	if m != nil {
+		return m.LookupParameters
 	}
 	return nil
 }
@@ -136,7 +147,7 @@ type LookupProof struct {
 	// may have no signatures on them. A client MUST ignore a proof if the
 	// ratifications do not satisfy its quorum requirement and MUST require the
 	// keyserver itself to be in the quorum.
-	Ratifications []*SignedRatification `protobuf:"bytes,4,rep,name=ratifications" json:"ratifications,omitempty"`
+	Ratifications []*SignedEpochHead `protobuf:"bytes,4,rep,name=ratifications" json:"ratifications,omitempty"`
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
@@ -148,7 +159,7 @@ type LookupProof struct {
 func (m *LookupProof) Reset()      { *m = LookupProof{} }
 func (*LookupProof) ProtoMessage() {}
 
-func (m *LookupProof) GetRatifications() []*SignedRatification {
+func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	if m != nil {
 		return m.Ratifications
 	}
@@ -162,26 +173,16 @@ func (m *LookupProof) GetProfile() *Profile {
 	return nil
 }
 
-// A user's profile, containing public keys and other information.
-// A new field will be added here for each application, with the TCP/UDP port
-// number as field number whenever possible to avoid collisions.
-type Profile struct {
-	// 16 bytes. Ensures that somebody curious guess-and-check somebody's
-	// profile contents using Entry.profile_hash. It is the client's
-	// responsibility to generate a random nonce to protect the privacy of its
-	// profile, thus the presence of this field is not checked by the server.
-	Nonce []byte `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
-	// PGP public key packet (not ASCII-armored)
-	EmailPgpPublickey [][]byte `protobuf:"bytes,2,rep,name=email_pgp_publickey" json:"email_pgp_publickey,omitempty"`
-}
-
-func (m *Profile) Reset()      { *m = Profile{} }
-func (*Profile) ProtoMessage() {}
-
 // Entry is the value type in the authenticated mapping data structure.  The
 // contents of all entries should be considered public (they are served to
 // verifiers).
 type Entry struct {
+	// Index specifies the location of the entry in the authenticated
+	// mapping data structure. It is computed as a verifiable random
+	// function of the name: the keyserver can prove that index=vrf(name)
+	// to anybody, but nobody else can compute vrf(name1). This is to
+	// maintain the privacy of usernames.
+	Index []byte `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
 	// Version starts at 0 at registration and must not decrease. The keyserver
 	// and verifiers MUST reject SignedEntryUpdates which violate these rules.
 	// The purpose of this is to prevent an attacker from replaying a
@@ -192,7 +193,7 @@ type Entry struct {
 	// their profile. Nevertheless, unless explicitly required otherwise,
 	// clients should increase the version number by exactly one on each
 	// update.
-	Version uint64 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
+	Version uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	// UpdateKey will be used to verify SignedEntryUpdates to this
 	// entry. It is NOT used for encryption, and SHOULD be ignored by
 	// applications that do not intend to manage the user's profile. It has
@@ -201,16 +202,16 @@ type Entry struct {
 	// ther structure of their update_key other than (1) as specified in
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
-	UpdateKey *SignatureVerifier `protobuf:"bytes,2,opt,name=update_key" json:"update_key,omitempty"`
+	UpdateKey *PublicKey `protobuf:"bytes,3,opt,name=update_key" json:"update_key,omitempty"`
 	// The entry uniquely specifies the profile using a collision-resistant
 	// hash function.
-	ProfileHash []byte `protobuf:"bytes,3,opt,name=profile_hash,proto3" json:"profile_hash,omitempty"`
+	ProfileHash []byte `protobuf:"bytes,4,opt,name=profile_hash,proto3" json:"profile_hash,omitempty"`
 }
 
 func (m *Entry) Reset()      { *m = Entry{} }
 func (*Entry) ProtoMessage() {}
 
-func (m *Entry) GetUpdateKey() *SignatureVerifier {
+func (m *Entry) GetUpdateKey() *PublicKey {
 	if m != nil {
 		return m.UpdateKey
 	}
@@ -221,81 +222,90 @@ func (m *Entry) GetUpdateKey() *SignatureVerifier {
 // changing the value of an entry. In the state machine model of a namespace,
 // SignedEntryUpdate is the main input type.
 type SignedEntryUpdate struct {
-	Update SignedEntryUpdate_EntryUpdateT_PreserveEncoding `protobuf:"bytes,1,opt,name=update,customtype=SignedEntryUpdate_EntryUpdateT_PreserveEncoding" json:"update"`
+	NewEntry Entry_PreserveEncoding `protobuf:"bytes,1,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
 	// Both the keyserver and verifiers MUST check this signature.
-	NewSig []byte `protobuf:"bytes,2,opt,name=new_sig,proto3" json:"new_sig,omitempty"`
+	// All signatures are tagged with ID of the public key that generated them.
+	NewSig map[uint64][]byte `protobuf:"bytes,2,rep,name=new_sig" json:"new_sig,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	// OldSig, if successfully verified using the update_key of the entry
 	// currently bound to update.index, confirms that the old entry is willing
 	// to be replaced by the new entry.  Both the keyserver and verifiers MUST
 	// check this signature.
-	OldSig []byte `protobuf:"bytes,3,opt,name=old_sig,proto3" json:"old_sig,omitempty"`
-	// Profile is included in the update request from the client to the
-	// keyserver, but not passed on to the verifiers. The keyserver SHOULD
-	// store it locally and include it in LookupProofs returned for lookups.
-	// The verifiers MUST NOT try to read this field.
-	// A keyserver MUST NOT discriminate users based on ther structure of their
-	// profile other than enforcing a common-sense size limit. In particular, a
-	// profile with fields that the keyserver does not understand or whose
-	// values it considers invalid MUST be accepted.
-	Profile *Profile `protobuf:"bytes,4,opt,name=profile" json:"profile,omitempty"`
+	// All signatures are tagged with ID of the public key that generated them.
+	OldSig map[uint64][]byte `protobuf:"bytes,3,rep,name=old_sig" json:"old_sig,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *SignedEntryUpdate) Reset()      { *m = SignedEntryUpdate{} }
 func (*SignedEntryUpdate) ProtoMessage() {}
 
-func (m *SignedEntryUpdate) GetProfile() *Profile {
+func (m *SignedEntryUpdate) GetNewSig() map[uint64][]byte {
 	if m != nil {
-		return m.Profile
+		return m.NewSig
 	}
 	return nil
 }
 
-type SignedEntryUpdate_EntryUpdateT struct {
-	// Index specifies the location of the profile in the authenticated
-	// mapping data structure. It is computed as a verifiable random
-	// function of the name: the keyserver can prove that index=vrf(name)
-	// to anybody, but nobody else can compute vrf(name1). This is to
-	// maintain the privacy of usernames.
-	Index []byte `protobuf:"bytes,1,opt,name=index,proto3" json:"index,omitempty"`
-	// NewEntry is the value index will be mapped to after this update.
-	NewEntry Entry_PreserveEncoding `protobuf:"bytes,2,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
+func (m *SignedEntryUpdate) GetOldSig() map[uint64][]byte {
+	if m != nil {
+		return m.OldSig
+	}
+	return nil
 }
 
-func (m *SignedEntryUpdate_EntryUpdateT) Reset()      { *m = SignedEntryUpdate_EntryUpdateT{} }
-func (*SignedEntryUpdate_EntryUpdateT) ProtoMessage() {}
+// A user's profile, containing public keys and other information.
+// A new field will be added here for each application, with the TCP/UDP port
+// number as field number whenever possible to avoid collisions.
+type Profile struct {
+	// 16 bytes. Ensures that somebody curious guess-and-check somebody's
+	// profile contents using Entry.profile_hash. It is the client's
+	// responsibility to generate a random nonce to protect the privacy of its
+	// profile, thus the presence of this field is not checked by the server.
+	Nonce []byte `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
+	// Application-specific public keys. The map is keyed by application ID.
+	Keys map[string][]byte `protobuf:"bytes,2,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+}
 
-// SignedRatification messages are used by auditors and the service provider to
+func (m *Profile) Reset()      { *m = Profile{} }
+func (*Profile) ProtoMessage() {}
+
+func (m *Profile) GetKeys() map[string][]byte {
+	if m != nil {
+		return m.Keys
+	}
+	return nil
+}
+
+// SignedEpochHead messages are used by auditors and the service provider to
 // vouch that the SummaryHash represents the correct unique global state at the
 // end of epoch. In particular, it means that the signer has enforced the
 // profile update policy specified in the doc-comments of SignedEntryUpdate and
 // Profile for the specified epoch AND all prior epochs. A Ratification MUST
 // NOT be signed in any other circumstances.
-type SignedRatification struct {
-	// Ratifier contains the globally unique 64-bit identification number of
-	// the signer (the keyserver or the verifier). Each ratifier SHOULD be
-	// generate this by hashing a canonical representation of its own public
-	// key, but others MUST NOT assume that this convention is followed.
-	Ratifier     uint64                                            `protobuf:"varint,1,opt,name=ratifier,proto3" json:"ratifier,omitempty"`
-	Ratification SignedRatification_RatificationT_PreserveEncoding `protobuf:"bytes,2,opt,name=ratification,customtype=SignedRatification_RatificationT_PreserveEncoding" json:"ratification"`
+type SignedEpochHead struct {
+	Head TimestampedEpochHead_PreserveEncoding `protobuf:"bytes,1,opt,name=head,customtype=TimestampedEpochHead_PreserveEncoding" json:"head"`
 	// Signature is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
-	Signature []byte `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`
+	// All signatures are tagged with ID of the public key that generated them.
+	Signature map[uint64][]byte `protobuf:"bytes,2,rep,name=signature" json:"signature,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *SignedRatification) Reset()      { *m = SignedRatification{} }
-func (*SignedRatification) ProtoMessage() {}
+func (m *SignedEpochHead) Reset()      { *m = SignedEpochHead{} }
+func (*SignedEpochHead) ProtoMessage() {}
 
-type SignedRatification_RatificationT struct {
-	// Realm is the fully-qualified domain name of the keyserver whose
-	// state is being ratified.
-	Realm string `protobuf:"bytes,1,opt,name=realm,proto3" json:"realm,omitempty"`
-	// Epoch is a sequence number tracking distinct ratified states.
-	Epoch   uint64                                                                  `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	Summary SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding `protobuf:"bytes,3,opt,name=summary,customtype=SignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding" json:"summary"`
-	// Timestamp specifies when the requirements for SignedRatification
-	// were checked. Clients will accept a SignedRatification timestamped
+func (m *SignedEpochHead) GetSignature() map[uint64][]byte {
+	if m != nil {
+		return m.Signature
+	}
+	return nil
+}
+
+type TimestampedEpochHead struct {
+	// EpochHead specifies the entire state and history of the
+	// realm.
+	Head EpochHead_PreserveEncoding `protobuf:"bytes,1,opt,name=head,customtype=EpochHead_PreserveEncoding" json:"head"`
+	// Timestamp specifies when the requirements for SignedEpochHead
+	// were checked. Clients will accept a SignedEpochHead timestamped
 	// with at most a fixed amount of time into the past, and MUST fail
 	// secure if the timestamp is not fresh because the directory state may
 	// have changed. The signature expiration tolerance plus the maximum
@@ -304,24 +314,27 @@ type SignedRatification_RatificationT struct {
 	// keyserve will not be able to convince a client to a accept the
 	// previous state (assuming that all quorums it considers sufficient
 	// containt a correct and honest server).
-	Timestamp Timestamp `protobuf:"bytes,4,opt,name=timestamp" json:"timestamp"`
+	Timestamp Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
 }
 
-func (m *SignedRatification_RatificationT) Reset()      { *m = SignedRatification_RatificationT{} }
-func (*SignedRatification_RatificationT) ProtoMessage() {}
+func (m *TimestampedEpochHead) Reset()      { *m = TimestampedEpochHead{} }
+func (*TimestampedEpochHead) ProtoMessage() {}
 
-func (m *SignedRatification_RatificationT) GetTimestamp() Timestamp {
+func (m *TimestampedEpochHead) GetTimestamp() Timestamp {
 	if m != nil {
 		return m.Timestamp
 	}
 	return Timestamp{}
 }
 
-// KeyserverStateSummary specifies the entire state and history of the
-// realm.
-type SignedRatification_RatificationT_KeyserverStateSummary struct {
+type EpochHead struct {
+	// Realm is the fully-qualified domain name of the keyserver whose
+	// state is being ratified.
+	Realm string `protobuf:"bytes,1,opt,name=realm,proto3" json:"realm,omitempty"`
+	// Epoch is a sequence number tracking distinct ratified states.
+	Epoch uint64 `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// RootHash specifies the authenticated data stru
-	RootHash []byte `protobuf:"bytes,1,opt,name=root_hash,proto3" json:"root_hash,omitempty"`
+	RootHash []byte `protobuf:"bytes,3,opt,name=root_hash,proto3" json:"root_hash,omitempty"`
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
 	// epochs chained to that in addition to the one listed.
@@ -329,37 +342,38 @@ type SignedRatification_RatificationT_KeyserverStateSummary struct {
 	// (by induction on the hash-pointer structure) a
 	// PreviousSummeryHash for some epoch specifies the states of all
 	// previous epochs.
-	PreviousSummaryHash []byte `protobuf:"bytes,2,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	PreviousSummaryHash []byte `protobuf:"bytes,4,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 }
 
-func (m *SignedRatification_RatificationT_KeyserverStateSummary) Reset() {
-	*m = SignedRatification_RatificationT_KeyserverStateSummary{}
-}
-func (*SignedRatification_RatificationT_KeyserverStateSummary) ProtoMessage() {}
+func (m *EpochHead) Reset()      { *m = EpochHead{} }
+func (*EpochHead) ProtoMessage() {}
 
-// SignatureVerifier wraps a public key of a cryptographically secure signature
+// PublicKey wraps a public key of a cryptographically secure signature
 // scheme and verification metadata. Each verifier can have its own signature
 // format and needs to implement serialization and deserialization of its own
-// signatures. It is intentional that the SignatureVerifier implementations ARE
+// signatures. It is intentional that the PublicKey implementations ARE
 // ALLOWED to interpret the content of the message whose signature is being
-// verified.
-type SignatureVerifier struct {
-	Ed25519   []byte                               `protobuf:"bytes,1,opt,name=ed25519,proto3" json:"ed25519,omitempty"`
-	Threshold *SignatureVerifier_ThresholdVerifier `protobuf:"bytes,2,opt,name=threshold" json:"threshold,omitempty"`
+// verified. The ID of a public key is defined as the first 64 bits of the
+// protobuf-encoded public key (and interpreted as little-endian when a numeric
+// representation is required).
+type PublicKey struct {
+	Quorum  *QuorumPublicKey `protobuf:"bytes,1,opt,name=quorum" json:"quorum,omitempty"`
+	Ed25519 []byte           `protobuf:"bytes,2,opt,name=ed25519,proto3" json:"ed25519,omitempty"`
 }
 
-func (m *SignatureVerifier) Reset()      { *m = SignatureVerifier{} }
-func (*SignatureVerifier) ProtoMessage() {}
+func (m *PublicKey) Reset()      { *m = PublicKey{} }
+func (*PublicKey) ProtoMessage() {}
 
-func (m *SignatureVerifier) GetThreshold() *SignatureVerifier_ThresholdVerifier {
+func (m *PublicKey) GetQuorum() *QuorumPublicKey {
 	if m != nil {
-		return m.Threshold
+		return m.Quorum
 	}
 	return nil
 }
 
-// ThresholdVerifier returns "OK" if any threshold of verifers do.
-// This is used to implement
+// QuorumPublicKeyreturns "OK" if any the valid signatures from
+// map<uint64,signature> satisfy the quorum requirement.
+// This is used to implement the following:
 // 1. Account Recovery through service provider: if an user's entry has the
 // update key set to threshold(1,user,serviceprovider), the service
 // provider can perform account recovery. Note that a third party will not
@@ -370,41 +384,36 @@ func (m *SignatureVerifier) GetThreshold() *SignatureVerifier_ThresholdVerifier 
 // 2. Service providers with servers in geographically diverse locations
 // can use a threshold to limit the damage the compromise or loss of one
 // replica can do. Example threshold(2,freedonia,gilead,mordor).
-type SignatureVerifier_ThresholdVerifier struct {
-	Threshold uint32               `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Verifiers []*SignatureVerifier `protobuf:"bytes,2,rep,name=verifiers" json:"verifiers,omitempty"`
+// 3. Adaptive key rollover during cryptocalypse.
+type QuorumPublicKey struct {
+	Quorum *QuorumExpr `protobuf:"bytes,1,opt,name=quorum" json:"quorum,omitempty"`
+	// PublicKeys must not contain a QuorumPublicKey.
+	PulicKeys []*PublicKey_PreserveEncoding `protobuf:"bytes,2,rep,name=pulic_keys,customtype=PublicKey_PreserveEncoding" json:"pulic_keys,omitempty"`
 }
 
-func (m *SignatureVerifier_ThresholdVerifier) Reset()      { *m = SignatureVerifier_ThresholdVerifier{} }
-func (*SignatureVerifier_ThresholdVerifier) ProtoMessage() {}
+func (m *QuorumPublicKey) Reset()      { *m = QuorumPublicKey{} }
+func (*QuorumPublicKey) ProtoMessage() {}
 
-func (m *SignatureVerifier_ThresholdVerifier) GetVerifiers() []*SignatureVerifier {
+func (m *QuorumPublicKey) GetQuorum() *QuorumExpr {
 	if m != nil {
-		return m.Verifiers
+		return m.Quorum
 	}
 	return nil
 }
 
-// ThresholdSignature in its trivial implementation here, simply contains the
-// signatures from the specified keys.
-// TODO: make sure this is wire-format-compatible with a proto3 map
-type ThresholdSignature struct {
-	KeyIndex  []uint32 `protobuf:"varint,1,rep,name=key_index" json:"key_index,omitempty"`
-	Signature [][]byte `protobuf:"bytes,2,rep,name=signature" json:"signature,omitempty"`
-}
-
-func (m *ThresholdSignature) Reset()      { *m = ThresholdSignature{} }
-func (*ThresholdSignature) ProtoMessage() {}
-
-// QuorumExpr represents a function with type set<uint64> -> bool.  An
+// QuorumExpr represents a function with type set<uint64> -> bool. An
 // expression evaluates to true given args iff the sum of the following two
 // numbers is at least threshold:
 // - number of entries in verifiers that are in args
 // - number of subexpressions that evaluate to true
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 type QuorumExpr struct {
-	Threshold      uint32        `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Verifiers      []uint64      `protobuf:"varint,2,rep,name=verifiers" json:"verifiers,omitempty"`
+	Threshold uint32   `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Verifiers []uint64 `protobuf:"varint,2,rep,name=verifiers" json:"verifiers,omitempty"`
+	// QuorumExpr allows expressing contitions of the form "two out of these
+	// and three out of those".
+	// If an implementation chooses to ban recursive thresholding, it can do so
+	// ignoring this field. However, doing so is NOT SUPPORTED.
 	Subexpressions []*QuorumExpr `protobuf:"bytes,3,rep,name=subexpressions" json:"subexpressions,omitempty"`
 }
 
@@ -418,7 +427,2541 @@ func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 	return nil
 }
 
-func (m *LookupProfileRequest) Unmarshal(data []byte) error {
+// Client API for E2EKSLookup service
+
+type E2EKSLookupClient interface {
+	LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSLookupClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
+	return &e2EKSLookupClient{cc}
+}
+
+func (c *e2EKSLookupClient) LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/LookupProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSLookup service
+
+type E2EKSLookupServer interface {
+	LookupProfile(context.Context, *LookupRequest) (*LookupProof, error)
+}
+
+func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
+	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
+}
+
+func _E2EKSLookup_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSLookupServer).LookupProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSLookup",
+	HandlerType: (*E2EKSLookupServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LookupProfile",
+			Handler:    _E2EKSLookup_LookupProfile_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+// Client API for E2EKSUpdate service
+
+type E2EKSUpdateClient interface {
+	LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	UpdateProfile(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSUpdateClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
+	return &e2EKSUpdateClient{cc}
+}
+
+func (c *e2EKSUpdateClient) LookupProfile(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/LookupProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/UpdateProfile", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSUpdate service
+
+type E2EKSUpdateServer interface {
+	LookupProfile(context.Context, *LookupRequest) (*LookupProof, error)
+	UpdateProfile(context.Context, *UpdateRequest) (*LookupProof, error)
+}
+
+func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
+	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
+}
+
+func _E2EKSUpdate_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSUpdateServer).LookupProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _E2EKSUpdate_UpdateProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSUpdateServer).UpdateProfile(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSUpdate",
+	HandlerType: (*E2EKSUpdateServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "LookupProfile",
+			Handler:    _E2EKSUpdate_LookupProfile_Handler,
+		},
+		{
+			MethodName: "UpdateProfile",
+			Handler:    _E2EKSUpdate_UpdateProfile_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}
+
+func (this *LookupRequest) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*LookupRequest)
+	if !ok {
+		return fmt.Errorf("that is not of type *LookupRequest")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *LookupRequest but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *LookupRequestbut is not nil && this == nil")
+	}
+	if this.Epoch != that1.Epoch {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
+	}
+	if this.UserId != that1.UserId {
+		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
+	}
+	return nil
+}
+func (this *LookupRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*LookupRequest)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Epoch != that1.Epoch {
+		return false
+	}
+	if this.UserId != that1.UserId {
+		return false
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return false
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return false
+	}
+	return true
+}
+func (this *UpdateRequest) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*UpdateRequest)
+	if !ok {
+		return fmt.Errorf("that is not of type *UpdateRequest")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *UpdateRequest but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *UpdateRequestbut is not nil && this == nil")
+	}
+	if !this.Update.Equal(that1.Update) {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
+	}
+	if !this.LookupParameters.Equal(that1.LookupParameters) {
+		return fmt.Errorf("LookupParameters this(%v) Not Equal that(%v)", this.LookupParameters, that1.LookupParameters)
+	}
+	return nil
+}
+func (this *UpdateRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*UpdateRequest)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Update.Equal(that1.Update) {
+		return false
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return false
+	}
+	if !this.LookupParameters.Equal(that1.LookupParameters) {
+		return false
+	}
+	return true
+}
+func (this *LookupProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*LookupProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *LookupProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *LookupProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *LookupProofbut is not nil && this == nil")
+	}
+	if this.UserId != that1.UserId {
+		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
+	}
+	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
+		return fmt.Errorf("IndexProof this(%v) Not Equal that(%v)", this.IndexProof, that1.IndexProof)
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+	}
+	if len(this.Ratifications) != len(that1.Ratifications) {
+		return fmt.Errorf("Ratifications this(%v) Not Equal that(%v)", len(this.Ratifications), len(that1.Ratifications))
+	}
+	for i := range this.Ratifications {
+		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
+			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
+		}
+	}
+	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
+	}
+	return nil
+}
+func (this *LookupProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*LookupProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.UserId != that1.UserId {
+		return false
+	}
+	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
+		return false
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return false
+	}
+	if len(this.Ratifications) != len(that1.Ratifications) {
+		return false
+	}
+	for i := range this.Ratifications {
+		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
+			return false
+		}
+	}
+	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+		return false
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return false
+	}
+	return true
+}
+func (this *Entry) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Entry)
+	if !ok {
+		return fmt.Errorf("that is not of type *Entry")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Entry but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Entrybut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+	}
+	if this.Version != that1.Version {
+		return fmt.Errorf("Version this(%v) Not Equal that(%v)", this.Version, that1.Version)
+	}
+	if !this.UpdateKey.Equal(that1.UpdateKey) {
+		return fmt.Errorf("UpdateKey this(%v) Not Equal that(%v)", this.UpdateKey, that1.UpdateKey)
+	}
+	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
+		return fmt.Errorf("ProfileHash this(%v) Not Equal that(%v)", this.ProfileHash, that1.ProfileHash)
+	}
+	return nil
+}
+func (this *Entry) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Entry)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return false
+	}
+	if this.Version != that1.Version {
+		return false
+	}
+	if !this.UpdateKey.Equal(that1.UpdateKey) {
+		return false
+	}
+	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
+		return false
+	}
+	return true
+}
+func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*SignedEntryUpdate)
+	if !ok {
+		return fmt.Errorf("that is not of type *SignedEntryUpdate")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *SignedEntryUpdate but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *SignedEntryUpdatebut is not nil && this == nil")
+	}
+	if !this.NewEntry.Equal(that1.NewEntry) {
+		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
+	}
+	if len(this.NewSig) != len(that1.NewSig) {
+		return fmt.Errorf("NewSig this(%v) Not Equal that(%v)", len(this.NewSig), len(that1.NewSig))
+	}
+	for i := range this.NewSig {
+		if !bytes.Equal(this.NewSig[i], that1.NewSig[i]) {
+			return fmt.Errorf("NewSig this[%v](%v) Not Equal that[%v](%v)", i, this.NewSig[i], i, that1.NewSig[i])
+		}
+	}
+	if len(this.OldSig) != len(that1.OldSig) {
+		return fmt.Errorf("OldSig this(%v) Not Equal that(%v)", len(this.OldSig), len(that1.OldSig))
+	}
+	for i := range this.OldSig {
+		if !bytes.Equal(this.OldSig[i], that1.OldSig[i]) {
+			return fmt.Errorf("OldSig this[%v](%v) Not Equal that[%v](%v)", i, this.OldSig[i], i, that1.OldSig[i])
+		}
+	}
+	return nil
+}
+func (this *SignedEntryUpdate) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*SignedEntryUpdate)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.NewEntry.Equal(that1.NewEntry) {
+		return false
+	}
+	if len(this.NewSig) != len(that1.NewSig) {
+		return false
+	}
+	for i := range this.NewSig {
+		if !bytes.Equal(this.NewSig[i], that1.NewSig[i]) {
+			return false
+		}
+	}
+	if len(this.OldSig) != len(that1.OldSig) {
+		return false
+	}
+	for i := range this.OldSig {
+		if !bytes.Equal(this.OldSig[i], that1.OldSig[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *Profile) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Profile)
+	if !ok {
+		return fmt.Errorf("that is not of type *Profile")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Profile but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Profilebut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.Nonce, that1.Nonce) {
+		return fmt.Errorf("Nonce this(%v) Not Equal that(%v)", this.Nonce, that1.Nonce)
+	}
+	if len(this.Keys) != len(that1.Keys) {
+		return fmt.Errorf("Keys this(%v) Not Equal that(%v)", len(this.Keys), len(that1.Keys))
+	}
+	for i := range this.Keys {
+		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
+			return fmt.Errorf("Keys this[%v](%v) Not Equal that[%v](%v)", i, this.Keys[i], i, that1.Keys[i])
+		}
+	}
+	return nil
+}
+func (this *Profile) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Profile)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Nonce, that1.Nonce) {
+		return false
+	}
+	if len(this.Keys) != len(that1.Keys) {
+		return false
+	}
+	for i := range this.Keys {
+		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*SignedEpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *SignedEpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *SignedEpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *SignedEpochHeadbut is not nil && this == nil")
+	}
+	if !this.Head.Equal(that1.Head) {
+		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
+	}
+	if len(this.Signature) != len(that1.Signature) {
+		return fmt.Errorf("Signature this(%v) Not Equal that(%v)", len(this.Signature), len(that1.Signature))
+	}
+	for i := range this.Signature {
+		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
+			return fmt.Errorf("Signature this[%v](%v) Not Equal that[%v](%v)", i, this.Signature[i], i, that1.Signature[i])
+		}
+	}
+	return nil
+}
+func (this *SignedEpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*SignedEpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Head.Equal(that1.Head) {
+		return false
+	}
+	if len(this.Signature) != len(that1.Signature) {
+		return false
+	}
+	for i := range this.Signature {
+		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *TimestampedEpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*TimestampedEpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *TimestampedEpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *TimestampedEpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *TimestampedEpochHeadbut is not nil && this == nil")
+	}
+	if !this.Head.Equal(that1.Head) {
+		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
+	}
+	return nil
+}
+func (this *TimestampedEpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*TimestampedEpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Head.Equal(that1.Head) {
+		return false
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return false
+	}
+	return true
+}
+func (this *EpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*EpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *EpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *EpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *EpochHeadbut is not nil && this == nil")
+	}
+	if this.Realm != that1.Realm {
+		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
+	}
+	if this.Epoch != that1.Epoch {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
+	}
+	if !bytes.Equal(this.RootHash, that1.RootHash) {
+		return fmt.Errorf("RootHash this(%v) Not Equal that(%v)", this.RootHash, that1.RootHash)
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
+	}
+	return nil
+}
+func (this *EpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*EpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Realm != that1.Realm {
+		return false
+	}
+	if this.Epoch != that1.Epoch {
+		return false
+	}
+	if !bytes.Equal(this.RootHash, that1.RootHash) {
+		return false
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return false
+	}
+	return true
+}
+func (this *PublicKey) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*PublicKey)
+	if !ok {
+		return fmt.Errorf("that is not of type *PublicKey")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *PublicKey but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *PublicKeybut is not nil && this == nil")
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
+	}
+	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
+		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
+	}
+	return nil
+}
+func (this *PublicKey) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*PublicKey)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return false
+	}
+	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
+		return false
+	}
+	return true
+}
+func (this *QuorumPublicKey) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*QuorumPublicKey)
+	if !ok {
+		return fmt.Errorf("that is not of type *QuorumPublicKey")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *QuorumPublicKey but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *QuorumPublicKeybut is not nil && this == nil")
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
+	}
+	if len(this.PulicKeys) != len(that1.PulicKeys) {
+		return fmt.Errorf("PulicKeys this(%v) Not Equal that(%v)", len(this.PulicKeys), len(that1.PulicKeys))
+	}
+	for i := range this.PulicKeys {
+		if !this.PulicKeys[i].Equal(that1.PulicKeys[i]) {
+			return fmt.Errorf("PulicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PulicKeys[i], i, that1.PulicKeys[i])
+		}
+	}
+	return nil
+}
+func (this *QuorumPublicKey) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*QuorumPublicKey)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return false
+	}
+	if len(this.PulicKeys) != len(that1.PulicKeys) {
+		return false
+	}
+	for i := range this.PulicKeys {
+		if !this.PulicKeys[i].Equal(that1.PulicKeys[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *QuorumExpr) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*QuorumExpr)
+	if !ok {
+		return fmt.Errorf("that is not of type *QuorumExpr")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *QuorumExpr but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *QuorumExprbut is not nil && this == nil")
+	}
+	if this.Threshold != that1.Threshold {
+		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
+	}
+	if len(this.Verifiers) != len(that1.Verifiers) {
+		return fmt.Errorf("Verifiers this(%v) Not Equal that(%v)", len(this.Verifiers), len(that1.Verifiers))
+	}
+	for i := range this.Verifiers {
+		if this.Verifiers[i] != that1.Verifiers[i] {
+			return fmt.Errorf("Verifiers this[%v](%v) Not Equal that[%v](%v)", i, this.Verifiers[i], i, that1.Verifiers[i])
+		}
+	}
+	if len(this.Subexpressions) != len(that1.Subexpressions) {
+		return fmt.Errorf("Subexpressions this(%v) Not Equal that(%v)", len(this.Subexpressions), len(that1.Subexpressions))
+	}
+	for i := range this.Subexpressions {
+		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
+			return fmt.Errorf("Subexpressions this[%v](%v) Not Equal that[%v](%v)", i, this.Subexpressions[i], i, that1.Subexpressions[i])
+		}
+	}
+	return nil
+}
+func (this *QuorumExpr) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*QuorumExpr)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Threshold != that1.Threshold {
+		return false
+	}
+	if len(this.Verifiers) != len(that1.Verifiers) {
+		return false
+	}
+	for i := range this.Verifiers {
+		if this.Verifiers[i] != that1.Verifiers[i] {
+			return false
+		}
+	}
+	if len(this.Subexpressions) != len(that1.Subexpressions) {
+		return false
+	}
+	for i := range this.Subexpressions {
+		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *LookupRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupRequest{` +
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
+	return s
+}
+func (this *UpdateRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`Profile:` + fmt.Sprintf("%#v", this.Profile),
+		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters) + `}`}, ", ")
+	return s
+}
+func (this *LookupProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupProof{` +
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
+		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
+		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
+	return s
+}
+func (this *Entry) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.Entry{` +
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`Version:` + fmt.Sprintf("%#v", this.Version),
+		`UpdateKey:` + fmt.Sprintf("%#v", this.UpdateKey),
+		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
+	return s
+}
+func (this *SignedEntryUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForNewSig := make([]uint64, 0, len(this.NewSig))
+	for k, _ := range this.NewSig {
+		keysForNewSig = append(keysForNewSig, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
+	mapStringForNewSig := "map[uint64][]byte{"
+	for _, k := range keysForNewSig {
+		mapStringForNewSig += fmt.Sprintf("%#v: %#v,", k, this.NewSig[k])
+	}
+	mapStringForNewSig += "}"
+	keysForOldSig := make([]uint64, 0, len(this.OldSig))
+	for k, _ := range this.OldSig {
+		keysForOldSig = append(keysForOldSig, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
+	mapStringForOldSig := "map[uint64][]byte{"
+	for _, k := range keysForOldSig {
+		mapStringForOldSig += fmt.Sprintf("%#v: %#v,", k, this.OldSig[k])
+	}
+	mapStringForOldSig += "}"
+	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
+		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
+		`NewSig:` + mapStringForNewSig,
+		`OldSig:` + mapStringForOldSig + `}`}, ", ")
+	return s
+}
+func (this *Profile) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&proto.Profile{` +
+		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
+		`Keys:` + mapStringForKeys + `}`}, ", ")
+	return s
+}
+func (this *SignedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignature := make([]uint64, 0, len(this.Signature))
+	for k, _ := range this.Signature {
+		keysForSignature = append(keysForSignature, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
+	mapStringForSignature := "map[uint64][]byte{"
+	for _, k := range keysForSignature {
+		mapStringForSignature += fmt.Sprintf("%#v: %#v,", k, this.Signature[k])
+	}
+	mapStringForSignature += "}"
+	s := strings.Join([]string{`&proto.SignedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Signature:` + mapStringForSignature + `}`}, ", ")
+	return s
+}
+func (this *TimestampedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TimestampedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *EpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.EpochHead{` +
+		`Realm:` + fmt.Sprintf("%#v", this.Realm),
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
+	return s
+}
+func (this *PublicKey) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.PublicKey{` +
+		`Quorum:` + fmt.Sprintf("%#v", this.Quorum),
+		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
+	return s
+}
+func (this *QuorumPublicKey) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.QuorumPublicKey{` +
+		`Quorum:` + fmt.Sprintf("%#v", this.Quorum),
+		`PulicKeys:` + fmt.Sprintf("%#v", this.PulicKeys) + `}`}, ", ")
+	return s
+}
+func (this *QuorumExpr) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.QuorumExpr{` +
+		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
+		`Verifiers:` + fmt.Sprintf("%#v", this.Verifiers),
+		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
+	return s
+}
+func valueToGoStringClient(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringClient(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *LookupRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
+	}
+	if len(m.UserId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
+		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *UpdateRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
+		n2, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	if m.Profile != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n3, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	if m.LookupParameters != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.LookupParameters.Size()))
+		n4, err := m.LookupParameters.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
+}
+
+func (m *LookupProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.IndexProof != nil {
+		if len(m.IndexProof) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
+			i += copy(data[i:], m.IndexProof)
+		}
+	}
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, msg := range m.Ratifications {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.TreeProof != nil {
+		if len(m.TreeProof) > 0 {
+			data[i] = 0x2a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.TreeProof)))
+			i += copy(data[i:], m.TreeProof)
+		}
+	}
+	if m.Profile != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n5, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
+	return i, nil
+}
+
+func (m *Entry) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Entry) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if m.Version != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Version))
+	}
+	if m.UpdateKey != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
+		n6, err := m.UpdateKey.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	if m.ProfileHash != nil {
+		if len(m.ProfileHash) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
+			i += copy(data[i:], m.ProfileHash)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
+	n7, err := m.NewEntry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	if len(m.NewSig) > 0 {
+		keysForNewSig := make([]uint64, 0, len(m.NewSig))
+		for k, _ := range m.NewSig {
+			keysForNewSig = append(keysForNewSig, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
+		for _, k := range keysForNewSig {
+			data[i] = 0x12
+			i++
+			v := m.NewSig[k]
+			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x8
+			i++
+			i = encodeVarintClient(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	if len(m.OldSig) > 0 {
+		keysForOldSig := make([]uint64, 0, len(m.OldSig))
+		for k, _ := range m.OldSig {
+			keysForOldSig = append(keysForOldSig, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
+		for _, k := range keysForOldSig {
+			data[i] = 0x1a
+			i++
+			v := m.OldSig[k]
+			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x8
+			i++
+			i = encodeVarintClient(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *Profile) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Profile) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		if len(m.Nonce) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
+			i += copy(data[i:], m.Nonce)
+		}
+	}
+	if len(m.Keys) > 0 {
+		keysForKeys := make([]string, 0, len(m.Keys))
+		for k, _ := range m.Keys {
+			keysForKeys = append(keysForKeys, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+		for _, k := range keysForKeys {
+			data[i] = 0x12
+			i++
+			v := m.Keys[k]
+			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n8, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n8
+	if len(m.Signature) > 0 {
+		keysForSignature := make([]uint64, 0, len(m.Signature))
+		for k, _ := range m.Signature {
+			keysForSignature = append(keysForSignature, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
+		for _, k := range keysForSignature {
+			data[i] = 0x12
+			i++
+			v := m.Signature[k]
+			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x8
+			i++
+			i = encodeVarintClient(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n9, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n10, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
+	return i, nil
+}
+
+func (m *EpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Realm) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
+		i += copy(data[i:], m.Realm)
+	}
+	if m.Epoch != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		if len(m.RootHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
+			i += copy(data[i:], m.RootHash)
+		}
+	}
+	if m.PreviousSummaryHash != nil {
+		if len(m.PreviousSummaryHash) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
+			i += copy(data[i:], m.PreviousSummaryHash)
+		}
+	}
+	return i, nil
+}
+
+func (m *PublicKey) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Quorum != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
+		n11, err := m.Quorum.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n11
+	}
+	if m.Ed25519 != nil {
+		if len(m.Ed25519) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
+			i += copy(data[i:], m.Ed25519)
+		}
+	}
+	return i, nil
+}
+
+func (m *QuorumPublicKey) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *QuorumPublicKey) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Quorum != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
+		n12, err := m.Quorum.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n12
+	}
+	if len(m.PulicKeys) > 0 {
+		for _, msg := range m.PulicKeys {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func (m *QuorumExpr) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Threshold))
+	}
+	if len(m.Verifiers) > 0 {
+		for _, num := range m.Verifiers {
+			data[i] = 0x10
+			i++
+			i = encodeVarintClient(data, i, uint64(num))
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, msg := range m.Subexpressions {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func encodeFixed64Client(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Client(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintClient(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
+	this := &LookupRequest{}
+	this.Epoch = uint64(uint64(r.Uint32()))
+	this.UserId = randStringClient(r)
+	v1 := r.Intn(100)
+	this.Index = make([]byte, v1)
+	for i := 0; i < v1; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
+	this := &UpdateRequest{}
+	if r.Intn(10) != 0 {
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.Profile = NewPopulatedProfile(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
+	this := &LookupProof{}
+	this.UserId = randStringClient(r)
+	v2 := r.Intn(100)
+	this.IndexProof = make([]byte, v2)
+	for i := 0; i < v2; i++ {
+		this.IndexProof[i] = byte(r.Intn(256))
+	}
+	v3 := r.Intn(100)
+	this.Index = make([]byte, v3)
+	for i := 0; i < v3; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v4 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v4)
+		for i := 0; i < v4; i++ {
+			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
+		}
+	}
+	v5 := r.Intn(100)
+	this.TreeProof = make([]byte, v5)
+	for i := 0; i < v5; i++ {
+		this.TreeProof[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		this.Profile = NewPopulatedProfile(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEntry(r randyClient, easy bool) *Entry {
+	this := &Entry{}
+	v6 := r.Intn(100)
+	this.Index = make([]byte, v6)
+	for i := 0; i < v6; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	this.Version = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		this.UpdateKey = NewPopulatedPublicKey(r, easy)
+	}
+	v7 := r.Intn(100)
+	this.ProfileHash = make([]byte, v7)
+	for i := 0; i < v7; i++ {
+		this.ProfileHash[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
+	this := &SignedEntryUpdate{}
+	v8 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.NewEntry = *v8
+	if r.Intn(10) != 0 {
+		v9 := r.Intn(10)
+		this.NewSig = make(map[uint64][]byte)
+		for i := 0; i < v9; i++ {
+			v10 := r.Intn(100)
+			v11 := uint64(uint64(r.Uint32()))
+			this.NewSig[v11] = make([]byte, v10)
+			for i := 0; i < v10; i++ {
+				this.NewSig[v11][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if r.Intn(10) != 0 {
+		v12 := r.Intn(10)
+		this.OldSig = make(map[uint64][]byte)
+		for i := 0; i < v12; i++ {
+			v13 := r.Intn(100)
+			v14 := uint64(uint64(r.Uint32()))
+			this.OldSig[v14] = make([]byte, v13)
+			for i := 0; i < v13; i++ {
+				this.OldSig[v14][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedProfile(r randyClient, easy bool) *Profile {
+	this := &Profile{}
+	v15 := r.Intn(100)
+	this.Nonce = make([]byte, v15)
+	for i := 0; i < v15; i++ {
+		this.Nonce[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v16 := r.Intn(10)
+		this.Keys = make(map[string][]byte)
+		for i := 0; i < v16; i++ {
+			v17 := r.Intn(100)
+			v18 := randStringClient(r)
+			this.Keys[v18] = make([]byte, v17)
+			for i := 0; i < v17; i++ {
+				this.Keys[v18][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
+	this := &SignedEpochHead{}
+	v19 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v19
+	if r.Intn(10) != 0 {
+		v20 := r.Intn(10)
+		this.Signature = make(map[uint64][]byte)
+		for i := 0; i < v20; i++ {
+			v21 := r.Intn(100)
+			v22 := uint64(uint64(r.Uint32()))
+			this.Signature[v22] = make([]byte, v21)
+			for i := 0; i < v21; i++ {
+				this.Signature[v22][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
+	this := &TimestampedEpochHead{}
+	v23 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v23
+	v24 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v24
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
+	this := &EpochHead{}
+	this.Realm = randStringClient(r)
+	this.Epoch = uint64(uint64(r.Uint32()))
+	v25 := r.Intn(100)
+	this.RootHash = make([]byte, v25)
+	for i := 0; i < v25; i++ {
+		this.RootHash[i] = byte(r.Intn(256))
+	}
+	v26 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v26)
+	for i := 0; i < v26; i++ {
+		this.PreviousSummaryHash[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
+	this := &PublicKey{}
+	if r.Intn(10) != 0 {
+		this.Quorum = NewPopulatedQuorumPublicKey(r, easy)
+	}
+	v27 := r.Intn(100)
+	this.Ed25519 = make([]byte, v27)
+	for i := 0; i < v27; i++ {
+		this.Ed25519[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedQuorumPublicKey(r randyClient, easy bool) *QuorumPublicKey {
+	this := &QuorumPublicKey{}
+	if r.Intn(10) != 0 {
+		this.Quorum = NewPopulatedQuorumExpr(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		v28 := r.Intn(2)
+		this.PulicKeys = make([]*PublicKey_PreserveEncoding, v28)
+		for i := 0; i < v28; i++ {
+			this.PulicKeys[i] = NewPopulatedPublicKey_PreserveEncoding(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
+	this := &QuorumExpr{}
+	this.Threshold = uint32(r.Uint32())
+	v29 := r.Intn(100)
+	this.Verifiers = make([]uint64, v29)
+	for i := 0; i < v29; i++ {
+		this.Verifiers[i] = uint64(uint64(r.Uint32()))
+	}
+	if r.Intn(10) != 0 {
+		v30 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v30)
+		for i := 0; i < v30; i++ {
+			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyClient interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneClient(r randyClient) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringClient(r randyClient) string {
+	v31 := r.Intn(100)
+	tmps := make([]rune, v31)
+	for i := 0; i < v31; i++ {
+		tmps[i] = randUTF8RuneClient(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldClient(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		v32 := r.Int63()
+		if r.Intn(2) == 0 {
+			v32 *= -1
+		}
+		data = encodeVarintPopulateClient(data, uint64(v32))
+	case 1:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateClient(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateClient(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *LookupRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Profile != nil {
+		l = m.Profile.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.LookupParameters != nil {
+		l = m.LookupParameters.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *LookupProof) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.IndexProof != nil {
+		l = len(m.IndexProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, e := range m.Ratifications {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.TreeProof != nil {
+		l = len(m.TreeProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Profile != nil {
+		l = m.Profile.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *Entry) Size() (n int) {
+	var l int
+	_ = l
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Version != 0 {
+		n += 1 + sovClient(uint64(m.Version))
+	}
+	if m.UpdateKey != nil {
+		l = m.UpdateKey.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.ProfileHash != nil {
+		l = len(m.ProfileHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *SignedEntryUpdate) Size() (n int) {
+	var l int
+	_ = l
+	l = m.NewEntry.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.NewSig) > 0 {
+		for k, v := range m.NewSig {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	if len(m.OldSig) > 0 {
+		for k, v := range m.OldSig {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Profile) Size() (n int) {
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		l = len(m.Nonce)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Keys) > 0 {
+		for k, v := range m.Keys {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *SignedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.Signature) > 0 {
+		for k, v := range m.Signature {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *TimestampedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.Timestamp.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *EpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		l = len(m.RootHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *PublicKey) Size() (n int) {
+	var l int
+	_ = l
+	if m.Quorum != nil {
+		l = m.Quorum.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Ed25519 != nil {
+		l = len(m.Ed25519)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QuorumPublicKey) Size() (n int) {
+	var l int
+	_ = l
+	if m.Quorum != nil {
+		l = m.Quorum.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if len(m.PulicKeys) > 0 {
+		for _, e := range m.PulicKeys {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QuorumExpr) Size() (n int) {
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		n += 1 + sovClient(uint64(m.Threshold))
+	}
+	if len(m.Verifiers) > 0 {
+		for _, e := range m.Verifiers {
+			n += 1 + sovClient(uint64(e))
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, e := range m.Subexpressions {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func sovClient(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozClient(x uint64) (n int) {
+	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *LookupRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupRequest{`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
+		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *LookupProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupProof{`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
+		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Entry) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Entry{`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
+		`UpdateKey:` + strings.Replace(fmt.Sprintf("%v", this.UpdateKey), "PublicKey", "PublicKey", 1) + `,`,
+		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEntryUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForNewSig := make([]uint64, 0, len(this.NewSig))
+	for k, _ := range this.NewSig {
+		keysForNewSig = append(keysForNewSig, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
+	mapStringForNewSig := "map[uint64][]byte{"
+	for _, k := range keysForNewSig {
+		mapStringForNewSig += fmt.Sprintf("%v: %v,", k, this.NewSig[k])
+	}
+	mapStringForNewSig += "}"
+	keysForOldSig := make([]uint64, 0, len(this.OldSig))
+	for k, _ := range this.OldSig {
+		keysForOldSig = append(keysForOldSig, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
+	mapStringForOldSig := "map[uint64][]byte{"
+	for _, k := range keysForOldSig {
+		mapStringForOldSig += fmt.Sprintf("%v: %v,", k, this.OldSig[k])
+	}
+	mapStringForOldSig += "}"
+	s := strings.Join([]string{`&SignedEntryUpdate{`,
+		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
+		`NewSig:` + mapStringForNewSig + `,`,
+		`OldSig:` + mapStringForOldSig + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Profile) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&Profile{`,
+		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
+		`Keys:` + mapStringForKeys + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignature := make([]uint64, 0, len(this.Signature))
+	for k, _ := range this.Signature {
+		keysForSignature = append(keysForSignature, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
+	mapStringForSignature := "map[uint64][]byte{"
+	for _, k := range keysForSignature {
+		mapStringForSignature += fmt.Sprintf("%v: %v,", k, this.Signature[k])
+	}
+	mapStringForSignature += "}"
+	s := strings.Join([]string{`&SignedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
+		`Signature:` + mapStringForSignature + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TimestampedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TimestampedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "EpochHead", "EpochHead", 1), `&`, ``, 1) + `,`,
+		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EpochHead{`,
+		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PublicKey) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PublicKey{`,
+		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumPublicKey", "QuorumPublicKey", 1) + `,`,
+		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *QuorumPublicKey) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&QuorumPublicKey{`,
+		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`PulicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PulicKeys), "PublicKey", "PublicKey", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *QuorumExpr) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&QuorumExpr{`,
+		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
+		`Verifiers:` + fmt.Sprintf("%v", this.Verifiers) + `,`,
+		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringClient(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *LookupRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -438,8 +2981,24 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
+			}
+			m.Epoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Epoch |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field User", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -457,9 +3016,9 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.User = string(data[iNdEx:postIndex])
+			m.UserId = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
 			}
@@ -481,7 +3040,7 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 			}
 			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
 			}
@@ -508,33 +3067,6 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ValidAt", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.ValidAt == nil {
-				m.ValidAt = &Timestamp{}
-			}
-			if err := m.ValidAt.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -558,7 +3090,7 @@ func (m *LookupProfileRequest) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *UpdateProfileRequest) Unmarshal(data []byte) error {
+func (m *UpdateRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -604,9 +3136,9 @@ func (m *UpdateProfileRequest) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -624,10 +3156,37 @@ func (m *UpdateProfileRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.QuorumRequirement == nil {
-				m.QuorumRequirement = &QuorumExpr{}
+			if m.Profile == nil {
+				m.Profile = &Profile{}
 			}
-			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LookupParameters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LookupParameters == nil {
+				m.LookupParameters = &LookupRequest{}
+			}
+			if err := m.LookupParameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -759,7 +3318,7 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Ratifications = append(m.Ratifications, &SignedRatification{})
+			m.Ratifications = append(m.Ratifications, &SignedEpochHead{})
 			if err := m.Ratifications[len(m.Ratifications)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -836,93 +3395,6 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *Profile) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EmailPgpPublickey", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EmailPgpPublickey = append(m.EmailPgpPublickey, make([]byte, postIndex-iNdEx))
-			copy(m.EmailPgpPublickey[len(m.EmailPgpPublickey)-1], data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
 func (m *Entry) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -943,6 +3415,28 @@ func (m *Entry) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
 			}
@@ -958,7 +3452,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UpdateKey", wireType)
 			}
@@ -979,13 +3473,13 @@ func (m *Entry) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.UpdateKey == nil {
-				m.UpdateKey = &SignatureVerifier{}
+				m.UpdateKey = &PublicKey{}
 			}
 			if err := m.UpdateKey.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ProfileHash", wireType)
 			}
@@ -1051,165 +3545,6 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NewSig", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NewSig = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OldSig", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.OldSig = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Profile == nil {
-				m.Profile = &Profile{}
-			}
-			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *SignedEntryUpdate_EntryUpdateT) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field NewEntry", wireType)
 			}
 			var msglen int
@@ -1232,6 +3567,166 @@ func (m *SignedEntryUpdate_EntryUpdateT) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewSig", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.NewSig == nil {
+				m.NewSig = make(map[uint64][]byte)
+			}
+			m.NewSig[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OldSig", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.OldSig == nil {
+				m.OldSig = make(map[uint64][]byte)
+			}
+			m.OldSig[mapkey] = mapvalue
+			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -1255,7 +3750,7 @@ func (m *SignedEntryUpdate_EntryUpdateT) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *SignedRatification) Unmarshal(data []byte) error {
+func (m *Profile) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1275,48 +3770,8 @@ func (m *SignedRatification) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ratifier", wireType)
-			}
-			m.Ratifier = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Ratifier |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ratification", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Ratification.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -1334,7 +3789,93 @@ func (m *SignedRatification) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Signature = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Keys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postStringIndexmapkey := iNdEx + int(stringLenmapkey)
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(data[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Keys == nil {
+				m.Keys = make(map[string][]byte)
+			}
+			m.Keys[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -1359,7 +3900,243 @@ func (m *SignedRatification) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
+func (m *SignedEpochHead) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Signature == nil {
+				m.Signature = make(map[uint64][]byte)
+			}
+			m.Signature[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *EpochHead) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1418,96 +4195,6 @@ func (m *SignedRatification_RatificationT) Unmarshal(data []byte) error {
 			}
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Summary", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Summary.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *SignedRatification_RatificationT_KeyserverStateSummary) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RootHash", wireType)
 			}
 			var byteLen int
@@ -1528,7 +4215,7 @@ func (m *SignedRatification_RatificationT_KeyserverStateSummary) Unmarshal(data 
 			}
 			m.RootHash = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 2:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PreviousSummaryHash", wireType)
 			}
@@ -1573,7 +4260,7 @@ func (m *SignedRatification_RatificationT_KeyserverStateSummary) Unmarshal(data 
 
 	return nil
 }
-func (m *SignatureVerifier) Unmarshal(data []byte) error {
+func (m *PublicKey) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1593,6 +4280,33 @@ func (m *SignatureVerifier) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Quorum == nil {
+				m.Quorum = &QuorumPublicKey{}
+			}
+			if err := m.Quorum.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
 			}
@@ -1614,33 +4328,6 @@ func (m *SignatureVerifier) Unmarshal(data []byte) error {
 			}
 			m.Ed25519 = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Threshold", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Threshold == nil {
-				m.Threshold = &SignatureVerifier_ThresholdVerifier{}
-			}
-			if err := m.Threshold.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -1664,7 +4351,7 @@ func (m *SignatureVerifier) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *SignatureVerifier_ThresholdVerifier) Unmarshal(data []byte) error {
+func (m *QuorumPublicKey) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1684,24 +4371,8 @@ func (m *SignatureVerifier_ThresholdVerifier) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Threshold", wireType)
-			}
-			m.Threshold = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Threshold |= (uint32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Verifiers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1719,92 +4390,37 @@ func (m *SignatureVerifier_ThresholdVerifier) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Verifiers = append(m.Verifiers, &SignatureVerifier{})
-			if err := m.Verifiers[len(m.Verifiers)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if m.Quorum == nil {
+				m.Quorum = &QuorumExpr{}
+			}
+			if err := m.Quorum.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *ThresholdSignature) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field KeyIndex", wireType)
-			}
-			var v uint32
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (uint32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.KeyIndex = append(m.KeyIndex, v)
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PulicKeys", wireType)
 			}
-			var byteLen int
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + byteLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Signature = append(m.Signature, make([]byte, postIndex-iNdEx))
-			copy(m.Signature[len(m.Signature)-1], data[iNdEx:postIndex])
+			m.PulicKeys = append(m.PulicKeys, &PublicKey_PreserveEncoding{})
+			if err := m.PulicKeys[len(m.PulicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -2012,2638 +4628,4 @@ func skipClient(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
-}
-func (this *LookupProfileRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupProfileRequest{`,
-		`User:` + fmt.Sprintf("%v", this.User) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`ValidAt:` + strings.Replace(fmt.Sprintf("%v", this.ValidAt), "Timestamp", "Timestamp", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *UpdateProfileRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&UpdateProfileRequest{`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LookupProof) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupProof{`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedRatification", "SignedRatification", 1) + `,`,
-		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
-		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Profile) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Profile{`,
-		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
-		`EmailPgpPublickey:` + fmt.Sprintf("%v", this.EmailPgpPublickey) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Entry) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Entry{`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`UpdateKey:` + strings.Replace(fmt.Sprintf("%v", this.UpdateKey), "SignatureVerifier", "SignatureVerifier", 1) + `,`,
-		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEntryUpdate) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignedEntryUpdate{`,
-		`Update:` + strings.Replace(strings.Replace(this.Update.String(), "SignedEntryUpdate_EntryUpdateT", "SignedEntryUpdate_EntryUpdateT", 1), `&`, ``, 1) + `,`,
-		`NewSig:` + fmt.Sprintf("%v", this.NewSig) + `,`,
-		`OldSig:` + fmt.Sprintf("%v", this.OldSig) + `,`,
-		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEntryUpdate_EntryUpdateT) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignedEntryUpdate_EntryUpdateT{`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedRatification) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignedRatification{`,
-		`Ratifier:` + fmt.Sprintf("%v", this.Ratifier) + `,`,
-		`Ratification:` + strings.Replace(strings.Replace(this.Ratification.String(), "SignedRatification_RatificationT", "SignedRatification_RatificationT", 1), `&`, ``, 1) + `,`,
-		`Signature:` + fmt.Sprintf("%v", this.Signature) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedRatification_RatificationT) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignedRatification_RatificationT{`,
-		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
-		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
-		`Summary:` + strings.Replace(strings.Replace(this.Summary.String(), "SignedRatification_RatificationT_KeyserverStateSummary", "SignedRatification_RatificationT_KeyserverStateSummary", 1), `&`, ``, 1) + `,`,
-		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedRatification_RatificationT_KeyserverStateSummary) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignedRatification_RatificationT_KeyserverStateSummary{`,
-		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
-		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignatureVerifier) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignatureVerifier{`,
-		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`Threshold:` + strings.Replace(fmt.Sprintf("%v", this.Threshold), "SignatureVerifier_ThresholdVerifier", "SignatureVerifier_ThresholdVerifier", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignatureVerifier_ThresholdVerifier) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&SignatureVerifier_ThresholdVerifier{`,
-		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
-		`Verifiers:` + strings.Replace(fmt.Sprintf("%v", this.Verifiers), "SignatureVerifier", "SignatureVerifier", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *ThresholdSignature) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ThresholdSignature{`,
-		`KeyIndex:` + fmt.Sprintf("%v", this.KeyIndex) + `,`,
-		`Signature:` + fmt.Sprintf("%v", this.Signature) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *QuorumExpr) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&QuorumExpr{`,
-		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
-		`Verifiers:` + fmt.Sprintf("%v", this.Verifiers) + `,`,
-		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringClient(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *LookupProfileRequest) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.User)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.ValidAt != nil {
-		l = m.ValidAt.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *UpdateProfileRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *LookupProof) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.UserId)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.IndexProof != nil {
-		l = len(m.IndexProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, e := range m.Ratifications {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.TreeProof != nil {
-		l = len(m.TreeProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Profile != nil {
-		l = m.Profile.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *Profile) Size() (n int) {
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		l = len(m.Nonce)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.EmailPgpPublickey) > 0 {
-		for _, b := range m.EmailPgpPublickey {
-			l = len(b)
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *Entry) Size() (n int) {
-	var l int
-	_ = l
-	if m.Version != 0 {
-		n += 1 + sovClient(uint64(m.Version))
-	}
-	if m.UpdateKey != nil {
-		l = m.UpdateKey.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.ProfileHash != nil {
-		l = len(m.ProfileHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *SignedEntryUpdate) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Update.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if m.NewSig != nil {
-		l = len(m.NewSig)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.OldSig != nil {
-		l = len(m.OldSig)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Profile != nil {
-		l = m.Profile.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *SignedEntryUpdate_EntryUpdateT) Size() (n int) {
-	var l int
-	_ = l
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	l = m.NewEntry.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *SignedRatification) Size() (n int) {
-	var l int
-	_ = l
-	if m.Ratifier != 0 {
-		n += 1 + sovClient(uint64(m.Ratifier))
-	}
-	l = m.Ratification.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if m.Signature != nil {
-		l = len(m.Signature)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *SignedRatification_RatificationT) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Realm)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Epoch != 0 {
-		n += 1 + sovClient(uint64(m.Epoch))
-	}
-	l = m.Summary.Size()
-	n += 1 + l + sovClient(uint64(l))
-	l = m.Timestamp.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *SignedRatification_RatificationT_KeyserverStateSummary) Size() (n int) {
-	var l int
-	_ = l
-	if m.RootHash != nil {
-		l = len(m.RootHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *SignatureVerifier) Size() (n int) {
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		l = len(m.Ed25519)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Threshold != nil {
-		l = m.Threshold.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *SignatureVerifier_ThresholdVerifier) Size() (n int) {
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		n += 1 + sovClient(uint64(m.Threshold))
-	}
-	if len(m.Verifiers) > 0 {
-		for _, e := range m.Verifiers {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *ThresholdSignature) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.KeyIndex) > 0 {
-		for _, e := range m.KeyIndex {
-			n += 1 + sovClient(uint64(e))
-		}
-	}
-	if len(m.Signature) > 0 {
-		for _, b := range m.Signature {
-			l = len(b)
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *QuorumExpr) Size() (n int) {
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		n += 1 + sovClient(uint64(m.Threshold))
-	}
-	if len(m.Verifiers) > 0 {
-		for _, e := range m.Verifiers {
-			n += 1 + sovClient(uint64(e))
-		}
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, e := range m.Subexpressions {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovClient(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozClient(x uint64) (n int) {
-	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedLookupProfileRequest(r randyClient, easy bool) *LookupProfileRequest {
-	this := &LookupProfileRequest{}
-	this.User = randStringClient(r)
-	v1 := r.Intn(100)
-	this.Index = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.ValidAt = NewPopulatedTimestamp(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedUpdateProfileRequest(r randyClient, easy bool) *UpdateProfileRequest {
-	this := &UpdateProfileRequest{}
-	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
-	this := &LookupProof{}
-	this.UserId = randStringClient(r)
-	v2 := r.Intn(100)
-	this.IndexProof = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.IndexProof[i] = byte(r.Intn(256))
-	}
-	v3 := r.Intn(100)
-	this.Index = make([]byte, v3)
-	for i := 0; i < v3; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		v4 := r.Intn(10)
-		this.Ratifications = make([]*SignedRatification, v4)
-		for i := 0; i < v4; i++ {
-			this.Ratifications[i] = NewPopulatedSignedRatification(r, easy)
-		}
-	}
-	v5 := r.Intn(100)
-	this.TreeProof = make([]byte, v5)
-	for i := 0; i < v5; i++ {
-		this.TreeProof[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		this.Profile = NewPopulatedProfile(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedProfile(r randyClient, easy bool) *Profile {
-	this := &Profile{}
-	v6 := r.Intn(100)
-	this.Nonce = make([]byte, v6)
-	for i := 0; i < v6; i++ {
-		this.Nonce[i] = byte(r.Intn(256))
-	}
-	v7 := r.Intn(100)
-	this.EmailPgpPublickey = make([][]byte, v7)
-	for i := 0; i < v7; i++ {
-		v8 := r.Intn(100)
-		this.EmailPgpPublickey[i] = make([]byte, v8)
-		for j := 0; j < v8; j++ {
-			this.EmailPgpPublickey[i][j] = byte(r.Intn(256))
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEntry(r randyClient, easy bool) *Entry {
-	this := &Entry{}
-	this.Version = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		this.UpdateKey = NewPopulatedSignatureVerifier(r, easy)
-	}
-	v9 := r.Intn(100)
-	this.ProfileHash = make([]byte, v9)
-	for i := 0; i < v9; i++ {
-		this.ProfileHash[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
-	this := &SignedEntryUpdate{}
-	v10 := NewPopulatedSignedEntryUpdate_EntryUpdateT_PreserveEncoding(r, easy)
-	this.Update = *v10
-	v11 := r.Intn(100)
-	this.NewSig = make([]byte, v11)
-	for i := 0; i < v11; i++ {
-		this.NewSig[i] = byte(r.Intn(256))
-	}
-	v12 := r.Intn(100)
-	this.OldSig = make([]byte, v12)
-	for i := 0; i < v12; i++ {
-		this.OldSig[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		this.Profile = NewPopulatedProfile(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEntryUpdate_EntryUpdateT(r randyClient, easy bool) *SignedEntryUpdate_EntryUpdateT {
-	this := &SignedEntryUpdate_EntryUpdateT{}
-	v13 := r.Intn(100)
-	this.Index = make([]byte, v13)
-	for i := 0; i < v13; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	v14 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.NewEntry = *v14
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedRatification(r randyClient, easy bool) *SignedRatification {
-	this := &SignedRatification{}
-	this.Ratifier = uint64(uint64(r.Uint32()))
-	v15 := NewPopulatedSignedRatification_RatificationT_PreserveEncoding(r, easy)
-	this.Ratification = *v15
-	v16 := r.Intn(100)
-	this.Signature = make([]byte, v16)
-	for i := 0; i < v16; i++ {
-		this.Signature[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedRatification_RatificationT(r randyClient, easy bool) *SignedRatification_RatificationT {
-	this := &SignedRatification_RatificationT{}
-	this.Realm = randStringClient(r)
-	this.Epoch = uint64(uint64(r.Uint32()))
-	v17 := NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary_PreserveEncoding(r, easy)
-	this.Summary = *v17
-	v18 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v18
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedRatification_RatificationT_KeyserverStateSummary(r randyClient, easy bool) *SignedRatification_RatificationT_KeyserverStateSummary {
-	this := &SignedRatification_RatificationT_KeyserverStateSummary{}
-	v19 := r.Intn(100)
-	this.RootHash = make([]byte, v19)
-	for i := 0; i < v19; i++ {
-		this.RootHash[i] = byte(r.Intn(256))
-	}
-	v20 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v20)
-	for i := 0; i < v20; i++ {
-		this.PreviousSummaryHash[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignatureVerifier(r randyClient, easy bool) *SignatureVerifier {
-	this := &SignatureVerifier{}
-	v21 := r.Intn(100)
-	this.Ed25519 = make([]byte, v21)
-	for i := 0; i < v21; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		this.Threshold = NewPopulatedSignatureVerifier_ThresholdVerifier(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignatureVerifier_ThresholdVerifier(r randyClient, easy bool) *SignatureVerifier_ThresholdVerifier {
-	this := &SignatureVerifier_ThresholdVerifier{}
-	this.Threshold = uint32(r.Uint32())
-	if r.Intn(10) != 0 {
-		v22 := r.Intn(2)
-		this.Verifiers = make([]*SignatureVerifier, v22)
-		for i := 0; i < v22; i++ {
-			this.Verifiers[i] = NewPopulatedSignatureVerifier(r, easy)
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedThresholdSignature(r randyClient, easy bool) *ThresholdSignature {
-	this := &ThresholdSignature{}
-	v23 := r.Intn(100)
-	this.KeyIndex = make([]uint32, v23)
-	for i := 0; i < v23; i++ {
-		this.KeyIndex[i] = uint32(r.Uint32())
-	}
-	v24 := r.Intn(100)
-	this.Signature = make([][]byte, v24)
-	for i := 0; i < v24; i++ {
-		v25 := r.Intn(100)
-		this.Signature[i] = make([]byte, v25)
-		for j := 0; j < v25; j++ {
-			this.Signature[i][j] = byte(r.Intn(256))
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
-	this := &QuorumExpr{}
-	this.Threshold = uint32(r.Uint32())
-	v26 := r.Intn(100)
-	this.Verifiers = make([]uint64, v26)
-	for i := 0; i < v26; i++ {
-		this.Verifiers[i] = uint64(uint64(r.Uint32()))
-	}
-	if r.Intn(10) != 0 {
-		v27 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v27)
-		for i := 0; i < v27; i++ {
-			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyClient interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneClient(r randyClient) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringClient(r randyClient) string {
-	v28 := r.Intn(100)
-	tmps := make([]rune, v28)
-	for i := 0; i < v28; i++ {
-		tmps[i] = randUTF8RuneClient(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldClient(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		v29 := r.Int63()
-		if r.Intn(2) == 0 {
-			v29 *= -1
-		}
-		data = encodeVarintPopulateClient(data, uint64(v29))
-	case 1:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateClient(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateClient(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *LookupProfileRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LookupProfileRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.User) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.User)))
-		i += copy(data[i:], m.User)
-	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
-		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.ValidAt != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintClient(data, i, uint64(m.ValidAt.Size()))
-		n2, err := m.ValidAt.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func (m *UpdateProfileRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *UpdateProfileRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Update != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-		n3, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
-		n4, err := m.QuorumRequirement.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	return i, nil
-}
-
-func (m *LookupProof) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.UserId) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
-	}
-	if m.IndexProof != nil {
-		if len(m.IndexProof) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
-			i += copy(data[i:], m.IndexProof)
-		}
-	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, msg := range m.Ratifications {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if m.TreeProof != nil {
-		if len(m.TreeProof) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.TreeProof)))
-			i += copy(data[i:], m.TreeProof)
-		}
-	}
-	if m.Profile != nil {
-		data[i] = 0x32
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n5, err := m.Profile.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	return i, nil
-}
-
-func (m *Profile) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Profile) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		if len(m.Nonce) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
-			i += copy(data[i:], m.Nonce)
-		}
-	}
-	if len(m.EmailPgpPublickey) > 0 {
-		for _, b := range m.EmailPgpPublickey {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	return i, nil
-}
-
-func (m *Entry) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Entry) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Version != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Version))
-	}
-	if m.UpdateKey != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n6, err := m.UpdateKey.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
-	}
-	if m.ProfileHash != nil {
-		if len(m.ProfileHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
-			i += copy(data[i:], m.ProfileHash)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-	n7, err := m.Update.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n7
-	if m.NewSig != nil {
-		if len(m.NewSig) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.NewSig)))
-			i += copy(data[i:], m.NewSig)
-		}
-	}
-	if m.OldSig != nil {
-		if len(m.OldSig) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.OldSig)))
-			i += copy(data[i:], m.OldSig)
-		}
-	}
-	if m.Profile != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n8, err := m.Profile.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
-	}
-	return i, nil
-}
-
-func (m *SignedEntryUpdate_EntryUpdateT) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedEntryUpdate_EntryUpdateT) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n9, err := m.NewEntry.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n9
-	return i, nil
-}
-
-func (m *SignedRatification) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedRatification) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Ratifier != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Ratifier))
-	}
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Ratification.Size()))
-	n10, err := m.Ratification.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
-	if m.Signature != nil {
-		if len(m.Signature) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Signature)))
-			i += copy(data[i:], m.Signature)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignedRatification_RatificationT) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedRatification_RatificationT) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Realm) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
-		i += copy(data[i:], m.Realm)
-	}
-	if m.Epoch != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Epoch))
-	}
-	data[i] = 0x1a
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Summary.Size()))
-	n11, err := m.Summary.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n11
-	data[i] = 0x22
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n12, err := m.Timestamp.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n12
-	return i, nil
-}
-
-func (m *SignedRatification_RatificationT_KeyserverStateSummary) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedRatification_RatificationT_KeyserverStateSummary) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.RootHash != nil {
-		if len(m.RootHash) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
-			i += copy(data[i:], m.RootHash)
-		}
-	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignatureVerifier) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignatureVerifier) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		if len(m.Ed25519) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
-			i += copy(data[i:], m.Ed25519)
-		}
-	}
-	if m.Threshold != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Threshold.Size()))
-		n13, err := m.Threshold.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
-	}
-	return i, nil
-}
-
-func (m *SignatureVerifier_ThresholdVerifier) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignatureVerifier_ThresholdVerifier) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Threshold))
-	}
-	if len(m.Verifiers) > 0 {
-		for _, msg := range m.Verifiers {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func (m *ThresholdSignature) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ThresholdSignature) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.KeyIndex) > 0 {
-		for _, num := range m.KeyIndex {
-			data[i] = 0x8
-			i++
-			i = encodeVarintClient(data, i, uint64(num))
-		}
-	}
-	if len(m.Signature) > 0 {
-		for _, b := range m.Signature {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	return i, nil
-}
-
-func (m *QuorumExpr) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Threshold))
-	}
-	if len(m.Verifiers) > 0 {
-		for _, num := range m.Verifiers {
-			data[i] = 0x10
-			i++
-			i = encodeVarintClient(data, i, uint64(num))
-		}
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, msg := range m.Subexpressions {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func encodeFixed64Client(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Client(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintClient(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *LookupProfileRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupProfileRequest{` +
-		`User:` + fmt.Sprintf("%#v", this.User),
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement),
-		`ValidAt:` + fmt.Sprintf("%#v", this.ValidAt) + `}`}, ", ")
-	return s
-}
-func (this *UpdateProfileRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.UpdateProfileRequest{` +
-		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
-	return s
-}
-func (this *LookupProof) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupProof{` +
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
-		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
-		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
-	return s
-}
-func (this *Profile) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Profile{` +
-		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
-		`EmailPgpPublickey:` + fmt.Sprintf("%#v", this.EmailPgpPublickey) + `}`}, ", ")
-	return s
-}
-func (this *Entry) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Entry{` +
-		`Version:` + fmt.Sprintf("%#v", this.Version),
-		`UpdateKey:` + fmt.Sprintf("%#v", this.UpdateKey),
-		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
-	return s
-}
-func (this *SignedEntryUpdate) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
-		`Update:` + strings.Replace(this.Update.GoString(), `&`, ``, 1),
-		`NewSig:` + fmt.Sprintf("%#v", this.NewSig),
-		`OldSig:` + fmt.Sprintf("%#v", this.OldSig),
-		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
-	return s
-}
-func (this *SignedEntryUpdate_EntryUpdateT) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignedEntryUpdate_EntryUpdateT{` +
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *SignedRatification) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignedRatification{` +
-		`Ratifier:` + fmt.Sprintf("%#v", this.Ratifier),
-		`Ratification:` + strings.Replace(this.Ratification.GoString(), `&`, ``, 1),
-		`Signature:` + fmt.Sprintf("%#v", this.Signature) + `}`}, ", ")
-	return s
-}
-func (this *SignedRatification_RatificationT) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignedRatification_RatificationT{` +
-		`Realm:` + fmt.Sprintf("%#v", this.Realm),
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
-		`Summary:` + strings.Replace(this.Summary.GoString(), `&`, ``, 1),
-		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *SignedRatification_RatificationT_KeyserverStateSummary) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignedRatification_RatificationT_KeyserverStateSummary{` +
-		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
-	return s
-}
-func (this *SignatureVerifier) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignatureVerifier{` +
-		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519),
-		`Threshold:` + fmt.Sprintf("%#v", this.Threshold) + `}`}, ", ")
-	return s
-}
-func (this *SignatureVerifier_ThresholdVerifier) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.SignatureVerifier_ThresholdVerifier{` +
-		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
-		`Verifiers:` + fmt.Sprintf("%#v", this.Verifiers) + `}`}, ", ")
-	return s
-}
-func (this *ThresholdSignature) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.ThresholdSignature{` +
-		`KeyIndex:` + fmt.Sprintf("%#v", this.KeyIndex),
-		`Signature:` + fmt.Sprintf("%#v", this.Signature) + `}`}, ", ")
-	return s
-}
-func (this *QuorumExpr) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.QuorumExpr{` +
-		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
-		`Verifiers:` + fmt.Sprintf("%#v", this.Verifiers),
-		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
-	return s
-}
-func valueToGoStringClient(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringClient(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *LookupProfileRequest) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*LookupProfileRequest)
-	if !ok {
-		return fmt.Errorf("that is not of type *LookupProfileRequest")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *LookupProfileRequest but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *LookupProfileRequestbut is not nil && this == nil")
-	}
-	if this.User != that1.User {
-		return fmt.Errorf("User this(%v) Not Equal that(%v)", this.User, that1.User)
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
-	}
-	if !this.ValidAt.Equal(that1.ValidAt) {
-		return fmt.Errorf("ValidAt this(%v) Not Equal that(%v)", this.ValidAt, that1.ValidAt)
-	}
-	return nil
-}
-func (this *LookupProfileRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*LookupProfileRequest)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.User != that1.User {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return false
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return false
-	}
-	if !this.ValidAt.Equal(that1.ValidAt) {
-		return false
-	}
-	return true
-}
-func (this *UpdateProfileRequest) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*UpdateProfileRequest)
-	if !ok {
-		return fmt.Errorf("that is not of type *UpdateProfileRequest")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *UpdateProfileRequest but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *UpdateProfileRequestbut is not nil && this == nil")
-	}
-	if !this.Update.Equal(that1.Update) {
-		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
-	}
-	return nil
-}
-func (this *UpdateProfileRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*UpdateProfileRequest)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Update.Equal(that1.Update) {
-		return false
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return false
-	}
-	return true
-}
-func (this *LookupProof) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*LookupProof)
-	if !ok {
-		return fmt.Errorf("that is not of type *LookupProof")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *LookupProof but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *LookupProofbut is not nil && this == nil")
-	}
-	if this.UserId != that1.UserId {
-		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
-	}
-	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
-		return fmt.Errorf("IndexProof this(%v) Not Equal that(%v)", this.IndexProof, that1.IndexProof)
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
-	if len(this.Ratifications) != len(that1.Ratifications) {
-		return fmt.Errorf("Ratifications this(%v) Not Equal that(%v)", len(this.Ratifications), len(that1.Ratifications))
-	}
-	for i := range this.Ratifications {
-		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
-			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
-		}
-	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
-		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
-	}
-	return nil
-}
-func (this *LookupProof) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*LookupProof)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.UserId != that1.UserId {
-		return false
-	}
-	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return false
-	}
-	if len(this.Ratifications) != len(that1.Ratifications) {
-		return false
-	}
-	for i := range this.Ratifications {
-		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
-		return false
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return false
-	}
-	return true
-}
-func (this *Profile) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Profile)
-	if !ok {
-		return fmt.Errorf("that is not of type *Profile")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Profile but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Profilebut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Nonce, that1.Nonce) {
-		return fmt.Errorf("Nonce this(%v) Not Equal that(%v)", this.Nonce, that1.Nonce)
-	}
-	if len(this.EmailPgpPublickey) != len(that1.EmailPgpPublickey) {
-		return fmt.Errorf("EmailPgpPublickey this(%v) Not Equal that(%v)", len(this.EmailPgpPublickey), len(that1.EmailPgpPublickey))
-	}
-	for i := range this.EmailPgpPublickey {
-		if !bytes.Equal(this.EmailPgpPublickey[i], that1.EmailPgpPublickey[i]) {
-			return fmt.Errorf("EmailPgpPublickey this[%v](%v) Not Equal that[%v](%v)", i, this.EmailPgpPublickey[i], i, that1.EmailPgpPublickey[i])
-		}
-	}
-	return nil
-}
-func (this *Profile) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Profile)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Nonce, that1.Nonce) {
-		return false
-	}
-	if len(this.EmailPgpPublickey) != len(that1.EmailPgpPublickey) {
-		return false
-	}
-	for i := range this.EmailPgpPublickey {
-		if !bytes.Equal(this.EmailPgpPublickey[i], that1.EmailPgpPublickey[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *Entry) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Entry)
-	if !ok {
-		return fmt.Errorf("that is not of type *Entry")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Entry but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Entrybut is not nil && this == nil")
-	}
-	if this.Version != that1.Version {
-		return fmt.Errorf("Version this(%v) Not Equal that(%v)", this.Version, that1.Version)
-	}
-	if !this.UpdateKey.Equal(that1.UpdateKey) {
-		return fmt.Errorf("UpdateKey this(%v) Not Equal that(%v)", this.UpdateKey, that1.UpdateKey)
-	}
-	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
-		return fmt.Errorf("ProfileHash this(%v) Not Equal that(%v)", this.ProfileHash, that1.ProfileHash)
-	}
-	return nil
-}
-func (this *Entry) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Entry)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Version != that1.Version {
-		return false
-	}
-	if !this.UpdateKey.Equal(that1.UpdateKey) {
-		return false
-	}
-	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
-		return false
-	}
-	return true
-}
-func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedEntryUpdate)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedEntryUpdate")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedEntryUpdate but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEntryUpdatebut is not nil && this == nil")
-	}
-	if !this.Update.Equal(that1.Update) {
-		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
-	}
-	if !bytes.Equal(this.NewSig, that1.NewSig) {
-		return fmt.Errorf("NewSig this(%v) Not Equal that(%v)", this.NewSig, that1.NewSig)
-	}
-	if !bytes.Equal(this.OldSig, that1.OldSig) {
-		return fmt.Errorf("OldSig this(%v) Not Equal that(%v)", this.OldSig, that1.OldSig)
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
-	}
-	return nil
-}
-func (this *SignedEntryUpdate) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedEntryUpdate)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Update.Equal(that1.Update) {
-		return false
-	}
-	if !bytes.Equal(this.NewSig, that1.NewSig) {
-		return false
-	}
-	if !bytes.Equal(this.OldSig, that1.OldSig) {
-		return false
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return false
-	}
-	return true
-}
-func (this *SignedEntryUpdate_EntryUpdateT) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedEntryUpdate_EntryUpdateT)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedEntryUpdate_EntryUpdateT")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedEntryUpdate_EntryUpdateT but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEntryUpdate_EntryUpdateTbut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
-	if !this.NewEntry.Equal(that1.NewEntry) {
-		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
-	}
-	return nil
-}
-func (this *SignedEntryUpdate_EntryUpdateT) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedEntryUpdate_EntryUpdateT)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return false
-	}
-	if !this.NewEntry.Equal(that1.NewEntry) {
-		return false
-	}
-	return true
-}
-func (this *SignedRatification) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedRatification)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedRatification")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedRatification but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedRatificationbut is not nil && this == nil")
-	}
-	if this.Ratifier != that1.Ratifier {
-		return fmt.Errorf("Ratifier this(%v) Not Equal that(%v)", this.Ratifier, that1.Ratifier)
-	}
-	if !this.Ratification.Equal(that1.Ratification) {
-		return fmt.Errorf("Ratification this(%v) Not Equal that(%v)", this.Ratification, that1.Ratification)
-	}
-	if !bytes.Equal(this.Signature, that1.Signature) {
-		return fmt.Errorf("Signature this(%v) Not Equal that(%v)", this.Signature, that1.Signature)
-	}
-	return nil
-}
-func (this *SignedRatification) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedRatification)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Ratifier != that1.Ratifier {
-		return false
-	}
-	if !this.Ratification.Equal(that1.Ratification) {
-		return false
-	}
-	if !bytes.Equal(this.Signature, that1.Signature) {
-		return false
-	}
-	return true
-}
-func (this *SignedRatification_RatificationT) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedRatification_RatificationT)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedRatification_RatificationT")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedRatification_RatificationT but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedRatification_RatificationTbut is not nil && this == nil")
-	}
-	if this.Realm != that1.Realm {
-		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
-	}
-	if this.Epoch != that1.Epoch {
-		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
-	}
-	if !this.Summary.Equal(that1.Summary) {
-		return fmt.Errorf("Summary this(%v) Not Equal that(%v)", this.Summary, that1.Summary)
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
-	}
-	return nil
-}
-func (this *SignedRatification_RatificationT) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedRatification_RatificationT)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Realm != that1.Realm {
-		return false
-	}
-	if this.Epoch != that1.Epoch {
-		return false
-	}
-	if !this.Summary.Equal(that1.Summary) {
-		return false
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return false
-	}
-	return true
-}
-func (this *SignedRatification_RatificationT_KeyserverStateSummary) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedRatification_RatificationT_KeyserverStateSummary)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedRatification_RatificationT_KeyserverStateSummary")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedRatification_RatificationT_KeyserverStateSummary but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedRatification_RatificationT_KeyserverStateSummarybut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.RootHash, that1.RootHash) {
-		return fmt.Errorf("RootHash this(%v) Not Equal that(%v)", this.RootHash, that1.RootHash)
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
-	}
-	return nil
-}
-func (this *SignedRatification_RatificationT_KeyserverStateSummary) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedRatification_RatificationT_KeyserverStateSummary)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.RootHash, that1.RootHash) {
-		return false
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return false
-	}
-	return true
-}
-func (this *SignatureVerifier) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignatureVerifier)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignatureVerifier")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignatureVerifier but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignatureVerifierbut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
-	}
-	if !this.Threshold.Equal(that1.Threshold) {
-		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
-	}
-	return nil
-}
-func (this *SignatureVerifier) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignatureVerifier)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	if !this.Threshold.Equal(that1.Threshold) {
-		return false
-	}
-	return true
-}
-func (this *SignatureVerifier_ThresholdVerifier) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignatureVerifier_ThresholdVerifier)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignatureVerifier_ThresholdVerifier")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignatureVerifier_ThresholdVerifier but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignatureVerifier_ThresholdVerifierbut is not nil && this == nil")
-	}
-	if this.Threshold != that1.Threshold {
-		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return fmt.Errorf("Verifiers this(%v) Not Equal that(%v)", len(this.Verifiers), len(that1.Verifiers))
-	}
-	for i := range this.Verifiers {
-		if !this.Verifiers[i].Equal(that1.Verifiers[i]) {
-			return fmt.Errorf("Verifiers this[%v](%v) Not Equal that[%v](%v)", i, this.Verifiers[i], i, that1.Verifiers[i])
-		}
-	}
-	return nil
-}
-func (this *SignatureVerifier_ThresholdVerifier) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignatureVerifier_ThresholdVerifier)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Threshold != that1.Threshold {
-		return false
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return false
-	}
-	for i := range this.Verifiers {
-		if !this.Verifiers[i].Equal(that1.Verifiers[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *ThresholdSignature) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*ThresholdSignature)
-	if !ok {
-		return fmt.Errorf("that is not of type *ThresholdSignature")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *ThresholdSignature but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *ThresholdSignaturebut is not nil && this == nil")
-	}
-	if len(this.KeyIndex) != len(that1.KeyIndex) {
-		return fmt.Errorf("KeyIndex this(%v) Not Equal that(%v)", len(this.KeyIndex), len(that1.KeyIndex))
-	}
-	for i := range this.KeyIndex {
-		if this.KeyIndex[i] != that1.KeyIndex[i] {
-			return fmt.Errorf("KeyIndex this[%v](%v) Not Equal that[%v](%v)", i, this.KeyIndex[i], i, that1.KeyIndex[i])
-		}
-	}
-	if len(this.Signature) != len(that1.Signature) {
-		return fmt.Errorf("Signature this(%v) Not Equal that(%v)", len(this.Signature), len(that1.Signature))
-	}
-	for i := range this.Signature {
-		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
-			return fmt.Errorf("Signature this[%v](%v) Not Equal that[%v](%v)", i, this.Signature[i], i, that1.Signature[i])
-		}
-	}
-	return nil
-}
-func (this *ThresholdSignature) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*ThresholdSignature)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if len(this.KeyIndex) != len(that1.KeyIndex) {
-		return false
-	}
-	for i := range this.KeyIndex {
-		if this.KeyIndex[i] != that1.KeyIndex[i] {
-			return false
-		}
-	}
-	if len(this.Signature) != len(that1.Signature) {
-		return false
-	}
-	for i := range this.Signature {
-		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *QuorumExpr) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*QuorumExpr)
-	if !ok {
-		return fmt.Errorf("that is not of type *QuorumExpr")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *QuorumExpr but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *QuorumExprbut is not nil && this == nil")
-	}
-	if this.Threshold != that1.Threshold {
-		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return fmt.Errorf("Verifiers this(%v) Not Equal that(%v)", len(this.Verifiers), len(that1.Verifiers))
-	}
-	for i := range this.Verifiers {
-		if this.Verifiers[i] != that1.Verifiers[i] {
-			return fmt.Errorf("Verifiers this[%v](%v) Not Equal that[%v](%v)", i, this.Verifiers[i], i, that1.Verifiers[i])
-		}
-	}
-	if len(this.Subexpressions) != len(that1.Subexpressions) {
-		return fmt.Errorf("Subexpressions this(%v) Not Equal that(%v)", len(this.Subexpressions), len(that1.Subexpressions))
-	}
-	for i := range this.Subexpressions {
-		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
-			return fmt.Errorf("Subexpressions this[%v](%v) Not Equal that[%v](%v)", i, this.Subexpressions[i], i, that1.Subexpressions[i])
-		}
-	}
-	return nil
-}
-func (this *QuorumExpr) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*QuorumExpr)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Threshold != that1.Threshold {
-		return false
-	}
-	if len(this.Verifiers) != len(that1.Verifiers) {
-		return false
-	}
-	for i := range this.Verifiers {
-		if this.Verifiers[i] != that1.Verifiers[i] {
-			return false
-		}
-	}
-	if len(this.Subexpressions) != len(that1.Subexpressions) {
-		return false
-	}
-	for i := range this.Subexpressions {
-		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-// Client API for E2EKSLookup service
-
-type E2EKSLookupClient interface {
-	LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
-}
-
-type e2EKSLookupClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
-	return &e2EKSLookupClient{cc}
-}
-
-func (c *e2EKSLookupClient) LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/LookupProfile", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSLookup service
-
-type E2EKSLookupServer interface {
-	LookupProfile(context.Context, *LookupProfileRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
-	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
-}
-
-func _E2EKSLookup_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupProfileRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSLookupServer).LookupProfile(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSLookup",
-	HandlerType: (*E2EKSLookupServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "LookupProfile",
-			Handler:    _E2EKSLookup_LookupProfile_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
-}
-
-// Client API for E2EKSUpdate service
-
-type E2EKSUpdateClient interface {
-	LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
-	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*LookupProof, error)
-}
-
-type e2EKSUpdateClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
-	return &e2EKSUpdateClient{cc}
-}
-
-func (c *e2EKSUpdateClient) LookupProfile(ctx context.Context, in *LookupProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/LookupProfile", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *e2EKSUpdateClient) UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/UpdateProfile", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSUpdate service
-
-type E2EKSUpdateServer interface {
-	LookupProfile(context.Context, *LookupProfileRequest) (*LookupProof, error)
-	UpdateProfile(context.Context, *UpdateProfileRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
-	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
-}
-
-func _E2EKSUpdate_LookupProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupProfileRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSUpdateServer).LookupProfile(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _E2EKSUpdate_UpdateProfile_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(UpdateProfileRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSUpdateServer).UpdateProfile(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSUpdate",
-	HandlerType: (*E2EKSUpdateServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "LookupProfile",
-			Handler:    _E2EKSUpdate_LookupProfile_Handler,
-		},
-		{
-			MethodName: "UpdateProfile",
-			Handler:    _E2EKSUpdate_UpdateProfile_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
 }

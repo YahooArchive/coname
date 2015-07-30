@@ -47,11 +47,11 @@ message KeyserverStep {
 		// After some majority of the replicas has ratified the state, their
 		// signatures make up the keyserver signature. As combining signatures
 		// is deterministic, no new log entry is appended to record that.
-		SignedRatification replica_ratification = 4;
+		SignedEpochHead replica_ratification = 4;
 		// verifier_ratification is appended for each new ratification received
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
-		SignedRatification verifier_ratification = 5;
+		SignedEpochHead verifier_ratification = 5;
 	}
 }
 

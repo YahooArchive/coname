@@ -21,14 +21,14 @@ import (
 	"time"
 )
 
-func TestSignedEntryUpdate_EntryUpdateT_PreserveEncodingProto(t *testing.T) {
+func TestTimestampedEpochHead_PreserveEncodingProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedSignedEntryUpdate_EntryUpdateT_PreserveEncoding(popr, false)
+	p := NewPopulatedTimestampedEpochHead_PreserveEncoding(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &SignedEntryUpdate_EntryUpdateT_PreserveEncoding{}
+	msg := &TimestampedEpochHead_PreserveEncoding{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
