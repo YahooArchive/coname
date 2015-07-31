@@ -40,16 +40,22 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// TODO: make this a protobuf, Unmarshal from JSON
+type Replica struct {
+	PublicKey *proto.PublicKey
+	Address   string // host:port
+}
+
 // Config encapsulates everything that needs to be specified about a single
 // replica of one realm's keyserver to operate it.
 // TODO: make this a protobuf, Unmarshal from JSON
 type Config struct {
 	Realm string
 
-	ServerID, ReplicaID  uint64
-	RatificationVerifier *proto.QuorumPublicKey
-	RatificationKey      *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	VRFSecret            *[vrf.SecretKeySize]byte
+	ServerID, ReplicaID uint64
+	Replicas            []*Replica
+	RatificationKey     *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
+	VRFSecret           *[vrf.SecretKeySize]byte
 
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
@@ -93,6 +99,27 @@ type Keyserver struct {
 	waitStop sync.WaitGroup
 }
 
+// Builds a "simple majority" quorum public key from the replica
+// TODO: put somewhere better?
+func MajorityOfReplicas(replicas []*Replica) *proto.QuorumPublicKey {
+	publicKeys := []*proto.PublicKey_PreserveEncoding{}
+	keyIDs := []uint64{}
+	for _, replica := range replicas {
+		publicKey := &proto.PublicKey_PreserveEncoding{*replica.PublicKey, nil}
+		publicKey.UpdateEncoding()
+		publicKeys = append(publicKeys, publicKey)
+		keyIDs = append(keyIDs, common.KeyID(replica.PublicKey))
+	}
+	return &proto.QuorumPublicKey{
+		Quorum: &proto.QuorumExpr{
+			Threshold:      uint32(len(replicas)/2 + 1),
+			Candidates:     keyIDs,
+			Subexpressions: []*proto.QuorumExpr{},
+		},
+		PublicKeys: publicKeys,
+	}
+}
+
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
 func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
@@ -105,7 +132,7 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		realm:              cfg.Realm,
 		serverID:           cfg.ServerID,
 		replicaID:          cfg.ReplicaID,
-		sehVerifier:        cfg.RatificationVerifier,
+		sehVerifier:        MajorityOfReplicas(cfg.Replicas),
 		sehKey:             cfg.RatificationKey,
 		vrfSecret:          cfg.VRFSecret,
 		minEpochInterval:   cfg.MinEpochInterval,

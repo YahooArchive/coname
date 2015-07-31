@@ -84,19 +84,15 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 	pked := &proto.PublicKey_PreserveEncoding{proto.PublicKey{Ed25519: pk[:]}, nil}
 	pked.UpdateEncoding()
 	replicaID := common.KeyID(&pked.PublicKey)
-	sv := &proto.PublicKey{Quorum: &proto.QuorumPublicKey{
-		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
-		PublicKeys: []*proto.PublicKey_PreserveEncoding{pked},
-	}}
 
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &Config{
-		Realm:                testingRealm,
-		RatificationVerifier: sv.Quorum,
-		ServerID:             replicaID,
-		ReplicaID:            replicaID,
-		RatificationKey:      sk,
+		Realm:           testingRealm,
+		Replicas:        []*Replica{&Replica{&pked.PublicKey, "localhost:0"}},
+		ServerID:        replicaID,
+		ReplicaID:       replicaID,
+		RatificationKey: sk,
 
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
@@ -286,7 +282,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.PublicKey{Quorum: cfg.RatificationVerifier}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.PublicKey{Quorum: MajorityOfReplicas(cfg.Replicas)}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
 			_, err := verifier.Start(vcfg, vdb)
