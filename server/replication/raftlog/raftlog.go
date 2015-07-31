@@ -17,6 +17,7 @@ package raftlog
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"math"
 	"sync"
 	"time"
@@ -106,12 +107,7 @@ func (l *raftLog) Stop() error {
 
 // Propose implements replication.LogReplicator
 func (l *raftLog) Propose(ctx context.Context, data []byte) {
-	select {
-	case <-l.stop:
-		return
-	default:
-		l.node.Propose(ctx, data)
-	}
+	l.node.Propose(ctx, data)
 }
 
 // WaitCommitted implements replication.LogReplicator
@@ -268,7 +264,7 @@ func (s *raftStorage) Term(i uint64) (uint64, error) {
 		return 0, err
 	}
 	if len(entries) != 1 {
-		panic(fmt.Errorf("number of entries with index %d not 1: %d", i, len(entries)))
+		log.Panicf("number of entries with index %d not 1: %d", i, len(entries))
 	}
 	return entries[0].Term, nil
 }
