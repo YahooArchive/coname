@@ -44,7 +44,7 @@ type raftLog struct {
 	node         raft.Node
 	tickInterval time.Duration
 
-	waitCommitted chan []byte
+	waitCommitted chan replication.LogEntry
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -70,7 +70,7 @@ func New(
 		storage:       openRaftStorage(db, prefix, confState),
 		node:          nil,
 		tickInterval:  tickInterval,
-		waitCommitted: make(chan []byte, COMMITTED_BUFFER),
+		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
 	}, nil
@@ -110,20 +110,25 @@ func (l *raftLog) Propose(ctx context.Context, data []byte) {
 	l.node.Propose(ctx, data)
 }
 
+// Propose implements replication.LogReplicator
+func (l *raftLog) ProposeConfChange(ctx context.Context, change []byte) {
+	panic("raftLog.ProposeConfChange not implemented")
+}
+
 // WaitCommitted implements replication.LogReplicator
-func (l *raftLog) WaitCommitted() <-chan []byte {
+func (l *raftLog) WaitCommitted() <-chan replication.LogEntry {
 	return l.waitCommitted
 }
 
 // GetCommitted implements replication.LogReplicator
-func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
+func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
 	var entries []raftpb.Entry
 	entries, err = l.storage.Entries(lo, hi, maxSize)
 	if err != nil {
 		return
 	}
 	for _, entry := range entries {
-		ret = append(ret, entry.Data)
+		ret = append(ret, replication.LogEntry{Data: entry.Data})
 	}
 	return
 }
@@ -143,9 +148,9 @@ func (l *raftLog) run() {
 			l.node.Tick()
 		case rd := <-l.node.Ready():
 			if !raft.IsEmptySnap(rd.Snapshot) {
-				panic("snapshots not supported")
+				log.Panicf("snapshots not supported")
 			}
-			l.storage.Save(rd.HardState, rd.Entries)
+			l.storage.save(rd.HardState, rd.Entries)
 			// TODO send(rd.Messages)
 			for _, entry := range rd.CommittedEntries {
 				switch entry.Type {
@@ -153,8 +158,9 @@ func (l *raftLog) run() {
 					var cc raftpb.ConfChange
 					cc.Unmarshal(entry.Data)
 					l.node.ApplyConfChange(cc)
+					l.waitCommitted <- replication.LogEntry{Reconfiguration: entry.Data}
 				default:
-					l.waitCommitted <- entry.Data
+					l.waitCommitted <- replication.LogEntry{Data: entry.Data}
 				}
 				l.node.Advance() // let Raft proceed
 			}
@@ -175,9 +181,9 @@ var _ raft.Storage = (*raftStorage)(nil)
 
 func openRaftStorage(db kv.DB, prefix []byte, initialConf raftpb.ConfState) *raftStorage {
 	return &raftStorage{
-		hardStateKey:   append(prefix, HARDSTATE_KEY...),
-		confStateKey:   append(prefix, CONFSTATE_KEY...),
-		entryKeyPrefix: append(prefix, ENTRY_KEY_PREFIX...),
+		hardStateKey:   append(append([]byte{}, prefix...), HARDSTATE_KEY...),
+		confStateKey:   append(append([]byte{}, prefix...), CONFSTATE_KEY...),
+		entryKeyPrefix: append(append([]byte{}, prefix...), ENTRY_KEY_PREFIX...),
 		db:             db,
 		initialConf:    initialConf,
 	}
@@ -293,7 +299,7 @@ func (s *raftStorage) Snapshot() (raftpb.Snapshot, error) {
 }
 
 // Don't call this multiple times concurrently
-func (s *raftStorage) Save(state raftpb.HardState, entries []raftpb.Entry) error {
+func (s *raftStorage) save(state raftpb.HardState, entries []raftpb.Entry) error {
 	wb := s.db.NewBatch()
 	stateBytes, err := state.Marshal()
 	if err != nil {
