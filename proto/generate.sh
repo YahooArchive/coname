@@ -19,8 +19,7 @@ cd "$DIR"
 
 # go install ./protoc-gen-coname
 
-protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/gogo/protobuf" *.proto
-
+protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/gogo/protobuf" -I "$GOPATH/src/github.com/gogo/protobuf/protobuf" *.proto
 
 function preserve {
 	sed "s/Thing/$1/g" < preserve.go.template > "$1.pr.go"
@@ -34,10 +33,11 @@ preserve EpochHead
 preserve PublicKey
 
 # preserve the encoding of repeated public keys
-sed -i 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
+sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
 
 # skip the text format tests (we never use the text format)
-sed -i '/Test.*Text.*testing/a	t.Skip()' *_test.go
+sed -i.bak -e '/Test.*Text.*testing/a\
+t.Skip()' *_test.go
 
 # bound the branching factor of quorum expressions to avoid infinite recursion.
 awk '{
