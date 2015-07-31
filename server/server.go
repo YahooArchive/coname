@@ -53,7 +53,7 @@ type Config struct {
 	Realm string
 
 	ServerID, ReplicaID uint64
-	Replicas            []*Replica
+	InitialReplicas     []*Replica
 	RatificationKey     *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
 	VRFSecret           *[vrf.SecretKeySize]byte
 
@@ -132,7 +132,7 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		realm:              cfg.Realm,
 		serverID:           cfg.ServerID,
 		replicaID:          cfg.ReplicaID,
-		sehVerifier:        MajorityOfReplicas(cfg.Replicas),
+		sehVerifier:        MajorityOfReplicas(cfg.InitialReplicas),
 		sehKey:             cfg.RatificationKey,
 		vrfSecret:          cfg.VRFSecret,
 		minEpochInterval:   cfg.MinEpochInterval,

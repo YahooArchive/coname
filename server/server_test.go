@@ -89,7 +89,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &Config{
 		Realm:           testingRealm,
-		Replicas:        []*Replica{&Replica{&pked.PublicKey, "localhost:0"}},
+		InitialReplicas: []*Replica{&Replica{&pked.PublicKey, "localhost:0"}},
 		ServerID:        replicaID,
 		ReplicaID:       replicaID,
 		RatificationKey: sk,
@@ -282,7 +282,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.PublicKey{Quorum: MajorityOfReplicas(cfg.Replicas)}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.PublicKey{Quorum: MajorityOfReplicas(cfg.InitialReplicas)}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
 			_, err := verifier.Start(vcfg, vdb)
