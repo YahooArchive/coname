@@ -16,7 +16,15 @@ package replication
 
 import (
 	"golang.org/x/net/context"
+
+	"github.com/yahoo/coname/proto"
 )
+
+type LogEntry struct {
+	// At most one may be set
+	Data            []byte
+	Reconfiguration []proto.Replica
+}
 
 // LogReplicator is a generic interface to state-machine replication logs.  The
 // log is a mapping from uint64 slot indices to []byte entries in which all
@@ -40,6 +48,8 @@ type LogReplicator interface {
 	// data : []*mut // ownership of the slice contents is transferred to LogReplicator
 	Propose(ctx context.Context, data []byte)
 
+	ProposeConfChange(ctx context.Context, reconfiguration []proto.Replica)
+
 	// GetCommitted loads committed entries for post-replication distribution:
 	// 1. The first returned entry corresponds to Index = lo
 	// 2. All returned entries are consecutive
@@ -48,13 +58,13 @@ type LogReplicator interface {
 	// 5. After that, no more than maxSize total bytes are returned (the first
 	//    entry counts towards the max size but is always returned)
 	// ret: []&[]byte // All returned byte slices are read-only for the caller.
-	GetCommitted(lo, hi, maxSize uint64) ([][]byte, error)
+	GetCommitted(lo, hi, maxSize uint64) ([]LogEntry, error)
 
 	// WaitCommitted returns a channel that returns new committed entries,
 	// starting with the index passed to Start.
 	// All calls return the same channel.
 	// ch : chan (&[]byte) // all read values are read-only to the caller
-	WaitCommitted() <-chan []byte
+	WaitCommitted() <-chan LogEntry
 
 	// Stop cleanly stops logging requests. No calls to Propose or
 	// GetCommitted must be started after Stop has been called (and the values
