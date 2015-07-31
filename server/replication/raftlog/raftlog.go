@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/andres-erbsen/clock"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 
@@ -42,6 +43,8 @@ type raftLog struct {
 	initialNodes []raft.Peer
 	storage      *raftStorage
 	node         raft.Node
+
+	clk          clock.Clock
 	tickInterval time.Duration
 
 	waitCommitted chan replication.LogEntry
@@ -58,7 +61,7 @@ var _ replication.LogReplicator = (*raftLog)(nil)
 // initialNodes and tickInterval are included; may want our own config struct
 func New(
 	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
-	tickInterval time.Duration,
+	clk clock.Clock, tickInterval time.Duration,
 ) (replication.LogReplicator, error) {
 	confState := raftpb.ConfState{}
 	for _, node := range initialNodes {
@@ -69,6 +72,7 @@ func New(
 		initialNodes:  initialNodes,
 		storage:       openRaftStorage(db, prefix, confState),
 		node:          nil,
+		clk:           clk,
 		tickInterval:  tickInterval,
 		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
 		stop:          make(chan struct{}),
@@ -139,7 +143,7 @@ func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEnt
 func (l *raftLog) run() {
 	defer close(l.waitCommitted)
 	defer close(l.stopped)
-	ticker := time.NewTicker(l.tickInterval)
+	ticker := l.clk.Ticker(l.tickInterval)
 	for {
 		select {
 		case <-l.stop:
