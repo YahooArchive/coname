@@ -60,3 +60,8 @@ message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
 	Timestamp timestamp = 4 [(gogoproto.nullable) = false];
 }
+
+message Replica {
+	PublicKey public_key = 1;
+	string addr = 2; // "ip:port"
+}

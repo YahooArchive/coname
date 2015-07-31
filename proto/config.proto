@@ -40,8 +40,3 @@ message RealmConfig {
 	// keyserver's ratification here.
 	QuorumExpr quorum_requirement = 5;
 }
-
-message Replica {
-	PublicKey public_key = 1;
-	string addr = 2;
-}
