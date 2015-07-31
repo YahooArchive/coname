@@ -31,6 +31,7 @@ type kvLog struct {
 	nextIndex  uint64
 	skipBefore uint64
 
+	leaderHintSet chan bool
 	propose       chan replication.LogEntry
 	waitCommitted chan replication.LogEntry
 
@@ -53,11 +54,14 @@ func New(db kv.DB, prefix []byte) (replication.LogReplicator, error) {
 		return nil, err
 	}
 
+	leaderHintSet := make(chan bool, 1)
+	leaderHintSet <- true
 	return &kvLog{
 		db:            db,
 		prefix:        prefix,
 		nextIndex:     nextIndex,
 		propose:       make(chan replication.LogEntry, 100),
+		leaderHintSet: leaderHintSet,
 		waitCommitted: make(chan replication.LogEntry),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
@@ -102,6 +106,11 @@ func (l *kvLog) Propose(ctx context.Context, data []byte) {
 // WaitCommitted implements replication.LogReplicator
 func (l *kvLog) WaitCommitted() <-chan replication.LogEntry {
 	return l.waitCommitted
+}
+
+// WaitCommitted implements replication.LogReplicator
+func (l *kvLog) LeaderHintSet() <-chan bool {
+	return l.leaderHintSet
 }
 
 // GetCommitted implements replication.LogReplicator

@@ -87,7 +87,6 @@ type Keyserver struct {
 	// state used for determining whether we should start a new epoch.
 	// see replication.proto for explanation.
 	leaderHint, canEpoch, mustEpoch       bool
-	leaderHintSet                         <-chan bool
 	canEpochSet, mustEpochSet, retryEpoch *clock.Timer
 	// rs.PendingUpdates is used as well
 
@@ -143,9 +142,7 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		stop:               make(chan struct{}),
 		wr:                 NewWaitingRoom(),
 
-		// TODO: change when using actual replication
-		leaderHint:    true,
-		leaderHintSet: nil,
+		leaderHint: true,
 
 		clk:          clk,
 		canEpochSet:  clk.Timer(0),
@@ -246,7 +243,8 @@ func (ks *Keyserver) run() {
 		select {
 		case <-ks.stop:
 			return
-		case stepBytes := <-ks.log.WaitCommitted():
+		case stepLogEntry := <-ks.log.WaitCommitted():
+			stepBytes := stepLogEntry.Data
 			if stepBytes == nil {
 				continue // allow logs to skip slots for indexing purposes
 			}
@@ -266,7 +264,7 @@ func (ks *Keyserver) run() {
 			if deferredIO != nil {
 				deferredIO()
 			}
-		case ks.leaderHint = <-ks.leaderHintSet:
+		case ks.leaderHint = <-ks.log.LeaderHintSet():
 			ks.maybeEpoch()
 		case <-ks.canEpochSet.C:
 			ks.canEpoch = true

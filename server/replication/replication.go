@@ -64,6 +64,12 @@ type LogReplicator interface {
 	// ch : chan (&[]byte) // all read values are read-only to the caller
 	WaitCommitted() <-chan LogEntry
 
+	// LeaderHintSet returns a channel that reads true when it becomes likely
+	// this replica is the leader of the cluster, and false when it is no onger
+	// likely. Users MUST NOT rely on this for correctness. For example, it is
+	// totally possible for two replicas have leaderHint=true at the same time.
+	LeaderHintSet() <-chan bool
+
 	// Stop cleanly stops logging requests. No calls to Propose or
 	// GetCommitted must be started after Stop has been called (and the values
 	// handed to ongoing Propose calls may not get committed). WaitCommitted

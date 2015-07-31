@@ -49,6 +49,9 @@ type raftLog struct {
 
 	waitCommitted chan replication.LogEntry
 
+	leaderHintSet chan bool
+	leaderHint    bool
+
 	stopOnce sync.Once
 	stop     chan struct{}
 	stopped  chan struct{}
@@ -74,6 +77,7 @@ func New(
 		node:          nil,
 		clk:           clk,
 		tickInterval:  tickInterval,
+		leaderHintSet: make(chan bool, COMMITTED_BUFFER),
 		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
@@ -124,6 +128,11 @@ func (l *raftLog) WaitCommitted() <-chan replication.LogEntry {
 	return l.waitCommitted
 }
 
+// LeaderHintSet implements replication.LogReplicator
+func (l *raftLog) LeaderHintSet() <-chan bool {
+	return l.leaderHintSet
+}
+
 // GetCommitted implements replication.LogReplicator
 func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
 	var entries []raftpb.Entry
@@ -143,6 +152,7 @@ func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEnt
 func (l *raftLog) run() {
 	defer close(l.waitCommitted)
 	defer close(l.stopped)
+	defer close(l.leaderHintSet)
 	ticker := l.clk.Ticker(l.tickInterval)
 	for {
 		select {
@@ -167,6 +177,11 @@ func (l *raftLog) run() {
 					l.waitCommitted <- replication.LogEntry{Data: entry.Data}
 				}
 				l.node.Advance() // let Raft proceed
+			}
+			leaderHint := rd.SoftState.RaftState == raft.StateLeader
+			if l.leaderHint != leaderHint {
+				l.leaderHint = leaderHint
+				l.leaderHintSet <- leaderHint
 			}
 		}
 	}
