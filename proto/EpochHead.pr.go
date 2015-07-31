@@ -18,7 +18,7 @@ import "fmt"
 
 type EpochHead_PreserveEncoding struct {
 	EpochHead
-	PreservedEncoding []byte
+	PreservedEncoding []byte `json:"-"`
 }
 
 func (m *EpochHead_PreserveEncoding) UpdateEncoding() (err error) {

@@ -18,7 +18,7 @@ import "fmt"
 
 type PublicKey_PreserveEncoding struct {
 	PublicKey
-	PreservedEncoding []byte
+	PreservedEncoding []byte `json:"-"`
 }
 
 func (m *PublicKey_PreserveEncoding) UpdateEncoding() (err error) {

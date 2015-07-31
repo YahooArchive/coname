@@ -237,7 +237,7 @@ func TestRealmConfigJSON(t *testing.T) {
 	}
 }
 func TestConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -254,7 +254,7 @@ t.Skip()
 }
 
 func TestConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -271,7 +271,7 @@ t.Skip()
 }
 
 func TestRealmConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -288,7 +288,7 @@ t.Skip()
 }
 
 func TestRealmConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)

@@ -346,7 +346,7 @@ func TestNothingJSON(t *testing.T) {
 	}
 }
 func TestVerifierStreamRequestProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -363,7 +363,7 @@ t.Skip()
 }
 
 func TestVerifierStreamRequestProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -380,7 +380,7 @@ t.Skip()
 }
 
 func TestVerifierStepProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -397,7 +397,7 @@ t.Skip()
 }
 
 func TestVerifierStepProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -414,7 +414,7 @@ t.Skip()
 }
 
 func TestNothingProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -431,7 +431,7 @@ t.Skip()
 }
 
 func TestNothingProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)

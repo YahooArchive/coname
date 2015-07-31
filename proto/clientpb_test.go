@@ -1352,7 +1352,7 @@ func TestQuorumExprJSON(t *testing.T) {
 	}
 }
 func TestLookupRequestProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1369,7 +1369,7 @@ t.Skip()
 }
 
 func TestLookupRequestProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1386,7 +1386,7 @@ t.Skip()
 }
 
 func TestUpdateRequestProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedUpdateRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1403,7 +1403,7 @@ t.Skip()
 }
 
 func TestUpdateRequestProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedUpdateRequest(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1420,7 +1420,7 @@ t.Skip()
 }
 
 func TestLookupProofProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupProof(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1437,7 +1437,7 @@ t.Skip()
 }
 
 func TestLookupProofProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupProof(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1454,7 +1454,7 @@ t.Skip()
 }
 
 func TestEntryProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEntry(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1471,7 +1471,7 @@ t.Skip()
 }
 
 func TestEntryProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEntry(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1488,7 +1488,7 @@ t.Skip()
 }
 
 func TestSignedEntryUpdateProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1505,7 +1505,7 @@ t.Skip()
 }
 
 func TestSignedEntryUpdateProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1522,7 +1522,7 @@ t.Skip()
 }
 
 func TestProfileProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedProfile(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1539,7 +1539,7 @@ t.Skip()
 }
 
 func TestProfileProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedProfile(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1556,7 +1556,7 @@ t.Skip()
 }
 
 func TestSignedEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1573,7 +1573,7 @@ t.Skip()
 }
 
 func TestSignedEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1590,7 +1590,7 @@ t.Skip()
 }
 
 func TestTimestampedEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1607,7 +1607,7 @@ t.Skip()
 }
 
 func TestTimestampedEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1624,7 +1624,7 @@ t.Skip()
 }
 
 func TestEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1641,7 +1641,7 @@ t.Skip()
 }
 
 func TestEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEpochHead(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1658,7 +1658,7 @@ t.Skip()
 }
 
 func TestPublicKeyProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1675,7 +1675,7 @@ t.Skip()
 }
 
 func TestPublicKeyProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1692,7 +1692,7 @@ t.Skip()
 }
 
 func TestQuorumPublicKeyProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1709,7 +1709,7 @@ t.Skip()
 }
 
 func TestQuorumPublicKeyProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumPublicKey(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -1726,7 +1726,7 @@ t.Skip()
 }
 
 func TestQuorumExprProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumExpr(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -1743,7 +1743,7 @@ t.Skip()
 }
 
 func TestQuorumExprProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumExpr(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)

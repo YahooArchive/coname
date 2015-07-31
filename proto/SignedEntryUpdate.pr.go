@@ -18,7 +18,7 @@ import "fmt"
 
 type SignedEntryUpdate_PreserveEncoding struct {
 	SignedEntryUpdate
-	PreservedEncoding []byte
+	PreservedEncoding []byte `json:"-"`
 }
 
 func (m *SignedEntryUpdate_PreserveEncoding) UpdateEncoding() (err error) {

@@ -237,7 +237,7 @@ func TestEpochDelimiterJSON(t *testing.T) {
 	}
 }
 func TestKeyserverStepProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedKeyserverStep(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -254,7 +254,7 @@ t.Skip()
 }
 
 func TestKeyserverStepProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedKeyserverStep(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
@@ -271,7 +271,7 @@ t.Skip()
 }
 
 func TestEpochDelimiterProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEpochDelimiter(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -288,7 +288,7 @@ t.Skip()
 }
 
 func TestEpochDelimiterProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEpochDelimiter(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)
