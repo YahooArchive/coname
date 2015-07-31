@@ -133,12 +133,12 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	// as a primitive progress check.
 	progressCh := make(chan struct{})
 	var closeOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
-		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+	db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
+		if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 			return
 		}
 		var sr proto.SignedEpochHead
-		sr.Unmarshal(put.Value)
+		sr.Unmarshal(update.Value)
 		if sr.Head.Head.Epoch == 3 {
 			closeOnce.Do(func() { close(progressCh) })
 		}
@@ -249,10 +249,10 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 	cfg, db, caCert, caPool, caKey, teardown := setupKeyserver(t)
 	ksDone := make(chan struct{})
 	var ksDoneOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+	db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
 		// We are waiting for an epoch to be ratified (in case there are no
 		// verifiers, blocking on them does not help).
-		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+		if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 			return
 		}
 		ksDoneOnce.Do(func() { close(ksDone) })
@@ -269,15 +269,15 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		var verifierTeardown func()
 		var vcfg *verifier.Config
 		var doneOnce sync.Once
-		db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+		db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
 			// We are waiting for epoch 1 to be ratified by the verifier and
 			// reach the client because before that lookups requiring this
 			// verifier will immediately fail.
-			if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+			if len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 				return
 			}
 			var sr proto.SignedEpochHead
-			sr.Unmarshal(put.Value)
+			sr.Unmarshal(update.Value)
 			<-vrBarrier
 			if _, s := sr.Signature[vcfg.ID]; s && sr.Head.Head.Epoch == 1 {
 				doneOnce.Do(func() { doneVerifiers <- doneVerifier{verifierTeardown, vcfg.ID} })
