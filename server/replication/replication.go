@@ -16,14 +16,12 @@ package replication
 
 import (
 	"golang.org/x/net/context"
-
-	"github.com/yahoo/coname/proto"
 )
 
 type LogEntry struct {
 	// At most one may be set
 	Data            []byte
-	Reconfiguration []proto.Replica
+	Reconfiguration []byte
 }
 
 // LogReplicator is a generic interface to state-machine replication logs.  The
@@ -48,7 +46,7 @@ type LogReplicator interface {
 	// data : []*mut // ownership of the slice contents is transferred to LogReplicator
 	Propose(ctx context.Context, data []byte)
 
-	ProposeConfChange(ctx context.Context, reconfiguration []proto.Replica)
+	ProposeConfChange(ctx context.Context, reconfiguration []byte)
 
 	// GetCommitted loads committed entries for post-replication distribution:
 	// 1. The first returned entry corresponds to Index = lo
