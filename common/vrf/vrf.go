@@ -21,6 +21,9 @@ const (
 	ProofSize        = SecretKeySize + 32 + intermediateSize
 )
 
+// note on hashing: the use of sha512 matches the ed25519 signature scheme. In
+// principle, HMAC-SHA512 may be a better fit.
+
 // GenerateKey creates a public/private key pair. rnd is used for randomness.
 // If it is nil, `crypto/rand` is used.
 func GenerateKey(rnd io.Reader) (pk []byte, sk *[SecretKeySize]byte, err error) {
@@ -41,9 +44,6 @@ func expandSecret(sk *[SecretKeySize]byte) (x, skhr [32]byte) {
 	return
 }
 
-// Compute returns the value of a veirifiable random function of m using key k.
-// H(m, H'(m)^k). TODO: I think length extension does not matter because the
-// value we are trying to hide is last, but maybe we should double up anyway?
 func Compute(m []byte, sk *[SecretKeySize]byte) []byte {
 	x, _ := expandSecret(sk)
 	var ii edwards25519.ExtendedGroupElement
@@ -58,14 +58,12 @@ func Compute(m []byte, sk *[SecretKeySize]byte) []byte {
 }
 
 func hashToCurve(m []byte) *edwards25519.ExtendedGroupElement {
+	// H(n) = (f(h(n))^8)
 	hmbH := sha512.Sum512(m)
 	var hmb [32]byte
 	copy(hmb[:], hmbH[:])
 	var hm edwards25519.ExtendedGroupElement
 	extra25519.HashToEdwards(&hm, &hmb)
-	// TODO: is there any way not to require 0 mod 8?  There should, but
-	// removing the next tree lines makes the second elliptic curve point in
-	// the equation for c fail something like 7 times out of 8.
 	edwards25519.GeDouble(&hm, &hm)
 	edwards25519.GeDouble(&hm, &hm)
 	edwards25519.GeDouble(&hm, &hm)
@@ -132,13 +130,10 @@ func Verify(pkBytes, m, vrfBytes, proof []byte) bool {
 	}
 	h.Reset()
 
-	var AE, P, B, ii, iic edwards25519.ExtendedGroupElement
+	var P, B, ii, iic edwards25519.ExtendedGroupElement
 	var A, hmtP, iicP edwards25519.ProjectiveGroupElement
-	P.FromBytes(&pk)
-	ii.FromBytes(&iiB)
-	if !extra25519.CheckContributory(&P) || !extra25519.CheckContributory(&ii) {
-		return false
-	}
+	P.FromBytesBaseGroup(&pk)
+	ii.FromBytesBaseGroup(&iiB)
 	edwards25519.GeDoubleScalarMultVartime(&A, &c, &P, &t)
 	A.ToBytes(&ABytes)
 
@@ -149,12 +144,6 @@ func Verify(pkBytes, m, vrfBytes, proof []byte) bool {
 	hmtP.ToExtended(&B)
 	edwards25519.GeAdd(&B, &B, &iic)
 	B.ToBytes(&BBytes)
-
-	// TODO: is this check necessary, or is checking the inputs enough?
-	A.ToExtended(&AE)
-	if !extra25519.CheckContributory(&AE) || !extra25519.CheckContributory(&B) {
-		return false
-	}
 
 	var cH [64]byte
 	h.Write(ABytes[:]) // const length

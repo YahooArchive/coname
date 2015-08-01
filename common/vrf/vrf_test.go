@@ -6,17 +6,15 @@ import (
 )
 
 func TestHonestComplete(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		pk, sk, err := GenerateKey(nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		alice := []byte("alice")
-		aliceVRF := Compute(alice, sk)
-		aliceProof := Prove(alice, sk)
-		if !Verify(pk, alice, aliceVRF, aliceProof) {
-			t.Fatalf("Gen -> Compute -> Prove -> Verify -> FALSE")
-		}
+	pk, sk, err := GenerateKey(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alice := []byte("alice")
+	aliceVRF := Compute(alice, sk)
+	aliceProof := Prove(alice, sk)
+	if !Verify(pk, alice, aliceVRF, aliceProof) {
+		t.Fatalf("Gen -> Compute -> Prove -> Verify -> FALSE")
 	}
 }
 
