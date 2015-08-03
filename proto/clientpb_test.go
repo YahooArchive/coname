@@ -8,6 +8,7 @@ Package proto is a generated protocol buffer package.
 It is generated from these files:
 	client.proto
 	config.proto
+	duration.proto
 	local.proto
 	replication.proto
 	timestamp.proto

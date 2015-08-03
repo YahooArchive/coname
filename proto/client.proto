@@ -91,8 +91,10 @@ message LookupProof {
 	// ratifications[0].ratification.summary.root_hash.
 	bytes tree_proof = 4;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry entry = 5;
-	Profile profile = 6;
+	Entry entry = 5
+		[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
+	Profile profile = 6
+		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
 }
 
 // Entry is the value type in the authenticated mapping data structure.  The
@@ -167,7 +169,7 @@ message Profile {
 message SignedEpochHead {
 	TimestampedEpochHead head = 1 // signed field, do not re-encode
 			[(gogoproto.customtype) = "TimestampedEpochHead_PreserveEncoding", (gogoproto.nullable) = false];
-	// Signature is used for authentication of ratification and MUST be
+	// Signatures is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
 	// All signatures are tagged with ID of the public key that generated them.
 	map<fixed64,bytes> signatures = 2;

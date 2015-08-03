@@ -26,6 +26,7 @@ function preserve {
 	sed "s/Thing/$1/g" < preserve_test.go.template > "$1pr_test.go"
 }
 
+preserve Profile
 preserve Entry
 preserve SignedEntryUpdate
 preserve TimestampedEpochHead
