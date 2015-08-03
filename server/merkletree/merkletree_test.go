@@ -85,7 +85,7 @@ func TestOneEntry(t *testing.T) {
 
 func TestTwoEntriesOneEpoch(t *testing.T) {
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, nil)
+		m, err := AccessMerkleTree(db, []byte("abcd"))
 		if err != nil {
 			panic(err)
 		}
@@ -134,7 +134,7 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 
 func TestThreeEntriesThreeEpochs(t *testing.T) {
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, nil)
+		m, err := AccessMerkleTree(db, []byte("xyz"))
 		if err != nil {
 			panic(err)
 		}
@@ -161,6 +161,10 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 			}
 			wb := new(leveldb.Batch)
 			flushed := ne.Flush(wb)
+			m, err = AccessMerkleTree(db, []byte("xyz"))
+			if err != nil {
+				panic(err)
+			}
 			snapshotNrs = append(snapshotNrs, flushed.Nr)
 			err = db.Write(wb)
 			if err != nil {

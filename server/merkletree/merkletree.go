@@ -325,7 +325,7 @@ func (n *node) getChildPointer(isRight bool) (**node, error) {
 
 func (t *MerkleTree) serializeKey(id uint64, prefixBits []bool) []byte {
 	indexBytes := ToBytes(prefixBits)
-	key := make([]byte, 0, 1+len(indexBytes)+4+1+8)
+	key := make([]byte, 0, len(t.nodeKeyPrefix)+len(indexBytes)+4+1+8)
 	key = append(key, t.nodeKeyPrefix...)
 	key = append(key, indexBytes...)
 	binary.LittleEndian.PutUint32(key[len(key):len(key)+4], uint32(len(prefixBits)))

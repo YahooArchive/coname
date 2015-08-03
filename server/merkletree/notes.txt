@@ -21,5 +21,4 @@ Questions
 	- commitment -> value
 
 TODO
-- prefix, with tests
 - brutal tests
