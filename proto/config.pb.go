@@ -15,9 +15,6 @@ import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
-
-import errors "errors"
 
 import io "io"
 
@@ -49,28 +46,17 @@ type RealmConfig struct {
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
 	URL string `protobuf:"bytes,3,opt,proto3" json:"URL,omitempty"`
-	// PublicKeys contains public keys of all verifiers of this realm,
-	// including the keyserver.
-	PublicKeys map[uint64]*PublicKey `protobuf:"bytes,4,rep,name=public_keys" json:"public_keys,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
-	// quorum_requirement specifies which verifiers must have ratified the
-	// result for it to be accepted. It is the convention to always require the
-	// keyserver's ratification here.
-	QuorumRequirement *QuorumExpr `protobuf:"bytes,5,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
+	// VerificationPolicy specifies the conditions on how a lookup must be
+	// verified for it to be accepted.
+	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,4,opt,name=verification_policy" json:"verification_policy,omitempty"`
 }
 
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
 func (*RealmConfig) ProtoMessage() {}
 
-func (m *RealmConfig) GetPublicKeys() map[uint64]*PublicKey {
+func (m *RealmConfig) GetVerificationPolicy() *AuthorizationPolicy {
 	if m != nil {
-		return m.PublicKeys
-	}
-	return nil
-}
-
-func (m *RealmConfig) GetQuorumRequirement() *QuorumExpr {
-	if m != nil {
-		return m.QuorumRequirement
+		return m.VerificationPolicy
 	}
 	return nil
 }
@@ -169,16 +155,8 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	if this.URL != that1.URL {
 		return fmt.Errorf("URL this(%v) Not Equal that(%v)", this.URL, that1.URL)
 	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
+	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
+		return fmt.Errorf("VerificationPolicy this(%v) Not Equal that(%v)", this.VerificationPolicy, that1.VerificationPolicy)
 	}
 	return nil
 }
@@ -216,15 +194,7 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 	if this.URL != that1.URL {
 		return false
 	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return false
 	}
 	return true
@@ -241,22 +211,11 @@ func (this *RealmConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
 	s := strings.Join([]string{`&proto.RealmConfig{` +
 		`Domains:` + fmt.Sprintf("%#v", this.Domains),
 		`Addr:` + fmt.Sprintf("%#v", this.Addr),
 		`URL:` + fmt.Sprintf("%#v", this.URL),
-		`PublicKeys:` + mapStringForPublicKeys,
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
+		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy) + `}`}, ", ")
 	return s
 }
 func valueToGoStringConfig(v interface{}, typ string) string {
@@ -356,44 +315,15 @@ func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
 		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
 		i += copy(data[i:], m.URL)
 	}
-	if len(m.PublicKeys) > 0 {
-		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
-		for k, _ := range m.PublicKeys {
-			keysForPublicKeys = append(keysForPublicKeys, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-		for _, k := range keysForPublicKeys {
-			data[i] = 0x22
-			i++
-			v := m.PublicKeys[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
-			}
-			msgSize := v.Size()
-			mapSize := 1 + sovConfig(uint64(k)) + 1 + msgSize + sovConfig(uint64(msgSize))
-			i = encodeVarintConfig(data, i, uint64(mapSize))
-			data[i] = 0x8
-			i++
-			i = encodeVarintConfig(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintConfig(data, i, uint64(v.Size()))
-			n1, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n1
-		}
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x2a
+	if m.VerificationPolicy != nil {
+		data[i] = 0x22
 		i++
-		i = encodeVarintConfig(data, i, uint64(m.QuorumRequirement.Size()))
-		n2, err := m.QuorumRequirement.MarshalTo(data[i:])
+		i = encodeVarintConfig(data, i, uint64(m.VerificationPolicy.Size()))
+		n1, err := m.VerificationPolicy.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n2
+		i += n1
 	}
 	return i, nil
 }
@@ -449,14 +379,7 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	this.Addr = randStringConfig(r)
 	this.URL = randStringConfig(r)
 	if r.Intn(10) != 0 {
-		v3 := r.Intn(10)
-		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v3; i++ {
-			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
+		this.VerificationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -482,9 +405,9 @@ func randUTF8RuneConfig(r randyConfig) rune {
 	return rune(ru + 61)
 }
 func randStringConfig(r randyConfig) string {
-	v4 := r.Intn(100)
-	tmps := make([]rune, v4)
-	for i := 0; i < v4; i++ {
+	v3 := r.Intn(100)
+	tmps := make([]rune, v3)
+	for i := 0; i < v3; i++ {
 		tmps[i] = randUTF8RuneConfig(r)
 	}
 	return string(tmps)
@@ -506,11 +429,11 @@ func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateConfig(data, uint64(key))
-		v5 := r.Int63()
+		v4 := r.Int63()
 		if r.Intn(2) == 0 {
-			v5 *= -1
+			v4 *= -1
 		}
-		data = encodeVarintPopulateConfig(data, uint64(v5))
+		data = encodeVarintPopulateConfig(data, uint64(v4))
 	case 1:
 		data = encodeVarintPopulateConfig(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -564,20 +487,8 @@ func (m *RealmConfig) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
-	if len(m.PublicKeys) > 0 {
-		for k, v := range m.PublicKeys {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-			}
-			mapEntrySize := 1 + sovConfig(uint64(k)) + 1 + l + sovConfig(uint64(l))
-			n += mapEntrySize + 1 + sovConfig(uint64(mapEntrySize))
-		}
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
+	if m.VerificationPolicy != nil {
+		l = m.VerificationPolicy.Size()
 		n += 1 + l + sovConfig(uint64(l))
 	}
 	return n
@@ -610,22 +521,11 @@ func (this *RealmConfig) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
 	s := strings.Join([]string{`&RealmConfig{`,
 		`Domains:` + fmt.Sprintf("%v", this.Domains) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
-		`PublicKeys:` + mapStringForPublicKeys + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`VerificationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.VerificationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -792,7 +692,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field VerificationPolicy", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -810,92 +710,10 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if m.VerificationPolicy == nil {
+				m.VerificationPolicy = &AuthorizationPolicy{}
 			}
-			var mapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapmsglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapmsglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postmsgIndex := iNdEx + mapmsglen
-			if postmsgIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := &PublicKey{}
-			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
-				return err
-			}
-			iNdEx = postmsgIndex
-			if m.PublicKeys == nil {
-				m.PublicKeys = make(map[uint64]*PublicKey)
-			}
-			m.PublicKeys[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.QuorumRequirement == nil {
-				m.QuorumRequirement = &QuorumExpr{}
-			}
-			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.VerificationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

@@ -38,7 +38,7 @@ import (
 // TODO: make this a protobuf, Unmarshal from JSON
 type Config struct {
 	Realm          string
-	KeyserverVerif *proto.PublicKey
+	KeyserverVerif *proto.AuthorizationPolicy
 	KeyserverAddr  string
 
 	ID              uint64
@@ -50,7 +50,7 @@ type Config struct {
 // The veirifier is not replicated because one can just run several.
 type Verifier struct {
 	realm          string
-	keyserverVerif *proto.PublicKey
+	keyserverVerif *proto.AuthorizationPolicy
 	keyserverAddr  string
 	auth           credentials.TransportAuthenticator
 
@@ -173,10 +173,10 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		}
 		// TODO(dmz): set entry in tree
 	case step.Epoch != nil:
-		ok := common.VerifySignature(
+		ok := common.VerifyPolicy(
 			vr.keyserverVerif,
 			step.Epoch.Head.PreservedEncoding,
-			step.Epoch.Signature)
+			step.Epoch.Signatures)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
 			log.Fatalf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
@@ -205,13 +205,13 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 				}, nil},
 				Timestamp: proto.Time(time.Now()),
 			}, nil},
-			Signature: make(map[uint64][]byte, 1),
+			Signatures: make(map[uint64][]byte, 1),
 		}
 		seh.Head.Head.UpdateEncoding()
 		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
 		vr.vs.PreviousSummaryHash = h[:]
 		seh.Head.UpdateEncoding()
-		seh.Signature[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
+		seh.Signatures[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
 		wb.Put(tableRatifications(vr.vs.NextEpoch, vr.id), proto.MustMarshal(seh))
 		vs.NextEpoch++
 		return func() {

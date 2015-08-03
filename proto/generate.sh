@@ -30,7 +30,7 @@ preserve Entry
 preserve SignedEntryUpdate
 preserve TimestampedEpochHead
 preserve EpochHead
-preserve PublicKey
+preserve AuthorizationPolicy
 
 # preserve the encoding of repeated public keys
 sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go

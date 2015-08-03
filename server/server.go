@@ -46,10 +46,9 @@ import (
 type Config struct {
 	Realm string
 
-	ServerID, ReplicaID  uint64
-	RatificationVerifier *proto.QuorumPublicKey
-	RatificationKey      *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	VRFSecret            *[vrf.SecretKeySize]byte
+	ServerID, ReplicaID uint64
+	RatificationKey     *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
+	VRFSecret           *[vrf.SecretKeySize]byte
 
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
@@ -61,7 +60,6 @@ type Config struct {
 // Keyserver manages a single end-to-end keyserver realm.
 type Keyserver struct {
 	realm               string
-	sehVerifier         *proto.QuorumPublicKey
 	serverID, replicaID uint64
 
 	thresholdSigningIndex uint32
@@ -105,7 +103,6 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		realm:              cfg.Realm,
 		serverID:           cfg.ServerID,
 		replicaID:          cfg.ReplicaID,
-		sehVerifier:        cfg.RatificationVerifier,
 		sehKey:             cfg.RatificationKey,
 		vrfSecret:          cfg.VRFSecret,
 		minEpochInterval:   cfg.MinEpochInterval,
@@ -287,7 +284,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				}, nil},
 				Timestamp: step.EpochDelimiter.Timestamp,
 			}, nil},
-			Signature: make(map[uint64][]byte, 1),
+			Signatures: make(map[uint64][]byte, 1),
 		}
 
 		seh.Head.Head.UpdateEncoding()
@@ -295,7 +292,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.PreviousSummaryHash = h[:]
 
 		seh.Head.UpdateEncoding()
-		seh.Signature[ks.replicaID] = ed25519.Sign(ks.sehKey, proto.MustMarshal(&seh.Head))[:]
+		seh.Signatures[ks.replicaID] = ed25519.Sign(ks.sehKey, proto.MustMarshal(&seh.Head))[:]
 		ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
 		// TODO: Propose may fail silently when replicas crash. We want to
 		// keep retrying ReplicaRatifications because if not enough of
@@ -322,9 +319,9 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			if !rExisting.Head.Equal(rNew.Head) {
 				log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)", rNew.Head.Head.Epoch, ks.serverID, rExisting.Head.VerboseEqual(rNew.Head), rExisting.Head, rNew.Head)
 			}
-			for id, sig := range rNew.Signature {
-				if _, already := rExisting.Signature[id]; !already {
-					rExisting.Signature[id] = sig
+			for id, sig := range rNew.Signatures {
+				if _, already := rExisting.Signatures[id]; !already {
+					rExisting.Signatures[id] = sig
 				}
 			}
 			wb.Put(dbkey, proto.MustMarshal(rExisting))
@@ -339,7 +336,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
-		for id := range rNew.Signature {
+		for id := range rNew.Signatures {
 			if id == ks.serverID {
 				log.Printf("verifier sent us an acclaimed signature with our id :/")
 				continue

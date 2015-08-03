@@ -21,14 +21,14 @@ import (
 	"time"
 )
 
-func TestPublicKey_PreserveEncodingProto(t *testing.T) {
+func TestAuthorizationPolicy_PreserveEncodingProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedPublicKey_PreserveEncoding(popr, false)
+	p := NewPopulatedAuthorizationPolicy_PreserveEncoding(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &PublicKey_PreserveEncoding{}
+	msg := &AuthorizationPolicy_PreserveEncoding{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
