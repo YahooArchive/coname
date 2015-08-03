@@ -56,7 +56,12 @@ func VerifyPolicy(policy *proto.AuthorizationPolicy, action []byte, evidence map
 			have[id] = struct{}{}
 		}
 	}
-	return CheckQuorum(policy.Quorum, have)
+	switch {
+	case policy.Quorum != nil:
+		return CheckQuorum(policy.Quorum, have)
+	default: // unknown policy
+		return false
+	}
 }
 
 // CheckQuorum evaluates whether the quorum requirement want can be satisfied
