@@ -17,76 +17,108 @@ package merkletree
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
+	"sync"
 
-	"github.com/syndtr/goleveldb/leveldb"
-	// leveldbopt "github.com/syndtr/goleveldb/leveldb/opt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"github.com/yahoo/coname/server/kv"
 )
 
 const (
-	TreePrefix       = 'T'
+	NodePrefix       = 'T'
+	AllocCounterKey  = "AC"
 	NodeKeyDelimiter = 'N'
 	IndexBytes       = 32
 	IndexBits        = IndexBytes * 8
-	EpochNrBytes     = 8
+	SnapshotNrBytes  = 8
 	IndexLengthBytes = 4
 )
 
 type MerkleTree struct {
-	db *leveldb.DB
+	db              kv.DB
+	keyPrefix       []byte // TODO use this
+	allocCounterKey []byte
+
+	allocMutex   sync.Mutex
+	allocCounter uint64
 }
 
-func AccessMerkleTree(db *leveldb.DB) *MerkleTree {
-	return &MerkleTree{db}
+// AccessMerkleTree opens the Merkle tree stored in the DB. There should never be two different
+// MerkleTree objects accessing the same tree.
+func AccessMerkleTree(db kv.DB, prefix []byte) (*MerkleTree, error) {
+	// read the allocation count out of the DB
+	allocCounterKey := append(append([]byte(nil), prefix...), AllocCounterKey...)
+	val, err := db.Get(allocCounterKey)
+	var allocCount uint64
+	if err == db.ErrNotFound() {
+		allocCount = 0
+	} else if err != nil {
+		return nil, err
+	} else if len(val) != 8 {
+		log.Panicf("bad alloc counter")
+	} else {
+		allocCount = binary.LittleEndian.Uint64(val)
+	}
+	return &MerkleTree{
+		db:           db,
+		keyPrefix:    append([]byte(nil), prefix...),
+		allocCounter: allocCount,
+	}, nil
 }
 
-type TreeEpoch struct {
+type Snapshot struct {
 	tree *MerkleTree
-	nr   uint64
+	Nr   uint64
 }
 
 type diskNode struct {
-	isLeaf            bool
-	childEpochNumbers [2]uint64          // 0 if the node is a leaf
-	childHashes       [2][HashBytes]byte // zeroed if the node is a leaf
-	commitment        []byte             // nil if the node is not a leaf
-	indexBytes        []byte             // nil if the node is not a leaf
+	isLeaf      bool
+	childIds    [2]uint64          // 0 if the node is a leaf
+	childHashes [2][HashBytes]byte // zeroed if the node is a leaf
+	commitment  []byte             // nil if the node is not a leaf
+	indexBytes  []byte             // nil if the node is not a leaf
 }
 
 type node struct {
 	diskNode
-	epoch      *TreeEpoch
+	id         uint64
 	prefixBits []bool
-	children   [2]*node // lazily loaded
+	children   [2]*node    // lazily loaded
+	tree       *MerkleTree // TODO: necessary?
 }
 
-type NewTreeEpoch struct {
-	TreeEpoch
+type NewSnapshot struct {
+	Snapshot
 	root *node
 }
 
-func (tree *MerkleTree) GetEpoch(nr uint64) *TreeEpoch {
-	// TODO: This can't actually determine whether the epoch exists, since a missing entry might just
+func (tree *MerkleTree) GetSnapshot(nr uint64) *Snapshot {
+	// TODO: This can't actually determine whether the snapshot exists, since a missing entry might just
 	// indicate an empty tree. Is that okay?
-	return &TreeEpoch{tree, nr}
+	return &Snapshot{tree, nr}
 }
 
-func (epoch *TreeEpoch) Lookup(indexBytes []byte) (
-	commitment []byte, entryEpoch uint64, proofIndex []byte, proof [][]byte, err error,
+func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
+	root, err := snapshot.loadRoot()
+	if err != nil {
+		return nil, err
+	}
+	return root.hash(), nil
+}
+
+func (snapshot *Snapshot) Lookup(indexBytes []byte) (
+	commitment []byte, proofIndex []byte, proof [][]byte, err error,
 ) {
 	if len(indexBytes) != IndexBytes {
-		// TODO: is it actually sensible to return a grpc error from deep inside the internals?
-		return nil, 0, nil, nil, grpc.Errorf(codes.InvalidArgument, "Wrong index length")
+		return nil, nil, nil, fmt.Errorf("Wrong index length")
 	}
-	n, err := epoch.loadNode([]bool{}) // get root
+	n, err := snapshot.loadRoot()
 	if err != nil {
 		return
 	}
 	if n == nil {
 		// Special case: The tree is empty
-		return nil, 0, nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	indexBits := ToBits(IndexBits, indexBytes)
 	// Traverse down the tree, following either the left or right child depending on the next bit.
@@ -96,14 +128,14 @@ func (epoch *TreeEpoch) Lookup(indexBytes []byte) (
 		proof = append(proof, siblingHash[:])
 		childPointer, err := n.getChildPointer(descendingRight)
 		if err != nil {
-			return nil, 0, nil, nil, err
+			return nil, nil, nil, err
 		}
 		n = *childPointer
 		if n == nil {
 			// There's no leaf with this index. The proof will now function as a proof of absence to the
 			// client by showing a valid hash path down to the nearest sibling, which creates the correct
 			// root hash when this branch's hash is nil.
-			return nil, 0, nil, proof, nil
+			return nil, nil, proof, nil
 		}
 	}
 	// Once a leaf node is reached, compare the entire index stored in the leaf node.
@@ -114,45 +146,34 @@ func (epoch *TreeEpoch) Lookup(indexBytes []byte) (
 		// leaf node along with its Merkle proof.
 		proofIndex = append([]byte(nil), n.indexBytes...) // Copy the index bytes
 	}
-	return n.commitment, n.epoch.nr, proofIndex, proof, nil
+	return n.commitment, proofIndex, proof, nil
 }
 
-// Creates a new epoch to be built up in memory (doesn't actually touch the disk
+// Creates a new snapshot to be built up in memory (doesn't actually touch the disk
 // yet)
-func (epoch *TreeEpoch) AdvanceEpoch() (*NewTreeEpoch, error) {
-	root, err := epoch.loadNode([]bool{})
+func (snapshot *Snapshot) BeginModification() (*NewSnapshot, error) {
+	root, err := snapshot.loadRoot()
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
-	newEpoch := &NewTreeEpoch{
-		TreeEpoch{
-			tree: epoch.tree,
-			nr:   epoch.nr + 1,
-		},
-		root,
-	}
-	if root != nil {
-		root.epoch = &newEpoch.TreeEpoch
-	}
-	return newEpoch, nil
+	return &NewSnapshot{*snapshot, root}, nil
 }
 
-// Updates the value hash at the index (or insert it if it did not exist).
+// Updates the leaf value at the index (or insert it if it did not exist).
 // In-memory: doesn't actually touch the disk yet.
-func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error) {
+func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err error) {
 	if len(indexBytes) != IndexBytes {
-		// TODO: is it actually sensible to return a grpc error from deep inside the internals?
-		return grpc.Errorf(codes.InvalidArgument, "Wrong index length")
+		return fmt.Errorf("Wrong index length")
 	}
 	commitment = append([]byte(nil), commitment...) // Make a copy of commitment
 	indexBits := ToBits(IndexBits, indexBytes)
-	nodePointer := &epoch.root
+	nodePointer := &snapshot.root
 	position := 0
 	// Traverse down the tree, following either the left or right child depending on the next bit.
 	for *nodePointer != nil && !(*nodePointer).isLeaf {
 		nodePointer, err = (*nodePointer).getChildPointer(indexBits[position])
 		if err != nil {
-			return err
+			return
 		}
 		position++
 	}
@@ -165,12 +186,11 @@ func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error)
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position],
+			tree:       snapshot.tree,
 		}
-		// flush will update the epoch numbers and hashes
 	} else if bytes.Equal((*nodePointer).indexBytes, indexBytes) {
 		// We have an existing leaf at this index; just replace the value
 		(*nodePointer).commitment = commitment
-		// flush will update the epoch numbers and hashes
 	} else {
 		// We have a different leaf with a matching prefix. We'll have to create new intermediate nodes.
 		oldLeaf := *nodePointer
@@ -181,8 +201,8 @@ func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error)
 					isLeaf: false,
 				},
 				prefixBits: indexBits[:position],
+				tree:       snapshot.tree,
 			}
-			// flush will set the epoch numbers and hashes
 			*nodePointer, nodePointer = newNode, &newNode.children[BitToIndex(indexBits[position])]
 			position++
 		}
@@ -191,6 +211,7 @@ func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error)
 				isLeaf: false,
 			},
 			prefixBits: indexBits[:position],
+			tree:       snapshot.tree,
 		}
 		newLeaf := &node{
 			diskNode: diskNode{
@@ -199,6 +220,7 @@ func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error)
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position+1],
+			tree:       snapshot.tree,
 		}
 		oldLeaf.prefixBits = oldLeafIndexBits[:position+1]
 		splitNode.children[BitToIndex(indexBits[position])] = newLeaf
@@ -208,21 +230,37 @@ func (epoch *NewTreeEpoch) Set(indexBytes []byte, commitment []byte) (err error)
 	return nil
 }
 
-// Returns the new root hash
-func (epoch *NewTreeEpoch) Flush(wb *leveldb.Batch) []byte {
-	if epoch.root == nil {
-		return make([]byte, HashBytes)
+// Flush returns a newly usable Snapshot
+func (snapshot *NewSnapshot) Flush(wb kv.Batch) (flushed *Snapshot) {
+	if snapshot.root == nil {
+		flushed = &Snapshot{snapshot.tree, 0}
 	} else {
-		hash := epoch.root.flush(&epoch.TreeEpoch, wb)
-		return hash[:]
+		rootId, _ := snapshot.root.flush(wb)
+		flushed = &Snapshot{snapshot.tree, rootId}
 	}
+	allocCountVal := make([]byte, 8)
+	binary.LittleEndian.PutUint64(allocCountVal, snapshot.tree.allocCounter)
+	wb.Put(snapshot.tree.allocCounterKey, allocCountVal)
+	return
 }
 
 //////// Node manipulation functions ////////
 
-func (epoch *TreeEpoch) loadNode(prefixBits []bool) (*node, error) {
-	nodeBytes, err := epoch.tree.db.Get(serializeKey(epoch.nr, prefixBits), nil)
-	if err == leveldb.ErrNotFound {
+func (snapshot *Snapshot) loadRoot() (*node, error) {
+	return snapshot.tree.loadNode(snapshot.Nr, []bool{})
+}
+
+func (tree *MerkleTree) allocNodeId() uint64 {
+	tree.allocMutex.Lock()
+	defer tree.allocMutex.Unlock()
+	// The first ID should be 1 (need nonzero IDs)
+	tree.allocCounter++
+	return tree.allocCounter
+}
+
+func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
+	nodeBytes, err := tree.db.Get(serializeKey(id, prefixBits))
+	if err == tree.db.ErrNotFound() {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
@@ -230,38 +268,38 @@ func (epoch *TreeEpoch) loadNode(prefixBits []bool) (*node, error) {
 		n := deserializeNode(nodeBytes)
 		return &node{
 			diskNode:   n,
-			epoch:      epoch,
+			id:         id,
 			prefixBits: prefixBits,
+			tree:       tree,
 		}, nil
 	}
 }
 
-// flush writes the updated nodes under this node to disk in the new epoch,
-// returning the updated hash of the node
-func (n *node) flush(epoch *TreeEpoch, wb *leveldb.Batch) (hash [HashBytes]byte) {
+// flush writes the updated nodes under this node to disk, returning the updated hash and ID of the
+// node.
+func (n *node) flush(wb kv.Batch) (id uint64, hash [HashBytes]byte) {
 	for i := 0; i < 2; i++ {
 		if n.children[i] != nil {
-			n.childHashes[i] = n.children[i].flush(epoch, wb)
-			n.childEpochNumbers[i] = epoch.nr
+			n.childIds[i], n.childHashes[i] = n.children[i].flush(wb)
 		}
 	}
-	n.epoch = epoch
+	id = n.tree.allocNodeId()
+	n.id = id
 	n.store(wb)
 	copy(hash[:], n.hash())
 	return
 }
 
-func (n *node) store(wb *leveldb.Batch) {
-	wb.Put(serializeKey(n.epoch.nr, n.prefixBits), n.serialize())
+func (n *node) store(wb kv.Batch) {
+	wb.Put(serializeKey(n.id, n.prefixBits), n.serialize())
 }
 
 func (n *node) getChildPointer(isRight bool) (**node, error) {
 	ix := BitToIndex(isRight)
-	if n.childEpochNumbers[ix] != 0 && n.children[ix] == nil {
+	if n.childIds[ix] != 0 && n.children[ix] == nil {
 		// lazy-load the child
 		childIndex := append(n.prefixBits, isRight)
-		childEpoch := n.epoch.tree.GetEpoch(n.childEpochNumbers[ix])
-		child, err := childEpoch.loadNode(childIndex)
+		child, err := n.tree.loadNode(n.childIds[ix], childIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -270,16 +308,16 @@ func (n *node) getChildPointer(isRight bool) (**node, error) {
 	return &n.children[ix], nil
 }
 
-func serializeKey(epoch uint64, prefixBits []bool) []byte {
+func serializeKey(id uint64, prefixBits []bool) []byte {
 	indexBytes := ToBytes(prefixBits)
 	key := make([]byte, 0, 1+len(indexBytes)+4+1+8)
-	key = append(key, TreePrefix)
+	key = append(key, NodePrefix)
 	key = append(key, indexBytes...)
 	binary.LittleEndian.PutUint32(key[len(key):len(key)+4], uint32(len(prefixBits)))
 	key = key[:len(key)+4]
 	key = append(key, NodeKeyDelimiter)
-	// Use big-endian to make lexicographical order correspond to epoch order
-	binary.BigEndian.PutUint64(key[len(key):len(key)+8], uint64(epoch))
+	// Use big-endian to make lexicographical order correspond to creation order
+	binary.BigEndian.PutUint64(key[len(key):len(key)+8], uint64(id))
 	key = key[:len(key)+8]
 	return key
 }
@@ -291,7 +329,7 @@ func (n *diskNode) serialize() []byte {
 		buf := make([]byte, 1, 1+2*8+2*HashBytes)
 		buf[0] = IntermediateNodeIdentifier
 		for i := 0; i < 2; i++ {
-			binary.LittleEndian.PutUint64(buf[len(buf):len(buf)+8], uint64(n.childEpochNumbers[i]))
+			binary.LittleEndian.PutUint64(buf[len(buf):len(buf)+8], uint64(n.childIds[i]))
 			buf = buf[:len(buf)+8]
 			buf = append(buf, n.childHashes[i][:]...)
 		}
@@ -314,7 +352,7 @@ func deserializeNode(buf []byte) (n diskNode) {
 		n.isLeaf = false
 		buf = buf[1:]
 		for i := 0; i < 2; i++ {
-			n.childEpochNumbers[i] = uint64(binary.LittleEndian.Uint64(buf[:8]))
+			n.childIds[i] = uint64(binary.LittleEndian.Uint64(buf[:8]))
 			buf = buf[8:]
 			copy(n.childHashes[i][:], buf[:HashBytes])
 			buf = buf[HashBytes:]

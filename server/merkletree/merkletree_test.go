@@ -17,15 +17,17 @@ package merkletree
 import (
 	"bytes"
 	"fmt"
-	"github.com/syndtr/goleveldb/leveldb"
 	"io/ioutil"
-	// "math/rand"
 	"os"
-	// "path/filepath"
 	"testing"
+
+	"github.com/syndtr/goleveldb/leveldb"
+
+	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/kv/leveldbkv"
 )
 
-func withDB(f func(*leveldb.DB)) {
+func withDB(f func(kv.DB)) {
 	dir, err := ioutil.TempDir("", "merkletree")
 	if err != nil {
 		panic(err)
@@ -36,20 +38,23 @@ func withDB(f func(*leveldb.DB)) {
 		panic(err)
 	}
 	defer db.Close()
-	f(db)
+	f(leveldbkv.Wrap(db))
 }
 
 func TestOneEntry(t *testing.T) {
-	withDB(func(db *leveldb.DB) {
-		m := &MerkleTree{db}
-		e := m.GetEpoch(1)
+	withDB(func(db kv.DB) {
+		m, err := AccessMerkleTree(db, nil)
+		if err != nil {
+			panic(err)
+		}
+		e := m.GetSnapshot(0)
 		index := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-		val1, ep1, proofix, proof1, err := e.Lookup(index)
-		if val1 != nil || ep1 != 0 || proofix != nil || proof1 != nil || err != nil {
+		val1, proofix, proof1, err := e.Lookup(index)
+		if val1 != nil || proofix != nil || proof1 != nil || err != nil {
 			panic("bad lookup in empty tree")
 		}
 		val2 := []byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
-		ne, err := e.AdvanceEpoch()
+		ne, err := e.BeginModification()
 		if err != nil {
 			panic(err)
 		}
@@ -58,13 +63,13 @@ func TestOneEntry(t *testing.T) {
 			panic(err)
 		}
 		wb := new(leveldb.Batch)
-		ne.Flush(wb)
-		err = db.Write(wb, nil)
+		flushed := ne.Flush(wb)
+		err = db.Write(wb)
 		if err != nil {
 			panic(err)
 		}
-		e2 := m.GetEpoch(2)
-		v, _, pix, _, err := e2.Lookup(index)
+		e2 := m.GetSnapshot(flushed.Nr)
+		v, pix, _, err := e2.Lookup(index)
 		if err != nil {
 			panic(err)
 		}
@@ -79,12 +84,15 @@ func TestOneEntry(t *testing.T) {
 }
 
 func TestTwoEntriesOneEpoch(t *testing.T) {
-	withDB(func(db *leveldb.DB) {
-		m := &MerkleTree{db}
-		e := m.GetEpoch(1)
+	withDB(func(db kv.DB) {
+		m, err := AccessMerkleTree(db, nil)
+		if err != nil {
+			panic(err)
+		}
+		e := m.GetSnapshot(0)
 		index := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 		val := []byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
-		ne, err := e.AdvanceEpoch()
+		ne, err := e.BeginModification()
 		if err != nil {
 			panic(err)
 		}
@@ -100,14 +108,14 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 			panic(err)
 		}
 		wb := new(leveldb.Batch)
-		ne.Flush(wb)
-		err = db.Write(wb, nil)
+		flushed := ne.Flush(wb)
+		err = db.Write(wb)
 		if err != nil {
 			panic(err)
 		}
-		e2 := m.GetEpoch(2)
+		e2 := m.GetSnapshot(flushed.Nr)
 		for i := 0; i < 2; i++ {
-			v, _, pix, _, err := e2.Lookup(index)
+			v, pix, _, err := e2.Lookup(index)
 			if err != nil {
 				panic(err)
 			}
@@ -125,8 +133,11 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 }
 
 func TestThreeEntriesThreeEpochs(t *testing.T) {
-	withDB(func(db *leveldb.DB) {
-		m := &MerkleTree{db}
+	withDB(func(db kv.DB) {
+		m, err := AccessMerkleTree(db, nil)
+		if err != nil {
+			panic(err)
+		}
 		indices := [][]byte{
 			[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 			[]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0},
@@ -137,9 +148,10 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 			[]byte{3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3},
 			[]byte{4, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4},
 		}
+		snapshotNrs := []uint64{0}
 		for i := 0; i < len(indices); i++ {
-			e := m.GetEpoch(int64(i + 1))
-			ne, err := e.AdvanceEpoch()
+			e := m.GetSnapshot(snapshotNrs[i])
+			ne, err := e.BeginModification()
 			if err != nil {
 				panic(err)
 			}
@@ -148,15 +160,16 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 				panic(err)
 			}
 			wb := new(leveldb.Batch)
-			ne.Flush(wb)
-			err = db.Write(wb, nil)
+			flushed := ne.Flush(wb)
+			snapshotNrs = append(snapshotNrs, flushed.Nr)
+			err = db.Write(wb)
 			if err != nil {
 				panic(err)
 			}
 			for j := 0; j <= i+1; j++ {
-				e2 := m.GetEpoch(int64(j + 1))
+				e2 := m.GetSnapshot(snapshotNrs[j])
 				for k := 0; k < len(indices); k++ {
-					v, _, pix, _, err := e2.Lookup(indices[k])
+					v, pix, _, err := e2.Lookup(indices[k])
 					if err != nil {
 						panic(err)
 					}

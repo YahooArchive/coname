@@ -3,12 +3,22 @@ CoW scheme
 - Conceptually, nodes are addressed by an arbitrary node ID (which counts up sequentially)
 - For locality, we prepend IDs by the index in the tree
 - We build up the tree for a new epoch in-memory:
-    - We lazy-load nodes that are accessed
-    - Set() only touches changed nodes (nodes store childHashes so sibling nodes are not accessed), so all in-memory nodes are considered dirty
-    - Flush() writes out loaded nodes and returns the new snapshot number
+	- We lazy-load nodes that are accessed
+	- Set() only touches changed nodes (nodes store childHashes so sibling nodes are not accessed), so all in-memory nodes are considered dirty
+	- Flush() writes out loaded nodes and returns the new snapshot number
 
 
 Questions
+- Implement in purely functional style? (Probably still don't want to expose API
+  that way)
+	- Due to inertia I won't right now
+- Only set node IDs upon flush?
 - Where to put utils & node hashing (hash.go)?
 - Cache nodes in-memory? Currently we do not (but LevelDB caches)
-    - Would have to add a dirty bit so flush() doesn't write out all the cached nodes
+	- Would have to add a dirty bit so flush() doesn't write out all the cached nodes
+- Use binary encoding library rather than hand-serialization?
+- Make naming completely generic?
+	- commitment -> value
+
+TODO
+- prefix, with tests
