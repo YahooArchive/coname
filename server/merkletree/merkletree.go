@@ -36,7 +36,7 @@ const (
 
 type MerkleTree struct {
 	db              kv.DB
-	keyPrefix       []byte // TODO use this
+	nodeKeyPrefix   []byte
 	allocCounterKey []byte
 
 	allocMutex   sync.Mutex
@@ -60,9 +60,10 @@ func AccessMerkleTree(db kv.DB, prefix []byte) (*MerkleTree, error) {
 		allocCount = binary.LittleEndian.Uint64(val)
 	}
 	return &MerkleTree{
-		db:           db,
-		keyPrefix:    append([]byte(nil), prefix...),
-		allocCounter: allocCount,
+		db:              db,
+		nodeKeyPrefix:   append(append([]byte(nil), prefix...), NodePrefix),
+		allocCounterKey: allocCounterKey,
+		allocCounter:    allocCount,
 	}, nil
 }
 
@@ -273,7 +274,7 @@ func (tree *MerkleTree) allocNodeId() uint64 {
 }
 
 func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
-	nodeBytes, err := tree.db.Get(serializeKey(id, prefixBits))
+	nodeBytes, err := tree.db.Get(tree.serializeKey(id, prefixBits))
 	if err == tree.db.ErrNotFound() {
 		return nil, nil
 	} else if err != nil {
@@ -305,7 +306,7 @@ func (n *node) flush(wb kv.Batch) (id uint64, hash [HashBytes]byte) {
 }
 
 func (n *node) store(wb kv.Batch) {
-	wb.Put(serializeKey(n.id, n.prefixBits), n.serialize())
+	wb.Put(n.tree.serializeKey(n.id, n.prefixBits), n.serialize())
 }
 
 func (n *node) getChildPointer(isRight bool) (**node, error) {
@@ -322,10 +323,10 @@ func (n *node) getChildPointer(isRight bool) (**node, error) {
 	return &n.children[ix], nil
 }
 
-func serializeKey(id uint64, prefixBits []bool) []byte {
+func (t *MerkleTree) serializeKey(id uint64, prefixBits []bool) []byte {
 	indexBytes := ToBytes(prefixBits)
 	key := make([]byte, 0, 1+len(indexBytes)+4+1+8)
-	key = append(key, NodePrefix)
+	key = append(key, t.nodeKeyPrefix...)
 	key = append(key, indexBytes...)
 	binary.LittleEndian.PutUint32(key[len(key):len(key)+4], uint32(len(prefixBits)))
 	key = key[:len(key)+4]
