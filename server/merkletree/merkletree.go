@@ -44,12 +44,12 @@ func AccessMerkleTree(db *leveldb.DB) *MerkleTree {
 
 type TreeEpoch struct {
 	tree *MerkleTree
-	nr   int64
+	nr   uint64
 }
 
 type diskNode struct {
 	isLeaf            bool
-	childEpochNumbers [2]int64           // 0 if the node is a leaf
+	childEpochNumbers [2]uint64          // 0 if the node is a leaf
 	childHashes       [2][HashBytes]byte // zeroed if the node is a leaf
 	commitment        []byte             // nil if the node is not a leaf
 	indexBytes        []byte             // nil if the node is not a leaf
@@ -67,14 +67,14 @@ type NewTreeEpoch struct {
 	root *node
 }
 
-func (tree *MerkleTree) GetEpoch(nr int64) *TreeEpoch {
+func (tree *MerkleTree) GetEpoch(nr uint64) *TreeEpoch {
 	// TODO: This can't actually determine whether the epoch exists, since a missing entry might just
 	// indicate an empty tree. Is that okay?
 	return &TreeEpoch{tree, nr}
 }
 
 func (epoch *TreeEpoch) Lookup(indexBytes []byte) (
-	commitment []byte, entryEpoch int64, proofIndex []byte, proof [][]byte, err error,
+	commitment []byte, entryEpoch uint64, proofIndex []byte, proof [][]byte, err error,
 ) {
 	if len(indexBytes) != IndexBytes {
 		// TODO: is it actually sensible to return a grpc error from deep inside the internals?
@@ -270,7 +270,7 @@ func (n *node) getChildPointer(isRight bool) (**node, error) {
 	return &n.children[ix], nil
 }
 
-func serializeKey(epoch int64, prefixBits []bool) []byte {
+func serializeKey(epoch uint64, prefixBits []bool) []byte {
 	indexBytes := ToBytes(prefixBits)
 	key := make([]byte, 0, 1+len(indexBytes)+4+1+8)
 	key = append(key, TreePrefix)
@@ -314,7 +314,7 @@ func deserializeNode(buf []byte) (n diskNode) {
 		n.isLeaf = false
 		buf = buf[1:]
 		for i := 0; i < 2; i++ {
-			n.childEpochNumbers[i] = int64(binary.LittleEndian.Uint64(buf[:8]))
+			n.childEpochNumbers[i] = uint64(binary.LittleEndian.Uint64(buf[:8]))
 			buf = buf[8:]
 			copy(n.childHashes[i][:], buf[:HashBytes])
 			buf = buf[HashBytes:]
