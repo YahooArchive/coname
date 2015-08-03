@@ -66,6 +66,9 @@ func AccessMerkleTree(db kv.DB, prefix []byte) (*MerkleTree, error) {
 	}, nil
 }
 
+// Snapshot represents a particular (immutable) state of the tree. Changes are made by calling
+// BeginModification(), updating the returned NewSnapshot, and then getting an updated Snapshot out
+// from Flush().
 type Snapshot struct {
 	tree *MerkleTree
 	Nr   uint64
@@ -87,17 +90,20 @@ type node struct {
 	tree       *MerkleTree // TODO: necessary?
 }
 
+// NewSnapshot represents a snapshot that is being built up in memory.
 type NewSnapshot struct {
 	Snapshot
 	root *node
 }
 
+// GetSnapshot loads the snapshot with a particular ID. Use 0 for a new empty snapshot.
 func (tree *MerkleTree) GetSnapshot(nr uint64) *Snapshot {
 	// TODO: This can't actually determine whether the snapshot exists, since a missing entry might just
 	// indicate an empty tree. Is that okay?
 	return &Snapshot{tree, nr}
 }
 
+// GetRootHash gets the summary hash for the entire state of the tree.
 func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
 	root, err := snapshot.loadRoot()
 	if err != nil {
@@ -106,6 +112,10 @@ func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
 	return root.hash(), nil
 }
 
+// Lookup looks up the entry at a particular index in the snapshot.
+// In case it's present, returns:                      commitment, nil,   sibling hashes, nil
+// In case this index hits an empty branch, returns:   nil,        nil,   sibling hashes, nil
+// In case this index hits a mismatched leaf, returns: commitment, index, sibling hashes, nil
 func (snapshot *Snapshot) Lookup(indexBytes []byte) (
 	commitment []byte, proofIndex []byte, proof [][]byte, err error,
 ) {
@@ -149,8 +159,8 @@ func (snapshot *Snapshot) Lookup(indexBytes []byte) (
 	return n.commitment, proofIndex, proof, nil
 }
 
-// Creates a new snapshot to be built up in memory (doesn't actually touch the disk
-// yet)
+// BeginModification creates a new snapshot to be built up in memory (doesn't actually touch the
+// disk yet)
 func (snapshot *Snapshot) BeginModification() (*NewSnapshot, error) {
 	root, err := snapshot.loadRoot()
 	if err != nil {
@@ -159,7 +169,7 @@ func (snapshot *Snapshot) BeginModification() (*NewSnapshot, error) {
 	return &NewSnapshot{*snapshot, root}, nil
 }
 
-// Updates the leaf value at the index (or insert it if it did not exist).
+// Set updates the leaf value at the index (or inserts it if it did not exist).
 // In-memory: doesn't actually touch the disk yet.
 func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err error) {
 	if len(indexBytes) != IndexBytes {
@@ -195,6 +205,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 		// We have a different leaf with a matching prefix. We'll have to create new intermediate nodes.
 		oldLeaf := *nodePointer
 		oldLeafIndexBits := ToBits(IndexBits, oldLeaf.indexBytes)
+		// Create a new intermediate node for each bit that has now become shared.
 		for oldLeafIndexBits[position] == indexBits[position] {
 			newNode := &node{
 				diskNode: diskNode{
@@ -206,6 +217,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 			*nodePointer, nodePointer = newNode, &newNode.children[BitToIndex(indexBits[position])]
 			position++
 		}
+		// Create a new node at which the tree now branches.
 		splitNode := &node{
 			diskNode: diskNode{
 				isLeaf: false,
@@ -213,6 +225,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 			prefixBits: indexBits[:position],
 			tree:       snapshot.tree,
 		}
+		// Create the new leaf under the splitNode
 		newLeaf := &node{
 			diskNode: diskNode{
 				isLeaf:     true,
@@ -222,6 +235,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 			prefixBits: indexBits[:position+1],
 			tree:       snapshot.tree,
 		}
+		// Move the old leaf's index down
 		oldLeaf.prefixBits = oldLeafIndexBits[:position+1]
 		splitNode.children[BitToIndex(indexBits[position])] = newLeaf
 		splitNode.children[BitToIndex(oldLeafIndexBits[position])] = oldLeaf
