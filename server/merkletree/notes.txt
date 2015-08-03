@@ -1,16 +1,14 @@
-Notes
-- 0 is not a valid epoch (1 is the first epoch)
-
 CoW scheme
-- Child pointers contain epoch number
+- Snapshots are just pointers to root nodes
+- Conceptually, nodes are addressed by an arbitrary node ID (which counts up sequentially)
+- For locality, we prepend IDs by the index in the tree
 - We build up the tree for a new epoch in-memory:
-    - We lazy-load nodes that are accessed; nodes store childHashes so sibling nodes are not accessed
-    - Set() doesn't need to set epoch numbers or hashes, since flush() does it
-    - flush() creates a new epoch, writing out all of loaded nodes with the new epoch number
+    - We lazy-load nodes that are accessed
+    - Set() only touches changed nodes (nodes store childHashes so sibling nodes are not accessed), so all in-memory nodes are considered dirty
+    - Flush() writes out loaded nodes and returns the new snapshot number
 
 
 Questions
 - Where to put utils & node hashing (hash.go)?
 - Cache nodes in-memory? Currently we do not (but LevelDB caches)
-- Cleaner way to do in-memory nodes that don't need to deal with epoch numbers?
-    - Would have to change flush() so that it doesn't write out all the chached nodes
+    - Would have to add a dirty bit so flush() doesn't write out all the cached nodes
