@@ -28,6 +28,7 @@ import (
 
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/replication"
+	"github.com/yahoo/coname/server/replication/raftlog/proto"
 	"golang.org/x/net/context"
 )
 
@@ -52,12 +53,19 @@ type raftLog struct {
 	leaderHintSet chan bool
 	leaderHint    bool
 
+	currentPeers map[uint64]proto.RaftClient
+
 	stopOnce sync.Once
 	stop     chan struct{}
 	stopped  chan struct{}
 }
 
 var _ replication.LogReplicator = (*raftLog)(nil)
+var _ proto.RaftServer = (*raftLog)(nil)
+
+func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing, error) {
+	return &proto.Nothing{}, l.node.Step(ctx, *msg)
+}
 
 // New initializes a replication.LogReplicator using an already open kv.DB.
 // TODO: config.Applied and config.Storage are useless for the caller, and
