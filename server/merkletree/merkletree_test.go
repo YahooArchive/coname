@@ -98,6 +98,7 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+		_ = "breakpoint"
 		err = ne.Set(index, val)
 		if err != nil {
 			panic(err)
@@ -237,10 +238,14 @@ func (t *TestSnapshot) GetNr() uint64 {
 }
 
 func (t *TestSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
-	commitment, _, _, err := (*Snapshot)(t).Lookup(indexBytes)
+	commitment, proofIndex, _, err := (*Snapshot)(t).Lookup(indexBytes)
 	// TODO check proof
 	if err != nil {
 		panic(err)
+	}
+	if proofIndex != nil {
+		// actually absence!
+		return nil
 	}
 	return
 }
@@ -402,9 +407,9 @@ func (s *NewComparingSnapshot) Flush() MapSnapshot {
 	return &ComparingSnapshot{snapshots}
 }
 
-const dbg = 2
+var dbg = 1
 
-func compareImplementationsRandomly(implementations []Map, itCount, byteRange, allowedOps int, t testing.TB) {
+func compareImplementationsRandomly(implementations []Map, itCount, byteRange int, t testing.TB) {
 	bytez := func(b byte) [HashBytes]byte {
 		var bytes [HashBytes]byte
 		for i := range bytes {
@@ -430,59 +435,93 @@ func compareImplementationsRandomly(implementations []Map, itCount, byteRange, a
 	snapshots := []MapSnapshot{comparer.GetSnapshot(0)}
 	changingSnapshots := []NewMapSnapshot{}
 	existingKeys := [][]byte{}
+	// TODO: sometimes bias towards long snapshot chains, refresh snapshots, refresh the whole thing
+	// (and then all snapshots), check only new snapshots most of the time
 	for i := 0; i < itCount; i++ {
-		if i%1000 == 0 && testing.Verbose() {
-			fmt.Printf("operation %v", i)
-		}
-		// TODO: sometimes bias towards long snapshot chains, refresh snapshots, refresh the whole thing
-		// (and then all snapshots)
-		switch rand.Intn(allowedOps) {
+		switch op := rand.Intn(3); op {
+		case 0:
+			// new update
+			i := rand.Intn(len(snapshots))
+			if dbg > 1 {
+				log.Printf("begin %x -> *%x", i, len(changingSnapshots))
+			}
+			changingSnapshots = append(changingSnapshots, snapshots[i].BeginModification())
 		case 1:
+			// do changes
 			if len(changingSnapshots) > 0 {
-				k := randBytes()
-				existingKeys = append(existingKeys, k)
-				v := randBytes()
-				i := len(changingSnapshots) - 1 // rand.Intn(len(changingSnapshots))
-				if dbg > 1 {
-					log.Printf("snap %x: [%x] <- %x", i, k, v)
+				i := rand.Intn(len(changingSnapshots))
+				nrSets := rand.Intn(10)
+				for j := 0; j < nrSets; j++ {
+					var k []byte
+					if rand.Intn(3) == 0 && len(existingKeys) > 0 {
+						// update existing key
+						k = existingKeys[rand.Intn(len(existingKeys))]
+					} else {
+						// create new key
+						k = randBytes()
+						existingKeys = append(existingKeys, k)
+					}
+					v := randBytes()
+					if dbg > 1 {
+						log.Printf("snap *%x: [%x] <- %x", i, k, v)
+					}
+					changingSnapshots[i].Set(k, v)
 				}
-				changingSnapshots[i].Set(k, v)
 			}
 		case 2:
-			i := rand.Intn(len(snapshots))
-			log.Printf("begin %x -> %x", i, len(changingSnapshots))
-			changingSnapshots = append(changingSnapshots, snapshots[i].BeginModification())
-		case 3:
+			// finish update
 			if len(changingSnapshots) > 0 {
-				i := len(changingSnapshots) - 1 // rand.Intn(len(changingSnapshots))
-				log.Printf("flush %x -> %x", i, len(snapshots))
+				i := rand.Intn(len(changingSnapshots))
+				if dbg > 1 {
+					log.Printf("flush *%x -> %x", i, len(snapshots))
+				}
 				snapshots = append(snapshots, changingSnapshots[i].Flush())
 				changingSnapshots = append(changingSnapshots[:i], changingSnapshots[i+1:]...)
 			}
-		default:
-			var k []byte
-			i := rand.Intn(len(snapshots))
-			if rand.Intn(2) == 0 || len(existingKeys) == 0 {
-				k = randBytes()
-				log.Printf("snap %x: random [%x] =? ", i, k)
-			} else {
-				// Do a lookup with a key that has been used in any snapshot
-				k = existingKeys[rand.Intn(len(existingKeys))]
-				log.Printf("snap %x: old [%x] =? ", i, k)
+		}
+		if i+1 == itCount || (i < 200 && i%10 == 0) {
+			// check all consistency
+			keysToQuery := existingKeys
+			for i := 0; i < 5; i++ {
+				keysToQuery = append(keysToQuery, randBytes())
 			}
-			v := snapshots[i].Lookup(k)
-			log.Printf("  %x", v)
+			for _, k := range keysToQuery {
+				if dbg > 2 {
+					log.Printf("query %x", k)
+				}
+				for i := range snapshots {
+					if dbg > 2 {
+						log.Printf("  in %x:", i)
+					}
+					v := snapshots[i].Lookup(k)
+					if dbg > 2 {
+						log.Printf("   %x", v)
+					}
+				}
+			}
 		}
 	}
 }
 
 func TestBrutally(t *testing.T) {
+	rand.Seed(4)
+	if testing.Verbose() {
+		dbg = 2
+	}
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, []byte("xyz"))
+		m, err := AccessMerkleTree(db, []byte("tree1"))
 		if err != nil {
 			panic(err)
 		}
+		// Test with randomly distributed keys
 		impls := []Map{&SimpleMap{}, &TestMerkleTree{*m}}
-		compareImplementationsRandomly(impls, 1000, -255, 20, t)
+		compareImplementationsRandomly(impls, 2000, 255, t)
+		m2, err := AccessMerkleTree(db, []byte("tree2"))
+		if err != nil {
+			panic(err)
+		}
+		// Test with not as random keys
+		impls = []Map{&SimpleMap{}, &TestMerkleTree{*m2}}
+		compareImplementationsRandomly(impls, 200, -16, t)
 	})
 }

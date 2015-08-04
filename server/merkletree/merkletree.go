@@ -85,7 +85,7 @@ type diskNode struct {
 
 type node struct {
 	diskNode
-	prefixBits []bool
+	prefixBits []bool   // Could be sliced (underlying array not owned) -- *don't* append to this!
 	children   [2]*node // lazily loaded
 }
 
@@ -191,7 +191,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 		*nodePointer = &node{
 			diskNode: diskNode{
 				isLeaf:     true,
-				indexBytes: append([]byte(nil), indexBytes...), // Make a copy of indexBytes
+				indexBytes: append([]byte{}, indexBytes...), // Make a copy of indexBytes
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position],
@@ -225,7 +225,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 		newLeaf := &node{
 			diskNode: diskNode{
 				isLeaf:     true,
-				indexBytes: append([]byte(nil), indexBytes...), // Make a copy of the index
+				indexBytes: append([]byte{}, indexBytes...), // Make a copy of the index
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position+1],
@@ -291,20 +291,20 @@ func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [HashBytes
 		}
 	}
 	id = t.allocNodeId()
-	t.store(id, n, wb)
+	t.storeNode(id, n, wb)
 	copy(hash[:], n.hash())
 	return
 }
 
-func (t *MerkleTree) store(id uint64, n *node, wb kv.Batch) {
+func (t *MerkleTree) storeNode(id uint64, n *node, wb kv.Batch) {
 	wb.Put(t.serializeKey(id, n.prefixBits), n.serialize())
 }
 
 func (t *MerkleTree) getChildPointer(n *node, isRight bool) (**node, error) {
 	ix := BitToIndex(isRight)
 	if n.childIds[ix] != 0 && n.children[ix] == nil {
-		// lazy-load the child
-		childIndex := append(n.prefixBits, isRight)
+		// lazy-load the child. *don't* append to n.prefixBits!
+		childIndex := append(append([]bool{}, n.prefixBits...), isRight)
 		child, err := t.loadNode(n.childIds[ix], childIndex)
 		if err != nil {
 			return nil, err
