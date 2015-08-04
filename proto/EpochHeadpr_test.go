@@ -15,7 +15,8 @@
 package proto
 
 import (
-	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+	github_com_gogo_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
 	math_rand "math/rand"
 	"testing"
 	"time"
@@ -40,5 +41,26 @@ func TestEpochHead_PreserveEncodingProto(t *testing.T) {
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("%#v !Proto %#v", msg, p)
+	}
+}
+
+func TestEpochHead_PreserveEncodingJSON(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedEpochHead_PreserveEncoding(popr, true)
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
+	jsondata, err := marshaler.MarshalToString(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg := &EpochHead_PreserveEncoding{}
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseProto %#v, since %v", msg, p, err)
+	}
+	if !p.Equal(msg) {
+		t.Fatalf("%#v !Json Equal %#v", msg, p)
 	}
 }

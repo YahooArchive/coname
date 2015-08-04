@@ -19,7 +19,7 @@ cd "$DIR"
 
 # go install ./protoc-gen-coname
 
-protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/gogo/protobuf" -I "$GOPATH/src/github.com/gogo/protobuf/protobuf" *.proto
+protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/andres-erbsen/protobuf" -I "$GOPATH/src/github.com/andres-erbsen/protobuf/protobuf" *.proto
 
 function preserve {
 	sed "s/Thing/$1/g" < preserve.go.template > "$1.pr.go"
@@ -33,6 +33,9 @@ preserve TimestampedEpochHead
 preserve EpochHead
 preserve AuthorizationPolicy
 
+# import patched package from correct JSON output
+sed -i.bak -e 's:/gogo/:/andres-erbsen/:g' *pb*.go
+
 # preserve the encoding of repeated public keys
 sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
 
@@ -43,11 +46,6 @@ sed -i.bak -e '/Test.*Text.*testing/a\
 # bound the branching factor of quorum expressions to avoid infinite recursion.
 awk '{
     if ( $0 ~ /^func NewPopulatedQuorumExpr/ ) {f = 1}
-    if ( f == 1 && $0 ~ /:= r\.Intn\(10\)/) { f = 0; sub(10,2,$0) }
-    print($0)
-}' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go
-awk '{
-    if ( $0 ~ /^func NewPopulatedPublicKey/ ) {f = 1}
     if ( f == 1 && $0 ~ /:= r\.Intn\(10\)/) { f = 0; sub(10,2,$0) }
     print($0)
 }' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go

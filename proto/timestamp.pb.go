@@ -4,12 +4,12 @@
 
 package proto
 
-import proto1 "github.com/gogo/protobuf/proto"
+import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 import fmt "fmt"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"

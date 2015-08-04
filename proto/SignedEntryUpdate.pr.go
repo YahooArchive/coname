@@ -14,7 +14,11 @@
 
 package proto
 
-import "fmt"
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+)
 
 type SignedEntryUpdate_PreserveEncoding struct {
 	SignedEntryUpdate
@@ -92,3 +96,28 @@ func (this *SignedEntryUpdate_PreserveEncoding) String() string {
 	}
 	return `proto.SignedEntryUpdate_PreserveEncoding{SignedEntryUpdate: ` + this.SignedEntryUpdate.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
 }
+
+func (this *SignedEntryUpdate_PreserveEncoding) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(this.PreservedEncoding))+2)
+	ret[0] = '"'
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], this.PreservedEncoding)
+	ret[len(ret)-1] = '"'
+	return ret, nil
+}
+
+func (this *SignedEntryUpdate_PreserveEncoding) UnmarshalJSON(s []byte) error {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return fmt.Errorf("not a JSON quoted string: %q", s)
+	}
+	b := make([]byte, base64.StdEncoding.DecodedLen(len(s)-2))
+	if _, err := base64.StdEncoding.Decode(b, s[1:len(s)-1]); err != nil {
+		return err
+	}
+	this.PreservedEncoding = b
+	err := this.SignedEntryUpdate.Unmarshal(b)
+	if err != nil {println("UNMARSHAL FAILED"); println(err.Error())}
+	return err
+}
+
+var _ json.Marshaler = (*SignedEntryUpdate_PreserveEncoding)(nil)
+var _ json.Unmarshaler = (*SignedEntryUpdate_PreserveEncoding)(nil)

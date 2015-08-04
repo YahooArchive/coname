@@ -55,7 +55,8 @@ message UpdateRequest {
 	// profile other than enforcing a common-sense size limit. In particular, a
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
-	Profile profile = 2;
+	Profile profile = 2
+		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
 }
 
