@@ -22,7 +22,7 @@ import (
 
 type Entry_PreserveEncoding struct {
 	Entry
-	PreservedEncoding []byte `json:"-"`
+	PreservedEncoding []byte
 }
 
 func (m *Entry_PreserveEncoding) UpdateEncoding() (err error) {
@@ -97,26 +97,24 @@ func (this *Entry_PreserveEncoding) String() string {
 	return `proto.Entry_PreserveEncoding{Entry: ` + this.Entry.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
 }
 
-func (this *Entry_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(this.PreservedEncoding))+2)
+func (m *Entry_PreserveEncoding) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], this.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (this *Entry_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *Entry_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
 	b := make([]byte, base64.StdEncoding.DecodedLen(len(s)-2))
-	if _, err := base64.StdEncoding.Decode(b, s[1:len(s)-1]); err != nil {
+	n, err := base64.StdEncoding.Decode(b, s[1:len(s)-1])
+	if err != nil {
 		return err
 	}
-	this.PreservedEncoding = b
-	err := this.Entry.Unmarshal(b)
-	if err != nil {println("UNMARSHAL FAILED"); println(err.Error())}
-	return err
+	return m.Unmarshal(b[:n])
 }
 
 var _ json.Marshaler = (*Entry_PreserveEncoding)(nil)
