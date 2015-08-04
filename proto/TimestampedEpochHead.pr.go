@@ -14,7 +14,11 @@
 
 package proto
 
-import "fmt"
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+)
 
 type TimestampedEpochHead_PreserveEncoding struct {
 	TimestampedEpochHead
@@ -92,3 +96,26 @@ func (this *TimestampedEpochHead_PreserveEncoding) String() string {
 	}
 	return `proto.TimestampedEpochHead_PreserveEncoding{TimestampedEpochHead: ` + this.TimestampedEpochHead.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
 }
+
+func (m *TimestampedEpochHead_PreserveEncoding) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+	ret[0] = '"'
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	ret[len(ret)-1] = '"'
+	return ret, nil
+}
+
+func (m *TimestampedEpochHead_PreserveEncoding) UnmarshalJSON(s []byte) error {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return fmt.Errorf("not a JSON quoted string: %q", s)
+	}
+	b := make([]byte, base64.StdEncoding.DecodedLen(len(s)-2))
+	n, err := base64.StdEncoding.Decode(b, s[1:len(s)-1])
+	if err != nil {
+		return err
+	}
+	return m.Unmarshal(b[:n])
+}
+
+var _ json.Marshaler = (*TimestampedEpochHead_PreserveEncoding)(nil)
+var _ json.Unmarshaler = (*TimestampedEpochHead_PreserveEncoding)(nil)

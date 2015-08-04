@@ -4,14 +4,14 @@
 
 package proto
 
-import proto1 "github.com/gogo/protobuf/proto"
+import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
 import fmt "fmt"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -26,7 +26,7 @@ var _ = proto1.Marshal
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 type KeyserverStep struct {
-	UID uint64 `protobuf:"varint,1,opt,proto3" json:"UID,omitempty"`
+	UID uint64 `protobuf:"fixed64,1,opt,proto3" json:"UID,omitempty"`
 	// Update is appended to the log when it is received from a client and
 	// has passed pre-validation. However, since pre-validation is not
 	// final, "success" should not be returned to the client until after the
@@ -294,9 +294,9 @@ func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
 	var l int
 	_ = l
 	if m.UID != 0 {
-		data[i] = 0x8
+		data[i] = 0x9
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.UID))
+		i = encodeFixed64Replication(data, i, uint64(m.UID))
 	}
 	if m.Update != nil {
 		data[i] = 0x12
@@ -505,7 +505,7 @@ func (m *KeyserverStep) Size() (n int) {
 	var l int
 	_ = l
 	if m.UID != 0 {
-		n += 1 + sovReplication(uint64(m.UID))
+		n += 9
 	}
 	if m.Update != nil {
 		l = m.Update.Size()
@@ -603,21 +603,22 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 		wireType := int(wire & 0x7)
 		switch fieldNum {
 		case 1:
-			if wireType != 0 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field UID", wireType)
 			}
 			m.UID = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.UID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
 			}
+			iNdEx += 8
+			m.UID = uint64(data[iNdEx-8])
+			m.UID |= uint64(data[iNdEx-7]) << 8
+			m.UID |= uint64(data[iNdEx-6]) << 16
+			m.UID |= uint64(data[iNdEx-5]) << 24
+			m.UID |= uint64(data[iNdEx-4]) << 32
+			m.UID |= uint64(data[iNdEx-3]) << 40
+			m.UID |= uint64(data[iNdEx-2]) << 48
+			m.UID |= uint64(data[iNdEx-1]) << 56
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)

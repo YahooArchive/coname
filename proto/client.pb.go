@@ -8,6 +8,7 @@
 	It is generated from these files:
 		client.proto
 		config.proto
+		duration.proto
 		local.proto
 		replication.proto
 		timestamp.proto
@@ -23,13 +24,13 @@
 		SignedEpochHead
 		TimestampedEpochHead
 		EpochHead
+		AuthorizationPolicy
 		PublicKey
-		QuorumPublicKey
 		QuorumExpr
 */
 package proto
 
-import proto1 "github.com/gogo/protobuf/proto"
+import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
@@ -42,11 +43,13 @@ import fmt "fmt"
 import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
+import github_com_gogo_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
+
+import errors "errors"
 
 import io "io"
 
@@ -91,8 +94,8 @@ type UpdateRequest struct {
 	// profile other than enforcing a common-sense size limit. In particular, a
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
-	Profile          *Profile       `protobuf:"bytes,2,opt,name=profile" json:"profile,omitempty"`
-	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
+	Profile          Profile_PreserveEncoding `protobuf:"bytes,2,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
+	LookupParameters *LookupRequest           `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
 }
 
 func (m *UpdateRequest) Reset()      { *m = UpdateRequest{} }
@@ -101,13 +104,6 @@ func (*UpdateRequest) ProtoMessage() {}
 func (m *UpdateRequest) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
 		return m.Update
-	}
-	return nil
-}
-
-func (m *UpdateRequest) GetProfile() *Profile {
-	if m != nil {
-		return m.Profile
 	}
 	return nil
 }
@@ -151,8 +147,8 @@ type LookupProof struct {
 	// ratifications[0].ratification.summary.root_hash.
 	TreeProof []byte `protobuf:"bytes,4,opt,name=tree_proof,proto3" json:"tree_proof,omitempty"`
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry   *Entry   `protobuf:"bytes,5,opt,name=entry" json:"entry,omitempty"`
-	Profile *Profile `protobuf:"bytes,6,opt,name=profile" json:"profile,omitempty"`
+	Entry   Entry_PreserveEncoding   `protobuf:"bytes,5,opt,name=entry,customtype=Entry_PreserveEncoding" json:"entry"`
+	Profile Profile_PreserveEncoding `protobuf:"bytes,6,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
 }
 
 func (m *LookupProof) Reset()      { *m = LookupProof{} }
@@ -161,20 +157,6 @@ func (*LookupProof) ProtoMessage() {}
 func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	if m != nil {
 		return m.Ratifications
-	}
-	return nil
-}
-
-func (m *LookupProof) GetEntry() *Entry {
-	if m != nil {
-		return m.Entry
-	}
-	return nil
-}
-
-func (m *LookupProof) GetProfile() *Profile {
-	if m != nil {
-		return m.Profile
 	}
 	return nil
 }
@@ -200,7 +182,7 @@ type Entry struct {
 	// clients should increase the version number by exactly one on each
 	// update.
 	Version uint64 `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
-	// UpdateKey will be used to verify SignedEntryUpdates to this
+	// UpdatePolicy will be used to verify SignedEntryUpdates to this
 	// entry. It is NOT used for encryption, and SHOULD be ignored by
 	// applications that do not intend to manage the user's profile. It has
 	// also been called "the public key of the profile signing key" or "the
@@ -208,7 +190,7 @@ type Entry struct {
 	// ther structure of their update_key other than (1) as specified in
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
-	UpdateKey *PublicKey `protobuf:"bytes,3,opt,name=update_key" json:"update_key,omitempty"`
+	UpdatePolicy *AuthorizationPolicy `protobuf:"bytes,3,opt,name=update_policy" json:"update_policy,omitempty"`
 	// The entry uniquely specifies the profile using a collision-resistant
 	// hash function.
 	ProfileHash []byte `protobuf:"bytes,4,opt,name=profile_hash,proto3" json:"profile_hash,omitempty"`
@@ -217,9 +199,9 @@ type Entry struct {
 func (m *Entry) Reset()      { *m = Entry{} }
 func (*Entry) ProtoMessage() {}
 
-func (m *Entry) GetUpdateKey() *PublicKey {
+func (m *Entry) GetUpdatePolicy() *AuthorizationPolicy {
 	if m != nil {
-		return m.UpdateKey
+		return m.UpdatePolicy
 	}
 	return nil
 }
@@ -231,30 +213,19 @@ type SignedEntryUpdate struct {
 	NewEntry Entry_PreserveEncoding `protobuf:"bytes,1,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
-	// Both the keyserver and verifiers MUST check this signature.
-	// All signatures are tagged with ID of the public key that generated them.
-	NewSig map[uint64][]byte `protobuf:"bytes,2,rep,name=new_sig" json:"new_sig,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	// OldSig, if successfully verified using the update_key of the entry
-	// currently bound to update.index, confirms that the old entry is willing
-	// to be replaced by the new entry.  Both the keyserver and verifiers MUST
-	// check this signature.
-	// All signatures are tagged with ID of the public key that generated them.
-	OldSig map[uint64][]byte `protobuf:"bytes,3,rep,name=old_sig" json:"old_sig,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Both the keyserver and verifiers MUST check these signatures against the
+	// old profile's authorization policy AND the new profile's authorization
+	// policy. All signatures are tagged with ID of the public key that
+	// generated them.
+	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *SignedEntryUpdate) Reset()      { *m = SignedEntryUpdate{} }
 func (*SignedEntryUpdate) ProtoMessage() {}
 
-func (m *SignedEntryUpdate) GetNewSig() map[uint64][]byte {
+func (m *SignedEntryUpdate) GetSignatures() map[uint64][]byte {
 	if m != nil {
-		return m.NewSig
-	}
-	return nil
-}
-
-func (m *SignedEntryUpdate) GetOldSig() map[uint64][]byte {
-	if m != nil {
-		return m.OldSig
+		return m.Signatures
 	}
 	return nil
 }
@@ -290,18 +261,18 @@ func (m *Profile) GetKeys() map[string][]byte {
 // NOT be signed in any other circumstances.
 type SignedEpochHead struct {
 	Head TimestampedEpochHead_PreserveEncoding `protobuf:"bytes,1,opt,name=head,customtype=TimestampedEpochHead_PreserveEncoding" json:"head"`
-	// Signature is used for authentication of ratification and MUST be
+	// Signatures is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
 	// All signatures are tagged with ID of the public key that generated them.
-	Signature map[uint64][]byte `protobuf:"bytes,2,rep,name=signature" json:"signature,omitempty" protobuf_key:"varint,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (m *SignedEpochHead) Reset()      { *m = SignedEpochHead{} }
 func (*SignedEpochHead) ProtoMessage() {}
 
-func (m *SignedEpochHead) GetSignature() map[uint64][]byte {
+func (m *SignedEpochHead) GetSignatures() map[uint64][]byte {
 	if m != nil {
-		return m.Signature
+		return m.Signatures
 	}
 	return nil
 }
@@ -354,31 +325,8 @@ type EpochHead struct {
 func (m *EpochHead) Reset()      { *m = EpochHead{} }
 func (*EpochHead) ProtoMessage() {}
 
-// PublicKey wraps a public key of a cryptographically secure signature
-// scheme and verification metadata. Each verifier can have its own signature
-// format and needs to implement serialization and deserialization of its own
-// signatures. It is intentional that the PublicKey implementations ARE
-// ALLOWED to interpret the content of the message whose signature is being
-// verified. The ID of a public key is defined as the first 64 bits of the
-// protobuf-encoded public key (and interpreted as little-endian when a numeric
-// representation is required).
-type PublicKey struct {
-	Quorum  *QuorumPublicKey `protobuf:"bytes,1,opt,name=quorum" json:"quorum,omitempty"`
-	Ed25519 []byte           `protobuf:"bytes,2,opt,name=ed25519,proto3" json:"ed25519,omitempty"`
-}
-
-func (m *PublicKey) Reset()      { *m = PublicKey{} }
-func (*PublicKey) ProtoMessage() {}
-
-func (m *PublicKey) GetQuorum() *QuorumPublicKey {
-	if m != nil {
-		return m.Quorum
-	}
-	return nil
-}
-
-// QuorumPublicKeyreturns "OK" if any the valid signatures from
-// map<uint64,signature> satisfy the quorum requirement.
+// AuthorizationPolicy is used to check whether some signatures make up
+// sufficient authorization to back an action.
 // This is used to implement the following:
 // 1. Account Recovery through service provider: if an user's entry has the
 // update key set to threshold(1,user,serviceprovider), the service
@@ -391,21 +339,40 @@ func (m *PublicKey) GetQuorum() *QuorumPublicKey {
 // can use a threshold to limit the damage the compromise or loss of one
 // replica can do. Example threshold(2,freedonia,gilead,mordor).
 // 3. Adaptive key rollover during cryptocalypse.
-type QuorumPublicKey struct {
-	Quorum *QuorumExpr `protobuf:"bytes,1,opt,name=quorum" json:"quorum,omitempty"`
-	// PublicKeys must not contain a QuorumPublicKey.
-	PublicKeys []*PublicKey_PreserveEncoding `protobuf:"bytes,2,rep,name=public_keys,customtype=PublicKey_PreserveEncoding" json:"public_keys,omitempty"`
+type AuthorizationPolicy struct {
+	PublicKeys map[uint64]*PublicKey `protobuf:"bytes,1,rep,name=public_keys" json:"public_keys,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	Quorum     *QuorumExpr           `protobuf:"bytes,2,opt,name=quorum" json:"quorum,omitempty"`
 }
 
-func (m *QuorumPublicKey) Reset()      { *m = QuorumPublicKey{} }
-func (*QuorumPublicKey) ProtoMessage() {}
+func (m *AuthorizationPolicy) Reset()      { *m = AuthorizationPolicy{} }
+func (*AuthorizationPolicy) ProtoMessage() {}
 
-func (m *QuorumPublicKey) GetQuorum() *QuorumExpr {
+func (m *AuthorizationPolicy) GetPublicKeys() map[uint64]*PublicKey {
+	if m != nil {
+		return m.PublicKeys
+	}
+	return nil
+}
+
+func (m *AuthorizationPolicy) GetQuorum() *QuorumExpr {
 	if m != nil {
 		return m.Quorum
 	}
 	return nil
 }
+
+// PublicKey wraps a public key of a cryptographically secure signature
+// scheme and verification metadata. Each verifier can have its own signature
+// format and needs to implement serialization and deserialization of its own
+// signatures. The ID of a public key is defined as the first 64 bits of the
+// protobuf-encoded public key (and interpreted as little-endian when a numeric
+// representation is required).
+type PublicKey struct {
+	Ed25519 []byte `protobuf:"bytes,1,opt,name=ed25519,proto3" json:"ed25519,omitempty"`
+}
+
+func (m *PublicKey) Reset()      { *m = PublicKey{} }
+func (*PublicKey) ProtoMessage() {}
 
 // QuorumExpr represents a function with type set<uint64> -> bool. An
 // expression evaluates to true given args iff the sum of the following two
@@ -415,7 +382,7 @@ func (m *QuorumPublicKey) GetQuorum() *QuorumExpr {
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 type QuorumExpr struct {
 	Threshold  uint32   `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Candidates []uint64 `protobuf:"varint,2,rep,name=candidates" json:"candidates,omitempty"`
+	Candidates []uint64 `protobuf:"fixed64,2,rep,name=candidates" json:"candidates,omitempty"`
 	// QuorumExpr allows expressing contitions of the form "two out of these
 	// and three out of those".
 	// If an implementation chooses to ban recursive thresholding, it can do so
@@ -820,8 +787,8 @@ func (this *Entry) VerboseEqual(that interface{}) error {
 	if this.Version != that1.Version {
 		return fmt.Errorf("Version this(%v) Not Equal that(%v)", this.Version, that1.Version)
 	}
-	if !this.UpdateKey.Equal(that1.UpdateKey) {
-		return fmt.Errorf("UpdateKey this(%v) Not Equal that(%v)", this.UpdateKey, that1.UpdateKey)
+	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
+		return fmt.Errorf("UpdatePolicy this(%v) Not Equal that(%v)", this.UpdatePolicy, that1.UpdatePolicy)
 	}
 	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
 		return fmt.Errorf("ProfileHash this(%v) Not Equal that(%v)", this.ProfileHash, that1.ProfileHash)
@@ -854,7 +821,7 @@ func (this *Entry) Equal(that interface{}) bool {
 	if this.Version != that1.Version {
 		return false
 	}
-	if !this.UpdateKey.Equal(that1.UpdateKey) {
+	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
 		return false
 	}
 	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
@@ -885,20 +852,12 @@ func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
 	if !this.NewEntry.Equal(that1.NewEntry) {
 		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
 	}
-	if len(this.NewSig) != len(that1.NewSig) {
-		return fmt.Errorf("NewSig this(%v) Not Equal that(%v)", len(this.NewSig), len(that1.NewSig))
+	if len(this.Signatures) != len(that1.Signatures) {
+		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
 	}
-	for i := range this.NewSig {
-		if !bytes.Equal(this.NewSig[i], that1.NewSig[i]) {
-			return fmt.Errorf("NewSig this[%v](%v) Not Equal that[%v](%v)", i, this.NewSig[i], i, that1.NewSig[i])
-		}
-	}
-	if len(this.OldSig) != len(that1.OldSig) {
-		return fmt.Errorf("OldSig this(%v) Not Equal that(%v)", len(this.OldSig), len(that1.OldSig))
-	}
-	for i := range this.OldSig {
-		if !bytes.Equal(this.OldSig[i], that1.OldSig[i]) {
-			return fmt.Errorf("OldSig this[%v](%v) Not Equal that[%v](%v)", i, this.OldSig[i], i, that1.OldSig[i])
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
 		}
 	}
 	return nil
@@ -926,19 +885,11 @@ func (this *SignedEntryUpdate) Equal(that interface{}) bool {
 	if !this.NewEntry.Equal(that1.NewEntry) {
 		return false
 	}
-	if len(this.NewSig) != len(that1.NewSig) {
+	if len(this.Signatures) != len(that1.Signatures) {
 		return false
 	}
-	for i := range this.NewSig {
-		if !bytes.Equal(this.NewSig[i], that1.NewSig[i]) {
-			return false
-		}
-	}
-	if len(this.OldSig) != len(that1.OldSig) {
-		return false
-	}
-	for i := range this.OldSig {
-		if !bytes.Equal(this.OldSig[i], that1.OldSig[i]) {
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
 			return false
 		}
 	}
@@ -1033,12 +984,12 @@ func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
 	if !this.Head.Equal(that1.Head) {
 		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
 	}
-	if len(this.Signature) != len(that1.Signature) {
-		return fmt.Errorf("Signature this(%v) Not Equal that(%v)", len(this.Signature), len(that1.Signature))
+	if len(this.Signatures) != len(that1.Signatures) {
+		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
 	}
-	for i := range this.Signature {
-		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
-			return fmt.Errorf("Signature this[%v](%v) Not Equal that[%v](%v)", i, this.Signature[i], i, that1.Signature[i])
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
 		}
 	}
 	return nil
@@ -1066,11 +1017,11 @@ func (this *SignedEpochHead) Equal(that interface{}) bool {
 	if !this.Head.Equal(that1.Head) {
 		return false
 	}
-	if len(this.Signature) != len(that1.Signature) {
+	if len(this.Signatures) != len(that1.Signatures) {
 		return false
 	}
-	for i := range this.Signature {
-		if !bytes.Equal(this.Signature[i], that1.Signature[i]) {
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
 			return false
 		}
 	}
@@ -1200,6 +1151,72 @@ func (this *EpochHead) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *AuthorizationPolicy) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*AuthorizationPolicy)
+	if !ok {
+		return fmt.Errorf("that is not of type *AuthorizationPolicy")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *AuthorizationPolicy but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *AuthorizationPolicybut is not nil && this == nil")
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
+		}
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
+	}
+	return nil
+}
+func (this *AuthorizationPolicy) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*AuthorizationPolicy)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return false
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return false
+		}
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return false
+	}
+	return true
+}
 func (this *PublicKey) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -1219,9 +1236,6 @@ func (this *PublicKey) VerboseEqual(that interface{}) error {
 		return fmt.Errorf("that is type *PublicKey but is nil && this != nil")
 	} else if this == nil {
 		return fmt.Errorf("that is type *PublicKeybut is not nil && this == nil")
-	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
 	}
 	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
 		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
@@ -1248,77 +1262,8 @@ func (this *PublicKey) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return false
-	}
 	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
 		return false
-	}
-	return true
-}
-func (this *QuorumPublicKey) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*QuorumPublicKey)
-	if !ok {
-		return fmt.Errorf("that is not of type *QuorumPublicKey")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *QuorumPublicKey but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *QuorumPublicKeybut is not nil && this == nil")
-	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	return nil
-}
-func (this *QuorumPublicKey) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*QuorumPublicKey)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return false
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
 	}
 	return true
 }
@@ -1421,7 +1366,7 @@ func (this *UpdateRequest) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.UpdateRequest{` +
 		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`Profile:` + fmt.Sprintf("%#v", this.Profile),
+		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
 		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters) + `}`}, ", ")
 	return s
 }
@@ -1434,8 +1379,8 @@ func (this *LookupProof) GoString() string {
 		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
 		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
 		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
-		`Entry:` + fmt.Sprintf("%#v", this.Entry),
-		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
+		`Entry:` + strings.Replace(this.Entry.GoString(), `&`, ``, 1),
+		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1) + `}`}, ", ")
 	return s
 }
 func (this *Entry) GoString() string {
@@ -1445,7 +1390,7 @@ func (this *Entry) GoString() string {
 	s := strings.Join([]string{`&proto.Entry{` +
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`Version:` + fmt.Sprintf("%#v", this.Version),
-		`UpdateKey:` + fmt.Sprintf("%#v", this.UpdateKey),
+		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
 		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
 	return s
 }
@@ -1453,30 +1398,19 @@ func (this *SignedEntryUpdate) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForNewSig := make([]uint64, 0, len(this.NewSig))
-	for k, _ := range this.NewSig {
-		keysForNewSig = append(keysForNewSig, k)
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
-	mapStringForNewSig := "map[uint64][]byte{"
-	for _, k := range keysForNewSig {
-		mapStringForNewSig += fmt.Sprintf("%#v: %#v,", k, this.NewSig[k])
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
 	}
-	mapStringForNewSig += "}"
-	keysForOldSig := make([]uint64, 0, len(this.OldSig))
-	for k, _ := range this.OldSig {
-		keysForOldSig = append(keysForOldSig, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
-	mapStringForOldSig := "map[uint64][]byte{"
-	for _, k := range keysForOldSig {
-		mapStringForOldSig += fmt.Sprintf("%#v: %#v,", k, this.OldSig[k])
-	}
-	mapStringForOldSig += "}"
+	mapStringForSignatures += "}"
 	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
 		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
-		`NewSig:` + mapStringForNewSig,
-		`OldSig:` + mapStringForOldSig + `}`}, ", ")
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
 	return s
 }
 func (this *Profile) GoString() string {
@@ -1502,19 +1436,19 @@ func (this *SignedEpochHead) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForSignature := make([]uint64, 0, len(this.Signature))
-	for k, _ := range this.Signature {
-		keysForSignature = append(keysForSignature, k)
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
-	mapStringForSignature := "map[uint64][]byte{"
-	for _, k := range keysForSignature {
-		mapStringForSignature += fmt.Sprintf("%#v: %#v,", k, this.Signature[k])
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
 	}
-	mapStringForSignature += "}"
+	mapStringForSignatures += "}"
 	s := strings.Join([]string{`&proto.SignedEpochHead{` +
 		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
-		`Signature:` + mapStringForSignature + `}`}, ", ")
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
 	return s
 }
 func (this *TimestampedEpochHead) GoString() string {
@@ -1537,22 +1471,31 @@ func (this *EpochHead) GoString() string {
 		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
 	return s
 }
+func (this *AuthorizationPolicy) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&proto.AuthorizationPolicy{` +
+		`PublicKeys:` + mapStringForPublicKeys,
+		`Quorum:` + fmt.Sprintf("%#v", this.Quorum) + `}`}, ", ")
+	return s
+}
 func (this *PublicKey) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&proto.PublicKey{` +
-		`Quorum:` + fmt.Sprintf("%#v", this.Quorum),
 		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
-	return s
-}
-func (this *QuorumPublicKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.QuorumPublicKey{` +
-		`Quorum:` + fmt.Sprintf("%#v", this.Quorum),
-		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys) + `}`}, ", ")
 	return s
 }
 func (this *QuorumExpr) GoString() string {
@@ -1662,16 +1605,14 @@ func (m *UpdateRequest) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n2
 	}
-	if m.Profile != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n3, err := m.Profile.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n3, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n3
 	if m.LookupParameters != nil {
 		data[i] = 0x1a
 		i++
@@ -1734,26 +1675,22 @@ func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
 			i += copy(data[i:], m.TreeProof)
 		}
 	}
-	if m.Entry != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
-		n5, err := m.Entry.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
+	data[i] = 0x2a
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
+	n5, err := m.Entry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
-	if m.Profile != nil {
-		data[i] = 0x32
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n6, err := m.Profile.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
+	i += n5
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n6, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n6
 	return i, nil
 }
 
@@ -1785,11 +1722,11 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Version))
 	}
-	if m.UpdateKey != nil {
+	if m.UpdatePolicy != nil {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintClient(data, i, uint64(m.UpdateKey.Size()))
-		n7, err := m.UpdateKey.MarshalTo(data[i:])
+		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
+		n7, err := m.UpdatePolicy.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -1829,42 +1766,21 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 		return 0, err
 	}
 	i += n8
-	if len(m.NewSig) > 0 {
-		keysForNewSig := make([]uint64, 0, len(m.NewSig))
-		for k, _ := range m.NewSig {
-			keysForNewSig = append(keysForNewSig, k)
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
-		for _, k := range keysForNewSig {
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
-			v := m.NewSig[k]
-			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
 			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x8
+			data[i] = 0x9
 			i++
-			i = encodeVarintClient(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	if len(m.OldSig) > 0 {
-		keysForOldSig := make([]uint64, 0, len(m.OldSig))
-		for k, _ := range m.OldSig {
-			keysForOldSig = append(keysForOldSig, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
-		for _, k := range keysForOldSig {
-			data[i] = 0x1a
-			i++
-			v := m.OldSig[k]
-			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x8
-			i++
-			i = encodeVarintClient(data, i, uint64(k))
+			i = encodeFixed64Client(data, i, uint64(k))
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(len(v)))
@@ -1945,21 +1861,21 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
 		return 0, err
 	}
 	i += n9
-	if len(m.Signature) > 0 {
-		keysForSignature := make([]uint64, 0, len(m.Signature))
-		for k, _ := range m.Signature {
-			keysForSignature = append(keysForSignature, k)
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
-		for _, k := range keysForSignature {
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
-			v := m.Signature[k]
-			mapSize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
 			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x8
+			data[i] = 0x9
 			i++
-			i = encodeVarintClient(data, i, uint64(k))
+			i = encodeFixed64Client(data, i, uint64(k))
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(len(v)))
@@ -2048,6 +1964,63 @@ func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
 	return i, nil
 }
 
+func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PublicKeys) > 0 {
+		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
+		for k, _ := range m.PublicKeys {
+			keysForPublicKeys = append(keysForPublicKeys, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+		for _, k := range keysForPublicKeys {
+			data[i] = 0xa
+			i++
+			v := m.PublicKeys[k]
+			if v == nil {
+				return 0, errors.New("proto: map has nil element")
+			}
+			msgSize := v.Size()
+			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(v.Size()))
+			n12, err := v.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n12
+		}
+	}
+	if m.Quorum != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
+		n13, err := m.Quorum.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n13
+	}
+	return i, nil
+}
+
 func (m *PublicKey) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2063,62 +2036,12 @@ func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Quorum != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n12, err := m.Quorum.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n12
-	}
 	if m.Ed25519 != nil {
 		if len(m.Ed25519) > 0 {
-			data[i] = 0x12
+			data[i] = 0xa
 			i++
 			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
 			i += copy(data[i:], m.Ed25519)
-		}
-	}
-	return i, nil
-}
-
-func (m *QuorumPublicKey) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *QuorumPublicKey) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Quorum != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n13, err := m.Quorum.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, msg := range m.PublicKeys {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
 		}
 	}
 	return i, nil
@@ -2146,9 +2069,24 @@ func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
 	}
 	if len(m.Candidates) > 0 {
 		for _, num := range m.Candidates {
-			data[i] = 0x10
+			data[i] = 0x11
 			i++
-			i = encodeVarintClient(data, i, uint64(num))
+			data[i] = uint8(num)
+			i++
+			data[i] = uint8(num >> 8)
+			i++
+			data[i] = uint8(num >> 16)
+			i++
+			data[i] = uint8(num >> 24)
+			i++
+			data[i] = uint8(num >> 32)
+			i++
+			data[i] = uint8(num >> 40)
+			i++
+			data[i] = uint8(num >> 48)
+			i++
+			data[i] = uint8(num >> 56)
+			i++
 		}
 	}
 	if len(m.Subexpressions) > 0 {
@@ -2215,9 +2153,8 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 	if r.Intn(10) != 0 {
 		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
 	}
-	if r.Intn(10) != 0 {
-		this.Profile = NewPopulatedProfile(r, easy)
-	}
+	v2 := NewPopulatedProfile_PreserveEncoding(r, easy)
+	this.Profile = *v2
 	if r.Intn(10) != 0 {
 		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
 	}
@@ -2229,29 +2166,27 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	this := &LookupProof{}
 	this.UserId = randStringClient(r)
-	v2 := r.Intn(100)
-	this.IndexProof = make([]byte, v2)
-	for i := 0; i < v2; i++ {
+	v3 := r.Intn(100)
+	this.IndexProof = make([]byte, v3)
+	for i := 0; i < v3; i++ {
 		this.IndexProof[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v3 := r.Intn(10)
-		this.Ratifications = make([]*SignedEpochHead, v3)
-		for i := 0; i < v3; i++ {
+		v4 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v4)
+		for i := 0; i < v4; i++ {
 			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
 		}
 	}
-	v4 := r.Intn(100)
-	this.TreeProof = make([]byte, v4)
-	for i := 0; i < v4; i++ {
+	v5 := r.Intn(100)
+	this.TreeProof = make([]byte, v5)
+	for i := 0; i < v5; i++ {
 		this.TreeProof[i] = byte(r.Intn(256))
 	}
-	if r.Intn(10) != 0 {
-		this.Entry = NewPopulatedEntry(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.Profile = NewPopulatedProfile(r, easy)
-	}
+	v6 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.Entry = *v6
+	v7 := NewPopulatedProfile_PreserveEncoding(r, easy)
+	this.Profile = *v7
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2259,18 +2194,18 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 
 func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 	this := &Entry{}
-	v5 := r.Intn(100)
-	this.Index = make([]byte, v5)
-	for i := 0; i < v5; i++ {
+	v8 := r.Intn(100)
+	this.Index = make([]byte, v8)
+	for i := 0; i < v8; i++ {
 		this.Index[i] = byte(r.Intn(256))
 	}
 	this.Version = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
-		this.UpdateKey = NewPopulatedPublicKey(r, easy)
+		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	v6 := r.Intn(100)
-	this.ProfileHash = make([]byte, v6)
-	for i := 0; i < v6; i++ {
+	v9 := r.Intn(100)
+	this.ProfileHash = make([]byte, v9)
+	for i := 0; i < v9; i++ {
 		this.ProfileHash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2280,29 +2215,17 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 
 func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
 	this := &SignedEntryUpdate{}
-	v7 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.NewEntry = *v7
-	if r.Intn(10) != 0 {
-		v8 := r.Intn(10)
-		this.NewSig = make(map[uint64][]byte)
-		for i := 0; i < v8; i++ {
-			v9 := r.Intn(100)
-			v10 := uint64(uint64(r.Uint32()))
-			this.NewSig[v10] = make([]byte, v9)
-			for i := 0; i < v9; i++ {
-				this.NewSig[v10][i] = byte(r.Intn(256))
-			}
-		}
-	}
+	v10 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.NewEntry = *v10
 	if r.Intn(10) != 0 {
 		v11 := r.Intn(10)
-		this.OldSig = make(map[uint64][]byte)
+		this.Signatures = make(map[uint64][]byte)
 		for i := 0; i < v11; i++ {
 			v12 := r.Intn(100)
 			v13 := uint64(uint64(r.Uint32()))
-			this.OldSig[v13] = make([]byte, v12)
+			this.Signatures[v13] = make([]byte, v12)
 			for i := 0; i < v12; i++ {
-				this.OldSig[v13][i] = byte(r.Intn(256))
+				this.Signatures[v13][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2341,13 +2264,13 @@ func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 	this.Head = *v18
 	if r.Intn(10) != 0 {
 		v19 := r.Intn(10)
-		this.Signature = make(map[uint64][]byte)
+		this.Signatures = make(map[uint64][]byte)
 		for i := 0; i < v19; i++ {
 			v20 := r.Intn(100)
 			v21 := uint64(uint64(r.Uint32()))
-			this.Signature[v21] = make([]byte, v20)
+			this.Signatures[v21] = make([]byte, v20)
 			for i := 0; i < v20; i++ {
-				this.Signature[v21][i] = byte(r.Intn(256))
+				this.Signatures[v21][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2386,32 +2309,29 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	return this
 }
 
-func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
-	this := &PublicKey{}
+func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
+	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		this.Quorum = NewPopulatedQuorumPublicKey(r, easy)
+		v26 := r.Intn(10)
+		this.PublicKeys = make(map[uint64]*PublicKey)
+		for i := 0; i < v26; i++ {
+			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
+		}
 	}
-	v26 := r.Intn(100)
-	this.Ed25519 = make([]byte, v26)
-	for i := 0; i < v26; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
+	if r.Intn(10) != 0 {
+		this.Quorum = NewPopulatedQuorumExpr(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
 }
 
-func NewPopulatedQuorumPublicKey(r randyClient, easy bool) *QuorumPublicKey {
-	this := &QuorumPublicKey{}
-	if r.Intn(10) != 0 {
-		this.Quorum = NewPopulatedQuorumExpr(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		v27 := r.Intn(2)
-		this.PublicKeys = make([]*PublicKey_PreserveEncoding, v27)
-		for i := 0; i < v27; i++ {
-			this.PublicKeys[i] = NewPopulatedPublicKey_PreserveEncoding(r, easy)
-		}
+func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
+	this := &PublicKey{}
+	v27 := r.Intn(100)
+	this.Ed25519 = make([]byte, v27)
+	for i := 0; i < v27; i++ {
+		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -2540,10 +2460,8 @@ func (m *UpdateRequest) Size() (n int) {
 		l = m.Update.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.Profile != nil {
-		l = m.Profile.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
+	l = m.Profile.Size()
+	n += 1 + l + sovClient(uint64(l))
 	if m.LookupParameters != nil {
 		l = m.LookupParameters.Size()
 		n += 1 + l + sovClient(uint64(l))
@@ -2576,14 +2494,10 @@ func (m *LookupProof) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
-	if m.Entry != nil {
-		l = m.Entry.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Profile != nil {
-		l = m.Profile.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
+	l = m.Entry.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.Profile.Size()
+	n += 1 + l + sovClient(uint64(l))
 	return n
 }
 
@@ -2599,8 +2513,8 @@ func (m *Entry) Size() (n int) {
 	if m.Version != 0 {
 		n += 1 + sovClient(uint64(m.Version))
 	}
-	if m.UpdateKey != nil {
-		l = m.UpdateKey.Size()
+	if m.UpdatePolicy != nil {
+		l = m.UpdatePolicy.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
 	if m.ProfileHash != nil {
@@ -2617,19 +2531,11 @@ func (m *SignedEntryUpdate) Size() (n int) {
 	_ = l
 	l = m.NewEntry.Size()
 	n += 1 + l + sovClient(uint64(l))
-	if len(m.NewSig) > 0 {
-		for k, v := range m.NewSig {
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	if len(m.OldSig) > 0 {
-		for k, v := range m.OldSig {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -2661,11 +2567,11 @@ func (m *SignedEpochHead) Size() (n int) {
 	_ = l
 	l = m.Head.Size()
 	n += 1 + l + sovClient(uint64(l))
-	if len(m.Signature) > 0 {
-		for k, v := range m.Signature {
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + sovClient(uint64(k)) + 1 + len(v) + sovClient(uint64(len(v)))
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -2707,32 +2613,34 @@ func (m *EpochHead) Size() (n int) {
 	return n
 }
 
-func (m *PublicKey) Size() (n int) {
+func (m *AuthorizationPolicy) Size() (n int) {
 	var l int
 	_ = l
+	if len(m.PublicKeys) > 0 {
+		for k, v := range m.PublicKeys {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+			}
+			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
 	if m.Quorum != nil {
 		l = m.Quorum.Size()
 		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Ed25519 != nil {
-		l = len(m.Ed25519)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
 	}
 	return n
 }
 
-func (m *QuorumPublicKey) Size() (n int) {
+func (m *PublicKey) Size() (n int) {
 	var l int
 	_ = l
-	if m.Quorum != nil {
-		l = m.Quorum.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, e := range m.PublicKeys {
-			l = e.Size()
+	if m.Ed25519 != nil {
+		l = len(m.Ed25519)
+		if l > 0 {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
@@ -2746,9 +2654,7 @@ func (m *QuorumExpr) Size() (n int) {
 		n += 1 + sovClient(uint64(m.Threshold))
 	}
 	if len(m.Candidates) > 0 {
-		for _, e := range m.Candidates {
-			n += 1 + sovClient(uint64(e))
-		}
+		n += 9 * len(m.Candidates)
 	}
 	if len(m.Subexpressions) > 0 {
 		for _, e := range m.Subexpressions {
@@ -2791,7 +2697,7 @@ func (this *UpdateRequest) String() string {
 	}
 	s := strings.Join([]string{`&UpdateRequest{`,
 		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
+		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
 		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
 		`}`,
 	}, "")
@@ -2806,8 +2712,8 @@ func (this *LookupProof) String() string {
 		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
 		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
 		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
-		`Entry:` + strings.Replace(fmt.Sprintf("%v", this.Entry), "Entry", "Entry", 1) + `,`,
-		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
+		`Entry:` + strings.Replace(strings.Replace(this.Entry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
+		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2819,7 +2725,7 @@ func (this *Entry) String() string {
 	s := strings.Join([]string{`&Entry{`,
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`UpdateKey:` + strings.Replace(fmt.Sprintf("%v", this.UpdateKey), "PublicKey", "PublicKey", 1) + `,`,
+		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
 		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
 		`}`,
 	}, "")
@@ -2829,30 +2735,19 @@ func (this *SignedEntryUpdate) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForNewSig := make([]uint64, 0, len(this.NewSig))
-	for k, _ := range this.NewSig {
-		keysForNewSig = append(keysForNewSig, k)
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNewSig)
-	mapStringForNewSig := "map[uint64][]byte{"
-	for _, k := range keysForNewSig {
-		mapStringForNewSig += fmt.Sprintf("%v: %v,", k, this.NewSig[k])
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
 	}
-	mapStringForNewSig += "}"
-	keysForOldSig := make([]uint64, 0, len(this.OldSig))
-	for k, _ := range this.OldSig {
-		keysForOldSig = append(keysForOldSig, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForOldSig)
-	mapStringForOldSig := "map[uint64][]byte{"
-	for _, k := range keysForOldSig {
-		mapStringForOldSig += fmt.Sprintf("%v: %v,", k, this.OldSig[k])
-	}
-	mapStringForOldSig += "}"
+	mapStringForSignatures += "}"
 	s := strings.Join([]string{`&SignedEntryUpdate{`,
 		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
-		`NewSig:` + mapStringForNewSig + `,`,
-		`OldSig:` + mapStringForOldSig + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2882,19 +2777,19 @@ func (this *SignedEpochHead) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForSignature := make([]uint64, 0, len(this.Signature))
-	for k, _ := range this.Signature {
-		keysForSignature = append(keysForSignature, k)
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignature)
-	mapStringForSignature := "map[uint64][]byte{"
-	for _, k := range keysForSignature {
-		mapStringForSignature += fmt.Sprintf("%v: %v,", k, this.Signature[k])
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
 	}
-	mapStringForSignature += "}"
+	mapStringForSignatures += "}"
 	s := strings.Join([]string{`&SignedEpochHead{`,
 		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
-		`Signature:` + mapStringForSignature + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
 		`}`,
 	}, "")
 	return s
@@ -2923,24 +2818,33 @@ func (this *EpochHead) String() string {
 	}, "")
 	return s
 }
+func (this *AuthorizationPolicy) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&AuthorizationPolicy{`,
+		`PublicKeys:` + mapStringForPublicKeys + `,`,
+		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *PublicKey) String() string {
 	if this == nil {
 		return "nil"
 	}
 	s := strings.Join([]string{`&PublicKey{`,
-		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumPublicKey", "QuorumPublicKey", 1) + `,`,
 		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *QuorumPublicKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&QuorumPublicKey{`,
-		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3160,9 +3064,6 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Profile == nil {
-				m.Profile = &Profile{}
-			}
 			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3347,9 +3248,6 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Entry == nil {
-				m.Entry = &Entry{}
-			}
 			if err := m.Entry.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
@@ -3373,9 +3271,6 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.Profile == nil {
-				m.Profile = &Profile{}
 			}
 			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
@@ -3463,7 +3358,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 			}
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateKey", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdatePolicy", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3481,10 +3376,10 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.UpdateKey == nil {
-				m.UpdateKey = &PublicKey{}
+			if m.UpdatePolicy == nil {
+				m.UpdatePolicy = &AuthorizationPolicy{}
 			}
-			if err := m.UpdateKey.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.UpdatePolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3578,7 +3473,7 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NewSig", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3609,17 +3504,18 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 				}
 			}
 			var mapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
 			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
 			var valuekey uint64
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
@@ -3651,90 +3547,10 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 			mapvalue := make([]byte, mapbyteLen)
 			copy(mapvalue, data[iNdEx:postbytesIndex])
 			iNdEx = postbytesIndex
-			if m.NewSig == nil {
-				m.NewSig = make(map[uint64][]byte)
+			if m.Signatures == nil {
+				m.Signatures = make(map[uint64][]byte)
 			}
-			m.NewSig[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OldSig", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postbytesIndex := iNdEx + int(mapbyteLen)
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
-			if m.OldSig == nil {
-				m.OldSig = make(map[uint64][]byte)
-			}
-			m.OldSig[mapkey] = mapvalue
+			m.Signatures[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -3954,7 +3770,7 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signature", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -3985,17 +3801,18 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			var mapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
 			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
 			var valuekey uint64
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
@@ -4027,10 +3844,10 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 			mapvalue := make([]byte, mapbyteLen)
 			copy(mapvalue, data[iNdEx:postbytesIndex])
 			iNdEx = postbytesIndex
-			if m.Signature == nil {
-				m.Signature = make(map[uint64][]byte)
+			if m.Signatures == nil {
+				m.Signatures = make(map[uint64][]byte)
 			}
-			m.Signature[mapkey] = mapvalue
+			m.Signatures[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -4269,7 +4086,7 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 
 	return nil
 }
-func (m *PublicKey) Unmarshal(data []byte) error {
+func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
@@ -4290,7 +4107,7 @@ func (m *PublicKey) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -4308,78 +4125,70 @@ func (m *PublicKey) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Quorum == nil {
-				m.Quorum = &QuorumPublicKey{}
-			}
-			if err := m.Quorum.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
-			}
-			var byteLen int
+			var keykey uint64
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
+				keykey |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
+			var mapkey uint64
+			if (iNdEx + 8) > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Ed25519 = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
 					break
 				}
 			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
+			var mapmsglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapmsglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postmsgIndex := iNdEx + mapmsglen
+			if postmsgIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := &PublicKey{}
+			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
 				return err
 			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
+			iNdEx = postmsgIndex
+			if m.PublicKeys == nil {
+				m.PublicKeys = make(map[uint64]*PublicKey)
 			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *QuorumPublicKey) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
+			m.PublicKeys[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
 			}
@@ -4406,30 +4215,69 @@ func (m *QuorumPublicKey) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
 			}
-			var msglen int
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *PublicKey) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
+			}
+			var byteLen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
+				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + msglen
+			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PublicKeys = append(m.PublicKeys, &PublicKey_PreserveEncoding{})
-			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
+			m.Ed25519 = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
@@ -4490,21 +4338,22 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 				}
 			}
 		case 2:
-			if wireType != 0 {
+			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
 			}
 			var v uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
 			}
+			iNdEx += 8
+			v = uint64(data[iNdEx-8])
+			v |= uint64(data[iNdEx-7]) << 8
+			v |= uint64(data[iNdEx-6]) << 16
+			v |= uint64(data[iNdEx-5]) << 24
+			v |= uint64(data[iNdEx-4]) << 32
+			v |= uint64(data[iNdEx-3]) << 40
+			v |= uint64(data[iNdEx-2]) << 48
+			v |= uint64(data[iNdEx-1]) << 56
 			m.Candidates = append(m.Candidates, v)
 		case 3:
 			if wireType != 2 {

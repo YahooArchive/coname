@@ -55,7 +55,8 @@ message UpdateRequest {
 	// profile other than enforcing a common-sense size limit. In particular, a
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
-	Profile profile = 2;
+	Profile profile = 2
+		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
 }
 
@@ -91,8 +92,10 @@ message LookupProof {
 	// ratifications[0].ratification.summary.root_hash.
 	bytes tree_proof = 4;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry entry = 5;
-	Profile profile = 6;
+	Entry entry = 5
+		[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
+	Profile profile = 6
+		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
 }
 
 // Entry is the value type in the authenticated mapping data structure.  The
@@ -116,7 +119,7 @@ message Entry {
 	// clients should increase the version number by exactly one on each
 	// update.
 	uint64 version = 2;
-	// UpdateKey will be used to verify SignedEntryUpdates to this
+	// UpdatePolicy will be used to verify SignedEntryUpdates to this
 	// entry. It is NOT used for encryption, and SHOULD be ignored by
 	// applications that do not intend to manage the user's profile. It has
 	// also been called "the public key of the profile signing key" or "the
@@ -124,7 +127,7 @@ message Entry {
 	// ther structure of their update_key other than (1) as specified in
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
-	PublicKey update_key = 3;
+	AuthorizationPolicy update_policy = 3;
 	// The entry uniquely specifies the profile using a collision-resistant
 	// hash function.
 	bytes profile_hash = 4;
@@ -138,15 +141,11 @@ message SignedEntryUpdate {
 		[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
-	// Both the keyserver and verifiers MUST check this signature.
-	// All signatures are tagged with ID of the public key that generated them.
-	map<uint64,bytes> new_sig  = 2;
-	// OldSig, if successfully verified using the update_key of the entry
-	// currently bound to update.index, confirms that the old entry is willing
-	// to be replaced by the new entry.  Both the keyserver and verifiers MUST
-	// check this signature.
-	// All signatures are tagged with ID of the public key that generated them.
-	map<uint64,bytes> old_sig = 3;
+	// Both the keyserver and verifiers MUST check these signatures against the
+	// old profile's authorization policy AND the new profile's authorization
+	// policy. All signatures are tagged with ID of the public key that
+	// generated them.
+	map<fixed64,bytes> signatures  = 2;
 }
 
 // A user's profile, containing public keys and other information.
@@ -171,10 +170,10 @@ message Profile {
 message SignedEpochHead {
 	TimestampedEpochHead head = 1 // signed field, do not re-encode
 			[(gogoproto.customtype) = "TimestampedEpochHead_PreserveEncoding", (gogoproto.nullable) = false];
-	// Signature is used for authentication of ratification and MUST be
+	// Signatures is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
 	// All signatures are tagged with ID of the public key that generated them.
-	map<uint64,bytes> signature = 2;
+	map<fixed64,bytes> signatures = 2;
 }
 
 message TimestampedEpochHead {
@@ -213,29 +212,8 @@ message EpochHead {
 	bytes previous_summary_hash = 4;
 }
 
-// PublicKey wraps a public key of a cryptographically secure signature
-// scheme and verification metadata. Each verifier can have its own signature
-// format and needs to implement serialization and deserialization of its own
-// signatures. It is intentional that the PublicKey implementations ARE
-// ALLOWED to interpret the content of the message whose signature is being
-// verified. The ID of a public key is defined as the first 64 bits of the
-// protobuf-encoded public key (and interpreted as little-endian when a numeric
-// representation is required).
-message PublicKey {
-	oneof pubkey_type {
-		QuorumPublicKey quorum = 1;
-		bytes ed25519 = 2; // 32 bytes (<http://ed25519.cr.yp.to/>)
-		// possible additions:
-		// bytes pkcs_rsa2048_sha256 = 3;
-		// bytes ecdsa_p256_sha256 = 4;
-		// bytes sphincs = 5;
-		// TODO: time-restricted signature delegation a la TOR dirauths?
-		// This would make running a server without HSM significantly safer
-	}
-}
-
-// QuorumPublicKeyreturns "OK" if any the valid signatures from
-// map<uint64,signature> satisfy the quorum requirement.
+// AuthorizationPolicy is used to check whether some signatures make up
+// sufficient authorization to back an action.
 // This is used to implement the following:
 // 1. Account Recovery through service provider: if an user's entry has the
 // update key set to threshold(1,user,serviceprovider), the service
@@ -248,11 +226,29 @@ message PublicKey {
 // can use a threshold to limit the damage the compromise or loss of one
 // replica can do. Example threshold(2,freedonia,gilead,mordor).
 // 3. Adaptive key rollover during cryptocalypse.
-message QuorumPublicKey {
-	QuorumExpr quorum = 1;
-	// PublicKeys must not contain a QuorumPublicKey.
-	repeated PublicKey public_keys = 2
-			[(gogoproto.customtype) = "PublicKey_PreserveEncoding"];
+message AuthorizationPolicy {
+	map <fixed64, PublicKey> public_keys = 1;
+	oneof policy_type {
+		QuorumExpr quorum = 2;
+		// TODO: time-restricted signature delegation a la TOR dirauths?
+		// This would make running a server without HSM significantly safer
+	}
+}
+
+// PublicKey wraps a public key of a cryptographically secure signature
+// scheme and verification metadata. Each verifier can have its own signature
+// format and needs to implement serialization and deserialization of its own
+// signatures. The ID of a public key is defined as the first 64 bits of the
+// protobuf-encoded public key (and interpreted as little-endian when a numeric
+// representation is required).
+message PublicKey {
+	oneof pubkey_type {
+		bytes ed25519 = 1; // 32 bytes (<http://ed25519.cr.yp.to/>)
+		// possible additions:
+		// bytes pkcs_rsa2048_sha256 = 2;
+		// bytes ecdsa_p256_sha256 = 3;
+		// bytes sphincs = 4;
+	}
 }
 
 // QuorumExpr represents a function with type set<uint64> -> bool. An
@@ -263,7 +259,7 @@ message QuorumPublicKey {
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 message QuorumExpr {
 	uint32 threshold = 1; // required
-	repeated uint64 candidates = 2;
+	repeated fixed64 candidates = 2;
 	// QuorumExpr allows expressing contitions of the form "two out of these
 	// and three out of those".
 	// If an implementation chooses to ban recursive thresholding, it can do so
