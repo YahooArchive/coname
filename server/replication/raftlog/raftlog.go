@@ -75,10 +75,10 @@ func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing
 	return &proto.Nothing{}, l.node.Step(ctx, *msg)
 }
 
-// New initializes a replication.LogReplicator using an already open kv.DB.
+// Open initializes a replication.LogReplicator using an already open kv.DB.
 // TODO: config.Applied and config.Storage are useless for the caller, and
 // initialNodes and tickInterval are included; may want our own config struct
-func New(
+func Open(
 	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
 	listenAddr string, tls *tls.Config,
