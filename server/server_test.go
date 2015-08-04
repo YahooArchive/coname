@@ -88,6 +88,12 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
 	}
 
+	_, vrfSecret, err := vrf.GenerateKey(rand.Reader)
+	if err != nil {
+		teardown()
+		t.Fatal(err)
+	}
+
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &Config{
@@ -95,6 +101,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		ServerID:        replicaID,
 		ReplicaID:       replicaID,
 		RatificationKey: sk,
+		VRFSecret:       vrfSecret,
 
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
