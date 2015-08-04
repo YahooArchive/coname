@@ -85,10 +85,8 @@ type diskNode struct {
 
 type node struct {
 	diskNode
-	id         uint64
 	prefixBits []bool
-	children   [2]*node    // lazily loaded
-	tree       *MerkleTree // TODO: necessary?
+	children   [2]*node // lazily loaded
 }
 
 // NewSnapshot represents a snapshot that is being built up in memory.
@@ -137,7 +135,7 @@ func (snapshot *Snapshot) Lookup(indexBytes []byte) (
 		descendingRight := indexBits[len(n.prefixBits)]
 		siblingHash := n.childHashes[BitToIndex(!descendingRight)]
 		proof = append(proof, siblingHash[:])
-		childPointer, err := n.getChildPointer(descendingRight)
+		childPointer, err := snapshot.tree.getChildPointer(n, descendingRight)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -182,7 +180,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 	position := 0
 	// Traverse down the tree, following either the left or right child depending on the next bit.
 	for *nodePointer != nil && !(*nodePointer).isLeaf {
-		nodePointer, err = (*nodePointer).getChildPointer(indexBits[position])
+		nodePointer, err = snapshot.tree.getChildPointer(*nodePointer, indexBits[position])
 		if err != nil {
 			return
 		}
@@ -197,7 +195,6 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position],
-			tree:       snapshot.tree,
 		}
 	} else if bytes.Equal((*nodePointer).indexBytes, indexBytes) {
 		// We have an existing leaf at this index; just replace the value
@@ -213,7 +210,6 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 					isLeaf: false,
 				},
 				prefixBits: indexBits[:position],
-				tree:       snapshot.tree,
 			}
 			*nodePointer, nodePointer = newNode, &newNode.children[BitToIndex(indexBits[position])]
 			position++
@@ -224,7 +220,6 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 				isLeaf: false,
 			},
 			prefixBits: indexBits[:position],
-			tree:       snapshot.tree,
 		}
 		// Create the new leaf under the splitNode
 		newLeaf := &node{
@@ -234,7 +229,6 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 				commitment: commitment,
 			},
 			prefixBits: indexBits[:position+1],
-			tree:       snapshot.tree,
 		}
 		// Move the old leaf's index down
 		oldLeaf.prefixBits = oldLeafIndexBits[:position+1]
@@ -250,7 +244,7 @@ func (snapshot *NewSnapshot) Flush(wb kv.Batch) (flushed *Snapshot) {
 	if snapshot.root == nil {
 		flushed = &Snapshot{snapshot.tree, 0}
 	} else {
-		rootId, _ := snapshot.root.flush(wb)
+		rootId, _ := snapshot.tree.flushNode(snapshot.root, wb)
 		flushed = &Snapshot{snapshot.tree, rootId}
 	}
 	allocCountVal := make([]byte, 8)
@@ -283,38 +277,35 @@ func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
 		n := deserializeNode(nodeBytes)
 		return &node{
 			diskNode:   n,
-			id:         id,
 			prefixBits: prefixBits,
-			tree:       tree,
 		}, nil
 	}
 }
 
 // flush writes the updated nodes under this node to disk, returning the updated hash and ID of the
 // node.
-func (n *node) flush(wb kv.Batch) (id uint64, hash [HashBytes]byte) {
+func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [HashBytes]byte) {
 	for i := 0; i < 2; i++ {
 		if n.children[i] != nil {
-			n.childIds[i], n.childHashes[i] = n.children[i].flush(wb)
+			n.childIds[i], n.childHashes[i] = t.flushNode(n.children[i], wb)
 		}
 	}
-	id = n.tree.allocNodeId()
-	n.id = id
-	n.store(wb)
+	id = t.allocNodeId()
+	t.store(id, n, wb)
 	copy(hash[:], n.hash())
 	return
 }
 
-func (n *node) store(wb kv.Batch) {
-	wb.Put(n.tree.serializeKey(n.id, n.prefixBits), n.serialize())
+func (t *MerkleTree) store(id uint64, n *node, wb kv.Batch) {
+	wb.Put(t.serializeKey(id, n.prefixBits), n.serialize())
 }
 
-func (n *node) getChildPointer(isRight bool) (**node, error) {
+func (t *MerkleTree) getChildPointer(n *node, isRight bool) (**node, error) {
 	ix := BitToIndex(isRight)
 	if n.childIds[ix] != 0 && n.children[ix] == nil {
 		// lazy-load the child
 		childIndex := append(n.prefixBits, isRight)
-		child, err := n.tree.loadNode(n.childIds[ix], childIndex)
+		child, err := t.loadNode(n.childIds[ix], childIndex)
 		if err != nil {
 			return nil, err
 		}
