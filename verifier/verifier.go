@@ -122,42 +122,38 @@ func (vr *Verifier) shuttingDown() bool {
 // either interpret data and modify their mutable arguments OR interact with the
 // network and disk, but not both.
 func (vr *Verifier) run() {
-	for !vr.shuttingDown() {
-		keyserverConnection, err := grpc.Dial(vr.keyserverAddr, grpc.WithTimeout(time.Second), grpc.WithTransportCredentials(vr.auth))
-		if err != nil {
-			log.Printf("dial %s: %s", vr.keyserverAddr, err)
-			continue
-		}
-		vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
-		stream, err := vr.keyserver.VerifierStream(context.TODO(), &proto.VerifierStreamRequest{
-			Start:    vr.vs.NextIndex,
-			PageSize: math.MaxUint64,
-		})
-		if err != nil {
-			keyserverConnection.Close()
-			log.Printf("VerifierStream: %s", err)
-			continue
-		}
+	keyserverConnection, err := grpc.Dial(vr.keyserverAddr, grpc.WithTimeout(time.Second), grpc.WithTransportCredentials(vr.auth))
+	if err != nil {
+		log.Fatalf("dial %s: %s", vr.keyserverAddr, err)
+	}
+	vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
+	stream, err := vr.keyserver.VerifierStream(context.TODO(), &proto.VerifierStreamRequest{
+		Start:    vr.vs.NextIndex,
+		PageSize: math.MaxUint64,
+	})
+	if err != nil {
+		keyserverConnection.Close()
+		log.Fatalf("VerifierStream: %s", err)
+	}
 
-		wb := vr.db.NewBatch()
-		for !vr.shuttingDown() {
-			var step *proto.VerifierStep
-			step, err = stream.Recv()
-			if err != nil {
-				log.Printf("VerifierStream.Recv: %s", err)
-				break
+	wb := vr.db.NewBatch()
+	for !vr.shuttingDown() {
+		var step *proto.VerifierStep
+		step, err = stream.Recv()
+		if err != nil {
+			log.Printf("VerifierStream.Recv: %s", err)
+			break
+		}
+		wb.Put(tableVerifierLog(vr.vs.NextIndex), proto.MustMarshal(step))
+		deferredIO := vr.step(step, &vr.vs, wb)
+		vr.vs.NextIndex++
+		if deferredIO != nil {
+			wb.Put(tableVerifierState, proto.MustMarshal(&vr.vs))
+			if err := vr.db.Write(wb); err != nil {
+				log.Panicf("sync step to db: %s", err)
 			}
-			wb.Put(tableVerifierLog(vr.vs.NextIndex), proto.MustMarshal(step))
-			deferredIO := vr.step(step, &vr.vs, wb)
-			vr.vs.NextIndex++
-			if deferredIO != nil {
-				wb.Put(tableVerifierState, proto.MustMarshal(&vr.vs))
-				if err := vr.db.Write(wb); err != nil {
-					log.Panicf("sync step to db: %s", err)
-				}
-				wb.Reset()
-				deferredIO()
-			}
+			wb.Reset()
+			deferredIO()
 		}
 	}
 }
