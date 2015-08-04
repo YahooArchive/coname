@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
+	"math/rand"
 	"os"
 	"testing"
 
@@ -197,5 +199,290 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 				}
 			}
 		}
+	})
+}
+
+type Map interface {
+	GetSnapshot(nr uint64) MapSnapshot
+}
+
+type MapSnapshot interface {
+	GetNr() uint64
+	Lookup(indexBytes []byte) (commitment []byte)
+	BeginModification() NewMapSnapshot
+}
+
+type NewMapSnapshot interface {
+	Set(indexBytes, commitment []byte)
+	Flush() MapSnapshot
+}
+
+type TestMerkleTree struct {
+	MerkleTree
+}
+
+type TestSnapshot Snapshot
+type TestNewSnapshot NewSnapshot
+
+var _ Map = (*TestMerkleTree)(nil)
+var _ MapSnapshot = (*TestSnapshot)(nil)
+var _ NewMapSnapshot = (*TestNewSnapshot)(nil)
+
+func (t *TestMerkleTree) GetSnapshot(nr uint64) MapSnapshot {
+	return (*TestSnapshot)(t.MerkleTree.GetSnapshot(nr))
+}
+
+func (t *TestSnapshot) GetNr() uint64 {
+	return t.Nr
+}
+
+func (t *TestSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
+	commitment, _, _, err := (*Snapshot)(t).Lookup(indexBytes)
+	// TODO check proof
+	if err != nil {
+		panic(err)
+	}
+	return
+}
+
+func (t *TestSnapshot) BeginModification() NewMapSnapshot {
+	newSnap, err := (*Snapshot)(t).BeginModification()
+	if err != nil {
+		panic(err)
+	}
+	return (*TestNewSnapshot)(newSnap)
+}
+
+func (t *TestNewSnapshot) Set(indexBytes, commitment []byte) {
+	err := (*NewSnapshot)(t).Set(indexBytes, commitment)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (t *TestNewSnapshot) Flush() MapSnapshot {
+	newSnap := (*NewSnapshot)(t)
+	db := newSnap.Snapshot.tree.db
+	wb := db.NewBatch()
+	flushed := (*TestSnapshot)(newSnap.Flush(wb))
+	err := db.Write(wb)
+	if err != nil {
+		panic(err)
+	}
+	return flushed
+}
+
+type SimpleMap struct {
+	snapshots []*SimpleSnapshot
+}
+
+type SimpleSnapshot struct {
+	nr       uint64
+	entries  map[[HashBytes]byte][HashBytes]byte
+	wholeMap *SimpleMap
+}
+
+type SimpleNewSnapshot struct {
+	SimpleSnapshot
+}
+
+var _ Map = (*SimpleMap)(nil)
+var _ MapSnapshot = (*SimpleSnapshot)(nil)
+var _ NewMapSnapshot = (*SimpleNewSnapshot)(nil)
+
+func (m *SimpleMap) GetSnapshot(nr uint64) MapSnapshot {
+	if len(m.snapshots) == 0 {
+		m.snapshots = append(m.snapshots, &SimpleSnapshot{wholeMap: m, entries: make(map[[HashBytes]byte][HashBytes]byte)})
+	}
+	return m.snapshots[nr]
+}
+
+func (s *SimpleSnapshot) GetNr() uint64 {
+	return s.nr
+}
+
+func (s *SimpleSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
+	var bytes [HashBytes]byte
+	copy(bytes[:], indexBytes)
+	if comm, ok := s.entries[bytes]; ok {
+		return comm[:]
+	} else {
+		return nil
+	}
+}
+
+func (s *SimpleSnapshot) clone() (cloned *SimpleSnapshot) {
+	cloned = &SimpleSnapshot{nr: s.nr, entries: make(map[[HashBytes]byte][HashBytes]byte), wholeMap: s.wholeMap}
+	for k, v := range s.entries {
+		cloned.entries[k] = v
+	}
+	return
+}
+
+func (s *SimpleSnapshot) BeginModification() NewMapSnapshot {
+	return &SimpleNewSnapshot{*s.clone()}
+}
+
+func (s *SimpleNewSnapshot) Set(indexBytes, commitment []byte) {
+	var bytes, comm [HashBytes]byte
+	copy(bytes[:], indexBytes)
+	copy(comm[:], commitment)
+	s.entries[bytes] = comm
+}
+
+func (s *SimpleNewSnapshot) Flush() MapSnapshot {
+	snap := s.SimpleSnapshot.clone()
+	snap.nr = uint64(len(s.wholeMap.snapshots))
+	s.wholeMap.snapshots = append(s.wholeMap.snapshots, snap)
+	return snap
+}
+
+type ComparingMap struct {
+	Implementations []Map
+}
+
+type ComparingSnapshot struct {
+	Snapshots []MapSnapshot
+}
+
+type NewComparingSnapshot struct {
+	NewSnapshots []NewMapSnapshot
+}
+
+var _ Map = (*ComparingMap)(nil)
+var _ MapSnapshot = (*ComparingSnapshot)(nil)
+var _ NewMapSnapshot = (*NewComparingSnapshot)(nil)
+
+func (m *ComparingMap) GetSnapshot(nr uint64) MapSnapshot {
+	if nr == 0 {
+		snapshots := []MapSnapshot{}
+		for _, impl := range m.Implementations {
+			snapshots = append(snapshots, impl.GetSnapshot(0))
+		}
+		return &ComparingSnapshot{snapshots}
+	} else {
+		panic("not implemented")
+	}
+}
+
+func (s *ComparingSnapshot) GetNr() uint64 {
+	panic("not implemented") // might be a sign this design is somewhat silly
+}
+
+func (s *ComparingSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
+	commitment = s.Snapshots[0].Lookup(indexBytes)
+	for _, impl := range s.Snapshots {
+		c := impl.Lookup(indexBytes)
+		if !bytes.Equal(c, commitment) {
+			log.Panicf("Lookup %x differed: %x vs %x", indexBytes, commitment, c)
+		}
+	}
+	return
+}
+
+func (s *ComparingSnapshot) BeginModification() NewMapSnapshot {
+	snapshots := []NewMapSnapshot{}
+	for _, impl := range s.Snapshots {
+		snapshots = append(snapshots, impl.BeginModification())
+	}
+	return &NewComparingSnapshot{snapshots}
+}
+
+func (s *NewComparingSnapshot) Set(indexBytes, commitment []byte) {
+	for _, snap := range s.NewSnapshots {
+		snap.Set(indexBytes, commitment)
+	}
+}
+
+func (s *NewComparingSnapshot) Flush() MapSnapshot {
+	snapshots := []MapSnapshot{}
+	for _, newSnap := range s.NewSnapshots {
+		snapshots = append(snapshots, newSnap.Flush())
+	}
+	return &ComparingSnapshot{snapshots}
+}
+
+const dbg = 2
+
+func compareImplementationsRandomly(implementations []Map, itCount, byteRange, allowedOps int, t testing.TB) {
+	bytez := func(b byte) [HashBytes]byte {
+		var bytes [HashBytes]byte
+		for i := range bytes {
+			bytes[i] = b<<4 | b
+		}
+		return bytes
+	}
+	randBytes := func() []byte {
+		var bs [HashBytes]byte
+		if byteRange < 0 {
+			bs = bytez(byte(rand.Intn(-byteRange)))
+			bs[0] = byte(rand.Intn(-byteRange))
+			bs[HashBytes-1] = byte(rand.Intn(-byteRange))
+			return bs[:]
+		} else {
+			for i := range bs {
+				bs[i] = byte(rand.Intn(byteRange))
+			}
+			return bs[:]
+		}
+	}
+	comparer := ComparingMap{implementations}
+	snapshots := []MapSnapshot{comparer.GetSnapshot(0)}
+	changingSnapshots := []NewMapSnapshot{}
+	existingKeys := [][]byte{}
+	for i := 0; i < itCount; i++ {
+		if i%1000 == 0 && testing.Verbose() {
+			fmt.Printf("operation %v", i)
+		}
+		// TODO: sometimes bias towards long snapshot chains, refresh snapshots, refresh the whole thing
+		// (and then all snapshots)
+		switch rand.Intn(allowedOps) {
+		case 1:
+			if len(changingSnapshots) > 0 {
+				k := randBytes()
+				existingKeys = append(existingKeys, k)
+				v := randBytes()
+				i := len(changingSnapshots) - 1 // rand.Intn(len(changingSnapshots))
+				if dbg > 1 {
+					log.Printf("snap %x: [%x] <- %x", i, k, v)
+				}
+				changingSnapshots[i].Set(k, v)
+			}
+		case 2:
+			i := rand.Intn(len(snapshots))
+			log.Printf("begin %x -> %x", i, len(changingSnapshots))
+			changingSnapshots = append(changingSnapshots, snapshots[i].BeginModification())
+		case 3:
+			if len(changingSnapshots) > 0 {
+				i := len(changingSnapshots) - 1 // rand.Intn(len(changingSnapshots))
+				log.Printf("flush %x -> %x", i, len(snapshots))
+				snapshots = append(snapshots, changingSnapshots[i].Flush())
+				changingSnapshots = append(changingSnapshots[:i], changingSnapshots[i+1:]...)
+			}
+		default:
+			var k []byte
+			i := rand.Intn(len(snapshots))
+			if rand.Intn(2) == 0 || len(existingKeys) == 0 {
+				k = randBytes()
+				log.Printf("snap %x: random [%x] =? ", i, k)
+			} else {
+				// Do a lookup with a key that has been used in any snapshot
+				k = existingKeys[rand.Intn(len(existingKeys))]
+				log.Printf("snap %x: old [%x] =? ", i, k)
+			}
+			v := snapshots[i].Lookup(k)
+			log.Printf("  %x", v)
+		}
+	}
+}
+
+func TestBrutally(t *testing.T) {
+	withDB(func(db kv.DB) {
+		m, err := AccessMerkleTree(db, []byte("xyz"))
+		if err != nil {
+			panic(err)
+		}
+		impls := []Map{&SimpleMap{}, &TestMerkleTree{*m}}
+		compareImplementationsRandomly(impls, 1000, -255, 20, t)
 	})
 }

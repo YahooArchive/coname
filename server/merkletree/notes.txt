@@ -20,5 +20,9 @@ Questions
 - Make naming completely generic?
 	- commitment -> value
 
+Comments
+- Would be even nicer if you couldn't get access to a new snapshot number until
+  the writebatch was flushed
+
 TODO
 - brutal tests
