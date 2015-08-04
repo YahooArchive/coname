@@ -82,7 +82,7 @@ func New(
 	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
 	listenAddr string, listenTLS *tls.Config,
-	peerDialer func(addr string, timeout time.Duration) (net.Conn, error),
+	peerDialer func(id uint64) (net.Conn, error),
 ) (replication.LogReplicator, error) {
 	confState := raftpb.ConfState{}
 	for _, node := range initialNodes {
