@@ -204,7 +204,7 @@ func TestLeveldbLogGetCommittedSize(t *testing.T) {
 	if len(entriesLimited) != 2 {
 		s := 0
 		for _, e := range entriesLimited {
-			s += e.Size()
+			s += entrySize(e)
 		}
 		t.Errorf("CommittedEntries asked for 16 bytes, got %d", s)
 	}

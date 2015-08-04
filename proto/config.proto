@@ -16,6 +16,7 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
+import "duration.proto";
 
 message Config {
 	repeated RealmConfig realms = 1;
@@ -32,11 +33,15 @@ message RealmConfig {
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
 	string URL = 3;
-	// PublicKeys contains public keys of all verifiers of this realm,
-	// including the keyserver.
-	map<uint64,PublicKey> public_keys = 4;
-	// quorum_requirement specifies which verifiers must have ratified the
-	// result for it to be accepted. It is the convention to always require the
-	// keyserver's ratification here.
-	QuorumExpr quorum_requirement = 5;
+	// VRFPublic is the public key of the verifiable random function used for
+	// user id privacy. Here it is used to check that the anti-spam obfuscation
+	// layer is properly used as a one-to-one mapping between real to
+	// obfuscated usernames.
+	bytes VRFPublic  = 4;
+	// VerificationPolicy specifies the conditions on how a lookup must be
+	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
+	// have a NoOlderThan entry.
+	AuthorizationPolicy verification_policy = 5;
+	// NoOlderThan is used to set expiration times on verifier signatures.
+	map<fixed64, Duration> no_older_than = 6;
 }

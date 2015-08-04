@@ -63,7 +63,7 @@ func chain(fs ...func()) func() {
 
 // setupKeyserver initializes a keyserver, but does not start it and does not
 // wait for it to sign anything.
-func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
@@ -81,15 +81,17 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 		teardown()
 		t.Fatal(err)
 	}
-	pked := &proto.PublicKey_PreserveEncoding{proto.PublicKey{Ed25519: pk[:]}, nil}
-	pked.UpdateEncoding()
-	replicaID := common.KeyID(&pked.PublicKey)
+	pked := &proto.PublicKey{Ed25519: pk[:]}
+	replicaID := common.KeyID(pked)
+	pol = &proto.AuthorizationPolicy{
+		PublicKeys: map[uint64]*proto.PublicKey{replicaID: pked},
+		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
+	}
 
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &Config{
 		Realm:           testingRealm,
-		InitialReplicas: []*Replica{&Replica{&pked.PublicKey, "localhost:0"}},
 		ServerID:        replicaID,
 		ReplicaID:       replicaID,
 		RatificationKey: sk,
@@ -110,7 +112,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, caCert *x509.Certifica
 }
 
 func TestKeyserverStartStop(t *testing.T) {
-	cfg, db, _, _, _, teardown := setupKeyserver(t)
+	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
 	ks, err := Open(cfg, db, clock.New())
 	if err != nil {
@@ -121,7 +123,7 @@ func TestKeyserverStartStop(t *testing.T) {
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
-	cfg, db, _, _, _, teardown := setupKeyserver(t)
+	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
 	// db = logkv.WithDefaultLogging(db)
 
@@ -177,7 +179,7 @@ func withServer(func(*testing.T, *Keyserver)) {
 }
 
 func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, _, caPool, _, teardown := setupKeyserver(t)
+	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
 	ks, err := Open(cfg, db, clock.New())
 	if err != nil {
@@ -205,7 +207,7 @@ func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
 
 // setupVerifier initializes a verifier, but does not start it and does not
 // wait for it to sign anything.
-func setupVerifier(t *testing.T, keyserverVerif *proto.PublicKey, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
+func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
 	dir, err := ioutil.TempDir("", "verifier")
 	if err != nil {
 		t.Fatal(err)
@@ -228,8 +230,8 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.PublicKey, keyserverAddr 
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &verifier.Config{
 		Realm:          testingRealm,
-		KeyserverVerif: keyserverVerif,
 		KeyserverAddr:  keyserverAddr,
+		KeyserverVerif: keyserverVerif,
 
 		ID:              common.KeyID(sv),
 		RatificationKey: sk,
@@ -242,7 +244,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.PublicKey, keyserverAddr 
 // setupRealm initializes one keyserver and nVerifiers verifiers, and then
 // waits until each one of them has signed an epoch.
 func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, clk *clock.Mock, verifiers []uint64, teardown func()) {
-	cfg, db, caCert, caPool, caKey, teardown := setupKeyserver(t)
+	cfg, db, pol, caCert, caPool, caKey, teardown := setupKeyserver(t)
 	ksDone := make(chan struct{})
 	var ksDoneOnce sync.Once
 	db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
@@ -275,14 +277,14 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 			var sr proto.SignedEpochHead
 			sr.Unmarshal(update.Value)
 			<-vrBarrier
-			if _, s := sr.Signature[vcfg.ID]; s && sr.Head.Head.Epoch == 1 {
+			if _, s := sr.Signatures[vcfg.ID]; s && sr.Head.Head.Epoch == 1 {
 				doneOnce.Do(func() { doneVerifiers <- doneVerifier{verifierTeardown, vcfg.ID} })
 			}
 		})
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, verifierTeardown = setupVerifier(t, &proto.PublicKey{Quorum: MajorityOfReplicas(cfg.InitialReplicas)}, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			vcfg, vdb, verifierTeardown = setupVerifier(t, pol, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
 			_, err := verifier.Start(vcfg, vdb)

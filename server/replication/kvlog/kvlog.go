@@ -125,11 +125,11 @@ func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry
 			}
 			return nil, err
 		}
-		if len(ret) != 0 && size+uint64(v.Size()) > maxSize {
+		if len(ret) != 0 && size+uint64(entrySize(v)) > maxSize {
 			return
 		}
 		ret = append(ret, v)
-		size += uint64(v.Size())
+		size += uint64(entrySize(v))
 		if size >= maxSize {
 			return
 		}
@@ -146,7 +146,7 @@ func (l *kvLog) get(i uint64) (le replication.LogEntry, err error) {
 	if err != nil {
 		return le, err
 	}
-	le.Unmarshal(entryBytes)
+	unmarshalEntry(&le, entryBytes)
 	return
 }
 
@@ -176,7 +176,7 @@ func (l *kvLog) run() {
 		case prop := <-l.propose:
 			binary.BigEndian.PutUint64(dbkey[len(l.prefix):], l.nextIndex)
 			l.nextIndex++
-			l.db.Put(dbkey[:], prop.Marshal())
+			l.db.Put(dbkey[:], marshalEntry(prop))
 			select {
 			case <-l.stop:
 				return

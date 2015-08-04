@@ -4,7 +4,7 @@
 
 package proto
 
-import proto1 "github.com/gogo/protobuf/proto"
+import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
@@ -14,12 +14,14 @@ import (
 )
 
 import fmt "fmt"
+import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
+import github_com_gogo_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
 
 import io "io"
 
@@ -43,8 +45,9 @@ func (*VerifierStreamRequest) ProtoMessage() {}
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
 type VerifierStep struct {
-	Update *SignedEntryUpdate `protobuf:"bytes,1,opt" json:"Update,omitempty"`
-	Epoch  *SignedEpochHead   `protobuf:"bytes,2,opt" json:"Epoch,omitempty"`
+	Update        *SignedEntryUpdate  `protobuf:"bytes,1,opt" json:"Update,omitempty"`
+	Epoch         *SignedEpochHead    `protobuf:"bytes,2,opt" json:"Epoch,omitempty"`
+	ChanngePolicy *SignedPolicyChange `protobuf:"bytes,3,opt" json:"ChanngePolicy,omitempty"`
 }
 
 func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
@@ -60,6 +63,35 @@ func (m *VerifierStep) GetUpdate() *SignedEntryUpdate {
 func (m *VerifierStep) GetEpoch() *SignedEpochHead {
 	if m != nil {
 		return m.Epoch
+	}
+	return nil
+}
+
+func (m *VerifierStep) GetChanngePolicy() *SignedPolicyChange {
+	if m != nil {
+		return m.ChanngePolicy
+	}
+	return nil
+}
+
+type SignedPolicyChange struct {
+	Signatures map[uint64][]byte    `protobuf:"bytes,1,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	NewPolicy  *AuthorizationPolicy `protobuf:"bytes,2,opt,name=new_policy" json:"new_policy,omitempty"`
+}
+
+func (m *SignedPolicyChange) Reset()      { *m = SignedPolicyChange{} }
+func (*SignedPolicyChange) ProtoMessage() {}
+
+func (m *SignedPolicyChange) GetSignatures() map[uint64][]byte {
+	if m != nil {
+		return m.Signatures
+	}
+	return nil
+}
+
+func (m *SignedPolicyChange) GetNewPolicy() *AuthorizationPolicy {
+	if m != nil {
+		return m.NewPolicy
 	}
 	return nil
 }
@@ -298,6 +330,9 @@ func (this *VerifierStep) VerboseEqual(that interface{}) error {
 	if !this.Epoch.Equal(that1.Epoch) {
 		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
 	}
+	if !this.ChanngePolicy.Equal(that1.ChanngePolicy) {
+		return fmt.Errorf("ChanngePolicy this(%v) Not Equal that(%v)", this.ChanngePolicy, that1.ChanngePolicy)
+	}
 	return nil
 }
 func (this *VerifierStep) Equal(that interface{}) bool {
@@ -324,6 +359,75 @@ func (this *VerifierStep) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.Epoch.Equal(that1.Epoch) {
+		return false
+	}
+	if !this.ChanngePolicy.Equal(that1.ChanngePolicy) {
+		return false
+	}
+	return true
+}
+func (this *SignedPolicyChange) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*SignedPolicyChange)
+	if !ok {
+		return fmt.Errorf("that is not of type *SignedPolicyChange")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *SignedPolicyChange but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *SignedPolicyChangebut is not nil && this == nil")
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
+		}
+	}
+	if !this.NewPolicy.Equal(that1.NewPolicy) {
+		return fmt.Errorf("NewPolicy this(%v) Not Equal that(%v)", this.NewPolicy, that1.NewPolicy)
+	}
+	return nil
+}
+func (this *SignedPolicyChange) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*SignedPolicyChange)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return false
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return false
+		}
+	}
+	if !this.NewPolicy.Equal(that1.NewPolicy) {
 		return false
 	}
 	return true
@@ -387,7 +491,27 @@ func (this *VerifierStep) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.VerifierStep{` +
 		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch) + `}`}, ", ")
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`ChanngePolicy:` + fmt.Sprintf("%#v", this.ChanngePolicy) + `}`}, ", ")
+	return s
+}
+func (this *SignedPolicyChange) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&proto.SignedPolicyChange{` +
+		`Signatures:` + mapStringForSignatures,
+		`NewPolicy:` + fmt.Sprintf("%#v", this.NewPolicy) + `}`}, ", ")
 	return s
 }
 func valueToGoStringVerifier(v interface{}, typ string) string {
@@ -478,6 +602,65 @@ func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n2
 	}
+	if m.ChanngePolicy != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.ChanngePolicy.Size()))
+		n3, err := m.ChanngePolicy.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	return i, nil
+}
+
+func (m *SignedPolicyChange) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedPolicyChange) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
+			data[i] = 0xa
+			i++
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovVerifier(uint64(len(v)))
+			i = encodeVarintVerifier(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Verifier(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintVerifier(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	if m.NewPolicy != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.NewPolicy.Size()))
+		n4, err := m.NewPolicy.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
 	return i, nil
 }
 
@@ -543,6 +726,31 @@ func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
 	if r.Intn(10) != 0 {
 		this.Epoch = NewPopulatedSignedEpochHead(r, easy)
 	}
+	if r.Intn(10) != 0 {
+		this.ChanngePolicy = NewPopulatedSignedPolicyChange(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedPolicyChange(r randyVerifier, easy bool) *SignedPolicyChange {
+	this := &SignedPolicyChange{}
+	if r.Intn(10) != 0 {
+		v1 := r.Intn(10)
+		this.Signatures = make(map[uint64][]byte)
+		for i := 0; i < v1; i++ {
+			v2 := r.Intn(100)
+			v3 := uint64(uint64(r.Uint32()))
+			this.Signatures[v3] = make([]byte, v2)
+			for i := 0; i < v2; i++ {
+				this.Signatures[v3][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.NewPolicy = NewPopulatedAuthorizationPolicy(r, easy)
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -574,9 +782,9 @@ func randUTF8RuneVerifier(r randyVerifier) rune {
 	return rune(ru + 61)
 }
 func randStringVerifier(r randyVerifier) string {
-	v1 := r.Intn(100)
-	tmps := make([]rune, v1)
-	for i := 0; i < v1; i++ {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
 		tmps[i] = randUTF8RuneVerifier(r)
 	}
 	return string(tmps)
@@ -598,11 +806,11 @@ func randFieldVerifier(data []byte, r randyVerifier, fieldNumber int, wire int) 
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateVerifier(data, uint64(key))
-		v2 := r.Int63()
+		v5 := r.Int63()
 		if r.Intn(2) == 0 {
-			v2 *= -1
+			v5 *= -1
 		}
-		data = encodeVarintPopulateVerifier(data, uint64(v2))
+		data = encodeVarintPopulateVerifier(data, uint64(v5))
 	case 1:
 		data = encodeVarintPopulateVerifier(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -650,6 +858,28 @@ func (m *VerifierStep) Size() (n int) {
 		l = m.Epoch.Size()
 		n += 1 + l + sovVerifier(uint64(l))
 	}
+	if m.ChanngePolicy != nil {
+		l = m.ChanngePolicy.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	return n
+}
+
+func (m *SignedPolicyChange) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovVerifier(uint64(len(v)))
+			n += mapEntrySize + 1 + sovVerifier(uint64(mapEntrySize))
+		}
+	}
+	if m.NewPolicy != nil {
+		l = m.NewPolicy.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
 	return n
 }
 
@@ -690,6 +920,28 @@ func (this *VerifierStep) String() string {
 	s := strings.Join([]string{`&VerifierStep{`,
 		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
 		`Epoch:` + strings.Replace(fmt.Sprintf("%v", this.Epoch), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`ChanngePolicy:` + strings.Replace(fmt.Sprintf("%v", this.ChanngePolicy), "SignedPolicyChange", "SignedPolicyChange", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedPolicyChange) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&SignedPolicyChange{`,
+		`Signatures:` + mapStringForSignatures + `,`,
+		`NewPolicy:` + strings.Replace(fmt.Sprintf("%v", this.NewPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -855,6 +1107,183 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 				m.Epoch = &SignedEpochHead{}
 			}
 			if err := m.Epoch.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ChanngePolicy", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ChanngePolicy == nil {
+				m.ChanngePolicy = &SignedPolicyChange{}
+			}
+			if err := m.ChanngePolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipVerifier(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *SignedPolicyChange) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Signatures == nil {
+				m.Signatures = make(map[uint64][]byte)
+			}
+			m.Signatures[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewPolicy", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.NewPolicy == nil {
+				m.NewPolicy = &AuthorizationPolicy{}
+			}
+			if err := m.NewPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

@@ -22,26 +22,14 @@ import (
 // VerifySignature returns true iff sig is a valid signature of message by
 // verifier.  verifier, message, sig : &const // none of the inputs are
 // modified
-func VerifySignature(pk *proto.PublicKey, message []byte, sigs map[uint64][]byte) bool {
+func VerifySignature(pk *proto.PublicKey, message []byte, sig []byte) bool {
 	switch {
 	case pk.Ed25519 != nil:
 		var edpk [32]byte
-		var copySig [64]byte
+		var edsig [64]byte
 		copy(edpk[:], pk.Ed25519[:])
-		sig, present := sigs[KeyID(pk)]
-		if !present {
-			return false
-		}
-		copy(copySig[:], sig)
-		return ed25519.Verify(&edpk, message, &copySig)
-	case pk.Quorum != nil:
-		have := make(map[uint64]struct{})
-		for _, pk2 := range pk.Quorum.PublicKeys {
-			if VerifySignature(&pk2.PublicKey, message, sigs) {
-				have[KeyID(&pk2.PublicKey)] = struct{}{}
-			}
-		}
-		return CheckQuorum(pk.Quorum.Quorum, have)
+		copy(edsig[:], sig)
+		return ed25519.Verify(&edpk, message, &edsig)
 	default:
 		return false
 	}
