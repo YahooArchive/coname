@@ -15,12 +15,17 @@
 package raftlog
 
 import (
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
 	"math"
+	"net"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/andres-erbsen/clock"
 	"github.com/coreos/etcd/raft"
@@ -53,6 +58,9 @@ type raftLog struct {
 	leaderHintSet chan bool
 	leaderHint    bool
 
+	grpcServer *grpc.Server
+	grpcListen net.Listener
+
 	currentPeers map[uint64]proto.RaftClient
 
 	stopOnce sync.Once
@@ -73,12 +81,14 @@ func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing
 func New(
 	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
+	listenAddr string, listenTLS *tls.Config,
+	peerDialer func(addr string, timeout time.Duration) (net.Conn, error),
 ) (replication.LogReplicator, error) {
 	confState := raftpb.ConfState{}
 	for _, node := range initialNodes {
 		confState.Nodes = append(confState.Nodes, node.ID)
 	}
-	return &raftLog{
+	l := &raftLog{
 		config:        *config,
 		initialNodes:  initialNodes,
 		storage:       openRaftStorage(db, prefix, confState),
@@ -89,7 +99,16 @@ func New(
 		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
-	}, nil
+	}
+
+	var err error
+	l.grpcListen, err = net.Listen("tcp", listenAddr)
+	if err != nil {
+		return nil, err
+	}
+	l.grpcServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(listenTLS)))
+	proto.RegisterRaftServer(l.grpcServer, l)
+	return l, nil
 }
 
 // Start implements replication.LogReplicator
@@ -108,6 +127,7 @@ func (l *raftLog) Start(lo uint64) error {
 		}
 		l.node = raft.StartNode(&l.config, l.initialNodes)
 	}
+	go l.grpcServer.Serve(l.grpcListen)
 	go l.run()
 	return nil
 }
@@ -115,6 +135,7 @@ func (l *raftLog) Start(lo uint64) error {
 // Stop implements replication.LogReplicator
 func (l *raftLog) Stop() error {
 	l.stopOnce.Do(func() {
+		l.grpcServer.Stop()
 		close(l.stop)
 		<-l.stopped
 	})
