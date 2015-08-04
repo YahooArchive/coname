@@ -122,7 +122,7 @@ func (vr *Verifier) shuttingDown() bool {
 // either interpret data and modify their mutable arguments OR interact with the
 // network and disk, but not both.
 func (vr *Verifier) run() {
-	keyserverConnection, err := grpc.Dial(vr.keyserverAddr, grpc.WithTimeout(time.Second), grpc.WithTransportCredentials(vr.auth))
+	keyserverConnection, err := grpc.Dial(vr.keyserverAddr, grpc.WithTransportCredentials(vr.auth))
 	if err != nil {
 		log.Fatalf("dial %s: %s", vr.keyserverAddr, err)
 	}
