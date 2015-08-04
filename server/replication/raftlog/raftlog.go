@@ -58,10 +58,10 @@ type raftLog struct {
 	leaderHintSet chan bool
 	leaderHint    bool
 
-	grpcServer *grpc.Server
-	grpcListen net.Listener
-
-	currentPeers map[uint64]proto.RaftClient
+	grpcServer       *grpc.Server
+	grpcListen       net.Listener
+	dialer, dialAuth grpc.DialOption
+	grpcClientCache  map[uint64]proto.RaftClient
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -81,13 +81,23 @@ func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing
 func New(
 	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
-	listenAddr string, listenTLS *tls.Config,
+	listenAddr string, tls *tls.Config,
 	peerDialer func(id uint64) (net.Conn, error),
 ) (replication.LogReplicator, error) {
 	confState := raftpb.ConfState{}
 	for _, node := range initialNodes {
 		confState.Nodes = append(confState.Nodes, node.ID)
 	}
+
+	dialer := grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
+		var id uint64
+		if _, err := fmt.Sscanf("%x", addr, &id); err != nil {
+			log.Panicf("raft dial address %q not internally consistent: %s", addr, err)
+		}
+		return peerDialer(id)
+	})
+	dialAuth := grpc.WithTransportCredentials(credentials.NewTLS(tls))
+
 	l := &raftLog{
 		config:        *config,
 		initialNodes:  initialNodes,
@@ -97,6 +107,8 @@ func New(
 		tickInterval:  tickInterval,
 		leaderHintSet: make(chan bool, COMMITTED_BUFFER),
 		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
+		dialer:        dialer,
+		dialAuth:      dialAuth,
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
 	}
@@ -106,7 +118,7 @@ func New(
 	if err != nil {
 		return nil, err
 	}
-	l.grpcServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(listenTLS)))
+	l.grpcServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(tls)))
 	proto.RegisterRaftServer(l.grpcServer, l)
 	return l, nil
 }
@@ -127,6 +139,7 @@ func (l *raftLog) Start(lo uint64) error {
 		}
 		l.node = raft.StartNode(&l.config, l.initialNodes)
 	}
+
 	go l.grpcServer.Serve(l.grpcListen)
 	go l.run()
 	return nil
@@ -194,7 +207,9 @@ func (l *raftLog) run() {
 				log.Panicf("snapshots not supported")
 			}
 			l.storage.save(rd.HardState, rd.Entries)
-			// TODO send(rd.Messages)
+			for i := range rd.Messages {
+				l.send(&rd.Messages[i])
+			}
 			for _, entry := range rd.CommittedEntries {
 				switch entry.Type {
 				case raftpb.EntryConfChange:
@@ -205,15 +220,38 @@ func (l *raftLog) run() {
 				default:
 					l.waitCommitted <- replication.LogEntry{Data: entry.Data}
 				}
-				l.node.Advance() // let Raft proceed
 			}
+
 			leaderHint := rd.SoftState.RaftState == raft.StateLeader
+			l.node.Advance() // let Raft proceed
 			if l.leaderHint != leaderHint {
 				l.leaderHint = leaderHint
 				l.leaderHintSet <- leaderHint
 			}
 		}
 	}
+}
+
+// send synchronouslt accesses l.grpcConnectionCache and then asynchronously
+// sends msg to msg.To, reporting an error if necessary.
+func (l *raftLog) send(msg *raftpb.Message) {
+	c, ok := l.grpcClientCache[msg.To]
+	if !ok {
+		cc, err := grpc.Dial(fmt.Sprintf("%x", msg.To), l.dialer, l.dialAuth)
+		if err != nil {
+			log.Printf("raftlog dial %x: %s", msg.To, err)
+			go l.node.ReportUnreachable(msg.To)
+		}
+		c = proto.NewRaftClient(cc)
+		l.grpcClientCache[msg.To] = c
+	}
+	go func(msg raftpb.Message) {
+		_, err := c.Step(context.TODO(), &msg)
+		if err != nil {
+			log.Printf("raftlog send to %x: %s", msg.To, err)
+			l.node.ReportUnreachable(msg.To)
+		}
+	}(*msg)
 }
 
 // Needs to be threadsafe; right now, carries no in-memory mutable state
