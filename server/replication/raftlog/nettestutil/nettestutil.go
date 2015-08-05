@@ -32,16 +32,22 @@ func (n *Network) GetValve(i, j int) bool {
 }
 
 // Partition partitions the network according to the following rules:
-// - nodes that location maps to the same integer are in the same partition
-// - nodes not present mapped to partition 0
-// - nodes with location = -1 are not connected to any other node
-// - links inside a partition are valid
-func (n *Network) Partition(location map[int]int) {
+// - nodes in the same slice are in the same partition
+// - nodes not in any slice are not connected to any node
+//     - []byte{} is a fully disconnected network
+// - nil represents a fully connected network
+func (n *Network) Partition(partitions [][]int) {
+	part := make(map[int]int, n.n)
+	for p, members := range partitions {
+		for _, i := range members {
+			part[i] = p + 1
+		}
+	}
 	for i := 0; i < n.n; i++ {
 		for j := 0; j < n.n; j++ {
-			li, _ := location[i]
-			lj, _ := location[i]
-			n.SetValve(i, j, li == lj && li != -1)
+			li, _ := part[i]
+			lj, _ := part[i]
+			n.SetValve(i, j, partitions == nil || li == lj && li != 0)
 		}
 	}
 }
