@@ -22,7 +22,8 @@ func chain(fs ...func()) func() {
 	for _, f := range fs {
 		// the functions are copied to the heap, the closure refers to a unique copy of its own
 		oldRet := ret
-		ret = func() { oldRet(); f() }
+		thisF := f
+		ret = func() { oldRet(); thisF() }
 	}
 	return ret
 }
@@ -56,6 +57,7 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 	lookupDialer := func(id uint64) (net.Conn, error) {
 		return net.Dial("tcp", addrs[id-1])
 	}
+	teardown = func() {}
 
 	for i := 0; i < n; i++ {
 		c := &raft.Config{

@@ -56,7 +56,8 @@ func chain(fs ...func()) func() {
 	for _, f := range fs {
 		// the functions are copied to the heap, the closure refers to a unique copy of its own
 		oldRet := ret
-		ret = func() { oldRet(); f() }
+		thisF := f
+		ret = func() { oldRet(); thisF() }
 	}
 	return ret
 }
