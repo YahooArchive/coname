@@ -135,8 +135,14 @@ func (l *raftLog) Start(lo uint64) error {
 		l.node = raft.RestartNode(&l.config)
 	} else {
 		if lo != 0 {
-			panic(fmt.Errorf("storage uninitialized but state machine not fresh: lo = %d", lo))
+			log.Panicf("storage uninitialized but state machine not fresh: lo = %d", lo)
 		}
+		// Add a dummy first entry
+		hardState, _, err := l.storage.InitialState()
+		if err != nil {
+			return err
+		}
+		l.storage.save(hardState, make([]raftpb.Entry, 1))
 		l.node = raft.StartNode(&l.config, l.initialNodes)
 	}
 
@@ -222,11 +228,13 @@ func (l *raftLog) run() {
 				}
 			}
 
-			leaderHint := rd.SoftState.RaftState == raft.StateLeader
-			l.node.Advance() // let Raft proceed
-			if l.leaderHint != leaderHint {
-				l.leaderHint = leaderHint
-				l.leaderHintSet <- leaderHint
+			if rd.SoftState != nil {
+				leaderHint := rd.SoftState.RaftState == raft.StateLeader
+				l.node.Advance() // let Raft proceed
+				if l.leaderHint != leaderHint {
+					l.leaderHint = leaderHint
+					l.leaderHintSet <- leaderHint
+				}
 			}
 		}
 	}
