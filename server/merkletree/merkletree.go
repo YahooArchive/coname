@@ -162,11 +162,11 @@ func (n *LookupTracingNode) Child(rightChild bool) (common.MerkleNode, error) {
 
 func (n *LookupTracingNode) Index() []byte {
 	n.trace.ExistingIndex = n.node.indexBytes
+	n.trace.ExistingEntryHash = n.node.value
 	return n.node.indexBytes
 }
 
 func (n *LookupTracingNode) Value() []byte {
-	n.trace.ExistingEntryHash = n.node.value
 	return n.node.value
 }
 
