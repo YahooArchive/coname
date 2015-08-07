@@ -25,7 +25,9 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/yahoo/coname/client"
 	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 )
@@ -46,6 +48,31 @@ func withDB(f func(kv.DB)) {
 	f(leveldbkv.Wrap(db))
 }
 
+func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
+	reconstructed, err := client.ReconstructTree(proof)
+	if err != nil {
+		panic(err)
+	}
+	redoneLookup, err := common.Lookup(reconstructed, index)
+	if err != nil {
+		panic(err)
+	}
+	if got, want := redoneLookup, value; !bytes.Equal(got, want) {
+		log.Panicf("reconstructed lookup got different result: %v rather than %v", got, want)
+	}
+	recomputedHash, err := client.RecomputeHash(treeNonce, reconstructed)
+	if err != nil {
+		panic(err)
+	}
+	rootHash, err := s.GetRootHash()
+	if err != nil {
+		panic(err)
+	}
+	if got, want := recomputedHash, rootHash; !bytes.Equal(got, want) {
+		log.Panicf("reconstructed hash differed: %x rather than %x", got, want)
+	}
+}
+
 func TestOneEntry(t *testing.T) {
 	withDB(func(db kv.DB) {
 		m, err := AccessMerkleTree(db, nil, treeNonce)
@@ -58,6 +85,7 @@ func TestOneEntry(t *testing.T) {
 		if val1 != nil || proof.ExistingIndex != nil || proof.ExistingEntryHash != nil || err != nil {
 			panic("bad lookup in empty tree")
 		}
+		verifyProof(e, index, val1, proof)
 		val2 := []byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
 		ne, err := e.BeginModification()
 		if err != nil {
@@ -74,14 +102,14 @@ func TestOneEntry(t *testing.T) {
 			panic(err)
 		}
 		e2 := m.GetSnapshot(flushed.Nr)
-		v, _, err := e2.Lookup(index)
+		v, p, err := e2.Lookup(index)
 		if err != nil {
 			panic(err)
 		}
 		if !bytes.Equal(v, val2) {
 			panic(fmt.Errorf("Value mismatch: %x / %x", v, val2))
 		}
-		// TODO: verify proof
+		verifyProof(e2, index, val2, p)
 	})
 }
 

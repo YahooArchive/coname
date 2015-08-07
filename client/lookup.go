@@ -66,20 +66,20 @@ type ReconstructedNode struct {
 	value []byte
 }
 
-func ReconstructTree(trace *proto.TreeProof, leafIndex, leafValue []byte) (*ReconstructedNode, error) {
-	return reconstructBranch(trace, leafIndex, leafValue, 0), nil
+func ReconstructTree(trace *proto.TreeProof) (*ReconstructedNode, error) {
+	return reconstructBranch(trace, 0), nil
 }
 
-func reconstructBranch(trace *proto.TreeProof, leafIndex, leafValue []byte, depth int) *ReconstructedNode {
+func reconstructBranch(trace *proto.TreeProof, depth int) *ReconstructedNode {
 	if depth == len(trace.Neighbors) {
-		if leafValue == nil {
+		if trace.ExistingEntryHash == nil {
 			return nil
 		} else {
 			return &ReconstructedNode{
 				isLeaf: true,
 				depth:  depth,
-				index:  leafIndex,
-				value:  leafValue,
+				index:  trace.ExistingIndex,
+				value:  trace.ExistingEntryHash,
 			}
 		}
 	} else {
@@ -87,8 +87,8 @@ func reconstructBranch(trace *proto.TreeProof, leafIndex, leafValue []byte, dept
 			isLeaf: false,
 			depth:  depth,
 		}
-		presentChild := common.ToBits(common.IndexBits, leafIndex)[depth]
-		node.children[common.BitToIndex(presentChild)].Present = reconstructBranch(trace, leafIndex, leafValue, depth+1)
+		presentChild := common.ToBits(common.IndexBits, trace.ExistingIndex)[depth]
+		node.children[common.BitToIndex(presentChild)].Present = reconstructBranch(trace, depth+1)
 		node.children[common.BitToIndex(!presentChild)].Omitted = trace.Neighbors[depth]
 		return node
 	}
