@@ -313,7 +313,9 @@ func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
 func (t *MerkleTree) flushNode(prefixBits []bool, n *node, wb kv.Batch) (id uint64, hash [common.HashBytes]byte) {
 	if n != nil {
 		for i := 0; i < 2; i++ {
-			n.childIds[i], n.childHashes[i] = t.flushNode(append(prefixBits, i == 1), n.children[i], wb)
+			if n.children[i] != nil /* child present */ || n.childIds[i] == 0 /* actually an empty branch */ {
+				n.childIds[i], n.childHashes[i] = t.flushNode(append(prefixBits, i == 1), n.children[i], wb)
+			}
 		}
 		id = t.allocNodeId()
 		t.storeNode(id, n, wb)
