@@ -21,8 +21,31 @@ import (
 	"github.com/yahoo/coname/proto"
 )
 
-func RecomputeHash(node common.MerkleNode) []byte {
-	panic("TODO")
+// assumes ownership of prefixBits underlying array
+func RecomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) ([]byte, error) {
+	if node.IsEmpty() {
+		return common.HashEmptyBranch(treeNonce, prefixBits), nil
+	} else if node.IsLeaf() {
+		return common.HashLeaf(treeNonce, node.Index(), node.Depth(), node.Value()), nil
+	} else {
+		var childHashes [2][common.HashBytes]byte
+		for i := 0; i < 2; i++ {
+			rightChild := i == 1
+			h := node.ChildHash(rightChild)
+			if h == nil {
+				ch, err := node.Child(rightChild)
+				if err != nil {
+					return nil, err
+				}
+				h, err = RecomputeHash(treeNonce, append(prefixBits, rightChild), ch)
+				if err != nil {
+					return nil, err
+				}
+			}
+			copy(childHashes[i][:], h)
+		}
+		return common.HashInternalNode(prefixBits, &childHashes), nil
+	}
 }
 
 type ReconstructedNode struct {
