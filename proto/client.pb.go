@@ -18,6 +18,7 @@
 		LookupRequest
 		UpdateRequest
 		LookupProof
+		TreeProof
 		Entry
 		SignedEntryUpdate
 		Profile
@@ -34,24 +35,29 @@ import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
-
+import io "io"
 import fmt "fmt"
-import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 import github_com_gogo_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
 
 import errors "errors"
 
-import io "io"
+import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+
+import bytes "bytes"
+
+import (
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
+)
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -145,7 +151,7 @@ type LookupProof struct {
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
-	TreeProof []byte `protobuf:"bytes,4,opt,name=tree_proof,proto3" json:"tree_proof,omitempty"`
+	TreeProof *TreeProof `protobuf:"bytes,4,opt,name=tree_proof" json:"tree_proof,omitempty"`
 	// Entry specifies profile by hash(profile) = entry.profile_hash
 	Entry   Entry_PreserveEncoding   `protobuf:"bytes,5,opt,name=entry,customtype=Entry_PreserveEncoding" json:"entry"`
 	Profile Profile_PreserveEncoding `protobuf:"bytes,6,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
@@ -160,6 +166,36 @@ func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	}
 	return nil
 }
+
+func (m *LookupProof) GetTreeProof() *TreeProof {
+	if m != nil {
+		return m.TreeProof
+	}
+	return nil
+}
+
+// A Proof provides an authentication path through the Merkle Tree that
+// proves that an item is or is not present in the tree.
+type TreeProof struct {
+	// Neighbors is a list of all the adacent nodes along the path from the
+	// bottommost node to the root. To save space, hashes for empty subtrees are
+	// nil, and the number of hashes is equal to the length of the longest common
+	// prefix with another entry in the tree (since a leaf node is moved up to
+	// that point -- subtrees with a single entry are coalesced into a single
+	// node).
+	Neighbors [][]byte `protobuf:"bytes,1,rep,name=neighbors" json:"neighbors,omitempty"`
+	// This is the index for the binding that does exist; it will share a prefix
+	// with vuf, but in case the leaf contains the wrong contents, it will be
+	// different. It will be nil if the requested VRF falls under an empty branch.
+	ExistingIndex []byte `protobuf:"bytes,2,opt,name=existing_index,proto3" json:"existing_index,omitempty"`
+	// This is the hash of the entry for the binding that does exist. If the leaf
+	// contains the wrong contents, the client can use this to verify that it in
+	// fact is at that position in the tree.
+	ExistingEntryHash []byte `protobuf:"bytes,3,opt,name=existing_entry_hash,proto3" json:"existing_entry_hash,omitempty"`
+}
+
+func (m *TreeProof) Reset()      { *m = TreeProof{} }
+func (*TreeProof) ProtoMessage() {}
 
 // Entry is the value type in the authenticated mapping data structure.  The
 // contents of all entries should be considered public (they are served to
@@ -428,147 +464,3592 @@ func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 	return nil
 }
 
-// Client API for E2EKSLookup service
+func (m *LookupRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
+			}
+			m.Epoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Epoch |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.QuorumRequirement == nil {
+				m.QuorumRequirement = &QuorumExpr{}
+			}
+			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
 
-type E2EKSLookupClient interface {
-	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	return nil
+}
+func (m *UpdateRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Update == nil {
+				m.Update = &SignedEntryUpdate{}
+			}
+			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LookupParameters", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LookupParameters == nil {
+				m.LookupParameters = &LookupRequest{}
+			}
+			if err := m.LookupParameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *LookupProof) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.UserId = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IndexProof", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.IndexProof = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ratifications", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ratifications = append(m.Ratifications, &SignedEpochHead{})
+			if err := m.Ratifications[len(m.Ratifications)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TreeProof", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.TreeProof == nil {
+				m.TreeProof = &TreeProof{}
+			}
+			if err := m.TreeProof.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Entry", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Entry.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *TreeProof) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Neighbors", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Neighbors = append(m.Neighbors, make([]byte, postIndex-iNdEx))
+			copy(m.Neighbors[len(m.Neighbors)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExistingIndex", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExistingIndex = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExistingEntryHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExistingEntryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *Entry) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			}
+			m.Version = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Version |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdatePolicy", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.UpdatePolicy == nil {
+				m.UpdatePolicy = &AuthorizationPolicy{}
+			}
+			if err := m.UpdatePolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProfileHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NewEntry", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.NewEntry.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Signatures == nil {
+				m.Signatures = make(map[uint64][]byte)
+			}
+			m.Signatures[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *Profile) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Keys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var stringLenmapkey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLenmapkey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postStringIndexmapkey := iNdEx + int(stringLenmapkey)
+			if postStringIndexmapkey > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapkey := string(data[iNdEx:postStringIndexmapkey])
+			iNdEx = postStringIndexmapkey
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Keys == nil {
+				m.Keys = make(map[string][]byte)
+			}
+			m.Keys[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *SignedEpochHead) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapbyteLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapbyteLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postbytesIndex := iNdEx + int(mapbyteLen)
+			if postbytesIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := make([]byte, mapbyteLen)
+			copy(mapvalue, data[iNdEx:postbytesIndex])
+			iNdEx = postbytesIndex
+			if m.Signatures == nil {
+				m.Signatures = make(map[uint64][]byte)
+			}
+			m.Signatures[mapkey] = mapvalue
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *EpochHead) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Realm", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Realm = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
+			}
+			m.Epoch = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Epoch |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RootHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RootHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreviousSummaryHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.NextEpochTime.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochPolicy", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.NextEpochPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapmsglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapmsglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postmsgIndex := iNdEx + mapmsglen
+			if mapmsglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postmsgIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := &PublicKey{}
+			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
+				return err
+			}
+			iNdEx = postmsgIndex
+			if m.PublicKeys == nil {
+				m.PublicKeys = make(map[uint64]*PublicKey)
+			}
+			m.PublicKeys[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Quorum == nil {
+				m.Quorum = &QuorumExpr{}
+			}
+			if err := m.Quorum.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *PublicKey) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Ed25519 = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *QuorumExpr) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Threshold", wireType)
+			}
+			m.Threshold = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Threshold |= (uint32(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
+			}
+			var v uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			v = uint64(data[iNdEx-8])
+			v |= uint64(data[iNdEx-7]) << 8
+			v |= uint64(data[iNdEx-6]) << 16
+			v |= uint64(data[iNdEx-5]) << 24
+			v |= uint64(data[iNdEx-4]) << 32
+			v |= uint64(data[iNdEx-3]) << 40
+			v |= uint64(data[iNdEx-2]) << 48
+			v |= uint64(data[iNdEx-1]) << 56
+			m.Candidates = append(m.Candidates, v)
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Subexpressions", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Subexpressions = append(m.Subexpressions, &QuorumExpr{})
+			if err := m.Subexpressions[len(m.Subexpressions)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func skipClient(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for {
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthClient
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipClient(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+	}
+	panic("unreachable")
 }
 
-type e2EKSLookupClient struct {
-	cc *grpc.ClientConn
+var (
+	ErrInvalidLengthClient = fmt.Errorf("proto: negative length found during unmarshaling")
+)
+
+func (this *LookupRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupRequest{`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
+		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *LookupProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupProof{`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
+		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`TreeProof:` + strings.Replace(fmt.Sprintf("%v", this.TreeProof), "TreeProof", "TreeProof", 1) + `,`,
+		`Entry:` + strings.Replace(strings.Replace(this.Entry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
+		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TreeProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TreeProof{`,
+		`Neighbors:` + fmt.Sprintf("%v", this.Neighbors) + `,`,
+		`ExistingIndex:` + fmt.Sprintf("%v", this.ExistingIndex) + `,`,
+		`ExistingEntryHash:` + fmt.Sprintf("%v", this.ExistingEntryHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Entry) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Entry{`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
+		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
+		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEntryUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&SignedEntryUpdate{`,
+		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Profile) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&Profile{`,
+		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
+		`Keys:` + mapStringForKeys + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&SignedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TimestampedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TimestampedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "EpochHead", "EpochHead", 1), `&`, ``, 1) + `,`,
+		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EpochHead{`,
+		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`NextEpochTime:` + strings.Replace(strings.Replace(this.NextEpochTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *AuthorizationPolicy) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&AuthorizationPolicy{`,
+		`PublicKeys:` + mapStringForPublicKeys + `,`,
+		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PublicKey) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PublicKey{`,
+		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *QuorumExpr) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&QuorumExpr{`,
+		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
+		`Candidates:` + fmt.Sprintf("%v", this.Candidates) + `,`,
+		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringClient(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *LookupRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
 }
 
-func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
-	return &e2EKSLookupClient{cc}
+func (m *UpdateRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	l = m.Profile.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if m.LookupParameters != nil {
+		l = m.LookupParameters.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
 }
 
-func (c *e2EKSLookupClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/Lookup", in, out, c.cc, opts...)
+func (m *LookupProof) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.IndexProof != nil {
+		l = len(m.IndexProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, e := range m.Ratifications {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.TreeProof != nil {
+		l = m.TreeProof.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	l = m.Entry.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.Profile.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *TreeProof) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			l = len(b)
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingIndex != nil {
+		l = len(m.ExistingIndex)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		l = len(m.ExistingEntryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Entry) Size() (n int) {
+	var l int
+	_ = l
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Version != 0 {
+		n += 1 + sovClient(uint64(m.Version))
+	}
+	if m.UpdatePolicy != nil {
+		l = m.UpdatePolicy.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.ProfileHash != nil {
+		l = len(m.ProfileHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *SignedEntryUpdate) Size() (n int) {
+	var l int
+	_ = l
+	l = m.NewEntry.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Profile) Size() (n int) {
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		l = len(m.Nonce)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Keys) > 0 {
+		for k, v := range m.Keys {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *SignedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *TimestampedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.Timestamp.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *EpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		l = len(m.RootHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	l = m.NextEpochTime.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.NextEpochPolicy.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *AuthorizationPolicy) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.PublicKeys) > 0 {
+		for k, v := range m.PublicKeys {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+			}
+			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	if m.Quorum != nil {
+		l = m.Quorum.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *PublicKey) Size() (n int) {
+	var l int
+	_ = l
+	if m.Ed25519 != nil {
+		l = len(m.Ed25519)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QuorumExpr) Size() (n int) {
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		n += 1 + sovClient(uint64(m.Threshold))
+	}
+	if len(m.Candidates) > 0 {
+		n += 9 * len(m.Candidates)
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, e := range m.Subexpressions {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func sovClient(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozClient(x uint64) (n int) {
+	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
+	this := &LookupRequest{}
+	this.Epoch = uint64(uint64(r.Uint32()))
+	this.UserId = randStringClient(r)
+	v1 := r.Intn(100)
+	this.Index = make([]byte, v1)
+	for i := 0; i < v1; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
+	this := &UpdateRequest{}
+	if r.Intn(10) != 0 {
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	}
+	v2 := NewPopulatedProfile_PreserveEncoding(r, easy)
+	this.Profile = *v2
+	if r.Intn(10) != 0 {
+		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
+	this := &LookupProof{}
+	this.UserId = randStringClient(r)
+	v3 := r.Intn(100)
+	this.IndexProof = make([]byte, v3)
+	for i := 0; i < v3; i++ {
+		this.IndexProof[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v4 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v4)
+		for i := 0; i < v4; i++ {
+			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.TreeProof = NewPopulatedTreeProof(r, easy)
+	}
+	v5 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.Entry = *v5
+	v6 := NewPopulatedProfile_PreserveEncoding(r, easy)
+	this.Profile = *v6
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
+	this := &TreeProof{}
+	v7 := r.Intn(100)
+	this.Neighbors = make([][]byte, v7)
+	for i := 0; i < v7; i++ {
+		v8 := r.Intn(100)
+		this.Neighbors[i] = make([]byte, v8)
+		for j := 0; j < v8; j++ {
+			this.Neighbors[i][j] = byte(r.Intn(256))
+		}
+	}
+	v9 := r.Intn(100)
+	this.ExistingIndex = make([]byte, v9)
+	for i := 0; i < v9; i++ {
+		this.ExistingIndex[i] = byte(r.Intn(256))
+	}
+	v10 := r.Intn(100)
+	this.ExistingEntryHash = make([]byte, v10)
+	for i := 0; i < v10; i++ {
+		this.ExistingEntryHash[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEntry(r randyClient, easy bool) *Entry {
+	this := &Entry{}
+	v11 := r.Intn(100)
+	this.Index = make([]byte, v11)
+	for i := 0; i < v11; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	this.Version = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
+	}
+	v12 := r.Intn(100)
+	this.ProfileHash = make([]byte, v12)
+	for i := 0; i < v12; i++ {
+		this.ProfileHash[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
+	this := &SignedEntryUpdate{}
+	v13 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.NewEntry = *v13
+	if r.Intn(10) != 0 {
+		v14 := r.Intn(10)
+		this.Signatures = make(map[uint64][]byte)
+		for i := 0; i < v14; i++ {
+			v15 := r.Intn(100)
+			v16 := uint64(uint64(r.Uint32()))
+			this.Signatures[v16] = make([]byte, v15)
+			for i := 0; i < v15; i++ {
+				this.Signatures[v16][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedProfile(r randyClient, easy bool) *Profile {
+	this := &Profile{}
+	v17 := r.Intn(100)
+	this.Nonce = make([]byte, v17)
+	for i := 0; i < v17; i++ {
+		this.Nonce[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v18 := r.Intn(10)
+		this.Keys = make(map[string][]byte)
+		for i := 0; i < v18; i++ {
+			v19 := r.Intn(100)
+			v20 := randStringClient(r)
+			this.Keys[v20] = make([]byte, v19)
+			for i := 0; i < v19; i++ {
+				this.Keys[v20][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
+	this := &SignedEpochHead{}
+	v21 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v21
+	if r.Intn(10) != 0 {
+		v22 := r.Intn(10)
+		this.Signatures = make(map[uint64][]byte)
+		for i := 0; i < v22; i++ {
+			v23 := r.Intn(100)
+			v24 := uint64(uint64(r.Uint32()))
+			this.Signatures[v24] = make([]byte, v23)
+			for i := 0; i < v23; i++ {
+				this.Signatures[v24][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
+	this := &TimestampedEpochHead{}
+	v25 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v25
+	v26 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v26
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
+	this := &EpochHead{}
+	this.Realm = randStringClient(r)
+	this.Epoch = uint64(uint64(r.Uint32()))
+	v27 := r.Intn(100)
+	this.RootHash = make([]byte, v27)
+	for i := 0; i < v27; i++ {
+		this.RootHash[i] = byte(r.Intn(256))
+	}
+	v28 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v28)
+	for i := 0; i < v28; i++ {
+		this.PreviousSummaryHash[i] = byte(r.Intn(256))
+	}
+	v29 := NewPopulatedTimestamp(r, easy)
+	this.NextEpochTime = *v29
+	v30 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v30
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
+	this := &AuthorizationPolicy{}
+	if r.Intn(10) != 0 {
+		v31 := r.Intn(10)
+		this.PublicKeys = make(map[uint64]*PublicKey)
+		for i := 0; i < v31; i++ {
+			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.Quorum = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
+	this := &PublicKey{}
+	v32 := r.Intn(100)
+	this.Ed25519 = make([]byte, v32)
+	for i := 0; i < v32; i++ {
+		this.Ed25519[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
+	this := &QuorumExpr{}
+	this.Threshold = uint32(r.Uint32())
+	v33 := r.Intn(100)
+	this.Candidates = make([]uint64, v33)
+	for i := 0; i < v33; i++ {
+		this.Candidates[i] = uint64(uint64(r.Uint32()))
+	}
+	if r.Intn(10) != 0 {
+		v34 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v34)
+		for i := 0; i < v34; i++ {
+			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyClient interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneClient(r randyClient) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringClient(r randyClient) string {
+	v35 := r.Intn(100)
+	tmps := make([]rune, v35)
+	for i := 0; i < v35; i++ {
+		tmps[i] = randUTF8RuneClient(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldClient(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		v36 := r.Int63()
+		if r.Intn(2) == 0 {
+			v36 *= -1
+		}
+		data = encodeVarintPopulateClient(data, uint64(v36))
+	case 1:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateClient(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateClient(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *LookupRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-// Server API for E2EKSLookup service
-
-type E2EKSLookupServer interface {
-	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
-	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
-}
-
-func _E2EKSLookup_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
+func (m *LookupRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
 	}
-	out, err := srv.(E2EKSLookupServer).Lookup(ctx, in)
+	if len(m.UserId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
+		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *UpdateRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSLookup",
-	HandlerType: (*E2EKSLookupServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Lookup",
-			Handler:    _E2EKSLookup_Lookup_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
+func (m *UpdateRequest) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
+		n2, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n3, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n3
+	if m.LookupParameters != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.LookupParameters.Size()))
+		n4, err := m.LookupParameters.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	return i, nil
 }
 
-// Client API for E2EKSUpdate service
-
-type E2EKSUpdateClient interface {
-	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
-	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
-}
-
-type e2EKSUpdateClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
-	return &e2EKSUpdateClient{cc}
-}
-
-func (c *e2EKSUpdateClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Lookup", in, out, c.cc, opts...)
+func (m *LookupProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-func (c *e2EKSUpdateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Update", in, out, c.cc, opts...)
+func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.IndexProof != nil {
+		if len(m.IndexProof) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
+			i += copy(data[i:], m.IndexProof)
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, msg := range m.Ratifications {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.TreeProof != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.TreeProof.Size()))
+		n5, err := m.TreeProof.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
+	n6, err := m.Entry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n6
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n7, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	return i, nil
+}
+
+func (m *TreeProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-// Server API for E2EKSUpdate service
-
-type E2EKSUpdateServer interface {
-	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
-	Update(context.Context, *UpdateRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
-	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
-}
-
-func _E2EKSUpdate_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
+func (m *TreeProof) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
 	}
-	out, err := srv.(E2EKSUpdateServer).Lookup(ctx, in)
+	if m.ExistingIndex != nil {
+		if len(m.ExistingIndex) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
+			i += copy(data[i:], m.ExistingIndex)
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		if len(m.ExistingEntryHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
+			i += copy(data[i:], m.ExistingEntryHash)
+		}
+	}
+	return i, nil
+}
+
+func (m *Entry) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-func _E2EKSUpdate_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(UpdateRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
+func (m *Entry) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
 	}
-	out, err := srv.(E2EKSUpdateServer).Update(ctx, in)
+	if m.Version != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Version))
+	}
+	if m.UpdatePolicy != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
+		n8, err := m.UpdatePolicy.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.ProfileHash != nil {
+		if len(m.ProfileHash) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
+			i += copy(data[i:], m.ProfileHash)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	return data[:n], nil
 }
 
-var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSUpdate",
-	HandlerType: (*E2EKSUpdateServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Lookup",
-			Handler:    _E2EKSUpdate_Lookup_Handler,
-		},
-		{
-			MethodName: "Update",
-			Handler:    _E2EKSUpdate_Update_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
+func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
+	n9, err := m.NewEntry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
+			data[i] = 0x12
+			i++
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
 }
 
+func (m *Profile) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Profile) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		if len(m.Nonce) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
+			i += copy(data[i:], m.Nonce)
+		}
+	}
+	if len(m.Keys) > 0 {
+		keysForKeys := make([]string, 0, len(m.Keys))
+		for k, _ := range m.Keys {
+			keysForKeys = append(keysForKeys, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+		for _, k := range keysForKeys {
+			data[i] = 0x12
+			i++
+			v := m.Keys[k]
+			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n10, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
+			data[i] = 0x12
+			i++
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n11, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n11
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n12, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n12
+	return i, nil
+}
+
+func (m *EpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Realm) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
+		i += copy(data[i:], m.Realm)
+	}
+	if m.Epoch != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		if len(m.RootHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
+			i += copy(data[i:], m.RootHash)
+		}
+	}
+	if m.PreviousSummaryHash != nil {
+		if len(m.PreviousSummaryHash) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
+			i += copy(data[i:], m.PreviousSummaryHash)
+		}
+	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochTime.Size()))
+	n13, err := m.NextEpochTime.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n13
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
+	n14, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n14
+	return i, nil
+}
+
+func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PublicKeys) > 0 {
+		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
+		for k, _ := range m.PublicKeys {
+			keysForPublicKeys = append(keysForPublicKeys, k)
+		}
+		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+		for _, k := range keysForPublicKeys {
+			data[i] = 0xa
+			i++
+			v := m.PublicKeys[k]
+			if v == nil {
+				return 0, errors.New("proto: map has nil element")
+			}
+			msgSize := v.Size()
+			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(v.Size()))
+			n15, err := v.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n15
+		}
+	}
+	if m.Quorum != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
+		n16, err := m.Quorum.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n16
+	}
+	return i, nil
+}
+
+func (m *PublicKey) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Ed25519 != nil {
+		if len(m.Ed25519) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
+			i += copy(data[i:], m.Ed25519)
+		}
+	}
+	return i, nil
+}
+
+func (m *QuorumExpr) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Threshold))
+	}
+	if len(m.Candidates) > 0 {
+		for _, num := range m.Candidates {
+			data[i] = 0x11
+			i++
+			data[i] = uint8(num)
+			i++
+			data[i] = uint8(num >> 8)
+			i++
+			data[i] = uint8(num >> 16)
+			i++
+			data[i] = uint8(num >> 24)
+			i++
+			data[i] = uint8(num >> 32)
+			i++
+			data[i] = uint8(num >> 40)
+			i++
+			data[i] = uint8(num >> 48)
+			i++
+			data[i] = uint8(num >> 56)
+			i++
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, msg := range m.Subexpressions {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func encodeFixed64Client(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Client(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintClient(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (this *LookupRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupRequest{` +
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
+	return s
+}
+func (this *UpdateRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
+		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters) + `}`}, ", ")
+	return s
+}
+func (this *LookupProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupProof{` +
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
+		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
+		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
+		`Entry:` + strings.Replace(this.Entry.GoString(), `&`, ``, 1),
+		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *TreeProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TreeProof{` +
+		`Neighbors:` + fmt.Sprintf("%#v", this.Neighbors),
+		`ExistingIndex:` + fmt.Sprintf("%#v", this.ExistingIndex),
+		`ExistingEntryHash:` + fmt.Sprintf("%#v", this.ExistingEntryHash) + `}`}, ", ")
+	return s
+}
+func (this *Entry) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.Entry{` +
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`Version:` + fmt.Sprintf("%#v", this.Version),
+		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
+		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
+	return s
+}
+func (this *SignedEntryUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
+		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
+	return s
+}
+func (this *Profile) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&proto.Profile{` +
+		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
+		`Keys:` + mapStringForKeys + `}`}, ", ")
+	return s
+}
+func (this *SignedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&proto.SignedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
+	return s
+}
+func (this *TimestampedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TimestampedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *EpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.EpochHead{` +
+		`Realm:` + fmt.Sprintf("%#v", this.Realm),
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`NextEpochTime:` + strings.Replace(this.NextEpochTime.GoString(), `&`, ``, 1),
+		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *AuthorizationPolicy) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&proto.AuthorizationPolicy{` +
+		`PublicKeys:` + mapStringForPublicKeys,
+		`Quorum:` + fmt.Sprintf("%#v", this.Quorum) + `}`}, ", ")
+	return s
+}
+func (this *PublicKey) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.PublicKey{` +
+		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
+	return s
+}
+func (this *QuorumExpr) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.QuorumExpr{` +
+		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
+		`Candidates:` + fmt.Sprintf("%#v", this.Candidates),
+		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
+	return s
+}
+func valueToGoStringClient(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringClient(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
 func (this *LookupRequest) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -733,7 +4214,7 @@ func (this *LookupProof) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
 		}
 	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+	if !this.TreeProof.Equal(that1.TreeProof) {
 		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
 	}
 	if !this.Entry.Equal(that1.Entry) {
@@ -778,13 +4259,85 @@ func (this *LookupProof) Equal(that interface{}) bool {
 			return false
 		}
 	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+	if !this.TreeProof.Equal(that1.TreeProof) {
 		return false
 	}
 	if !this.Entry.Equal(that1.Entry) {
 		return false
 	}
 	if !this.Profile.Equal(that1.Profile) {
+		return false
+	}
+	return true
+}
+func (this *TreeProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *TreeProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *TreeProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *TreeProofbut is not nil && this == nil")
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return fmt.Errorf("Neighbors this(%v) Not Equal that(%v)", len(this.Neighbors), len(that1.Neighbors))
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return fmt.Errorf("Neighbors this[%v](%v) Not Equal that[%v](%v)", i, this.Neighbors[i], i, that1.Neighbors[i])
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return fmt.Errorf("ExistingIndex this(%v) Not Equal that(%v)", this.ExistingIndex, that1.ExistingIndex)
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
+		return fmt.Errorf("ExistingEntryHash this(%v) Not Equal that(%v)", this.ExistingEntryHash, that1.ExistingEntryHash)
+	}
+	return nil
+}
+func (this *TreeProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return false
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return false
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return false
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
 		return false
 	}
 	return true
@@ -1389,3217 +4942,144 @@ func (this *QuorumExpr) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *LookupRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupRequest{` +
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
-	return s
+
+// Client API for E2EKSLookup service
+
+type E2EKSLookupClient interface {
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
 }
-func (this *UpdateRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.UpdateRequest{` +
-		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
-		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters) + `}`}, ", ")
-	return s
+
+type e2EKSLookupClient struct {
+	cc *grpc.ClientConn
 }
-func (this *LookupProof) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupProof{` +
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
-		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
-		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
-		`Entry:` + strings.Replace(this.Entry.GoString(), `&`, ``, 1),
-		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
+
+func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
+	return &e2EKSLookupClient{cc}
 }
-func (this *Entry) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Entry{` +
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`Version:` + fmt.Sprintf("%#v", this.Version),
-		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
-		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
-	return s
-}
-func (this *SignedEntryUpdate) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
-		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
-		`Signatures:` + mapStringForSignatures + `}`}, ", ")
-	return s
-}
-func (this *Profile) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForKeys := make([]string, 0, len(this.Keys))
-	for k, _ := range this.Keys {
-		keysForKeys = append(keysForKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
-	mapStringForKeys := "map[string][]byte{"
-	for _, k := range keysForKeys {
-		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
-	}
-	mapStringForKeys += "}"
-	s := strings.Join([]string{`&proto.Profile{` +
-		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
-		`Keys:` + mapStringForKeys + `}`}, ", ")
-	return s
-}
-func (this *SignedEpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&proto.SignedEpochHead{` +
-		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
-		`Signatures:` + mapStringForSignatures + `}`}, ", ")
-	return s
-}
-func (this *TimestampedEpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.TimestampedEpochHead{` +
-		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
-		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *EpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.EpochHead{` +
-		`Realm:` + fmt.Sprintf("%#v", this.Realm),
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
-		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
-		`NextEpochTime:` + strings.Replace(this.NextEpochTime.GoString(), `&`, ``, 1),
-		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *AuthorizationPolicy) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
-	s := strings.Join([]string{`&proto.AuthorizationPolicy{` +
-		`PublicKeys:` + mapStringForPublicKeys,
-		`Quorum:` + fmt.Sprintf("%#v", this.Quorum) + `}`}, ", ")
-	return s
-}
-func (this *PublicKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.PublicKey{` +
-		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
-	return s
-}
-func (this *QuorumExpr) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.QuorumExpr{` +
-		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
-		`Candidates:` + fmt.Sprintf("%#v", this.Candidates),
-		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
-	return s
-}
-func valueToGoStringClient(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringClient(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *LookupRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+
+func (c *e2EKSLookupClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *LookupRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Epoch != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Epoch))
-	}
-	if len(m.UserId) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
-	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
-		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	return i, nil
+// Server API for E2EKSLookup service
+
+type E2EKSLookupServer interface {
+	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
 }
 
-func (m *UpdateRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
+	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
+}
+
+func _E2EKSLookup_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSLookupServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *UpdateRequest) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Update != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-		n2, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-	n3, err := m.Profile.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n3
-	if m.LookupParameters != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.LookupParameters.Size()))
-		n4, err := m.LookupParameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	return i, nil
+var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSLookup",
+	HandlerType: (*E2EKSLookupServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Lookup",
+			Handler:    _E2EKSLookup_Lookup_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
 }
 
-func (m *LookupProof) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+// Client API for E2EKSUpdate service
+
+type E2EKSUpdateClient interface {
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSUpdateClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
+	return &e2EKSUpdateClient{cc}
+}
+
+func (c *e2EKSUpdateClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.UserId) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
-	}
-	if m.IndexProof != nil {
-		if len(m.IndexProof) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
-			i += copy(data[i:], m.IndexProof)
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, msg := range m.Ratifications {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if m.TreeProof != nil {
-		if len(m.TreeProof) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.TreeProof)))
-			i += copy(data[i:], m.TreeProof)
-		}
-	}
-	data[i] = 0x2a
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
-	n5, err := m.Entry.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	data[i] = 0x32
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-	n6, err := m.Profile.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n6
-	return i, nil
-}
-
-func (m *Entry) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+func (c *e2EKSUpdateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Update", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *Entry) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if m.Version != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Version))
-	}
-	if m.UpdatePolicy != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
-		n7, err := m.UpdatePolicy.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	if m.ProfileHash != nil {
-		if len(m.ProfileHash) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
-			i += copy(data[i:], m.ProfileHash)
-		}
-	}
-	return i, nil
+// Server API for E2EKSUpdate service
+
+type E2EKSUpdateServer interface {
+	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
+	Update(context.Context, *UpdateRequest) (*LookupProof, error)
 }
 
-func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
+	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
+}
+
+func _E2EKSUpdate_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSUpdateServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n8, err := m.NewEntry.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
+func _E2EKSUpdate_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := codec.Unmarshal(buf, in); err != nil {
+		return nil, err
 	}
-	i += n8
-	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
-		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
-			data[i] = 0x12
-			i++
-			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *Profile) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	out, err := srv.(E2EKSUpdateServer).Update(ctx, in)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return out, nil
 }
 
-func (m *Profile) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		if len(m.Nonce) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
-			i += copy(data[i:], m.Nonce)
-		}
-	}
-	if len(m.Keys) > 0 {
-		keysForKeys := make([]string, 0, len(m.Keys))
-		for k, _ := range m.Keys {
-			keysForKeys = append(keysForKeys, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
-		for _, k := range keysForKeys {
-			data[i] = 0x12
-			i++
-			v := m.Keys[k]
-			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(k)))
-			i += copy(data[i:], k)
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignedEpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n9, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n9
-	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
-		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
-			data[i] = 0x12
-			i++
-			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n10, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n11, err := m.Timestamp.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n11
-	return i, nil
-}
-
-func (m *EpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Realm) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
-		i += copy(data[i:], m.Realm)
-	}
-	if m.Epoch != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Epoch))
-	}
-	if m.RootHash != nil {
-		if len(m.RootHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
-			i += copy(data[i:], m.RootHash)
-		}
-	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
-	}
-	data[i] = 0x2a
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NextEpochTime.Size()))
-	n12, err := m.NextEpochTime.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n12
-	data[i] = 0x32
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
-	n13, err := m.NextEpochPolicy.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n13
-	return i, nil
-}
-
-func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.PublicKeys) > 0 {
-		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
-		for k, _ := range m.PublicKeys {
-			keysForPublicKeys = append(keysForPublicKeys, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-		for _, k := range keysForPublicKeys {
-			data[i] = 0xa
-			i++
-			v := m.PublicKeys[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
-			}
-			msgSize := v.Size()
-			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n14, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n14
-		}
-	}
-	if m.Quorum != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n15, err := m.Quorum.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n15
-	}
-	return i, nil
-}
-
-func (m *PublicKey) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		if len(m.Ed25519) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
-			i += copy(data[i:], m.Ed25519)
-		}
-	}
-	return i, nil
-}
-
-func (m *QuorumExpr) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Threshold))
-	}
-	if len(m.Candidates) > 0 {
-		for _, num := range m.Candidates {
-			data[i] = 0x11
-			i++
-			data[i] = uint8(num)
-			i++
-			data[i] = uint8(num >> 8)
-			i++
-			data[i] = uint8(num >> 16)
-			i++
-			data[i] = uint8(num >> 24)
-			i++
-			data[i] = uint8(num >> 32)
-			i++
-			data[i] = uint8(num >> 40)
-			i++
-			data[i] = uint8(num >> 48)
-			i++
-			data[i] = uint8(num >> 56)
-			i++
-		}
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, msg := range m.Subexpressions {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func encodeFixed64Client(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Client(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintClient(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
-	this := &LookupRequest{}
-	this.Epoch = uint64(uint64(r.Uint32()))
-	this.UserId = randStringClient(r)
-	v1 := r.Intn(100)
-	this.Index = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
-	this := &UpdateRequest{}
-	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	v2 := NewPopulatedProfile_PreserveEncoding(r, easy)
-	this.Profile = *v2
-	if r.Intn(10) != 0 {
-		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
-	this := &LookupProof{}
-	this.UserId = randStringClient(r)
-	v3 := r.Intn(100)
-	this.IndexProof = make([]byte, v3)
-	for i := 0; i < v3; i++ {
-		this.IndexProof[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		v4 := r.Intn(10)
-		this.Ratifications = make([]*SignedEpochHead, v4)
-		for i := 0; i < v4; i++ {
-			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
-		}
-	}
-	v5 := r.Intn(100)
-	this.TreeProof = make([]byte, v5)
-	for i := 0; i < v5; i++ {
-		this.TreeProof[i] = byte(r.Intn(256))
-	}
-	v6 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.Entry = *v6
-	v7 := NewPopulatedProfile_PreserveEncoding(r, easy)
-	this.Profile = *v7
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEntry(r randyClient, easy bool) *Entry {
-	this := &Entry{}
-	v8 := r.Intn(100)
-	this.Index = make([]byte, v8)
-	for i := 0; i < v8; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	this.Version = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
-	}
-	v9 := r.Intn(100)
-	this.ProfileHash = make([]byte, v9)
-	for i := 0; i < v9; i++ {
-		this.ProfileHash[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
-	this := &SignedEntryUpdate{}
-	v10 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.NewEntry = *v10
-	if r.Intn(10) != 0 {
-		v11 := r.Intn(10)
-		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v11; i++ {
-			v12 := r.Intn(100)
-			v13 := uint64(uint64(r.Uint32()))
-			this.Signatures[v13] = make([]byte, v12)
-			for i := 0; i < v12; i++ {
-				this.Signatures[v13][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedProfile(r randyClient, easy bool) *Profile {
-	this := &Profile{}
-	v14 := r.Intn(100)
-	this.Nonce = make([]byte, v14)
-	for i := 0; i < v14; i++ {
-		this.Nonce[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		v15 := r.Intn(10)
-		this.Keys = make(map[string][]byte)
-		for i := 0; i < v15; i++ {
-			v16 := r.Intn(100)
-			v17 := randStringClient(r)
-			this.Keys[v17] = make([]byte, v16)
-			for i := 0; i < v16; i++ {
-				this.Keys[v17][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
-	this := &SignedEpochHead{}
-	v18 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v18
-	if r.Intn(10) != 0 {
-		v19 := r.Intn(10)
-		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v19; i++ {
-			v20 := r.Intn(100)
-			v21 := uint64(uint64(r.Uint32()))
-			this.Signatures[v21] = make([]byte, v20)
-			for i := 0; i < v20; i++ {
-				this.Signatures[v21][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
-	this := &TimestampedEpochHead{}
-	v22 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v22
-	v23 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v23
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
-	this := &EpochHead{}
-	this.Realm = randStringClient(r)
-	this.Epoch = uint64(uint64(r.Uint32()))
-	v24 := r.Intn(100)
-	this.RootHash = make([]byte, v24)
-	for i := 0; i < v24; i++ {
-		this.RootHash[i] = byte(r.Intn(256))
-	}
-	v25 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v25)
-	for i := 0; i < v25; i++ {
-		this.PreviousSummaryHash[i] = byte(r.Intn(256))
-	}
-	v26 := NewPopulatedTimestamp(r, easy)
-	this.NextEpochTime = *v26
-	v27 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v27
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
-	this := &AuthorizationPolicy{}
-	if r.Intn(10) != 0 {
-		v28 := r.Intn(10)
-		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v28; i++ {
-			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	if r.Intn(10) != 0 {
-		this.Quorum = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
-	this := &PublicKey{}
-	v29 := r.Intn(100)
-	this.Ed25519 = make([]byte, v29)
-	for i := 0; i < v29; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
-	this := &QuorumExpr{}
-	this.Threshold = uint32(r.Uint32())
-	v30 := r.Intn(100)
-	this.Candidates = make([]uint64, v30)
-	for i := 0; i < v30; i++ {
-		this.Candidates[i] = uint64(uint64(r.Uint32()))
-	}
-	if r.Intn(10) != 0 {
-		v31 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v31)
-		for i := 0; i < v31; i++ {
-			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyClient interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneClient(r randyClient) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringClient(r randyClient) string {
-	v32 := r.Intn(100)
-	tmps := make([]rune, v32)
-	for i := 0; i < v32; i++ {
-		tmps[i] = randUTF8RuneClient(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldClient(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		v33 := r.Int63()
-		if r.Intn(2) == 0 {
-			v33 *= -1
-		}
-		data = encodeVarintPopulateClient(data, uint64(v33))
-	case 1:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateClient(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateClient(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *LookupRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Epoch != 0 {
-		n += 1 + sovClient(uint64(m.Epoch))
-	}
-	l = len(m.UserId)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *UpdateRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	l = m.Profile.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if m.LookupParameters != nil {
-		l = m.LookupParameters.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *LookupProof) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.UserId)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.IndexProof != nil {
-		l = len(m.IndexProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, e := range m.Ratifications {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.TreeProof != nil {
-		l = len(m.TreeProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	l = m.Entry.Size()
-	n += 1 + l + sovClient(uint64(l))
-	l = m.Profile.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *Entry) Size() (n int) {
-	var l int
-	_ = l
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Version != 0 {
-		n += 1 + sovClient(uint64(m.Version))
-	}
-	if m.UpdatePolicy != nil {
-		l = m.UpdatePolicy.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.ProfileHash != nil {
-		l = len(m.ProfileHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *SignedEntryUpdate) Size() (n int) {
-	var l int
-	_ = l
-	l = m.NewEntry.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if len(m.Signatures) > 0 {
-		for k, v := range m.Signatures {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *Profile) Size() (n int) {
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		l = len(m.Nonce)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.Keys) > 0 {
-		for k, v := range m.Keys {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *SignedEpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Head.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if len(m.Signatures) > 0 {
-		for k, v := range m.Signatures {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *TimestampedEpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Head.Size()
-	n += 1 + l + sovClient(uint64(l))
-	l = m.Timestamp.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *EpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Realm)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Epoch != 0 {
-		n += 1 + sovClient(uint64(m.Epoch))
-	}
-	if m.RootHash != nil {
-		l = len(m.RootHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	l = m.NextEpochTime.Size()
-	n += 1 + l + sovClient(uint64(l))
-	l = m.NextEpochPolicy.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *AuthorizationPolicy) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.PublicKeys) > 0 {
-		for k, v := range m.PublicKeys {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-			}
-			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	if m.Quorum != nil {
-		l = m.Quorum.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *PublicKey) Size() (n int) {
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		l = len(m.Ed25519)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *QuorumExpr) Size() (n int) {
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		n += 1 + sovClient(uint64(m.Threshold))
-	}
-	if len(m.Candidates) > 0 {
-		n += 9 * len(m.Candidates)
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, e := range m.Subexpressions {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovClient(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozClient(x uint64) (n int) {
-	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *LookupRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupRequest{`,
-		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *UpdateRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&UpdateRequest{`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
-		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LookupProof) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupProof{`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
-		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
-		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
-		`Entry:` + strings.Replace(strings.Replace(this.Entry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
-		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Entry) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Entry{`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
-		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEntryUpdate) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&SignedEntryUpdate{`,
-		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
-		`Signatures:` + mapStringForSignatures + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Profile) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForKeys := make([]string, 0, len(this.Keys))
-	for k, _ := range this.Keys {
-		keysForKeys = append(keysForKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
-	mapStringForKeys := "map[string][]byte{"
-	for _, k := range keysForKeys {
-		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
-	}
-	mapStringForKeys += "}"
-	s := strings.Join([]string{`&Profile{`,
-		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
-		`Keys:` + mapStringForKeys + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&SignedEpochHead{`,
-		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
-		`Signatures:` + mapStringForSignatures + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *TimestampedEpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&TimestampedEpochHead{`,
-		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "EpochHead", "EpochHead", 1), `&`, ``, 1) + `,`,
-		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *EpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&EpochHead{`,
-		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
-		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
-		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
-		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
-		`NextEpochTime:` + strings.Replace(strings.Replace(this.NextEpochTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *AuthorizationPolicy) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
-	s := strings.Join([]string{`&AuthorizationPolicy{`,
-		`PublicKeys:` + mapStringForPublicKeys + `,`,
-		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PublicKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PublicKey{`,
-		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *QuorumExpr) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&QuorumExpr{`,
-		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
-		`Candidates:` + fmt.Sprintf("%v", this.Candidates) + `,`,
-		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringClient(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *LookupRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
-			}
-			m.Epoch = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Epoch |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UserId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field QuorumRequirement", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.QuorumRequirement == nil {
-				m.QuorumRequirement = &QuorumExpr{}
-			}
-			if err := m.QuorumRequirement.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *UpdateRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Update == nil {
-				m.Update = &SignedEntryUpdate{}
-			}
-			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LookupParameters", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.LookupParameters == nil {
-				m.LookupParameters = &LookupRequest{}
-			}
-			if err := m.LookupParameters.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *LookupProof) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UserId", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UserId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IndexProof", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.IndexProof = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ratifications", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Ratifications = append(m.Ratifications, &SignedEpochHead{})
-			if err := m.Ratifications[len(m.Ratifications)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field TreeProof", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.TreeProof = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Entry", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Entry.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Profile", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *Entry) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
-			}
-			m.Version = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Version |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdatePolicy", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.UpdatePolicy == nil {
-				m.UpdatePolicy = &AuthorizationPolicy{}
-			}
-			if err := m.UpdatePolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ProfileHash = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NewEntry", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.NewEntry.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapkey uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			mapkey = uint64(data[iNdEx-8])
-			mapkey |= uint64(data[iNdEx-7]) << 8
-			mapkey |= uint64(data[iNdEx-6]) << 16
-			mapkey |= uint64(data[iNdEx-5]) << 24
-			mapkey |= uint64(data[iNdEx-4]) << 32
-			mapkey |= uint64(data[iNdEx-3]) << 40
-			mapkey |= uint64(data[iNdEx-2]) << 48
-			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postbytesIndex := iNdEx + int(mapbyteLen)
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
-			if m.Signatures == nil {
-				m.Signatures = make(map[uint64][]byte)
-			}
-			m.Signatures[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *Profile) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Keys", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var stringLenmapkey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLenmapkey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postStringIndexmapkey := iNdEx + int(stringLenmapkey)
-			if postStringIndexmapkey > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapkey := string(data[iNdEx:postStringIndexmapkey])
-			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postbytesIndex := iNdEx + int(mapbyteLen)
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
-			if m.Keys == nil {
-				m.Keys = make(map[string][]byte)
-			}
-			m.Keys[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *SignedEpochHead) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Signatures", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapkey uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			mapkey = uint64(data[iNdEx-8])
-			mapkey |= uint64(data[iNdEx-7]) << 8
-			mapkey |= uint64(data[iNdEx-6]) << 16
-			mapkey |= uint64(data[iNdEx-5]) << 24
-			mapkey |= uint64(data[iNdEx-4]) << 32
-			mapkey |= uint64(data[iNdEx-3]) << 40
-			mapkey |= uint64(data[iNdEx-2]) << 48
-			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postbytesIndex := iNdEx + int(mapbyteLen)
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
-			if m.Signatures == nil {
-				m.Signatures = make(map[uint64][]byte)
-			}
-			m.Signatures[mapkey] = mapvalue
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Head", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Head.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *EpochHead) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Realm", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Realm = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
-			}
-			m.Epoch = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Epoch |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RootHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RootHash = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PreviousSummaryHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochTime", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.NextEpochTime.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochPolicy", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.NextEpochPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapkey uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			mapkey = uint64(data[iNdEx-8])
-			mapkey |= uint64(data[iNdEx-7]) << 8
-			mapkey |= uint64(data[iNdEx-6]) << 16
-			mapkey |= uint64(data[iNdEx-5]) << 24
-			mapkey |= uint64(data[iNdEx-4]) << 32
-			mapkey |= uint64(data[iNdEx-3]) << 40
-			mapkey |= uint64(data[iNdEx-2]) << 48
-			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapmsglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapmsglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postmsgIndex := iNdEx + mapmsglen
-			if postmsgIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := &PublicKey{}
-			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
-				return err
-			}
-			iNdEx = postmsgIndex
-			if m.PublicKeys == nil {
-				m.PublicKeys = make(map[uint64]*PublicKey)
-			}
-			m.PublicKeys[mapkey] = mapvalue
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Quorum", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Quorum == nil {
-				m.Quorum = &QuorumExpr{}
-			}
-			if err := m.Quorum.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *PublicKey) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Ed25519 = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *QuorumExpr) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Threshold", wireType)
-			}
-			m.Threshold = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Threshold |= (uint32(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 1 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
-			}
-			var v uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			v = uint64(data[iNdEx-8])
-			v |= uint64(data[iNdEx-7]) << 8
-			v |= uint64(data[iNdEx-6]) << 16
-			v |= uint64(data[iNdEx-5]) << 24
-			v |= uint64(data[iNdEx-4]) << 32
-			v |= uint64(data[iNdEx-3]) << 40
-			v |= uint64(data[iNdEx-2]) << 48
-			v |= uint64(data[iNdEx-1]) << 56
-			m.Candidates = append(m.Candidates, v)
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Subexpressions", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Subexpressions = append(m.Subexpressions, &QuorumExpr{})
-			if err := m.Subexpressions[len(m.Subexpressions)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipClient(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func skipClient(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipClient(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
-	}
-	panic("unreachable")
+var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSUpdate",
+	HandlerType: (*E2EKSUpdateServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Lookup",
+			Handler:    _E2EKSUpdate_Lookup_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _E2EKSUpdate_Update_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
 }
