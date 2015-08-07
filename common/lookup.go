@@ -26,34 +26,6 @@ const (
 	IndexBits  = IndexBytes * 8
 )
 
-func BitToIndex(b bool) int {
-	if b {
-		return 1
-	} else {
-		return 0
-	}
-}
-
-// In each byte, the bits are ordered MSB to LSB
-func ToBits(num int, bs []byte) []bool {
-	bits := make([]bool, num)
-	for i := 0; i < len(bits); i++ {
-		bits[i] = (bs[i/8]<<uint(i%8))&(1<<7) > 0
-	}
-	return bits
-}
-
-// In each byte, the bits are ordered MSB to LSB
-func ToBytes(bits []bool) []byte {
-	bs := make([]byte, (len(bits)+7)/8)
-	for i := 0; i < len(bits); i++ {
-		if bits[i] {
-			bs[i/8] |= (1 << 7) >> uint(i%8)
-		}
-	}
-	return bs
-}
-
 type MerkleNode interface {
 	IsLeaf() bool
 	Depth() int
