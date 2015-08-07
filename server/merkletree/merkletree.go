@@ -21,6 +21,8 @@ import (
 	"log"
 	"sync"
 
+	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 )
 
@@ -28,8 +30,6 @@ const (
 	NodePrefix       = 'T'
 	AllocCounterKey  = "AC"
 	NodeKeyDelimiter = 'N'
-	IndexBytes       = 32
-	IndexBits        = IndexBytes * 8
 	SnapshotNrBytes  = 8
 	IndexLengthBytes = 4
 )
@@ -77,10 +77,10 @@ type Snapshot struct {
 
 type diskNode struct {
 	isLeaf      bool
-	childIds    [2]uint64          // 0 if the node is a leaf
-	childHashes [2][HashBytes]byte // zeroed if the node is a leaf
-	commitment  []byte             // nil if the node is not a leaf
-	indexBytes  []byte             // nil if the node is not a leaf
+	childIds    [2]uint64                 // 0 if the node is a leaf
+	childHashes [2][common.HashBytes]byte // zeroed if the node is a leaf
+	commitment  []byte                    // nil if the node is not a leaf
+	indexBytes  []byte                    // nil if the node is not a leaf
 }
 
 type node struct {
@@ -111,51 +111,67 @@ func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
 	return root.hash(), nil
 }
 
-// Lookup looks up the entry at a particular index in the snapshot.
-// In case it's present, returns:                      commitment, nil,   sibling hashes, nil
-// In case this index hits an empty branch, returns:   nil,        nil,   sibling hashes, nil
-// In case this index hits a mismatched leaf, returns: commitment, index, sibling hashes, nil
-func (snapshot *Snapshot) Lookup(indexBytes []byte) (
-	commitment []byte, proofIndex []byte, proof [][]byte, err error,
-) {
-	if len(indexBytes) != IndexBytes {
-		return nil, nil, nil, fmt.Errorf("Wrong index length")
+type LookupTracingNode struct {
+	tree  *MerkleTree
+	trace *proto.TreeProof
+	node  *node
+}
+
+var _ common.MerkleNode = (*LookupTracingNode)(nil)
+
+func (n *LookupTracingNode) IsLeaf() bool {
+	return n.node.isLeaf
+}
+
+func (n *LookupTracingNode) Depth() int {
+	return len(n.node.prefixBits)
+}
+
+func (n *LookupTracingNode) ChildHash(rightChild bool) []byte {
+	return n.node.childHashes[common.BitToIndex(rightChild)][:]
+}
+
+func (n *LookupTracingNode) Child(rightChild bool) (common.MerkleNode, error) {
+	if len(n.trace.Neighbors) != n.Depth() {
+		panic("unexpected access pattern")
 	}
-	n, err := snapshot.loadRoot()
+	// Record the sibling hash for the trace
+	n.trace.Neighbors = append(n.trace.Neighbors, n.ChildHash(!rightChild))
+
+	// Return the child
+	childPtr, err := n.tree.getChildPointer(n.node, rightChild)
 	if err != nil {
-		return
+		return nil, err
 	}
-	if n == nil {
-		// Special case: The tree is empty
-		return nil, nil, nil, nil
-	}
-	indexBits := ToBits(IndexBits, indexBytes)
-	// Traverse down the tree, following either the left or right child depending on the next bit.
-	for !n.isLeaf {
-		descendingRight := indexBits[len(n.prefixBits)]
-		siblingHash := n.childHashes[BitToIndex(!descendingRight)]
-		proof = append(proof, siblingHash[:])
-		childPointer, err := snapshot.tree.getChildPointer(n, descendingRight)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		n = *childPointer
-		if n == nil {
-			// There's no leaf with this index. The proof will now function as a proof of absence to the
-			// client by showing a valid hash path down to the nearest sibling, which creates the correct
-			// root hash when this branch's hash is nil.
-			return nil, nil, proof, nil
-		}
-	}
-	// Once a leaf node is reached, compare the entire index stored in the leaf node.
-	if bytes.Equal(indexBytes, n.indexBytes) {
-		// The leaf exists: we will simply return the value hash
+	if *childPtr == nil {
+		return nil, nil
 	} else {
-		// There is no leaf with the requested index. To prove it, we need to return the mismatching
-		// leaf node along with its Merkle proof.
-		proofIndex = append([]byte(nil), n.indexBytes...) // Copy the index bytes
+		return &LookupTracingNode{n.tree, n.trace, *childPtr}, nil
 	}
-	return n.commitment, proofIndex, proof, nil
+}
+
+func (n *LookupTracingNode) Index() []byte {
+	n.trace.ExistingIndex = n.node.indexBytes
+	return n.node.indexBytes
+}
+
+func (n *LookupTracingNode) Value() []byte {
+	n.trace.ExistingEntryHash = n.node.commitment
+	return n.node.commitment
+}
+
+func (snapshot *Snapshot) Lookup(indexBytes []byte) (trace *proto.TreeProof, err error) {
+	root, err := snapshot.loadRoot()
+	if err != nil {
+		return nil, err
+	}
+	trace = &proto.TreeProof{}
+	var tracingRoot common.MerkleNode = &LookupTracingNode{snapshot.tree, trace, root}
+	_, err = common.Lookup(tracingRoot, indexBytes)
+	if err != nil {
+		return nil, err
+	}
+	return
 }
 
 // BeginModification creates a new snapshot to be built up in memory (doesn't actually touch the
@@ -171,11 +187,11 @@ func (snapshot *Snapshot) BeginModification() (*NewSnapshot, error) {
 // Set updates the leaf value at the index (or inserts it if it did not exist).
 // In-memory: doesn't actually touch the disk yet.
 func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err error) {
-	if len(indexBytes) != IndexBytes {
+	if len(indexBytes) != common.IndexBytes {
 		return fmt.Errorf("Wrong index length")
 	}
 	commitment = append([]byte(nil), commitment...) // Make a copy of commitment
-	indexBits := ToBits(IndexBits, indexBytes)
+	indexBits := common.ToBits(common.IndexBits, indexBytes)
 	nodePointer := &snapshot.root
 	position := 0
 	// Traverse down the tree, following either the left or right child depending on the next bit.
@@ -202,7 +218,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 	} else {
 		// We have a different leaf with a matching prefix. We'll have to create new intermediate nodes.
 		oldLeaf := *nodePointer
-		oldLeafIndexBits := ToBits(IndexBits, oldLeaf.indexBytes)
+		oldLeafIndexBits := common.ToBits(common.IndexBits, oldLeaf.indexBytes)
 		// Create a new intermediate node for each bit that has now become shared.
 		for oldLeafIndexBits[position] == indexBits[position] {
 			newNode := &node{
@@ -211,7 +227,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 				},
 				prefixBits: indexBits[:position],
 			}
-			*nodePointer, nodePointer = newNode, &newNode.children[BitToIndex(indexBits[position])]
+			*nodePointer, nodePointer = newNode, &newNode.children[common.BitToIndex(indexBits[position])]
 			position++
 		}
 		// Create a new node at which the tree now branches.
@@ -232,8 +248,8 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 		}
 		// Move the old leaf's index down
 		oldLeaf.prefixBits = oldLeafIndexBits[:position+1]
-		splitNode.children[BitToIndex(indexBits[position])] = newLeaf
-		splitNode.children[BitToIndex(oldLeafIndexBits[position])] = oldLeaf
+		splitNode.children[common.BitToIndex(indexBits[position])] = newLeaf
+		splitNode.children[common.BitToIndex(oldLeafIndexBits[position])] = oldLeaf
 		*nodePointer = splitNode
 	}
 	return nil
@@ -284,7 +300,7 @@ func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
 
 // flush writes the updated nodes under this node to disk, returning the updated hash and ID of the
 // node.
-func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [HashBytes]byte) {
+func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [common.HashBytes]byte) {
 	for i := 0; i < 2; i++ {
 		if n.children[i] != nil {
 			n.childIds[i], n.childHashes[i] = t.flushNode(n.children[i], wb)
@@ -301,7 +317,7 @@ func (t *MerkleTree) storeNode(id uint64, n *node, wb kv.Batch) {
 }
 
 func (t *MerkleTree) getChildPointer(n *node, isRight bool) (**node, error) {
-	ix := BitToIndex(isRight)
+	ix := common.BitToIndex(isRight)
 	if n.childIds[ix] != 0 && n.children[ix] == nil {
 		// lazy-load the child. *don't* append to n.prefixBits!
 		childIndex := append(append([]bool{}, n.prefixBits...), isRight)
@@ -315,7 +331,7 @@ func (t *MerkleTree) getChildPointer(n *node, isRight bool) (**node, error) {
 }
 
 func (t *MerkleTree) serializeKey(id uint64, prefixBits []bool) []byte {
-	indexBytes := ToBytes(prefixBits)
+	indexBytes := common.ToBytes(prefixBits)
 	key := make([]byte, 0, len(t.nodeKeyPrefix)+len(indexBytes)+4+1+8)
 	key = append(key, t.nodeKeyPrefix...)
 	key = append(key, indexBytes...)
@@ -332,7 +348,7 @@ func (n *diskNode) serialize() []byte {
 	if n.isLeaf {
 		return append(append([]byte{LeafIdentifier}, n.indexBytes...), n.commitment...)
 	} else {
-		buf := make([]byte, 1, 1+2*8+2*HashBytes)
+		buf := make([]byte, 1, 1+2*8+2*common.HashBytes)
 		buf[0] = IntermediateNodeIdentifier
 		for i := 0; i < 2; i++ {
 			binary.LittleEndian.PutUint64(buf[len(buf):len(buf)+8], uint64(n.childIds[i]))
@@ -347,10 +363,10 @@ func deserializeNode(buf []byte) (n diskNode) {
 	if buf[0] == LeafIdentifier {
 		n.isLeaf = true
 		buf = buf[1:]
-		n.indexBytes = buf[:IndexBytes]
-		buf = buf[IndexBytes:]
-		n.commitment = buf[:HashBytes]
-		buf = buf[HashBytes:]
+		n.indexBytes = buf[:common.IndexBytes]
+		buf = buf[common.IndexBytes:]
+		n.commitment = buf[:common.HashBytes]
+		buf = buf[common.HashBytes:]
 		if len(buf) != 0 {
 			log.Panic("bad leaf node length")
 		}
@@ -360,8 +376,8 @@ func deserializeNode(buf []byte) (n diskNode) {
 		for i := 0; i < 2; i++ {
 			n.childIds[i] = uint64(binary.LittleEndian.Uint64(buf[:8]))
 			buf = buf[8:]
-			copy(n.childHashes[i][:], buf[:HashBytes])
-			buf = buf[HashBytes:]
+			copy(n.childHashes[i][:], buf[:common.HashBytes])
+			buf = buf[common.HashBytes:]
 		}
 		if len(buf) != 0 {
 			log.Panic("bad intermediate node length")

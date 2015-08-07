@@ -17,17 +17,18 @@ package merkletree
 import (
 	"crypto/sha256"
 	"encoding/binary"
+
+	"github.com/yahoo/coname/common"
 )
 
 const (
-	HashBytes                  = 32
 	IntermediateNodeIdentifier = 'I'
 	LeafIdentifier             = 'L'
 )
 
 // TODO switch to CONIKS spec
 
-func HashIntermediateNode(prefixBits []bool, childHashes *[2][HashBytes]byte) []byte {
+func HashIntermediateNode(prefixBits []bool, childHashes *[2][common.HashBytes]byte) []byte {
 	buf := make([]byte, 5)
 	buf[0] = IntermediateNodeIdentifier
 	binary.LittleEndian.PutUint32(buf[1:], uint32(len(prefixBits)))
@@ -35,7 +36,7 @@ func HashIntermediateNode(prefixBits []bool, childHashes *[2][HashBytes]byte) []
 	h.Write(buf)
 	h.Write(childHashes[0][:])
 	h.Write(childHashes[1][:])
-	h.Write(ToBytes(prefixBits))
+	h.Write(common.ToBytes(prefixBits))
 	return h.Sum(nil)
 }
 
