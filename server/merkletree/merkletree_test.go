@@ -227,6 +227,7 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 
 type Map interface {
 	GetSnapshot(nr uint64) MapSnapshot
+	Refresh() // flush all snapshots first
 }
 
 type MapSnapshot interface {
@@ -241,7 +242,20 @@ type NewMapSnapshot interface {
 }
 
 type TestMerkleTree struct {
-	MerkleTree
+	tree      *MerkleTree
+	db        kv.DB
+	prefix    []byte
+	treeNonce []byte
+}
+
+func makeTestMerkleTree(db kv.DB, prefix, treeNonce []byte) *TestMerkleTree {
+	tree := &TestMerkleTree{
+		db:        db,
+		prefix:    prefix,
+		treeNonce: treeNonce,
+	}
+	tree.Refresh()
+	return tree
 }
 
 type TestSnapshot Snapshot
@@ -252,7 +266,15 @@ var _ MapSnapshot = (*TestSnapshot)(nil)
 var _ NewMapSnapshot = (*TestNewSnapshot)(nil)
 
 func (t *TestMerkleTree) GetSnapshot(nr uint64) MapSnapshot {
-	return (*TestSnapshot)(t.MerkleTree.GetSnapshot(nr))
+	return (*TestSnapshot)(t.tree.GetSnapshot(nr))
+}
+
+func (t *TestMerkleTree) Refresh() {
+	var err error
+	t.tree, err = AccessMerkleTree(t.db, t.prefix, t.treeNonce)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (t *TestSnapshot) GetNr() uint64 {
@@ -320,6 +342,8 @@ func (m *SimpleMap) GetSnapshot(nr uint64) MapSnapshot {
 	return m.snapshots[nr]
 }
 
+func (m *SimpleMap) Refresh() {}
+
 func (s *SimpleSnapshot) GetNr() uint64 {
 	return s.nr
 }
@@ -362,14 +386,18 @@ func (s *SimpleNewSnapshot) Flush() MapSnapshot {
 
 type ComparingMap struct {
 	Implementations []Map
+	snapshots       [][]uint64
 }
 
 type ComparingSnapshot struct {
 	Snapshots []MapSnapshot
+	nr        uint64
+	wholeMap  *ComparingMap
 }
 
 type NewComparingSnapshot struct {
 	NewSnapshots []NewMapSnapshot
+	wholeMap     *ComparingMap
 }
 
 var _ Map = (*ComparingMap)(nil)
@@ -377,19 +405,29 @@ var _ MapSnapshot = (*ComparingSnapshot)(nil)
 var _ NewMapSnapshot = (*NewComparingSnapshot)(nil)
 
 func (m *ComparingMap) GetSnapshot(nr uint64) MapSnapshot {
-	if nr == 0 {
-		snapshots := []MapSnapshot{}
-		for _, impl := range m.Implementations {
-			snapshots = append(snapshots, impl.GetSnapshot(0))
+	if len(m.snapshots) == 0 && nr == 0 {
+		nrs := []uint64{}
+		for _ = range m.Implementations {
+			nrs = append(nrs, 0)
 		}
-		return &ComparingSnapshot{snapshots}
-	} else {
-		panic("not implemented")
+		m.snapshots = append(m.snapshots, nrs)
+	}
+	nrs := m.snapshots[nr]
+	snapshots := []MapSnapshot{}
+	for i, impl := range m.Implementations {
+		snapshots = append(snapshots, impl.GetSnapshot(nrs[i]))
+	}
+	return &ComparingSnapshot{snapshots, nr, m}
+}
+
+func (m *ComparingMap) Refresh() {
+	for _, impl := range m.Implementations {
+		impl.Refresh()
 	}
 }
 
 func (s *ComparingSnapshot) GetNr() uint64 {
-	panic("not implemented") // might be a sign this design is somewhat silly
+	return s.nr
 }
 
 func (s *ComparingSnapshot) Lookup(indexBytes []byte) (value []byte) {
@@ -408,7 +446,7 @@ func (s *ComparingSnapshot) BeginModification() NewMapSnapshot {
 	for _, impl := range s.Snapshots {
 		snapshots = append(snapshots, impl.BeginModification())
 	}
-	return &NewComparingSnapshot{snapshots}
+	return &NewComparingSnapshot{snapshots, s.wholeMap}
 }
 
 func (s *NewComparingSnapshot) Set(indexBytes, value []byte) {
@@ -419,10 +457,14 @@ func (s *NewComparingSnapshot) Set(indexBytes, value []byte) {
 
 func (s *NewComparingSnapshot) Flush() MapSnapshot {
 	snapshots := []MapSnapshot{}
+	nrs := []uint64{}
 	for _, newSnap := range s.NewSnapshots {
-		snapshots = append(snapshots, newSnap.Flush())
+		flushed := newSnap.Flush()
+		snapshots = append(snapshots, flushed)
+		nrs = append(nrs, flushed.GetNr())
 	}
-	return &ComparingSnapshot{snapshots}
+	s.wholeMap.snapshots = append(s.wholeMap.snapshots, nrs)
+	return &ComparingSnapshot{snapshots, uint64(len(s.wholeMap.snapshots) - 1), s.wholeMap}
 }
 
 var dbg = 1
@@ -449,7 +491,7 @@ func compareImplementationsRandomly(implementations []Map, itCount, byteRange in
 			return bs[:]
 		}
 	}
-	comparer := ComparingMap{implementations}
+	comparer := ComparingMap{implementations, nil}
 	snapshots := []MapSnapshot{comparer.GetSnapshot(0)}
 	changingSnapshots := []NewMapSnapshot{}
 	existingKeys := [][]byte{}
@@ -497,6 +539,25 @@ func compareImplementationsRandomly(implementations []Map, itCount, byteRange in
 				changingSnapshots = append(changingSnapshots[:i], changingSnapshots[i+1:]...)
 			}
 		}
+		if rand.Intn(50) == 0 {
+			// flush everything
+			for _, snap := range changingSnapshots {
+				snapshots = append(snapshots, snap.Flush())
+				changingSnapshots = nil
+			}
+			comparer.Refresh()
+			// reload all the snapshots
+			for i := range snapshots {
+				snapshots[i] = comparer.GetSnapshot(snapshots[i].GetNr())
+			}
+		}
+		if rand.Intn(10) == 0 {
+			// reload random snapshot
+			if len(snapshots) > 0 {
+				i := rand.Intn(len(snapshots))
+				snapshots[i] = comparer.GetSnapshot(snapshots[i].GetNr())
+			}
+		}
 		if i+1 == itCount || (i < 200 && i%10 == 0) {
 			// check all consistency
 			keysToQuery := existingKeys
@@ -527,19 +588,13 @@ func TestBrutally(t *testing.T) {
 		dbg = 2
 	}
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, []byte("tree1"), treeNonce)
-		if err != nil {
-			panic(err)
-		}
+		m := makeTestMerkleTree(db, []byte("tree1"), treeNonce)
 		// Test with randomly distributed keys
-		impls := []Map{&SimpleMap{}, &TestMerkleTree{*m}}
+		impls := []Map{&SimpleMap{}, m}
 		compareImplementationsRandomly(impls, 2000, 255, t)
-		m2, err := AccessMerkleTree(db, []byte("tree2"), treeNonce)
-		if err != nil {
-			panic(err)
-		}
+		m2 := makeTestMerkleTree(db, []byte("tree2"), treeNonce)
 		// Test with not as random keys
-		impls = []Map{&SimpleMap{}, &TestMerkleTree{*m2}}
+		impls = []Map{&SimpleMap{}, m2}
 		compareImplementationsRandomly(impls, 200, -16, t)
 	})
 }
