@@ -27,6 +27,8 @@ const (
 )
 
 type MerkleNode interface {
+	IsEmpty() bool
+
 	IsLeaf() bool
 	Depth() int
 
@@ -44,7 +46,7 @@ func Lookup(root MerkleNode, indexBytes []byte) (value []byte, err error) {
 	if len(indexBytes) != IndexBytes {
 		return nil, fmt.Errorf("Wrong index length")
 	}
-	if root == nil {
+	if root.IsEmpty() {
 		// Special case: The tree is empty.
 		return nil, nil
 	}
@@ -57,7 +59,7 @@ func Lookup(root MerkleNode, indexBytes []byte) (value []byte, err error) {
 		if err != nil {
 			return nil, err
 		}
-		if n == nil {
+		if n.IsEmpty() {
 			// There's no leaf with this index.
 			return nil, nil
 		}

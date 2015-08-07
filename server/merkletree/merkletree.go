@@ -117,7 +117,19 @@ type LookupTracingNode struct {
 	node  *node
 }
 
+func makeTracingNode(tree *MerkleTree, trace *proto.TreeProof, n *node) *LookupTracingNode {
+	if n == nil {
+		return nil
+	} else {
+		return &LookupTracingNode{tree, trace, n}
+	}
+}
+
 var _ common.MerkleNode = (*LookupTracingNode)(nil)
+
+func (n *LookupTracingNode) IsEmpty() bool {
+	return n == nil
+}
 
 func (n *LookupTracingNode) IsLeaf() bool {
 	return n.node.isLeaf
@@ -138,16 +150,12 @@ func (n *LookupTracingNode) Child(rightChild bool) (common.MerkleNode, error) {
 	// Record the sibling hash for the trace
 	n.trace.Neighbors = append(n.trace.Neighbors, n.ChildHash(!rightChild))
 
-	// Return the child
+	// Return the child (may be nil)
 	childPtr, err := n.tree.getChildPointer(n.node, rightChild)
 	if err != nil {
 		return nil, err
 	}
-	if *childPtr == nil {
-		return nil, nil
-	} else {
-		return &LookupTracingNode{n.tree, n.trace, *childPtr}, nil
-	}
+	return makeTracingNode(n.tree, n.trace, *childPtr), nil
 }
 
 func (n *LookupTracingNode) Index() []byte {
@@ -166,7 +174,7 @@ func (snapshot *Snapshot) Lookup(indexBytes []byte) (value []byte, trace *proto.
 		return nil, nil, err
 	}
 	trace = &proto.TreeProof{}
-	var tracingRoot common.MerkleNode = &LookupTracingNode{snapshot.tree, trace, root}
+	var tracingRoot common.MerkleNode = makeTracingNode(snapshot.tree, trace, root)
 	value, err = common.Lookup(tracingRoot, indexBytes)
 	if err != nil {
 		return nil, nil, err

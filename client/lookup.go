@@ -65,6 +65,10 @@ func reconstructBranch(trace *proto.TreeProof, leafIndex, leafValue []byte, dept
 
 var _ common.MerkleNode = (*ReconstructedNode)(nil)
 
+func (n *ReconstructedNode) IsEmpty() bool {
+	return n == nil
+}
+
 func (n *ReconstructedNode) IsLeaf() bool {
 	return n.isLeaf
 }
