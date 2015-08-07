@@ -110,7 +110,7 @@ func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return snapshot.tree.hash(root), nil
+	return snapshot.tree.hash([]bool{}, root), nil
 }
 
 type LookupTracingNode struct {
@@ -270,7 +270,7 @@ func (snapshot *NewSnapshot) Flush(wb kv.Batch) (flushed *Snapshot) {
 	if snapshot.root == nil {
 		flushed = &Snapshot{snapshot.tree, 0}
 	} else {
-		rootId, _ := snapshot.tree.flushNode(snapshot.root, wb)
+		rootId, _ := snapshot.tree.flushNode([]bool{}, snapshot.root, wb)
 		flushed = &Snapshot{snapshot.tree, rootId}
 	}
 	allocCountVal := make([]byte, 8)
@@ -309,20 +309,17 @@ func (tree *MerkleTree) loadNode(id uint64, prefixBits []bool) (*node, error) {
 }
 
 // flush writes the updated nodes under this node to disk, returning the updated hash and ID of the
-// node.
-func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [common.HashBytes]byte) {
-	for i := 0; i < 2; i++ {
-		if n.children[i] != nil {
-			n.childIds[i], n.childHashes[i] = t.flushNode(n.children[i], wb)
-		} else if n.childIds[i] == 0 {
-			// empty branch (TODO: want this to be handled by MerkleTree.hash(), really)
-			h := common.HashEmptyBranch(t.treeNonce, append(append([]bool{}, n.prefixBits...), i == 1))
-			copy(n.childHashes[i][:], h)
+// node. Assumes ownership of the array underlying prefixBits.
+func (t *MerkleTree) flushNode(prefixBits []bool, n *node, wb kv.Batch) (id uint64, hash [common.HashBytes]byte) {
+	if n != nil {
+		for i := 0; i < 2; i++ {
+			n.childIds[i], n.childHashes[i] = t.flushNode(append(prefixBits, i == 1), n.children[i], wb)
 		}
+		id = t.allocNodeId()
+		t.storeNode(id, n, wb)
 	}
-	id = t.allocNodeId()
-	t.storeNode(id, n, wb)
-	copy(hash[:], t.hash(n))
+	// Also hash nil branches
+	copy(hash[:], t.hash(prefixBits, n))
 	return
 }
 
@@ -402,10 +399,12 @@ func deserializeNode(buf []byte) (n diskNode) {
 	return
 }
 
-func (t *MerkleTree) hash(n *node) []byte {
-	if n.isLeaf {
-		return common.HashInternalNode(n.prefixBits, &n.childHashes)
+func (t *MerkleTree) hash(prefixBits []bool, n *node) []byte {
+	if n == nil {
+		return common.HashEmptyBranch(t.treeNonce, prefixBits)
+	} else if n.isLeaf {
+		return common.HashInternalNode(prefixBits, &n.childHashes)
 	} else {
-		return common.HashLeaf(t.treeNonce, n.indexBytes, len(n.prefixBits), n.value)
+		return common.HashLeaf(t.treeNonce, n.indexBytes, len(prefixBits), n.value)
 	}
 }
