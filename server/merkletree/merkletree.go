@@ -160,16 +160,16 @@ func (n *LookupTracingNode) Value() []byte {
 	return n.node.value
 }
 
-func (snapshot *Snapshot) Lookup(indexBytes []byte) (trace *proto.TreeProof, err error) {
+func (snapshot *Snapshot) Lookup(indexBytes []byte) (value []byte, trace *proto.TreeProof, err error) {
 	root, err := snapshot.loadRoot()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	trace = &proto.TreeProof{}
 	var tracingRoot common.MerkleNode = &LookupTracingNode{snapshot.tree, trace, root}
-	_, err = common.Lookup(tracingRoot, indexBytes)
+	value, err = common.Lookup(tracingRoot, indexBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return
 }

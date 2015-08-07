@@ -25,6 +25,7 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 )
@@ -51,8 +52,8 @@ func TestOneEntry(t *testing.T) {
 		}
 		e := m.GetSnapshot(0)
 		index := []byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-		val1, proofix, proof1, err := e.Lookup(index)
-		if val1 != nil || proofix != nil || proof1 != nil || err != nil {
+		val1, proof, err := e.Lookup(index)
+		if val1 != nil || proof.ExistingIndex != nil || proof.ExistingEntryHash != nil || err != nil {
 			panic("bad lookup in empty tree")
 		}
 		val2 := []byte{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
@@ -71,12 +72,9 @@ func TestOneEntry(t *testing.T) {
 			panic(err)
 		}
 		e2 := m.GetSnapshot(flushed.Nr)
-		v, pix, _, err := e2.Lookup(index)
+		v, _, err := e2.Lookup(index)
 		if err != nil {
 			panic(err)
-		}
-		if pix != nil {
-			v = nil
 		}
 		if !bytes.Equal(v, val2) {
 			panic(fmt.Errorf("Value mismatch: %x / %x", v, val2))
@@ -118,12 +116,9 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 		}
 		e2 := m.GetSnapshot(flushed.Nr)
 		for i := 0; i < 2; i++ {
-			v, pix, _, err := e2.Lookup(index)
+			v, _, err := e2.Lookup(index)
 			if err != nil {
 				panic(err)
-			}
-			if pix != nil {
-				v = nil
 			}
 			if !bytes.Equal(v, val) {
 				panic(fmt.Errorf("Value mismatch: %x vs %x", v, val))
@@ -176,12 +171,9 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 			for j := 0; j <= i+1; j++ {
 				e2 := m.GetSnapshot(snapshotNrs[j])
 				for k := 0; k < len(indices); k++ {
-					v, pix, _, err := e2.Lookup(indices[k])
+					v, _, err := e2.Lookup(indices[k])
 					if err != nil {
 						panic(err)
-					}
-					if pix != nil {
-						v = nil
 					}
 					if k < j {
 						if !bytes.Equal(v, values[k]) {
@@ -238,14 +230,10 @@ func (t *TestSnapshot) GetNr() uint64 {
 }
 
 func (t *TestSnapshot) Lookup(indexBytes []byte) (value []byte) {
-	value, proofIndex, _, err := (*Snapshot)(t).Lookup(indexBytes)
+	value, _, err := (*Snapshot)(t).Lookup(indexBytes)
 	// TODO check proof
 	if err != nil {
 		panic(err)
-	}
-	if proofIndex != nil {
-		// actually absence!
-		return nil
 	}
 	return
 }
@@ -283,7 +271,7 @@ type SimpleMap struct {
 
 type SimpleSnapshot struct {
 	nr       uint64
-	entries  map[[HashBytes]byte][HashBytes]byte
+	entries  map[[common.HashBytes]byte][common.HashBytes]byte
 	wholeMap *SimpleMap
 }
 
@@ -297,7 +285,7 @@ var _ NewMapSnapshot = (*SimpleNewSnapshot)(nil)
 
 func (m *SimpleMap) GetSnapshot(nr uint64) MapSnapshot {
 	if len(m.snapshots) == 0 {
-		m.snapshots = append(m.snapshots, &SimpleSnapshot{wholeMap: m, entries: make(map[[HashBytes]byte][HashBytes]byte)})
+		m.snapshots = append(m.snapshots, &SimpleSnapshot{wholeMap: m, entries: make(map[[common.HashBytes]byte][common.HashBytes]byte)})
 	}
 	return m.snapshots[nr]
 }
@@ -307,7 +295,7 @@ func (s *SimpleSnapshot) GetNr() uint64 {
 }
 
 func (s *SimpleSnapshot) Lookup(indexBytes []byte) (value []byte) {
-	var bytes [HashBytes]byte
+	var bytes [common.HashBytes]byte
 	copy(bytes[:], indexBytes)
 	if comm, ok := s.entries[bytes]; ok {
 		return comm[:]
@@ -317,7 +305,7 @@ func (s *SimpleSnapshot) Lookup(indexBytes []byte) (value []byte) {
 }
 
 func (s *SimpleSnapshot) clone() (cloned *SimpleSnapshot) {
-	cloned = &SimpleSnapshot{nr: s.nr, entries: make(map[[HashBytes]byte][HashBytes]byte), wholeMap: s.wholeMap}
+	cloned = &SimpleSnapshot{nr: s.nr, entries: make(map[[common.HashBytes]byte][common.HashBytes]byte), wholeMap: s.wholeMap}
 	for k, v := range s.entries {
 		cloned.entries[k] = v
 	}
@@ -329,7 +317,7 @@ func (s *SimpleSnapshot) BeginModification() NewMapSnapshot {
 }
 
 func (s *SimpleNewSnapshot) Set(indexBytes, value []byte) {
-	var bytes, comm [HashBytes]byte
+	var bytes, comm [common.HashBytes]byte
 	copy(bytes[:], indexBytes)
 	copy(comm[:], value)
 	s.entries[bytes] = comm
@@ -410,19 +398,19 @@ func (s *NewComparingSnapshot) Flush() MapSnapshot {
 var dbg = 1
 
 func compareImplementationsRandomly(implementations []Map, itCount, byteRange int, t testing.TB) {
-	bytez := func(b byte) [HashBytes]byte {
-		var bytes [HashBytes]byte
+	bytez := func(b byte) [common.HashBytes]byte {
+		var bytes [common.HashBytes]byte
 		for i := range bytes {
 			bytes[i] = b<<4 | b
 		}
 		return bytes
 	}
 	randBytes := func() []byte {
-		var bs [HashBytes]byte
+		var bs [common.HashBytes]byte
 		if byteRange < 0 {
 			bs = bytez(byte(rand.Intn(-byteRange)))
 			bs[0] = byte(rand.Intn(-byteRange))
-			bs[HashBytes-1] = byte(rand.Intn(-byteRange))
+			bs[common.HashBytes-1] = byte(rand.Intn(-byteRange))
 			return bs[:]
 		} else {
 			for i := range bs {
