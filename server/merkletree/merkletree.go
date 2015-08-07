@@ -145,7 +145,7 @@ func (n *LookupTracingNode) ChildHash(rightChild bool) []byte {
 
 func (n *LookupTracingNode) Child(rightChild bool) (common.MerkleNode, error) {
 	if len(n.trace.Neighbors) != n.Depth() {
-		panic("unexpected access pattern")
+		log.Panicf("unexpected access pattern: at depth %v, have %v", n.Depth(), n.trace.Neighbors)
 	}
 	// Record the sibling hash for the trace
 	n.trace.Neighbors = append(n.trace.Neighbors, n.ChildHash(!rightChild))

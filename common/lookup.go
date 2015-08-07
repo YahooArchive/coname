@@ -55,7 +55,7 @@ func Lookup(root MerkleNode, indexBytes []byte) (value []byte, err error) {
 	// Traverse down the tree, following either the left or right child depending on the next bit.
 	for !n.IsLeaf() {
 		descendingRight := indexBits[n.Depth()]
-		n, err := n.Child(descendingRight)
+		n, err = n.Child(descendingRight)
 		if err != nil {
 			return nil, err
 		}
