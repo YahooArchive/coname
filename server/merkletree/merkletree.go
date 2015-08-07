@@ -403,8 +403,8 @@ func (t *MerkleTree) hash(prefixBits []bool, n *node) []byte {
 	if n == nil {
 		return common.HashEmptyBranch(t.treeNonce, prefixBits)
 	} else if n.isLeaf {
-		return common.HashInternalNode(prefixBits, &n.childHashes)
-	} else {
 		return common.HashLeaf(t.treeNonce, n.indexBytes, len(prefixBits), n.value)
+	} else {
+		return common.HashInternalNode(prefixBits, &n.childHashes)
 	}
 }

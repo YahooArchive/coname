@@ -21,8 +21,12 @@ import (
 	"github.com/yahoo/coname/proto"
 )
 
-// assumes ownership of prefixBits underlying array
-func RecomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) ([]byte, error) {
+func RecomputeHash(treeNonce []byte, node common.MerkleNode) ([]byte, error) {
+	return recomputeHash(treeNonce, []bool{}, node)
+}
+
+// assumes ownership of the array underlying prefixBits
+func recomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) ([]byte, error) {
 	if node.IsEmpty() {
 		return common.HashEmptyBranch(treeNonce, prefixBits), nil
 	} else if node.IsLeaf() {
@@ -37,7 +41,7 @@ func RecomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) 
 				if err != nil {
 					return nil, err
 				}
-				h, err = RecomputeHash(treeNonce, append(prefixBits, rightChild), ch)
+				h, err = recomputeHash(treeNonce, append(prefixBits, rightChild), ch)
 				if err != nil {
 					return nil, err
 				}
@@ -68,11 +72,15 @@ func ReconstructTree(trace *proto.TreeProof, leafIndex, leafValue []byte) (*Reco
 
 func reconstructBranch(trace *proto.TreeProof, leafIndex, leafValue []byte, depth int) *ReconstructedNode {
 	if depth == len(trace.Neighbors) {
-		return &ReconstructedNode{
-			isLeaf: true,
-			depth:  depth,
-			index:  leafIndex,
-			value:  leafValue,
+		if leafValue == nil {
+			return nil
+		} else {
+			return &ReconstructedNode{
+				isLeaf: true,
+				depth:  depth,
+				index:  leafIndex,
+				value:  leafValue,
+			}
 		}
 	} else {
 		node := &ReconstructedNode{
