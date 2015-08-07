@@ -35,6 +35,7 @@ const (
 )
 
 type MerkleTree struct {
+	treeNonce       []byte
 	db              kv.DB
 	nodeKeyPrefix   []byte
 	allocCounterKey []byte
@@ -45,7 +46,7 @@ type MerkleTree struct {
 
 // AccessMerkleTree opens the Merkle tree stored in the DB. There should never be two different
 // MerkleTree objects accessing the same tree.
-func AccessMerkleTree(db kv.DB, prefix []byte) (*MerkleTree, error) {
+func AccessMerkleTree(db kv.DB, prefix []byte, treeNonce []byte) (*MerkleTree, error) {
 	// read the allocation count out of the DB
 	allocCounterKey := append(append([]byte(nil), prefix...), AllocCounterKey...)
 	val, err := db.Get(allocCounterKey)
@@ -60,6 +61,7 @@ func AccessMerkleTree(db kv.DB, prefix []byte) (*MerkleTree, error) {
 		allocCount = binary.LittleEndian.Uint64(val)
 	}
 	return &MerkleTree{
+		treeNonce:       treeNonce,
 		db:              db,
 		nodeKeyPrefix:   append(append([]byte(nil), prefix...), NodePrefix),
 		allocCounterKey: allocCounterKey,
@@ -108,7 +110,7 @@ func (snapshot *Snapshot) GetRootHash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return root.hash(), nil
+	return snapshot.tree.hash(root), nil
 }
 
 type LookupTracingNode struct {
@@ -312,11 +314,15 @@ func (t *MerkleTree) flushNode(n *node, wb kv.Batch) (id uint64, hash [common.Ha
 	for i := 0; i < 2; i++ {
 		if n.children[i] != nil {
 			n.childIds[i], n.childHashes[i] = t.flushNode(n.children[i], wb)
+		} else if n.childIds[i] == 0 {
+			// empty branch (TODO: want this to be handled by MerkleTree.hash(), really)
+			h := common.HashEmptyBranch(t.treeNonce, append(append([]bool{}, n.prefixBits...), i == 1))
+			copy(n.childHashes[i][:], h)
 		}
 	}
 	id = t.allocNodeId()
 	t.storeNode(id, n, wb)
-	copy(hash[:], n.hash())
+	copy(hash[:], t.hash(n))
 	return
 }
 
@@ -354,10 +360,10 @@ func (t *MerkleTree) serializeKey(id uint64, prefixBits []bool) []byte {
 
 func (n *diskNode) serialize() []byte {
 	if n.isLeaf {
-		return append(append([]byte{LeafIdentifier}, n.indexBytes...), n.value...)
+		return append(append([]byte{common.LeafIdentifier}, n.indexBytes...), n.value...)
 	} else {
 		buf := make([]byte, 1, 1+2*8+2*common.HashBytes)
-		buf[0] = IntermediateNodeIdentifier
+		buf[0] = common.InternalNodeIdentifier
 		for i := 0; i < 2; i++ {
 			binary.LittleEndian.PutUint64(buf[len(buf):len(buf)+8], uint64(n.childIds[i]))
 			buf = buf[:len(buf)+8]
@@ -368,7 +374,7 @@ func (n *diskNode) serialize() []byte {
 }
 
 func deserializeNode(buf []byte) (n diskNode) {
-	if buf[0] == LeafIdentifier {
+	if buf[0] == common.LeafIdentifier {
 		n.isLeaf = true
 		buf = buf[1:]
 		n.indexBytes = buf[:common.IndexBytes]
@@ -378,7 +384,7 @@ func deserializeNode(buf []byte) (n diskNode) {
 		if len(buf) != 0 {
 			log.Panic("bad leaf node length")
 		}
-	} else if buf[0] == IntermediateNodeIdentifier {
+	} else if buf[0] == common.InternalNodeIdentifier {
 		n.isLeaf = false
 		buf = buf[1:]
 		for i := 0; i < 2; i++ {
@@ -396,10 +402,10 @@ func deserializeNode(buf []byte) (n diskNode) {
 	return
 }
 
-func (n *node) hash() []byte {
+func (t *MerkleTree) hash(n *node) []byte {
 	if n.isLeaf {
-		return HashIntermediateNode(n.prefixBits, &n.childHashes)
+		return common.HashInternalNode(n.prefixBits, &n.childHashes)
 	} else {
-		return HashLeaf(n.indexBytes, n.value)
+		return common.HashLeaf(t.treeNonce, n.indexBytes, len(n.prefixBits), n.value)
 	}
 }

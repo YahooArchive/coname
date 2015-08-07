@@ -17,6 +17,8 @@ Questions
 - Cache nodes in-memory? Currently we do not (but LevelDB caches)
 	- Would have to add a dirty bit so flush() doesn't write out all the cached nodes
 - Use binary encoding library rather than hand-serialization?
+- Support deletion?
+	- Currently the lazy-loading logic breaks this
 
 Comments
 - Would be even nicer if you couldn't get access to a new snapshot number until
@@ -29,10 +31,6 @@ TODO
 
 Hashing
 0. Take CONIKS scheme
-1. Add identifier for interior nodes (and maybe path, like Joe suggested?)
+1. Add identifier for internal nodes (and maybe path, like Joe suggested?)
 2. Commitment -> just hash of Entry (Profile includes nonce; our VRF hashes in
 	the name so we don't have to worry about collisions)
-3. Take out index: already in Entry; data structure correctness should buy this.
-  (However, we *do* need to just store this in this Merkle tree structure.
-	 Doesn't really matter though; that's just an implementation detail of the
-	 structure.)

@@ -30,6 +30,8 @@ import (
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 )
 
+var treeNonce []byte = []byte("NONCE NONCE NONCE")
+
 func withDB(f func(kv.DB)) {
 	dir, err := ioutil.TempDir("", "merkletree")
 	if err != nil {
@@ -46,7 +48,7 @@ func withDB(f func(kv.DB)) {
 
 func TestOneEntry(t *testing.T) {
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, nil)
+		m, err := AccessMerkleTree(db, nil, treeNonce)
 		if err != nil {
 			panic(err)
 		}
@@ -85,7 +87,7 @@ func TestOneEntry(t *testing.T) {
 
 func TestTwoEntriesOneEpoch(t *testing.T) {
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, []byte("abcd"))
+		m, err := AccessMerkleTree(db, []byte("abcd"), treeNonce)
 		if err != nil {
 			panic(err)
 		}
@@ -132,7 +134,7 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 
 func TestThreeEntriesThreeEpochs(t *testing.T) {
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, []byte("xyz"))
+		m, err := AccessMerkleTree(db, []byte("xyz"), treeNonce)
 		if err != nil {
 			panic(err)
 		}
@@ -159,7 +161,7 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 			}
 			wb := new(leveldb.Batch)
 			flushed := ne.Flush(wb)
-			m, err = AccessMerkleTree(db, []byte("xyz"))
+			m, err = AccessMerkleTree(db, []byte("xyz"), treeNonce)
 			if err != nil {
 				panic(err)
 			}
@@ -497,14 +499,14 @@ func TestBrutally(t *testing.T) {
 		dbg = 2
 	}
 	withDB(func(db kv.DB) {
-		m, err := AccessMerkleTree(db, []byte("tree1"))
+		m, err := AccessMerkleTree(db, []byte("tree1"), treeNonce)
 		if err != nil {
 			panic(err)
 		}
 		// Test with randomly distributed keys
 		impls := []Map{&SimpleMap{}, &TestMerkleTree{*m}}
 		compareImplementationsRandomly(impls, 2000, 255, t)
-		m2, err := AccessMerkleTree(db, []byte("tree2"))
+		m2, err := AccessMerkleTree(db, []byte("tree2"), treeNonce)
 		if err != nil {
 			panic(err)
 		}
