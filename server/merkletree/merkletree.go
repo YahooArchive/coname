@@ -79,7 +79,7 @@ type diskNode struct {
 	isLeaf      bool
 	childIds    [2]uint64                 // 0 if the node is a leaf
 	childHashes [2][common.HashBytes]byte // zeroed if the node is a leaf
-	commitment  []byte                    // nil if the node is not a leaf
+	value       []byte                    // nil if the node is not a leaf
 	indexBytes  []byte                    // nil if the node is not a leaf
 }
 
@@ -156,8 +156,8 @@ func (n *LookupTracingNode) Index() []byte {
 }
 
 func (n *LookupTracingNode) Value() []byte {
-	n.trace.ExistingEntryHash = n.node.commitment
-	return n.node.commitment
+	n.trace.ExistingEntryHash = n.node.value
+	return n.node.value
 }
 
 func (snapshot *Snapshot) Lookup(indexBytes []byte) (trace *proto.TreeProof, err error) {
@@ -186,11 +186,11 @@ func (snapshot *Snapshot) BeginModification() (*NewSnapshot, error) {
 
 // Set updates the leaf value at the index (or inserts it if it did not exist).
 // In-memory: doesn't actually touch the disk yet.
-func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err error) {
+func (snapshot *NewSnapshot) Set(indexBytes []byte, value []byte) (err error) {
 	if len(indexBytes) != common.IndexBytes {
 		return fmt.Errorf("Wrong index length")
 	}
-	commitment = append([]byte(nil), commitment...) // Make a copy of commitment
+	value = append([]byte(nil), value...) // Make a copy of value
 	indexBits := common.ToBits(common.IndexBits, indexBytes)
 	nodePointer := &snapshot.root
 	position := 0
@@ -208,13 +208,13 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 			diskNode: diskNode{
 				isLeaf:     true,
 				indexBytes: append([]byte{}, indexBytes...), // Make a copy of indexBytes
-				commitment: commitment,
+				value:      value,
 			},
 			prefixBits: indexBits[:position],
 		}
 	} else if bytes.Equal((*nodePointer).indexBytes, indexBytes) {
 		// We have an existing leaf at this index; just replace the value
-		(*nodePointer).commitment = commitment
+		(*nodePointer).value = value
 	} else {
 		// We have a different leaf with a matching prefix. We'll have to create new intermediate nodes.
 		oldLeaf := *nodePointer
@@ -242,7 +242,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, commitment []byte) (err erro
 			diskNode: diskNode{
 				isLeaf:     true,
 				indexBytes: append([]byte{}, indexBytes...), // Make a copy of the index
-				commitment: commitment,
+				value:      value,
 			},
 			prefixBits: indexBits[:position+1],
 		}
@@ -346,7 +346,7 @@ func (t *MerkleTree) serializeKey(id uint64, prefixBits []bool) []byte {
 
 func (n *diskNode) serialize() []byte {
 	if n.isLeaf {
-		return append(append([]byte{LeafIdentifier}, n.indexBytes...), n.commitment...)
+		return append(append([]byte{LeafIdentifier}, n.indexBytes...), n.value...)
 	} else {
 		buf := make([]byte, 1, 1+2*8+2*common.HashBytes)
 		buf[0] = IntermediateNodeIdentifier
@@ -365,7 +365,7 @@ func deserializeNode(buf []byte) (n diskNode) {
 		buf = buf[1:]
 		n.indexBytes = buf[:common.IndexBytes]
 		buf = buf[common.IndexBytes:]
-		n.commitment = buf[:common.HashBytes]
+		n.value = buf[:common.HashBytes]
 		buf = buf[common.HashBytes:]
 		if len(buf) != 0 {
 			log.Panic("bad leaf node length")
@@ -392,6 +392,6 @@ func (n *node) hash() []byte {
 	if n.isLeaf {
 		return HashIntermediateNode(n.prefixBits, &n.childHashes)
 	} else {
-		return HashLeaf(n.indexBytes, n.commitment)
+		return HashLeaf(n.indexBytes, n.value)
 	}
 }

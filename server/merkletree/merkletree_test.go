@@ -209,12 +209,12 @@ type Map interface {
 
 type MapSnapshot interface {
 	GetNr() uint64
-	Lookup(indexBytes []byte) (commitment []byte)
+	Lookup(indexBytes []byte) (value []byte)
 	BeginModification() NewMapSnapshot
 }
 
 type NewMapSnapshot interface {
-	Set(indexBytes, commitment []byte)
+	Set(indexBytes, value []byte)
 	Flush() MapSnapshot
 }
 
@@ -237,8 +237,8 @@ func (t *TestSnapshot) GetNr() uint64 {
 	return t.Nr
 }
 
-func (t *TestSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
-	commitment, proofIndex, _, err := (*Snapshot)(t).Lookup(indexBytes)
+func (t *TestSnapshot) Lookup(indexBytes []byte) (value []byte) {
+	value, proofIndex, _, err := (*Snapshot)(t).Lookup(indexBytes)
 	// TODO check proof
 	if err != nil {
 		panic(err)
@@ -258,8 +258,8 @@ func (t *TestSnapshot) BeginModification() NewMapSnapshot {
 	return (*TestNewSnapshot)(newSnap)
 }
 
-func (t *TestNewSnapshot) Set(indexBytes, commitment []byte) {
-	err := (*NewSnapshot)(t).Set(indexBytes, commitment)
+func (t *TestNewSnapshot) Set(indexBytes, value []byte) {
+	err := (*NewSnapshot)(t).Set(indexBytes, value)
 	if err != nil {
 		panic(err)
 	}
@@ -306,7 +306,7 @@ func (s *SimpleSnapshot) GetNr() uint64 {
 	return s.nr
 }
 
-func (s *SimpleSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
+func (s *SimpleSnapshot) Lookup(indexBytes []byte) (value []byte) {
 	var bytes [HashBytes]byte
 	copy(bytes[:], indexBytes)
 	if comm, ok := s.entries[bytes]; ok {
@@ -328,10 +328,10 @@ func (s *SimpleSnapshot) BeginModification() NewMapSnapshot {
 	return &SimpleNewSnapshot{*s.clone()}
 }
 
-func (s *SimpleNewSnapshot) Set(indexBytes, commitment []byte) {
+func (s *SimpleNewSnapshot) Set(indexBytes, value []byte) {
 	var bytes, comm [HashBytes]byte
 	copy(bytes[:], indexBytes)
-	copy(comm[:], commitment)
+	copy(comm[:], value)
 	s.entries[bytes] = comm
 }
 
@@ -374,12 +374,12 @@ func (s *ComparingSnapshot) GetNr() uint64 {
 	panic("not implemented") // might be a sign this design is somewhat silly
 }
 
-func (s *ComparingSnapshot) Lookup(indexBytes []byte) (commitment []byte) {
-	commitment = s.Snapshots[0].Lookup(indexBytes)
+func (s *ComparingSnapshot) Lookup(indexBytes []byte) (value []byte) {
+	value = s.Snapshots[0].Lookup(indexBytes)
 	for _, impl := range s.Snapshots {
 		c := impl.Lookup(indexBytes)
-		if !bytes.Equal(c, commitment) {
-			log.Panicf("Lookup %x differed: %x vs %x", indexBytes, commitment, c)
+		if !bytes.Equal(c, value) {
+			log.Panicf("Lookup %x differed: %x vs %x", indexBytes, value, c)
 		}
 	}
 	return
@@ -393,9 +393,9 @@ func (s *ComparingSnapshot) BeginModification() NewMapSnapshot {
 	return &NewComparingSnapshot{snapshots}
 }
 
-func (s *NewComparingSnapshot) Set(indexBytes, commitment []byte) {
+func (s *NewComparingSnapshot) Set(indexBytes, value []byte) {
 	for _, snap := range s.NewSnapshots {
-		snap.Set(indexBytes, commitment)
+		snap.Set(indexBytes, value)
 	}
 }
 
