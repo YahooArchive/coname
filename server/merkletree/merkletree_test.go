@@ -49,7 +49,7 @@ func withDB(f func(kv.DB)) {
 }
 
 func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
-	reconstructed, err := client.ReconstructTree(proof)
+	reconstructed, err := client.ReconstructTree(proof, common.ToBits(common.IndexBits, index))
 	if err != nil {
 		panic(err)
 	}
@@ -146,14 +146,14 @@ func TestTwoEntriesOneEpoch(t *testing.T) {
 		}
 		e2 := m.GetSnapshot(flushed.Nr)
 		for i := 0; i < 2; i++ {
-			v, _, err := e2.Lookup(index)
+			v, p, err := e2.Lookup(index)
 			if err != nil {
 				panic(err)
 			}
 			if !bytes.Equal(v, val) {
 				panic(fmt.Errorf("Value mismatch: %x vs %x", v, val))
 			}
-			// TODO: verify proof
+			verifyProof(e2, index, v, p)
 			index[15]--
 			val[15]--
 		}
@@ -201,7 +201,7 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 			for j := 0; j <= i+1; j++ {
 				e2 := m.GetSnapshot(snapshotNrs[j])
 				for k := 0; k < len(indices); k++ {
-					v, _, err := e2.Lookup(indices[k])
+					v, p, err := e2.Lookup(indices[k])
 					if err != nil {
 						panic(err)
 					}
@@ -209,7 +209,7 @@ func TestThreeEntriesThreeEpochs(t *testing.T) {
 						if !bytes.Equal(v, values[k]) {
 							panic(fmt.Errorf("Value mismatch: %x / %x", v, values[k]))
 						}
-						// TODO: verify proof
+						verifyProof(e2, indices[k], v, p)
 					} else {
 						if v != nil {
 							if !bytes.Equal(v, values[k]) {
@@ -260,11 +260,11 @@ func (t *TestSnapshot) GetNr() uint64 {
 }
 
 func (t *TestSnapshot) Lookup(indexBytes []byte) (value []byte) {
-	value, _, err := (*Snapshot)(t).Lookup(indexBytes)
-	// TODO check proof
+	value, p, err := (*Snapshot)(t).Lookup(indexBytes)
 	if err != nil {
 		panic(err)
 	}
+	verifyProof((*Snapshot)(t), indexBytes, value, p)
 	return
 }
 

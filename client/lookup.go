@@ -66,11 +66,11 @@ type ReconstructedNode struct {
 	value []byte
 }
 
-func ReconstructTree(trace *proto.TreeProof) (*ReconstructedNode, error) {
-	return reconstructBranch(trace, 0), nil
+func ReconstructTree(trace *proto.TreeProof, lookupIndexBits []bool) (*ReconstructedNode, error) {
+	return reconstructBranch(trace, lookupIndexBits, 0), nil
 }
 
-func reconstructBranch(trace *proto.TreeProof, depth int) *ReconstructedNode {
+func reconstructBranch(trace *proto.TreeProof, lookupIndexBits []bool, depth int) *ReconstructedNode {
 	if depth == len(trace.Neighbors) {
 		if trace.ExistingEntryHash == nil {
 			return nil
@@ -87,8 +87,8 @@ func reconstructBranch(trace *proto.TreeProof, depth int) *ReconstructedNode {
 			isLeaf: false,
 			depth:  depth,
 		}
-		presentChild := common.ToBits(common.IndexBits, trace.ExistingIndex)[depth]
-		node.children[common.BitToIndex(presentChild)].Present = reconstructBranch(trace, depth+1)
+		presentChild := lookupIndexBits[depth]
+		node.children[common.BitToIndex(presentChild)].Present = reconstructBranch(trace, lookupIndexBits, depth+1)
 		node.children[common.BitToIndex(!presentChild)].Omitted = trace.Neighbors[depth]
 		return node
 	}
