@@ -15,11 +15,35 @@
 package client
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 )
+
+func VerifiedLookup(treeNonce []byte, rootHash []byte, index []byte, proof *proto.TreeProof) ([]byte, error) {
+	// First, reconstruct the partial tree
+	reconstructed, err := ReconstructTree(proof, common.ToBits(common.IndexBits, index))
+	if err != nil {
+		return nil, err
+	}
+	// Reconstruct the root hash
+	reconstructedHash, err := RecomputeHash(treeNonce, reconstructed)
+	if err != nil {
+		return nil, err
+	}
+	// Compare root hashes
+	if !bytes.Equal(reconstructedHash, rootHash) {
+		return nil, fmt.Errorf("Root hashes do not match! Reconstructed %x; wanted %x", reconstructedHash, rootHash)
+	}
+	// Then, do the lookup
+	value, err := common.Lookup(reconstructed, index)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
 
 func RecomputeHash(treeNonce []byte, node common.MerkleNode) ([]byte, error) {
 	return recomputeHash(treeNonce, []bool{}, node)

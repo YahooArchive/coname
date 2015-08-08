@@ -44,4 +44,7 @@ message RealmConfig {
 	AuthorizationPolicy verification_policy = 5;
 
 	// TODO: specify clock skew tolerance parameters
+
+	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
+	bytes tree_nonce = 7;
 }

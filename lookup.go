@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yahoo/coname/client"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
@@ -52,9 +53,12 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 	}
 
 	entryHash := sha256.Sum256(pf.Entry.PreservedEncoding)
-	_, _, err = root, entryHash, nil // TODO(dmz): merklemap.VerifyLookup(root, index, entryHash, pf.TreeProof)
+	verifiedEntryHash, err := client.VerifiedLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
 	if err != nil {
-		return nil, fmt.Errorf("VerifyLookup: failed to verify that the index match to the specified entry")
+		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
+	}
+	if !bytes.Equal(entryHash[:], verifiedEntryHash) {
+		return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
 	}
 
 	profileHash := sha256.Sum256(pf.Profile.PreservedEncoding)

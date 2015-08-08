@@ -57,6 +57,8 @@ type RealmConfig struct {
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
 	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,5,opt,name=verification_policy" json:"verification_policy,omitempty"`
+	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
+	TreeNonce []byte `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
 }
 
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
@@ -282,6 +284,31 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TreeNonce", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TreeNonce = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
 		default:
 			var sizeOfWire int
 			for {
@@ -420,6 +447,7 @@ func (this *RealmConfig) String() string {
 		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
 		`VRFPublic:` + fmt.Sprintf("%v", this.VRFPublic) + `,`,
 		`VerificationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.VerificationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
+		`TreeNonce:` + fmt.Sprintf("%v", this.TreeNonce) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -471,6 +499,12 @@ func (m *RealmConfig) Size() (n int) {
 		l = m.VerificationPolicy.Size()
 		n += 1 + l + sovConfig(uint64(l))
 	}
+	if m.TreeNonce != nil {
+		l = len(m.TreeNonce)
+		if l > 0 {
+			n += 1 + l + sovConfig(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -518,6 +552,11 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	if r.Intn(10) != 0 {
 		this.VerificationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
+	v4 := r.Intn(100)
+	this.TreeNonce = make([]byte, v4)
+	for i := 0; i < v4; i++ {
+		this.TreeNonce[i] = byte(r.Intn(256))
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -542,9 +581,9 @@ func randUTF8RuneConfig(r randyConfig) rune {
 	return rune(ru + 61)
 }
 func randStringConfig(r randyConfig) string {
-	v4 := r.Intn(100)
-	tmps := make([]rune, v4)
-	for i := 0; i < v4; i++ {
+	v5 := r.Intn(100)
+	tmps := make([]rune, v5)
+	for i := 0; i < v5; i++ {
 		tmps[i] = randUTF8RuneConfig(r)
 	}
 	return string(tmps)
@@ -566,11 +605,11 @@ func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateConfig(data, uint64(key))
-		v5 := r.Int63()
+		v6 := r.Int63()
 		if r.Intn(2) == 0 {
-			v5 *= -1
+			v6 *= -1
 		}
-		data = encodeVarintPopulateConfig(data, uint64(v5))
+		data = encodeVarintPopulateConfig(data, uint64(v6))
 	case 1:
 		data = encodeVarintPopulateConfig(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -685,6 +724,14 @@ func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n1
 	}
+	if m.TreeNonce != nil {
+		if len(m.TreeNonce) > 0 {
+			data[i] = 0x3a
+			i++
+			i = encodeVarintConfig(data, i, uint64(len(m.TreeNonce)))
+			i += copy(data[i:], m.TreeNonce)
+		}
+	}
 	return i, nil
 }
 
@@ -732,7 +779,8 @@ func (this *RealmConfig) GoString() string {
 		`Addr:` + fmt.Sprintf("%#v", this.Addr),
 		`URL:` + fmt.Sprintf("%#v", this.URL),
 		`VRFPublic:` + fmt.Sprintf("%#v", this.VRFPublic),
-		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy) + `}`}, ", ")
+		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy),
+		`TreeNonce:` + fmt.Sprintf("%#v", this.TreeNonce) + `}`}, ", ")
 	return s
 }
 func valueToGoStringConfig(v interface{}, typ string) string {
@@ -860,6 +908,9 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return fmt.Errorf("VerificationPolicy this(%v) Not Equal that(%v)", this.VerificationPolicy, that1.VerificationPolicy)
 	}
+	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
+		return fmt.Errorf("TreeNonce this(%v) Not Equal that(%v)", this.TreeNonce, that1.TreeNonce)
+	}
 	return nil
 }
 func (this *RealmConfig) Equal(that interface{}) bool {
@@ -900,6 +951,9 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
+		return false
+	}
+	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
 		return false
 	}
 	return true
