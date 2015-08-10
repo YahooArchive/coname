@@ -175,8 +175,16 @@ func (snapshot *Snapshot) Lookup(indexBytes []byte) (value []byte, trace *proto.
 	if err != nil {
 		return nil, nil, err
 	}
+	return snapshot.tree.lookup(root, indexBytes)
+}
+
+func (snapshot *NewSnapshot) Lookup(indexBytes []byte) (value []byte, trace *proto.TreeProof, err error) {
+	return snapshot.tree.lookup(snapshot.root, indexBytes)
+}
+
+func (tree *MerkleTree) lookup(root *node, indexBytes []byte) (value []byte, trace *proto.TreeProof, err error) {
 	trace = &proto.TreeProof{}
-	var tracingRoot common.MerkleNode = makeTracingNode(snapshot.tree, trace, root)
+	var tracingRoot common.MerkleNode = makeTracingNode(tree, trace, root)
 	value, err = common.Lookup(tracingRoot, indexBytes)
 	if err != nil {
 		return nil, nil, err
