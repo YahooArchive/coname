@@ -21,10 +21,12 @@ import (
 )
 
 var (
-	tableReplicationLogPrefix byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
-	tableVerifierLogPrefix    byte = 'v' // index uint64 -> proto.VerifierStep
-	tableRatificationsPrefix  byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedEpochHead
-	tableUpdateRequestsPrefix byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedEpochHead
+	tableReplicationLogPrefix     byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
+	tableVerifierLogPrefix        byte = 'v' // index uint64 -> proto.VerifierStep
+	tableRatificationsPrefix      byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedEpochHead
+	tableUpdateRequestsPrefix     byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedEpochHead
+	tableMerkleTreeSnapshotPrefix byte = 's' // epochNumber uint64 -> snapshotNumber uint64
+	tableMerkleTreePrefix         byte = 't'
 
 	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
@@ -49,5 +51,12 @@ func tableUpdateRequests(vrfidx []byte, epoch uint64) []byte {
 	ret[0] = tableUpdateRequestsPrefix
 	copy(ret[1:1+vrf.Size], vrfidx)
 	binary.BigEndian.PutUint64(ret[1+vrf.Size:1+vrf.Size+8], epoch)
+	return ret
+}
+
+func tableMerkleTreeSnapshot(epoch uint64) []byte {
+	ret := make([]byte, 1+8)
+	ret[0] = tableMerkleTreeSnapshotPrefix
+	binary.BigEndian.PutUint64(ret[1:], epoch)
 	return ret
 }

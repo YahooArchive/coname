@@ -23,6 +23,7 @@ import (
 	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/merkletree"
 	"golang.org/x/net/context"
 )
 
@@ -74,7 +75,16 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		a, b := ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i]
 		ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i] = b, a
 	}
-	// TODO(dmz): ret.TreeProof = ks.merkletreeForEpoch(lookupEpoch).Lookup(index)
+	tree, err := ks.merkletreeForEpoch(lookupEpoch)
+	if err != nil {
+		log.Printf("ERROR: couldn't get merkle tree for epoch %d: %s", lookupEpoch, err)
+		return nil, fmt.Errorf("internal error")
+	}
+	_, ret.TreeProof, err = tree.Lookup(index)
+	if err != nil {
+		log.Printf("ERROR: merkle tree lookup %x at or before epoch %d: %s", index, lookupEpoch, err)
+		return nil, fmt.Errorf("internal error")
+	}
 	urq, err := ks.getUpdate(index, lookupEpoch)
 	if err != nil {
 		log.Printf("ERROR: getProfile of %x at or before epoch %d: %s", index, lookupEpoch, err)
@@ -87,6 +97,22 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 	}
 	return ret, nil
+}
+
+func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, error) {
+	if epoch == 0 {
+		// Special-case epoch 0: It is always empty
+		return ks.merkletree.GetSnapshot(0), nil
+	}
+	snapshotNrBytes, err := ks.db.Get(tableMerkleTreeSnapshot(epoch))
+	if err != nil {
+		return nil, err
+	}
+	if len(snapshotNrBytes) != 8 {
+		return nil, fmt.Errorf("bad snapshot number for epoch %d: %x", epoch, snapshotNrBytes)
+	}
+	snapshotNr := binary.BigEndian.Uint64(snapshotNrBytes)
+	return ks.merkletree.GetSnapshot(snapshotNr), nil
 }
 
 // lastRatifiedEpoch returns the last epoch for which we have a seh.

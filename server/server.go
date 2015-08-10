@@ -33,6 +33,7 @@ import (
 	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/merkletree"
 	"github.com/yahoo/coname/server/replication"
 	"github.com/yahoo/coname/server/replication/kvlog"
 
@@ -55,6 +56,8 @@ type Config struct {
 
 	MinEpochInterval, MaxEpochInterval, RetryEpochInterval time.Duration
 	// FIXME: tls.Config is not serializable, replicate relevant fields
+
+	TreeNonce []byte
 }
 
 // Keyserver manages a single end-to-end keyserver realm.
@@ -89,6 +92,8 @@ type Keyserver struct {
 	stopOnce sync.Once
 	stop     chan struct{}
 	waitStop sync.WaitGroup
+
+	merkletree *merkletree.MerkleTree
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -176,6 +181,10 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 				ks.verifierListen.Close()
 			}
 		}()
+	}
+	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, cfg.TreeNonce)
+	if err != nil {
+		return nil, err
 	}
 	ok = true
 	return ks, nil
