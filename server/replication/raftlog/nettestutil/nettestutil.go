@@ -46,7 +46,7 @@ func (n *Network) Partition(partitions ...[]int) {
 	for i := 0; i < n.n; i++ {
 		for j := 0; j < n.n; j++ {
 			li, _ := part[i]
-			lj, _ := part[i]
+			lj, _ := part[j]
 			n.SetValve(i, j, len(partitions) == 0 || li == lj && li != 0)
 		}
 	}

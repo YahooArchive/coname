@@ -255,38 +255,111 @@ func checkReplicasConsistent(t *testing.T, states map[int][]byte) {
 	}
 }
 
-func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine, clks []*clock.Mock, l int) {
-	for j := 0; j < l; j++ {
+func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine, clks []*clock.Mock, batchid, nProposeEach, laggards int) {
+	remaining := make(map[int]map[string]struct{})
+	for i := 0; i < len(replicas); i++ {
+		remaining[i] = make(map[string]struct{})
+	}
+
+	const slen = 8
+	for j := 0; j < nProposeEach; j++ {
 		for i, am := range replicas {
-			s := fmt.Sprintf("(%d:%d)", i+1, j)
+			s := fmt.Sprintf("(%1d:%01d%03d)", i+1, batchid, j)
+			if len(s) != slen {
+				panic("slen mismatch")
+			}
+			remaining[i][s] = struct{}{}
 			go am.log.Propose(context.TODO(), []byte(s))
 		}
 	}
+
 	states := make(map[int][]byte)
-	for len(states) < len(replicas) {
+	for len(remaining) > laggards {
 		i := rand.Intn(len(replicas))
 		clks[i].Add(tick)
-		if s := replicas[i].Get(); len(s) >= len(replicas) {
-			if prev, _ := states[i]; !bytes.Equal(s[:len(prev)], prev) {
-				t.Fatalf("replica %d changed its history", 1+i)
+		ss := replicas[i].Get()
+		if prev, _ := states[i]; !bytes.Equal(ss[:len(prev)], prev) {
+			t.Fatalf("replica %d changed its history", 1+i)
+		}
+		states[i] = ss
+		checkReplicasConsistent(t, states)
+
+		for si := 0; si < len(ss); si += slen {
+			s := string(ss[si : si+slen])
+			var j int
+			_, err := fmt.Sscanf(s[:3], "(%1d:", &j)
+			if err != nil {
+				panic(err)
 			}
-			states[i] = s
-			checkReplicasConsistent(t, states)
+			delete(remaining[j-1], s)
+			if len(remaining[j-1]) == 0 {
+				delete(remaining, j-1)
+			}
 		}
 	}
 	if testing.Verbose() {
-		t.Log(string(states[1]))
+		for i := range replicas {
+			if _, r := remaining[i]; !r {
+				t.Log(string(replicas[i].Get()))
+				break
+			}
+		}
+	}
+}
+
+func majority(n int) int {
+	return (n / 2) + 1
+}
+
+func partitionMajorityMinority(t *testing.T, nw *nettestutil.Network, n, offset int) {
+	m := majority(n)
+	main := make([]int, 0, m)
+	encl := make([]int, 0, n-m)
+	for i := 0; i < n; i++ {
+		if (i+offset)%n < m {
+			main = append(main, i)
+		} else {
+			encl = append(encl, i)
+		}
+	}
+	nw.Partition(main, encl)
+	if testing.Verbose() {
+		for i := range main {
+			main[i]++
+		}
+		for i := range encl {
+			encl[i]++
+		}
+		t.Logf("partition! (%v, %v)", main, encl)
 	}
 }
 
 func TestAppendMachineEachPropose1AndWait5(t *testing.T) {
 	replicas, clks, _, teardown := setupAppendMachineCluster(t, 5)
 	defer teardown()
-	testAppendMachineEachProposeAndWait(t, replicas, clks, 1)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 0)
 }
 
 func TestAppendMachineEachPropose13AndWait3(t *testing.T) {
 	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3)
 	defer teardown()
-	testAppendMachineEachProposeAndWait(t, replicas, clks, 13)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 13, 0)
+}
+
+func TestAppendMachineEachPropose7Partitioned7AndWait3(t *testing.T) {
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	defer teardown()
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
+	partitionMajorityMinority(t, nw, 3, 0)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 7, 1)
+}
+
+func TestAppendMachineEachPropose7Partitioned5Repartitioned13AndWait3(t *testing.T) {
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	defer teardown()
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
+	partitionMajorityMinority(t, nw, 3, 0)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 5, 1)
+	partitionMajorityMinority(t, nw, 3, 1)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 2, 13, 1)
 }
