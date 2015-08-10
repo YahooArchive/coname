@@ -15,7 +15,6 @@
 package raftlog
 
 import (
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -25,7 +24,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/andres-erbsen/clock"
 	"github.com/coreos/etcd/raft"
@@ -58,10 +56,10 @@ type raftLog struct {
 	leaderHintSet chan bool
 	leaderHint    bool
 
-	grpcServer       *grpc.Server
-	grpcListen       net.Listener
-	dialer, dialAuth grpc.DialOption
-	grpcClientCache  map[uint64]proto.RaftClient
+	grpcServer      *grpc.Server
+	grpcListen      net.Listener
+	dial            func(uint64) proto.RaftClient
+	grpcClientCache map[uint64]proto.RaftClient
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -79,46 +77,32 @@ func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing
 // TODO: config.Applied and config.Storage are useless for the caller, and
 // initialNodes and tickInterval are included; may want our own config struct
 func Open(
-	db kv.DB, prefix []byte, config *raft.Config, initialNodes []raft.Peer,
+	db kv.DB, prefix []byte,
+	config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
-	listenAddr string, tls *tls.Config,
-	peerDialer func(id uint64) (net.Conn, error),
+	listen net.Listener, server *grpc.Server, dial func(id uint64) proto.RaftClient,
 ) (replication.LogReplicator, error) {
 	confState := raftpb.ConfState{}
 	for _, node := range initialNodes {
 		confState.Nodes = append(confState.Nodes, node.ID)
 	}
 
-	dialer := grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
-		var id uint64
-		if _, err := fmt.Sscanf("%x", addr, &id); err != nil {
-			log.Panicf("raft dial address %q not internally consistent: %s", addr, err)
-		}
-		return peerDialer(id)
-	})
-	dialAuth := grpc.WithTransportCredentials(credentials.NewTLS(tls))
-
 	l := &raftLog{
-		config:        *config,
-		initialNodes:  initialNodes,
-		storage:       openRaftStorage(db, prefix, confState),
-		node:          nil,
-		clk:           clk,
-		tickInterval:  tickInterval,
-		leaderHintSet: make(chan bool, COMMITTED_BUFFER),
-		waitCommitted: make(chan replication.LogEntry, COMMITTED_BUFFER),
-		dialer:        dialer,
-		dialAuth:      dialAuth,
-		stop:          make(chan struct{}),
-		stopped:       make(chan struct{}),
+		config:          *config,
+		initialNodes:    initialNodes,
+		storage:         openRaftStorage(db, prefix, confState),
+		node:            nil,
+		clk:             clk,
+		tickInterval:    tickInterval,
+		leaderHintSet:   make(chan bool, COMMITTED_BUFFER),
+		waitCommitted:   make(chan replication.LogEntry, COMMITTED_BUFFER),
+		dial:            dial,
+		grpcClientCache: make(map[uint64]proto.RaftClient),
+		grpcListen:      listen,
+		grpcServer:      server,
+		stop:            make(chan struct{}),
+		stopped:         make(chan struct{}),
 	}
-
-	var err error
-	l.grpcListen, err = net.Listen("tcp", listenAddr)
-	if err != nil {
-		return nil, err
-	}
-	l.grpcServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(tls)))
 	proto.RegisterRaftServer(l.grpcServer, l)
 	return l, nil
 }
@@ -228,13 +212,16 @@ func (l *raftLog) run() {
 				}
 			}
 
-			if rd.SoftState != nil {
-				leaderHint := rd.SoftState.RaftState == raft.StateLeader
-				l.node.Advance() // let Raft proceed
-				if l.leaderHint != leaderHint {
-					l.leaderHint = leaderHint
-					l.leaderHintSet <- leaderHint
-				}
+			if rd.SoftState == nil {
+				l.node.Advance()
+				continue
+			}
+
+			leaderHint := rd.SoftState.RaftState == raft.StateLeader
+			l.node.Advance() // let Raft proceed
+			if l.leaderHint != leaderHint {
+				l.leaderHint = leaderHint
+				l.leaderHintSet <- leaderHint
 			}
 		}
 	}
@@ -245,12 +232,7 @@ func (l *raftLog) run() {
 func (l *raftLog) send(msg *raftpb.Message) {
 	c, ok := l.grpcClientCache[msg.To]
 	if !ok {
-		cc, err := grpc.Dial(fmt.Sprintf("%x", msg.To), l.dialer, l.dialAuth)
-		if err != nil {
-			log.Printf("raftlog dial %x: %s", msg.To, err)
-			go l.node.ReportUnreachable(msg.To)
-		}
-		c = proto.NewRaftClient(cc)
+		c = l.dial(msg.To)
 		l.grpcClientCache[msg.To] = c
 	}
 	go func(msg raftpb.Message) {
