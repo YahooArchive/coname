@@ -267,6 +267,9 @@ func testAppendMachineEachProposeAndWait(t *testing.T, l, n int) {
 			checkReplicasConsistent(t, states)
 		}
 	}
+	if testing.Verbose() {
+		t.Log(string(states[1]))
+	}
 }
 
 func TestAppendMachineEachPropose1AndWait5(t *testing.T) {
