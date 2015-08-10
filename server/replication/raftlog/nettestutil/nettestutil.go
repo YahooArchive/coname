@@ -35,8 +35,8 @@ func (n *Network) GetValve(i, j int) bool {
 // - nodes in the same slice are in the same partition
 // - nodes not in any slice are not connected to any node
 //     - []byte{} is a fully disconnected network
-// - nil represents a fully connected network
-func (n *Network) Partition(partitions [][]int) {
+// - passing no slices represents a fully connected network
+func (n *Network) Partition(partitions ...[]int) {
 	part := make(map[int]int, n.n)
 	for p, members := range partitions {
 		for _, i := range members {
@@ -47,9 +47,13 @@ func (n *Network) Partition(partitions [][]int) {
 		for j := 0; j < n.n; j++ {
 			li, _ := part[i]
 			lj, _ := part[i]
-			n.SetValve(i, j, partitions == nil || li == lj && li != 0)
+			n.SetValve(i, j, len(partitions) == 0 || li == lj && li != 0)
 		}
 	}
+}
+
+func (n *Network) Wrap(c net.Conn, i, j int) net.Conn {
+	return &mockConn{c, 0, &n.valve[i][j]}
 }
 
 type mockConn struct {
@@ -63,7 +67,7 @@ func (m *mockConn) Write(b []byte) (int, error) {
 	kill := atomic.LoadUint32(m.kill)
 	switch {
 	case dead == 0 && kill == 0:
-		return m.Write(b)
+		return m.Conn.Write(b)
 	case dead == 0 && kill == 1:
 		atomic.StoreUint32(&m.dead, 1)
 		return len(b), nil

@@ -23,6 +23,8 @@ import (
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/replication"
 	"github.com/yahoo/coname/server/replication/raftlog/proto"
+
+	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
 )
 
 const tick = time.Second
@@ -54,19 +56,26 @@ func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 }
 
 // raft replicas are numbered 1..n  and reside in array indices 0..n-1
-func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, clks []*clock.Mock, teardown func()) {
+func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
 	peers := make([]raft.Peer, 0, n)
 	for i := uint64(0); i < uint64(n); i++ {
 		peers = append(peers, raft.Peer{ID: 1 + i})
 	}
 
 	addrs := make([]string, 0, n)
-	lookupDialer := func(id uint64) proto.RaftClient {
-		cc, err := grpc.Dial(addrs[id-1])
-		if err != nil {
-			panic(err) // async dial should not err
+	nw = nettestutil.New(n)
+	lookupDialerFrom := func(src int) func(uint64) proto.RaftClient {
+		return func(dstPlus1 uint64) proto.RaftClient {
+			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithDialer(
+				func(addr string, timeout time.Duration) (net.Conn, error) {
+					nc, err := net.DialTimeout("tcp", addr, timeout)
+					return nw.Wrap(nc, src, int(dstPlus1-1)), err
+				}))
+			if err != nil {
+				panic(err) // async dial should not err
+			}
+			return proto.NewRaftClient(cc)
 		}
-		return proto.NewRaftClient(cc)
 	}
 	teardown = func() {}
 
@@ -86,7 +95,7 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 		if err != nil {
 			t.Fatal(err)
 		}
-		l, err := Open(db, nil, c, peers, clk, tick, ln, grpc.NewServer(), lookupDialer)
+		l, err := Open(db, nil, c, peers, clk, tick, ln, grpc.NewServer(), lookupDialerFrom(i))
 		if err != nil {
 			teardown()
 			t.Fatal(err)
@@ -102,21 +111,21 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 	for _, l := range ret {
 		l.Start(0)
 	}
-	return ret, clks, teardown
+	return ret, clks, nw, teardown
 }
 
 func TestRaftLogStartStop1(t *testing.T) {
-	_, _, teardown := setupRaftLogCluster(t, 1)
+	_, _, _, teardown := setupRaftLogCluster(t, 1)
 	defer teardown()
 }
 
 func TestRaftLogStartStop3(t *testing.T) {
-	_, _, teardown := setupRaftLogCluster(t, 3)
+	_, _, _, teardown := setupRaftLogCluster(t, 3)
 	defer teardown()
 }
 
 func TestRaftLogStartStop5(t *testing.T) {
-	_, _, teardown := setupRaftLogCluster(t, 5)
+	_, _, _, teardown := setupRaftLogCluster(t, 5)
 	defer teardown()
 }
 
@@ -193,8 +202,8 @@ func (am *appendMachine) load() {
 	am.state = am.state[:len(am.state)-8]
 }
 
-func setupAppendMachineCluster(t *testing.T, n int) (ret []*appendMachine, clks []*clock.Mock, teardown func()) {
-	replicas, clks, teardown := setupRaftLogCluster(t, n)
+func setupAppendMachineCluster(t *testing.T, n int) (ret []*appendMachine, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+	replicas, clks, nw, teardown := setupRaftLogCluster(t, n)
 	for _, r := range replicas {
 		db, td := setupDB(t)
 		am := openAppendMachine(db, r)
@@ -202,26 +211,26 @@ func setupAppendMachineCluster(t *testing.T, n int) (ret []*appendMachine, clks 
 		ret = append(ret, am)
 		teardown = chain(am.Stop, td, teardown)
 	}
-	return ret, clks, teardown
+	return ret, clks, nw, teardown
 }
 
 func TestAppendMachineStartStop1(t *testing.T) {
-	_, _, teardown := setupAppendMachineCluster(t, 1)
+	_, _, _, teardown := setupAppendMachineCluster(t, 1)
 	defer teardown()
 }
 
 func TestAppendMachineStartStop3(t *testing.T) {
-	_, _, teardown := setupAppendMachineCluster(t, 3)
+	_, _, _, teardown := setupAppendMachineCluster(t, 3)
 	defer teardown()
 }
 
 func TestAppendMachineStartStop5(t *testing.T) {
-	_, _, teardown := setupAppendMachineCluster(t, 5)
+	_, _, _, teardown := setupAppendMachineCluster(t, 5)
 	defer teardown()
 }
 
 func TestAppendMachineEachProposeOneAndStop5(t *testing.T) {
-	replicas, _, teardown := setupAppendMachineCluster(t, 5)
+	replicas, _, _, teardown := setupAppendMachineCluster(t, 5)
 	defer teardown()
 	for i, am := range replicas {
 		go am.log.Propose(context.TODO(), []byte{byte(i)})
@@ -246,9 +255,7 @@ func checkReplicasConsistent(t *testing.T, states map[int][]byte) {
 	}
 }
 
-func testAppendMachineEachProposeAndWait(t *testing.T, l, n int) {
-	replicas, clks, teardown := setupAppendMachineCluster(t, n)
-	defer teardown()
+func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine, clks []*clock.Mock, l int) {
 	for j := 0; j < l; j++ {
 		for i, am := range replicas {
 			s := fmt.Sprintf("(%d:%d)", i+1, j)
@@ -273,9 +280,13 @@ func testAppendMachineEachProposeAndWait(t *testing.T, l, n int) {
 }
 
 func TestAppendMachineEachPropose1AndWait5(t *testing.T) {
-	testAppendMachineEachProposeAndWait(t, 1, 5)
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 5)
+	defer teardown()
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1)
 }
 
 func TestAppendMachineEachPropose13AndWait3(t *testing.T) {
-	testAppendMachineEachProposeAndWait(t, 13, 3)
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3)
+	defer teardown()
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 13)
 }
