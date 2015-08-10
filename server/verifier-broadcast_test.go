@@ -99,3 +99,88 @@ func TestVerifierBroadcastRespectsLimits(t *testing.T) {
 		}
 	}
 }
+
+func TestVerifierBroadcastProceedsPastBlockingReceivers(t *testing.T) {
+	testCases := [][]bool{
+		// whether the receiver will block
+		[]bool{true, false},
+		[]bool{false, true, false, false, true, false},
+		[]bool{false, false, true, true},
+	}
+	msgs := make([]*proto.VerifierStep, 1+verifierBroadcastBufferSize)
+	for i := range msgs {
+		msgs[i] = new(proto.VerifierStep)
+	}
+	for caseNr, receiversBlock := range testCases {
+		vmb := NewVerifierBroadcast(1)
+		receivers := make([]<-chan *proto.VerifierStep, len(receiversBlock))
+		for i := range receivers {
+			receivers[i] = vmb.Receive(1, 1+1+verifierBroadcastBufferSize)
+		}
+		// fill the buffers
+		for i := 0; i < verifierBroadcastBufferSize; i++ {
+			vmb.Send(msgs[i])
+		}
+		// read one from the receivers who shouldn't block
+		for i, r := range receivers {
+			if !receiversBlock[i] {
+				select {
+				case got, ok := <-r:
+					if !ok {
+						t.Errorf("case %d: receiver %d closed prematurely", caseNr, i)
+					}
+					if got != msgs[0] {
+						t.Errorf("case %d: receiver %d got wrong message", caseNr, i)
+					}
+				default:
+					t.Errorf("case %d: receiver %d didn't get message", caseNr, i)
+				}
+			}
+		}
+		// send once more
+		vmb.Send(msgs[verifierBroadcastBufferSize])
+		// check that the blocking receivers are closed and the others have seen everything
+		for i, r := range receivers {
+			if receiversBlock[i] {
+				// see that we got the first verifierBroadcastBufferSize messages...
+				for j := 0; j < verifierBroadcastBufferSize; j++ {
+					select {
+					case got, ok := <-r:
+						if !ok {
+							t.Errorf("case %d: blocking receiver %d closed prematurely (%d)", caseNr, i, j)
+						}
+						if got != msgs[j] {
+							t.Errorf("case %d: blocking receiver %d got wrong message (%d)", caseNr, i, j)
+						}
+					default:
+						t.Errorf("case %d: blocking receiver %d didn't get message (%d)", caseNr, i, j)
+					}
+				}
+				// ...and then got closed
+				select {
+				case _, ok := <-r:
+					if ok {
+						t.Errorf("case %d: blocking receiver %d was not booted", caseNr, i)
+					}
+				default:
+					t.Errorf("case %d: blocking receiver %d was not booted, and didn't get message", caseNr, i)
+				}
+			} else {
+				// see that we got the next verifierBroadcastBufferSize messages
+				for j := 1; j < 1+verifierBroadcastBufferSize; j++ {
+					select {
+					case got, ok := <-r:
+						if !ok {
+							t.Errorf("case %d: non-blocked receiver %d closed prematurely (%d)", caseNr, i, j)
+						}
+						if got != msgs[j] {
+							t.Errorf("case %d: non-blocked receiver %d got wrong message (%d)", caseNr, i, j)
+						}
+					default:
+						t.Errorf("case %d: non-blocked receiver %d didn't get message (%d)", caseNr, i, j)
+					}
+				}
+			}
+		}
+	}
+}
