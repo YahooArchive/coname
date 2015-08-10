@@ -41,6 +41,10 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
 	// find latest epoch, iterate backwards until quorum requirement is met
 	oldestEpoch, newestEpoch := uint64(1), ks.lastRatifiedEpoch()
+	if newestEpoch == 0 {
+		log.Printf("ERROR: no epochs created yet, so lookup fails: %x", index)
+		return nil, fmt.Errorf("internal error")
+	}
 	// 0 is bad for iterating uint64 in the negative direction and there is no epoch 0
 	if newestEpoch-oldestEpoch > lookupMaxChainLength {
 		oldestEpoch = newestEpoch - lookupMaxChainLength
