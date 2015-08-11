@@ -382,3 +382,21 @@ func TestAppendMachineEachPropose7Partitioned5Repartitioned13AndWait3(t *testing
 	partitionMajorityMinority(t, nw, 3, 1)
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 2, 13, 1)
 }
+
+func TestRecoverFromDisconnect3(t *testing.T) {
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	defer teardown()
+
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
+	t.Log("disconnected!")
+
+	nw.Partition([]int{0}, []int{1}, []int{2})
+	for j := 0; j < 100; j++ {
+		i := rand.Intn(len(replicas))
+		go replicas[i].log.Propose(context.TODO(), []byte(fmt.Sprintf("(%1d:%01d%03d)", i+1, 1, j)))
+		clks[i].Add(tick)
+	}
+
+	partitionMajorityMinority(t, nw, 3, 0)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 2, 5, 1)
+}
