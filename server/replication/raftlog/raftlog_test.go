@@ -110,6 +110,10 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 
 	for _, l := range ret {
 		l.Start(0)
+		go func(l replication.LogReplicator) {
+			for _ = range l.LeaderHintSet() {
+			}
+		}(l)
 	}
 	return ret, clks, nw, teardown
 }

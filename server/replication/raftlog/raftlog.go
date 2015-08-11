@@ -141,6 +141,7 @@ func (l *raftLog) Stop() error {
 		l.grpcServer.Stop()
 		close(l.stop)
 		<-l.stopped
+		l.node.Stop()
 	})
 	return nil
 }
@@ -206,9 +207,17 @@ func (l *raftLog) run() {
 					var cc raftpb.ConfChange
 					cc.Unmarshal(entry.Data)
 					l.node.ApplyConfChange(cc)
-					l.waitCommitted <- replication.LogEntry{Reconfiguration: entry.Data}
+					select {
+					case l.waitCommitted <- replication.LogEntry{Reconfiguration: entry.Data}:
+					case <-l.stop:
+						return
+					}
 				default:
-					l.waitCommitted <- replication.LogEntry{Data: entry.Data}
+					select {
+					case l.waitCommitted <- replication.LogEntry{Data: entry.Data}:
+					case <-l.stop:
+						return
+					}
 				}
 			}
 
