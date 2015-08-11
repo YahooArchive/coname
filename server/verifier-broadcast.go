@@ -39,9 +39,10 @@ func (vmb *VerifierBroadcast) Send(m *proto.VerifierStep) {
 	defer vmb.Unlock()
 	idx := vmb.nextIndex
 	vmb.nextIndex++
-	for e := vmb.subscribers.Front(); e != nil; e = e.Next() {
+	for e := vmb.subscribers.Front(); e != nil; {
 		s := (e.Value).(verifierSubscription)
 		if idx < s.start {
+			e = e.Next()
 			continue
 		}
 		remove := false
@@ -53,14 +54,17 @@ func (vmb *VerifierBroadcast) Send(m *proto.VerifierStep) {
 			// Slow clients should just resubscribe.
 			remove = true
 		}
+		// Advance first, then remove (or else e.Next() will always be nil)
+		prev := e
+		e = e.Next()
 		if remove {
 			close(s.ch)
-			vmb.subscribers.Remove(e)
+			vmb.subscribers.Remove(prev)
 		}
 	}
 }
 
-// Receive requests access to broadcasts for indexes [start, receive). If the
+// Receive requests access to broadcasts for indexes [start, limit). If the
 // broadcast for start has already been sent, Receive returns nil. When there
 // are no more broadcasts left in the subscription (after limit-1 in the common
 // case), the channel returned by Receive is closed. The caller is expected to

@@ -229,7 +229,7 @@ func (ks *Keyserver) run() {
 			}
 			// TODO: allow multiple steps per log entry (pipelining). Maybe
 			// this would be better implemented at the log level?
-			deferredIO := ks.step(&step, &ks.rs, wb)
+			ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
@@ -237,9 +237,6 @@ func (ks *Keyserver) run() {
 			}
 			wb.Reset()
 			step.Reset()
-			if deferredIO != nil {
-				deferredIO()
-			}
 		case ks.leaderHint = <-ks.log.LeaderHintSet():
 			ks.maybeEpoch()
 		case <-ks.canEpochSet.C:
@@ -256,7 +253,7 @@ func (ks *Keyserver) run() {
 }
 
 // step is called by run and changes the in-memory state. No i/o allowed.
-func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) (deferredIO func()) {
+func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) {
 	// ks: &const
 	// step, rs, wb: &mut
 	switch {
@@ -268,7 +265,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// TODO(dmz): set entry in tree
 		rs.PendingUpdates = true
 		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
-		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -336,7 +333,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// Only put signatures into the verifier log once.
 		if true {
 			// FIXME: make sure sehs in verifier log are ordered by epoch
-			return ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
 		}
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
@@ -347,10 +344,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
 			wb.Put(dbkey, proto.MustMarshal(rNew))
-			uid := step.UID // use a copy of the uint64 in the closure, not pass-by-reference
-			return func() {
-				ks.wr.Notify(uid, nil)
-			}
+			ks.wr.Notify(step.UID, nil)
 		}
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
