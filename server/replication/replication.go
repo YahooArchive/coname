@@ -18,10 +18,24 @@ import (
 	"golang.org/x/net/context"
 )
 
+type ConfChangeType int32
+
+const (
+	ConfChangeAddNode    ConfChangeType = 0
+	ConfChangeRemoveNode ConfChangeType = 1
+	ConfChangeUpdateNode ConfChangeType = 2
+)
+
+type ConfChange struct {
+	Operation ConfChangeType
+	NodeID    uint64
+	Data      []byte
+}
+
 type LogEntry struct {
 	// At most one may be set
-	Data            []byte
-	Reconfiguration []byte
+	Data       []byte
+	ConfChange *ConfChange
 }
 
 // LogReplicator is a generic interface to state-machine replication logs.  The
@@ -46,7 +60,11 @@ type LogReplicator interface {
 	// data : []*mut // ownership of the slice contents is transferred to LogReplicator
 	Propose(ctx context.Context, data []byte)
 
-	ProposeConfChange(ctx context.Context, reconfiguration []byte)
+	// TODO: figure out whether raft supports it, and if yes, hide the fact
+	// whether a proposal is a conf change from the replication implementation.
+	ProposeConfChange(context.Context, *ConfChange)
+
+	ApplyConfChange(operation ConfChangeType, nodeID uint64)
 
 	// GetCommitted loads committed entries for post-replication distribution:
 	// 1. The first returned entry corresponds to Index = lo

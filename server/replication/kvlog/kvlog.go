@@ -85,11 +85,13 @@ func (l *kvLog) Stop() error {
 }
 
 // ProposeConfChange implements replication.LogReplicator
-func (l *kvLog) ProposeConfChange(ctx context.Context, data []byte) {
-	select {
-	case l.propose <- replication.LogEntry{Reconfiguration: data}:
-	case <-l.stop:
-	}
+func (l *kvLog) ProposeConfChange(context.Context, *replication.ConfChange) {
+	panic("cannot reconfigure kvlog")
+}
+
+// ProposeConfChange implements replication.LogReplicator
+func (l *kvLog) ApplyConfChange(replication.ConfChangeType, uint64) {
+	panic("cannot reconfigure kvlog")
 }
 
 // Propose implements replication.LogReplicator
@@ -125,11 +127,11 @@ func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry
 			}
 			return nil, err
 		}
-		if len(ret) != 0 && size+uint64(entrySize(v)) > maxSize {
+		if len(ret) != 0 && size+uint64(len(v.Data)) > maxSize {
 			return
 		}
 		ret = append(ret, v)
-		size += uint64(entrySize(v))
+		size += uint64(len(v.Data))
 		if size >= maxSize {
 			return
 		}
@@ -146,8 +148,7 @@ func (l *kvLog) get(i uint64) (le replication.LogEntry, err error) {
 	if err != nil {
 		return le, err
 	}
-	unmarshalEntry(&le, entryBytes)
-	return
+	return replication.LogEntry{Data: entryBytes}, nil
 }
 
 // run is the CSP-style main of kvLog, all local struct fields (except
@@ -176,7 +177,7 @@ func (l *kvLog) run() {
 		case prop := <-l.propose:
 			binary.BigEndian.PutUint64(dbkey[len(l.prefix):], l.nextIndex)
 			l.nextIndex++
-			l.db.Put(dbkey[:], marshalEntry(prop))
+			l.db.Put(dbkey[:], prop.Data)
 			select {
 			case <-l.stop:
 				return
