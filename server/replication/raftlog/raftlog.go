@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net"
 	"sync"
 	"time"
 
@@ -43,10 +42,8 @@ const (
 )
 
 type raftLog struct {
-	config       raft.Config
-	initialNodes []raft.Peer
-	storage      *raftStorage
-	node         raft.Node
+	config raft.Config
+	node   raft.Node
 
 	clk          clock.Clock
 	tickInterval time.Duration
@@ -57,7 +54,6 @@ type raftLog struct {
 	leaderHint    bool
 
 	grpcServer      *grpc.Server
-	grpcListen      net.Listener
 	dial            func(uint64) proto.RaftClient
 	grpcClientCache map[uint64]proto.RaftClient
 
@@ -73,44 +69,42 @@ func (l *raftLog) Step(ctx context.Context, msg *raftpb.Message) (*proto.Nothing
 	return &proto.Nothing{}, l.node.Step(ctx, *msg)
 }
 
-// Open initializes a replication.LogReplicator using an already open kv.DB.
-// TODO: config.Applied and config.Storage are useless for the caller, and
-// initialNodes and tickInterval are included; may want our own config struct
-func Open(
+// New initializes a replication.LogReplicator using an already open kv.DB and
+// registers a raft service with server. It is the caller's responsibility to
+// call Serve.
+func New(
+	thisReplica uint64, initialReplicas []uint64,
 	db kv.DB, prefix []byte,
-	config *raft.Config, initialNodes []raft.Peer,
 	clk clock.Clock, tickInterval time.Duration,
-	listen net.Listener, server *grpc.Server, dial func(id uint64) proto.RaftClient,
-) (replication.LogReplicator, error) {
+	server *grpc.Server, dial func(id uint64) proto.RaftClient,
+) replication.LogReplicator {
 	confState := raftpb.ConfState{}
-	for _, node := range initialNodes {
-		confState.Nodes = append(confState.Nodes, node.ID)
+	for _, id := range initialReplicas {
+		confState.Nodes = append(confState.Nodes, id)
 	}
-
+	storage := mkRaftStorage(db, prefix, confState)
 	l := &raftLog{
-		config:          *config,
-		initialNodes:    initialNodes,
-		storage:         openRaftStorage(db, prefix, confState),
-		node:            nil,
-		clk:             clk,
-		tickInterval:    tickInterval,
-		leaderHintSet:   make(chan bool, COMMITTED_BUFFER),
-		waitCommitted:   make(chan replication.LogEntry, COMMITTED_BUFFER),
-		dial:            dial,
-		grpcClientCache: make(map[uint64]proto.RaftClient),
-		grpcListen:      listen,
-		grpcServer:      server,
-		stop:            make(chan struct{}),
-		stopped:         make(chan struct{}),
+		config: raft.Config{
+			ID:              thisReplica,
+			ElectionTick:    10,
+			HeartbeatTick:   1,
+			MaxSizePerMsg:   4 * 1024,
+			MaxInflightMsgs: 256,
+			Storage:         storage,
+		},
+		node:         nil,
+		clk:          clk,
+		tickInterval: tickInterval,
+		grpcServer:   server,
+		dial:         dial,
 	}
 	proto.RegisterRaftServer(l.grpcServer, l)
-	return l, nil
+	return l
 }
 
 // Start implements replication.LogReplicator
 func (l *raftLog) Start(lo uint64) error {
-	l.config.Storage = l.storage
-	inited, err := l.storage.IsInitialized()
+	inited, err := l.config.Storage.(*raftStorage).IsInitialized()
 	if err != nil {
 		return err
 	}
@@ -122,15 +116,25 @@ func (l *raftLog) Start(lo uint64) error {
 			log.Panicf("storage uninitialized but state machine not fresh: lo = %d", lo)
 		}
 		// Add a dummy first entry
-		hardState, _, err := l.storage.InitialState()
+		hardState, confState, err := l.config.Storage.InitialState()
 		if err != nil {
 			return err
 		}
-		l.storage.save(hardState, make([]raftpb.Entry, 1))
-		l.node = raft.StartNode(&l.config, l.initialNodes)
+		confNodes := make([]raft.Peer, 0, len(confState.Nodes))
+		for _, id := range confState.Nodes {
+			confNodes = append(confNodes, raft.Peer{ID: id})
+		}
+		l.config.Storage.(*raftStorage).save(hardState, make([]raftpb.Entry, 1))
+		l.node = raft.StartNode(&l.config, confNodes)
 	}
 
-	go l.grpcServer.Serve(l.grpcListen)
+	l.leaderHintSet = make(chan bool, COMMITTED_BUFFER)
+	l.waitCommitted = make(chan replication.LogEntry, COMMITTED_BUFFER)
+	l.stop = make(chan struct{})
+	l.stopped = make(chan struct{})
+	l.stopOnce = sync.Once{}
+	l.grpcClientCache = make(map[uint64]proto.RaftClient)
+
 	go l.run()
 	return nil
 }
@@ -152,8 +156,20 @@ func (l *raftLog) Propose(ctx context.Context, data []byte) {
 }
 
 // Propose implements replication.LogReplicator
-func (l *raftLog) ProposeConfChange(ctx context.Context, change []byte) {
-	panic("raftLog.ProposeConfChange not implemented")
+func (l *raftLog) ApplyConfChange(ct replication.ConfChangeType, nodeID uint64) {
+	l.node.ApplyConfChange(raftpb.ConfChange{
+		Type:   raftpb.ConfChangeType(ct),
+		NodeID: nodeID,
+	})
+}
+
+// Propose implements replication.LogReplicator
+func (l *raftLog) ProposeConfChange(ctx context.Context, cc *replication.ConfChange) {
+	l.node.ProposeConfChange(ctx, raftpb.ConfChange{
+		Type:    raftpb.ConfChangeType(cc.Operation),
+		NodeID:  cc.NodeID,
+		Context: cc.Data,
+	})
 }
 
 // WaitCommitted implements replication.LogReplicator
@@ -169,7 +185,7 @@ func (l *raftLog) LeaderHintSet() <-chan bool {
 // GetCommitted implements replication.LogReplicator
 func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
 	var entries []raftpb.Entry
-	entries, err = l.storage.Entries(lo, hi, maxSize)
+	entries, err = l.config.Storage.(*raftStorage).Entries(lo, hi, maxSize)
 	if err != nil {
 		return
 	}
@@ -197,7 +213,7 @@ func (l *raftLog) run() {
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				log.Panicf("snapshots not supported")
 			}
-			l.storage.save(rd.HardState, rd.Entries)
+			l.config.Storage.(*raftStorage).save(rd.HardState, rd.Entries)
 			for i := range rd.Messages {
 				l.send(&rd.Messages[i])
 			}
@@ -206,9 +222,14 @@ func (l *raftLog) run() {
 				case raftpb.EntryConfChange:
 					var cc raftpb.ConfChange
 					cc.Unmarshal(entry.Data)
-					l.node.ApplyConfChange(cc)
 					select {
-					case l.waitCommitted <- replication.LogEntry{Reconfiguration: entry.Data}:
+					case l.waitCommitted <- replication.LogEntry{
+						ConfChange: &replication.ConfChange{
+							Operation: replication.ConfChangeType(cc.Type),
+							NodeID:    cc.NodeID,
+							Data:      cc.Context,
+						},
+					}:
 					case <-l.stop:
 						return
 					}
@@ -264,7 +285,7 @@ type raftStorage struct {
 
 var _ raft.Storage = (*raftStorage)(nil)
 
-func openRaftStorage(db kv.DB, prefix []byte, initialConf raftpb.ConfState) *raftStorage {
+func mkRaftStorage(db kv.DB, prefix []byte, initialConf raftpb.ConfState) *raftStorage {
 	return &raftStorage{
 		hardStateKey:   append(append([]byte{}, prefix...), HARDSTATE_KEY...),
 		confStateKey:   append(append([]byte{}, prefix...), CONFSTATE_KEY...),

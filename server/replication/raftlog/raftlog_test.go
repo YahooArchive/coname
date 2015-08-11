@@ -17,7 +17,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/andres-erbsen/clock"
-	"github.com/coreos/etcd/raft"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
@@ -57,9 +56,9 @@ func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 
 // raft replicas are numbered 1..n  and reside in array indices 0..n-1
 func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
-	peers := make([]raft.Peer, 0, n)
+	replicaIDs := make([]uint64, 0, n)
 	for i := uint64(0); i < uint64(n); i++ {
-		peers = append(peers, raft.Peer{ID: 1 + i})
+		replicaIDs = append(replicaIDs, 1+i)
 	}
 
 	addrs := make([]string, 0, n)
@@ -80,32 +79,25 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 	teardown = func() {}
 
 	for i := 0; i < n; i++ {
-		c := &raft.Config{
-			ID:              uint64(1 + i),
-			ElectionTick:    10,
-			HeartbeatTick:   1,
-			MaxSizePerMsg:   4096,
-			MaxInflightMsgs: 256,
-		}
-		db, dbDown := setupDB(t)
-		teardown = chain(dbDown, teardown)
 		clk := clock.NewMock()
-		clks = append(clks, clk)
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatal(err)
 		}
-		l, err := Open(db, nil, c, peers, clk, tick, ln, grpc.NewServer(), lookupDialerFrom(i))
-		if err != nil {
-			teardown()
-			t.Fatal(err)
-		}
-		ret = append(ret, l)
-		teardown = chain(func() { l.Stop() }, teardown)
-	}
+		s := grpc.NewServer()
+		db, dbDown := setupDB(t)
+		l := New(
+			uint64(i+1), replicaIDs,
+			db, nil,
+			clk, tick,
+			s, lookupDialerFrom(i),
+		)
+		go s.Serve(ln)
 
-	for _, l := range ret {
-		addrs = append(addrs, l.(*raftLog).grpcListen.Addr().String())
+		ret = append(ret, l)
+		clks = append(clks, clk)
+		addrs = append(addrs, ln.Addr().String())
+		teardown = chain(func() { s.Stop(); ln.Close(); l.Stop() }, dbDown, teardown)
 	}
 
 	for _, l := range ret {
