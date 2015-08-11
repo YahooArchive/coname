@@ -300,6 +300,14 @@ func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine
 				delete(remaining, j-1)
 			}
 		}
+
+		// retry propose for everything that has not passed yet.
+		// just one entry at a time, though -- this loop will run again.
+		am := replicas[i]
+		for s := range remaining[i] {
+			go am.log.Propose(context.TODO(), []byte(s))
+			break
+		}
 	}
 	if testing.Verbose() {
 		for i := range replicas {
