@@ -332,6 +332,9 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
 		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
+		snapshotNumberBytes := make([]byte, 8)
+		binary.BigEndian.PutUint64(snapshotNumberBytes, ks.latestTree.Nr)
+		wb.Put(tableMerkleTreeSnapshot(step.EpochDelimiter.EpochNumber), snapshotNumberBytes)
 		rootHash, err := ks.latestTree.GetRootHash()
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
