@@ -15,13 +15,24 @@
 package server
 
 import (
-	"fmt"
-
 	"github.com/yahoo/coname/proto"
 	"golang.org/x/net/context"
 )
 
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
-	return nil, fmt.Errorf("UpdateProfile not implemented")
+	// TODO: ask for username and verify index (and more validation)
+	uid := genUID()
+	ch := ks.wr.Wait(uid)
+	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{
+		UID:    uid,
+		Update: req,
+	}))
+	select {
+	case <-ctx.Done():
+		ks.wr.Notify(uid, nil)
+		return nil, ctx.Err()
+	case <-ch:
+		return ks.Lookup(ctx, req.LookupParameters)
+	}
 }
