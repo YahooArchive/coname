@@ -400,3 +400,117 @@ func TestRecoverFromDisconnect3(t *testing.T) {
 	partitionMajorityMinority(t, nw, 3, 0)
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 2, 5, 1)
 }
+
+func partitionRandomly(t *testing.T, nw *nettestutil.Network, n int) {
+	nparts := rand.Intn(n) + 1
+	parts := make([][]int, nparts)
+	for i := 0; i < n; i++ {
+		p := rand.Intn(nparts)
+		parts[p] = append(parts[p], i)
+	}
+	nw.Partition(parts...)
+	if testing.Verbose() {
+		for _, pp := range parts {
+			for i := range pp {
+				pp[i]++
+			}
+		}
+		t.Logf("partition! %v", parts)
+	}
+}
+
+func TestLots(t *testing.T) {
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 5)
+	defer teardown()
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// log entries are proposed
+	proposed := make(chan struct{})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer close(proposed)
+		for j := 0; j < 1000; j++ {
+			select {
+			case <-stop:
+				return
+			case <-time.After(time.Microsecond * time.Duration(1*1000*rand.Float64())):
+			}
+			i := rand.Intn(len(replicas))
+			go replicas[i].log.Propose(context.TODO(), []byte(fmt.Sprintf("(%1d:%04d)", i+1, j)))
+		}
+	}()
+
+	// time passes
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(time.Microsecond * time.Duration(5*1000*rand.Float64())):
+			}
+			i := rand.Intn(len(replicas))
+			clks[i].Add(tick * time.Duration(rand.Intn(12)))
+		}
+	}()
+
+	// network changes
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(time.Microsecond * time.Duration(50*1000*rand.Float64())):
+			}
+			if rand.Intn(3) == 1 {
+				partitionMajorityMinority(t, nw, len(replicas), rand.Intn(len(replicas)))
+			} else {
+				partitionRandomly(t, nw, len(replicas))
+			}
+		}
+	}()
+
+	// evolution of states is tracked
+	wantStates := make(chan chan map[int][]byte)
+	go func() {
+		states := make(map[int][]byte)
+		for {
+			select {
+			case ch := <-wantStates:
+				ch <- states
+				return
+			case <-time.After(time.Microsecond * time.Duration(10*1000*rand.Float64())):
+			}
+			i := rand.Intn(len(replicas))
+			ss := replicas[i].Get()
+			if prev, _ := states[i]; !bytes.Equal(ss[:len(prev)], prev) {
+				t.Fatalf("replica %d changed its history", 1+i)
+			}
+		}
+	}()
+
+	// make everything okay again
+	<-proposed
+	close(stop)
+	wg.Wait()
+	nw.Partition()
+	for j := 0; j < 30; j++ {
+		for i := range replicas {
+			clks[i].Add(tick)
+		}
+	}
+	time.Sleep(10 * time.Millisecond)
+
+	// check that there was no divergance
+	ch := make(chan map[int][]byte)
+	wantStates <- ch
+	states := <-ch
+	checkReplicasConsistent(t, states)
+
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 7, 0)
+}
