@@ -332,10 +332,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
 		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
+		rootHash, err := ks.latestTree.GetRootHash()
+		if err != nil {
+			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
+		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
 				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
-					RootHash:            nil, // TODO(dmz): ret.TreeProof = merklemap.GetRootHash()
+					RootHash:            rootHash,
 					PreviousSummaryHash: rs.PreviousSummaryHash,
 					Realm:               ks.realm,
 					Epoch:               step.EpochDelimiter.EpochNumber,
