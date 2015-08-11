@@ -95,7 +95,7 @@ type Keyserver struct {
 	waitStop sync.WaitGroup
 
 	merkletree *merkletree.MerkleTree
-	latestTree *merkletree.NewSnapshot
+	latestTree *merkletree.Snapshot
 
 	pendingUpdateUIDs []uint64
 }
@@ -200,10 +200,7 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	default:
 		return nil, err
 	}
-	ks.latestTree, err = ks.merkletree.GetSnapshot(currentSnapshot).BeginModification()
-	if err != nil {
-		return nil, err
-	}
+	ks.latestTree = ks.merkletree.GetSnapshot(currentSnapshot)
 
 	ok = true
 	return ks, nil
@@ -311,15 +308,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
-		if err := ks.latestTree.Set(index, entryHash[:]); err != nil {
-			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
-			return
-		}
-		ks.latestTree, err = ks.latestTree.Flush(wb).BeginModification()
+		newTree, err := ks.latestTree.BeginModification()
 		if err != nil {
 			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
+		if err := newTree.Set(index, entryHash[:]); err != nil {
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
+			return
+		}
+		ks.latestTree = newTree.Flush(wb)
 		rs.PendingUpdates = true
 		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
 		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
