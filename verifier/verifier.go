@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/binary"
 	"log"
 	"math"
 	"sync"
@@ -27,8 +28,10 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/merkletree"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -44,6 +47,8 @@ type Config struct {
 	ID              uint64
 	RatificationKey *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
 	TLS             *tls.Config                   // FIXME: tls.Config is not serializable, replicate relevant fields
+
+	TreeNonce []byte
 }
 
 // Verifier verifies that the Keyserver of the realm is not cheating.
@@ -65,6 +70,9 @@ type Verifier struct {
 	stopOnce sync.Once
 	stop     chan struct{}
 	waitStop sync.WaitGroup
+
+	merkletree *merkletree.MerkleTree
+	latestTree *merkletree.Snapshot
 }
 
 // Start initializes a new verifier based on config and db, or returns an error
@@ -92,6 +100,11 @@ func Start(cfg *Config, db kv.DB) (*Verifier, error) {
 			return nil, err
 		}
 	default:
+		return nil, err
+	}
+	var err error
+	vr.merkletree, err = merkletree.AccessMerkleTree(vr.db, []byte{tableMerkleTreePrefix}, cfg.TreeNonce)
+	if err != nil {
 		return nil, err
 	}
 
@@ -164,10 +177,24 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 	// step, vs, wb: &mut
 	switch {
 	case step.Update != nil:
-		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update); err != nil {
-			return // TODO: decide whether keyserver should guarantee that verifiers don't see bad updates
+		index := step.Update.NewEntry.Index
+		prevEntry, err := vr.getEntry(index, vs.NextEpoch)
+		if err := common.VerifyUpdate(prevEntry, step.Update); err != nil {
+			// the keyserver should filter all bad updates
+			log.Fatalf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
-		// TODO(dmz): set entry in tree
+		entryHash := sha256.Sum256(step.Update.NewEntry.PreservedEncoding)
+		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
+		newTree, err := latestTree.BeginModification()
+		if err != nil {
+			log.Fatalf("%d: BeginModification(): %s", vs.NextIndex, err)
+		}
+		if err := newTree.Set(index, entryHash[:]); err != nil {
+			log.Fatalf("%d: Set(%x,%x): %s", vs.NextIndex, index, entryHash[:], err)
+		}
+		vs.LatestTreeSnapshot = newTree.Flush(wb).Nr
+		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.PreservedEncoding)
+
 	case step.Epoch != nil:
 		ok := common.VerifyPolicy(
 			vr.keyserverVerif,
@@ -188,13 +215,18 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		if !bytes.Equal(s.PreviousSummaryHash, vr.vs.PreviousSummaryHash) {
 			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vr.vs.NextEpoch, s.PreviousSummaryHash, vr.vs.PreviousSummaryHash, *step)
 		}
-		if s.RootHash != nil /*TODO(dmz): merkletree.GetRootHash()*/ {
-			log.Fatalf("%d: seh with root hash %q, expected nil: %#v", vr.vs.NextEpoch, s.RootHash /*, TODO*/, *step)
+		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
+		rootHash, err := latestTree.GetRootHash()
+		if err != nil {
+			log.Fatalf("GetRootHash() failed: %s", err)
+		}
+		if !bytes.Equal(s.RootHash, rootHash) {
+			log.Fatalf("%d: seh with root hash %q, expected %q: %#v", vr.vs.NextEpoch, s.RootHash, rootHash, *step)
 		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
 				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
-					RootHash:            nil, // TODO(dmz): merklemap.GetRootHash()
+					RootHash:            rootHash,
 					PreviousSummaryHash: vr.vs.PreviousSummaryHash,
 					Realm:               vr.realm,
 					Epoch:               vr.vs.NextEpoch,
@@ -220,4 +252,30 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		log.Fatalf("%d: unknown step: %#v", vs.NextIndex, *step)
 	}
 	return
+}
+
+// getEntry returns the last version of the entry at idx during or before epoch.
+// If there is no such update, (nil, nil) is returned.
+func (vr *Verifier) getEntry(idx []byte, epoch uint64) (*proto.Entry, error) {
+	// idx: []&const
+	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
+	prefixIdxEpoch[0] = tableEntriesPrefix
+	copy(prefixIdxEpoch[1:], idx)
+	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch+1)
+	iter := vr.db.NewIterator(&kv.Range{
+		Start: prefixIdxEpoch[:1+len(idx)],
+		Limit: prefixIdxEpoch,
+	})
+	if !iter.Last() {
+		if iter.Error() != nil {
+			return nil, iter.Error()
+		}
+		return nil, nil
+	}
+	ret := new(proto.Entry)
+	if err := ret.Unmarshal(iter.Value()); err != nil {
+		return nil, iter.Error()
+	}
+	iter.Release()
+	return ret, nil
 }
