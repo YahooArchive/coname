@@ -350,6 +350,13 @@ func TestAppendMachineEachPropose13AndWait3(t *testing.T) {
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 13, 0)
 }
 
+func TestAppendMachineEachPropose1WhilePartitioned3(t *testing.T) {
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	defer teardown()
+	partitionMajorityMinority(t, nw, 3, 0)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 1)
+}
+
 func TestAppendMachineEachPropose7Partitioned7AndWait3(t *testing.T) {
 	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
 	defer teardown()

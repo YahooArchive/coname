@@ -34,7 +34,6 @@ func (n *Network) GetValve(i, j int) bool {
 // Partition partitions the network according to the following rules:
 // - nodes in the same slice are in the same partition
 // - nodes not in any slice are not connected to any node
-//     - []byte{} is a fully disconnected network
 // - passing no slices represents a fully connected network
 func (n *Network) Partition(partitions ...[]int) {
 	part := make(map[int]int, n.n)
@@ -47,7 +46,8 @@ func (n *Network) Partition(partitions ...[]int) {
 		for j := 0; j < n.n; j++ {
 			li, _ := part[i]
 			lj, _ := part[j]
-			n.SetValve(i, j, len(partitions) == 0 || li == lj && li != 0)
+			connected := len(partitions) == 0 || li == lj && li != 0
+			n.SetValve(i, j, !connected)
 		}
 	}
 }
