@@ -28,7 +28,8 @@ var (
 	tableMerkleTreeSnapshotPrefix byte = 's' // epochNumber uint64 -> snapshotNumber uint64
 	tableMerkleTreePrefix         byte = 't'
 
-	tableReplicaState = []byte{'e'} // proto.ReplicaState
+	tableReplicaState              = []byte{'e'} // proto.ReplicaState
+	tableMerkleTreeCurrentSnapshot = []byte{'m'} // uint64
 )
 
 func tableRatifications(epoch, ratifier uint64) []byte {

@@ -94,6 +94,7 @@ type Keyserver struct {
 	waitStop sync.WaitGroup
 
 	merkletree *merkletree.MerkleTree
+	latestTree *merkletree.NewSnapshot
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -186,6 +187,21 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	if err != nil {
 		return nil, err
 	}
+	var currentSnapshot uint64
+	switch currentSnapshotBytes, err := db.Get(tableMerkleTreeCurrentSnapshot); err {
+	case ks.db.ErrNotFound():
+		// empty snapshot
+		currentSnapshot = 0
+	case nil:
+		currentSnapshot = binary.BigEndian.Uint64(currentSnapshotBytes)
+	default:
+		return nil, err
+	}
+	ks.latestTree, err = ks.merkletree.GetSnapshot(currentSnapshot).BeginModification()
+	if err != nil {
+		return nil, err
+	}
+
 	ok = true
 	return ks, nil
 }
@@ -277,11 +293,26 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	// step, rs, wb: &mut
 	switch {
 	case step.Update != nil:
-		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update.Update); err != nil {
+		index := step.Update.Update.NewEntry.Index
+		prevUpdate, err := ks.getUpdate(index, ks.rs.LastEpochDelimiter.EpochNumber)
+		if err != nil {
 			// TODO: return the client-bound error code
 			return
 		}
-		// TODO(dmz): set entry in tree
+		if err := common.VerifyUpdate(&prevUpdate.Update.NewEntry.Entry, step.Update.Update); err != nil {
+			// TODO: return the client-bound error code
+			return
+		}
+		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
+		if err := ks.latestTree.Set(index, entryHash[:]); err != nil {
+			// TODO: return the client-bound error code
+			return
+		}
+		ks.latestTree, err = ks.latestTree.Flush(wb).BeginModification()
+		if err != nil {
+			// TODO: return the client-bound error code
+			return
+		}
 		rs.PendingUpdates = true
 		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
 		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
