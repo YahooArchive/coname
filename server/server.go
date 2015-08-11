@@ -282,7 +282,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	switch {
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
-		prevUpdate, err := ks.getUpdate(index, ks.rs.LastEpochDelimiter.EpochNumber)
+		prevUpdate, err := ks.getUpdate(index, rs.LastEpochDelimiter.EpochNumber)
 		if err != nil {
 			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
@@ -296,7 +296,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
-		latestTree := ks.merkletree.GetSnapshot(ks.rs.LatestTreeSnapshot)
+		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
 			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
@@ -306,9 +306,9 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
-		ks.rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
+		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		rs.PendingUpdates = true
-		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
+		wb.Put(tableUpdateRequests(index, rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
 		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
@@ -322,10 +322,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
 		snapshotNumberBytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(snapshotNumberBytes, ks.rs.LatestTreeSnapshot)
+		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
 		wb.Put(tableMerkleTreeSnapshot(step.EpochDelimiter.EpochNumber), snapshotNumberBytes)
 
-		latestTree := ks.merkletree.GetSnapshot(ks.rs.LatestTreeSnapshot)
+		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		rootHash, err := latestTree.GetRootHash()
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)

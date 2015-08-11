@@ -206,14 +206,14 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		}
 		r := step.Epoch.Head
 		if r.Head.Realm != vr.realm {
-			log.Fatalf("%d: seh for realm %q, expected %q: %#v", vr.vs.NextEpoch, r.Head.Realm, vr.realm, *step)
+			log.Fatalf("%d: seh for realm %q, expected %q: %#v", vs.NextEpoch, r.Head.Realm, vr.realm, *step)
 		}
-		if r.Head.Epoch != vr.vs.NextEpoch {
-			log.Fatalf("%d: got epoch %d instead: %#v", vr.vs.NextEpoch, r.Head.Epoch, *step)
+		if r.Head.Epoch != vs.NextEpoch {
+			log.Fatalf("%d: got epoch %d instead: %#v", vs.NextEpoch, r.Head.Epoch, *step)
 		}
 		s := &r.Head
-		if !bytes.Equal(s.PreviousSummaryHash, vr.vs.PreviousSummaryHash) {
-			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vr.vs.NextEpoch, s.PreviousSummaryHash, vr.vs.PreviousSummaryHash, *step)
+		if !bytes.Equal(s.PreviousSummaryHash, vs.PreviousSummaryHash) {
+			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vs.NextEpoch, s.PreviousSummaryHash, vs.PreviousSummaryHash, *step)
 		}
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		rootHash, err := latestTree.GetRootHash()
@@ -221,15 +221,15 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			log.Fatalf("GetRootHash() failed: %s", err)
 		}
 		if !bytes.Equal(s.RootHash, rootHash) {
-			log.Fatalf("%d: seh with root hash %q, expected %q: %#v", vr.vs.NextEpoch, s.RootHash, rootHash, *step)
+			log.Fatalf("%d: seh with root hash %q, expected %q: %#v", vs.NextEpoch, s.RootHash, rootHash, *step)
 		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
 				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
 					RootHash:            rootHash,
-					PreviousSummaryHash: vr.vs.PreviousSummaryHash,
+					PreviousSummaryHash: vs.PreviousSummaryHash,
 					Realm:               vr.realm,
-					Epoch:               vr.vs.NextEpoch,
+					Epoch:               vs.NextEpoch,
 				}, nil},
 				Timestamp: proto.Time(time.Now()),
 			}, nil},
@@ -237,10 +237,10 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		}
 		seh.Head.Head.UpdateEncoding()
 		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
-		vr.vs.PreviousSummaryHash = h[:]
+		vs.PreviousSummaryHash = h[:]
 		seh.Head.UpdateEncoding()
 		seh.Signatures[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
-		wb.Put(tableRatifications(vr.vs.NextEpoch, vr.id), proto.MustMarshal(seh))
+		wb.Put(tableRatifications(vs.NextEpoch, vr.id), proto.MustMarshal(seh))
 		vs.NextEpoch++
 		return func() {
 			_, err := vr.keyserver.PushRatification(context.TODO(), seh)

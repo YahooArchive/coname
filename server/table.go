@@ -24,12 +24,11 @@ var (
 	tableReplicationLogPrefix     byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
 	tableVerifierLogPrefix        byte = 'v' // index uint64 -> proto.VerifierStep
 	tableRatificationsPrefix      byte = 'r' // epoch uint64, ratifier uint64 -> proto.SignedEpochHead
-	tableUpdateRequestsPrefix     byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.SignedEpochHead
+	tableUpdateRequestsPrefix     byte = 'u' // vrfidx [vrf.Size]byte -> epoch uint64 -> proto.UpdateRequest
 	tableMerkleTreeSnapshotPrefix byte = 's' // epochNumber uint64 -> snapshotNumber uint64
 	tableMerkleTreePrefix         byte = 't'
 
-	tableReplicaState              = []byte{'e'} // proto.ReplicaState
-	tableMerkleTreeCurrentSnapshot = []byte{'m'} // uint64
+	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
 
 func tableRatifications(epoch, ratifier uint64) []byte {
