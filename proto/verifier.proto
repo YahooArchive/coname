@@ -53,13 +53,7 @@ message VerifierStep {
 	oneof type {
 		SignedEntryUpdate Update = 1;
 		SignedEpochHead Epoch = 2;
-		SignedPolicyChange ChanngePolicy = 3;
 	}
-}
-
-message SignedPolicyChange {
-	map<fixed64, bytes> signatures = 1;
-	AuthorizationPolicy new_policy = 2;
 }
 
 message Nothing {

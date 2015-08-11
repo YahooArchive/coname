@@ -16,9 +16,6 @@ import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
-
-import errors "errors"
 
 import io "io"
 
@@ -52,15 +49,13 @@ type RealmConfig struct {
 	URL string `protobuf:"bytes,3,opt,proto3" json:"URL,omitempty"`
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
-	// layer is properly used as a one-to-one mapping between real to
+	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
 	VRFPublic []byte `protobuf:"bytes,4,opt,proto3" json:"VRFPublic,omitempty"`
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
 	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,5,opt,name=verification_policy" json:"verification_policy,omitempty"`
-	// NoOlderThan is used to set expiration times on verifier signatures.
-	NoOlderThan map[uint64]*Duration `protobuf:"bytes,6,rep,name=no_older_than" json:"no_older_than,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 }
 
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
@@ -69,13 +64,6 @@ func (*RealmConfig) ProtoMessage() {}
 func (m *RealmConfig) GetVerificationPolicy() *AuthorizationPolicy {
 	if m != nil {
 		return m.VerificationPolicy
-	}
-	return nil
-}
-
-func (m *RealmConfig) GetNoOlderThan() map[uint64]*Duration {
-	if m != nil {
-		return m.NoOlderThan
 	}
 	return nil
 }
@@ -180,14 +168,6 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return fmt.Errorf("VerificationPolicy this(%v) Not Equal that(%v)", this.VerificationPolicy, that1.VerificationPolicy)
 	}
-	if len(this.NoOlderThan) != len(that1.NoOlderThan) {
-		return fmt.Errorf("NoOlderThan this(%v) Not Equal that(%v)", len(this.NoOlderThan), len(that1.NoOlderThan))
-	}
-	for i := range this.NoOlderThan {
-		if !this.NoOlderThan[i].Equal(that1.NoOlderThan[i]) {
-			return fmt.Errorf("NoOlderThan this[%v](%v) Not Equal that[%v](%v)", i, this.NoOlderThan[i], i, that1.NoOlderThan[i])
-		}
-	}
 	return nil
 }
 func (this *RealmConfig) Equal(that interface{}) bool {
@@ -230,14 +210,6 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return false
 	}
-	if len(this.NoOlderThan) != len(that1.NoOlderThan) {
-		return false
-	}
-	for i := range this.NoOlderThan {
-		if !this.NoOlderThan[i].Equal(that1.NoOlderThan[i]) {
-			return false
-		}
-	}
 	return true
 }
 func (this *Config) GoString() string {
@@ -252,23 +224,12 @@ func (this *RealmConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForNoOlderThan := make([]uint64, 0, len(this.NoOlderThan))
-	for k, _ := range this.NoOlderThan {
-		keysForNoOlderThan = append(keysForNoOlderThan, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNoOlderThan)
-	mapStringForNoOlderThan := "map[uint64]*Duration{"
-	for _, k := range keysForNoOlderThan {
-		mapStringForNoOlderThan += fmt.Sprintf("%#v: %#v,", k, this.NoOlderThan[k])
-	}
-	mapStringForNoOlderThan += "}"
 	s := strings.Join([]string{`&proto.RealmConfig{` +
 		`Domains:` + fmt.Sprintf("%#v", this.Domains),
 		`Addr:` + fmt.Sprintf("%#v", this.Addr),
 		`URL:` + fmt.Sprintf("%#v", this.URL),
 		`VRFPublic:` + fmt.Sprintf("%#v", this.VRFPublic),
-		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy),
-		`NoOlderThan:` + mapStringForNoOlderThan + `}`}, ", ")
+		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy) + `}`}, ", ")
 	return s
 }
 func valueToGoStringConfig(v interface{}, typ string) string {
@@ -386,35 +347,6 @@ func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
 		}
 		i += n1
 	}
-	if len(m.NoOlderThan) > 0 {
-		keysForNoOlderThan := make([]uint64, 0, len(m.NoOlderThan))
-		for k, _ := range m.NoOlderThan {
-			keysForNoOlderThan = append(keysForNoOlderThan, k)
-		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForNoOlderThan)
-		for _, k := range keysForNoOlderThan {
-			data[i] = 0x32
-			i++
-			v := m.NoOlderThan[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
-			}
-			msgSize := v.Size()
-			mapSize := 1 + 8 + 1 + msgSize + sovConfig(uint64(msgSize))
-			i = encodeVarintConfig(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Config(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintConfig(data, i, uint64(v.Size()))
-			n2, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n2
-		}
-	}
 	return i, nil
 }
 
@@ -476,13 +408,6 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	if r.Intn(10) != 0 {
 		this.VerificationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	if r.Intn(10) != 0 {
-		v4 := r.Intn(10)
-		this.NoOlderThan = make(map[uint64]*Duration)
-		for i := 0; i < v4; i++ {
-			this.NoOlderThan[uint64(uint64(r.Uint32()))] = NewPopulatedDuration(r, easy)
-		}
-	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -507,9 +432,9 @@ func randUTF8RuneConfig(r randyConfig) rune {
 	return rune(ru + 61)
 }
 func randStringConfig(r randyConfig) string {
-	v5 := r.Intn(100)
-	tmps := make([]rune, v5)
-	for i := 0; i < v5; i++ {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
 		tmps[i] = randUTF8RuneConfig(r)
 	}
 	return string(tmps)
@@ -531,11 +456,11 @@ func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateConfig(data, uint64(key))
-		v6 := r.Int63()
+		v5 := r.Int63()
 		if r.Intn(2) == 0 {
-			v6 *= -1
+			v5 *= -1
 		}
-		data = encodeVarintPopulateConfig(data, uint64(v6))
+		data = encodeVarintPopulateConfig(data, uint64(v5))
 	case 1:
 		data = encodeVarintPopulateConfig(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -599,18 +524,6 @@ func (m *RealmConfig) Size() (n int) {
 		l = m.VerificationPolicy.Size()
 		n += 1 + l + sovConfig(uint64(l))
 	}
-	if len(m.NoOlderThan) > 0 {
-		for k, v := range m.NoOlderThan {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-			}
-			mapEntrySize := 1 + 8 + 1 + l + sovConfig(uint64(l))
-			n += mapEntrySize + 1 + sovConfig(uint64(mapEntrySize))
-		}
-	}
 	return n
 }
 
@@ -641,23 +554,12 @@ func (this *RealmConfig) String() string {
 	if this == nil {
 		return "nil"
 	}
-	keysForNoOlderThan := make([]uint64, 0, len(this.NoOlderThan))
-	for k, _ := range this.NoOlderThan {
-		keysForNoOlderThan = append(keysForNoOlderThan, k)
-	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForNoOlderThan)
-	mapStringForNoOlderThan := "map[uint64]*Duration{"
-	for _, k := range keysForNoOlderThan {
-		mapStringForNoOlderThan += fmt.Sprintf("%v: %v,", k, this.NoOlderThan[k])
-	}
-	mapStringForNoOlderThan += "}"
 	s := strings.Join([]string{`&RealmConfig{`,
 		`Domains:` + fmt.Sprintf("%v", this.Domains) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
 		`VRFPublic:` + fmt.Sprintf("%v", this.VRFPublic) + `,`,
 		`VerificationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.VerificationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
-		`NoOlderThan:` + mapStringForNoOlderThan + `,`,
 		`}`,
 	}, "")
 	return s
@@ -870,89 +772,6 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if err := m.VerificationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NoOlderThan", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			var keykey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				keykey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapkey uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			mapkey = uint64(data[iNdEx-8])
-			mapkey |= uint64(data[iNdEx-7]) << 8
-			mapkey |= uint64(data[iNdEx-6]) << 16
-			mapkey |= uint64(data[iNdEx-5]) << 24
-			mapkey |= uint64(data[iNdEx-4]) << 32
-			mapkey |= uint64(data[iNdEx-3]) << 40
-			mapkey |= uint64(data[iNdEx-2]) << 48
-			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapmsglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapmsglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postmsgIndex := iNdEx + mapmsglen
-			if postmsgIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := &Duration{}
-			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
-				return err
-			}
-			iNdEx = postmsgIndex
-			if m.NoOlderThan == nil {
-				m.NoOlderThan = make(map[uint64]*Duration)
-			}
-			m.NoOlderThan[mapkey] = mapvalue
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
