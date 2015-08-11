@@ -140,6 +140,7 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 
 	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
+	ok := false
 	if cfg.UpdateAddr != "" {
 		ks.updateServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.UpdateTLS)))
 		proto.RegisterE2EKSUpdateServer(ks.updateServer, ks)
@@ -147,26 +148,39 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			if !ok {
+				ks.updateListen.Close()
+			}
+		}()
 	}
 	if cfg.LookupAddr != "" {
 		ks.lookupServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.LookupTLS)))
 		proto.RegisterE2EKSLookupServer(ks.lookupServer, ks)
 		ks.lookupListen, err = net.Listen("tcp", cfg.LookupAddr)
 		if err != nil {
-			ks.updateListen.Close()
 			return nil, err
 		}
+		defer func() {
+			if !ok {
+				ks.lookupListen.Close()
+			}
+		}()
 	}
 	if cfg.VerifierAddr != "" {
 		ks.verifierServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.VerifierTLS)))
 		proto.RegisterE2EKSVerificationServer(ks.verifierServer, ks)
 		ks.verifierListen, err = net.Listen("tcp", cfg.VerifierAddr)
 		if err != nil {
-			ks.updateListen.Close()
-			ks.lookupListen.Close()
 			return nil, err
 		}
+		defer func() {
+			if !ok {
+				ks.verifierListen.Close()
+			}
+		}()
 	}
+	ok = true
 	return ks, nil
 }
 
