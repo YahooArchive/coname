@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"runtime"
@@ -95,6 +96,8 @@ type Keyserver struct {
 
 	merkletree *merkletree.MerkleTree
 	latestTree *merkletree.NewSnapshot
+
+	pendingUpdateUIDs []uint64
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -296,26 +299,31 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		index := step.Update.Update.NewEntry.Index
 		prevUpdate, err := ks.getUpdate(index, ks.rs.LastEpochDelimiter.EpochNumber)
 		if err != nil {
-			// TODO: return the client-bound error code
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
-		if err := common.VerifyUpdate(&prevUpdate.Update.NewEntry.Entry, step.Update.Update); err != nil {
-			// TODO: return the client-bound error code
+		var prevEntry *proto.Entry
+		if prevUpdate != nil {
+			prevEntry = &prevUpdate.Update.NewEntry.Entry
+		}
+		if err := common.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
+			ks.wr.Notify(step.UID, fmt.Errorf("invalid update")) // TODO more descriptive error
 			return
 		}
 		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
 		if err := ks.latestTree.Set(index, entryHash[:]); err != nil {
-			// TODO: return the client-bound error code
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
 		ks.latestTree, err = ks.latestTree.Flush(wb).BeginModification()
 		if err != nil {
-			// TODO: return the client-bound error code
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
 		rs.PendingUpdates = true
 		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
 		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -324,6 +332,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
+		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
@@ -353,6 +362,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// verifiers will block indefinitely. It may or may not be worth
 		// unifying this with epoch delimiter retry logic -- we need one epoch
 		// delimiter per cluster but a majority of replicas need to sign.
+		for _, uid := range ks.pendingUpdateUIDs {
+			ks.wr.Notify(uid, nil)
+		}
+		ks.pendingUpdateUIDs = []uint64{}
 
 	case step.ReplicaSigned != nil:
 		rNew := step.ReplicaSigned
@@ -394,8 +407,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
 			wb.Put(dbkey, proto.MustMarshal(rNew))
-			ks.wr.Notify(step.UID, nil)
 		}
+		ks.wr.Notify(step.UID, nil)
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
