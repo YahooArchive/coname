@@ -30,6 +30,7 @@ type ReplicaState struct {
 	PreviousSummaryHash []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 	LastEpochDelimiter  EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
 	PendingUpdates      bool           `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	LatestTreeSnapshot  uint64         `protobuf:"varint,6,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
 }
 
 func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
@@ -47,6 +48,7 @@ type VerifierState struct {
 	NextIndex           uint64 `protobuf:"varint,1,opt,name=next_index,proto3" json:"next_index,omitempty"`
 	NextEpoch           uint64 `protobuf:"varint,2,opt,name=next_epoch,proto3" json:"next_epoch,omitempty"`
 	PreviousSummaryHash []byte `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	LatestTreeSnapshot  uint64 `protobuf:"varint,4,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
 }
 
 func (m *VerifierState) Reset()      { *m = VerifierState{} }
@@ -172,6 +174,22 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				}
 			}
 			m.PendingUpdates = bool(v != 0)
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LatestTreeSnapshot", wireType)
+			}
+			m.LatestTreeSnapshot = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.LatestTreeSnapshot |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -274,6 +292,22 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 			}
 			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LatestTreeSnapshot", wireType)
+			}
+			m.LatestTreeSnapshot = 0
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.LatestTreeSnapshot |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			var sizeOfWire int
 			for {
@@ -402,6 +436,7 @@ func (this *ReplicaState) String() string {
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
 		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
 		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
+		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -414,6 +449,7 @@ func (this *VerifierState) String() string {
 		`NextIndex:` + fmt.Sprintf("%v", this.NextIndex) + `,`,
 		`NextEpoch:` + fmt.Sprintf("%v", this.NextEpoch) + `,`,
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -446,6 +482,9 @@ func (m *ReplicaState) Size() (n int) {
 	if m.PendingUpdates {
 		n += 2
 	}
+	if m.LatestTreeSnapshot != 0 {
+		n += 1 + sovLocal(uint64(m.LatestTreeSnapshot))
+	}
 	return n
 }
 
@@ -463,6 +502,9 @@ func (m *VerifierState) Size() (n int) {
 		if l > 0 {
 			n += 1 + l + sovLocal(uint64(l))
 		}
+	}
+	if m.LatestTreeSnapshot != 0 {
+		n += 1 + sovLocal(uint64(m.LatestTreeSnapshot))
 	}
 	return n
 }
@@ -492,6 +534,7 @@ func NewPopulatedReplicaState(r randyLocal, easy bool) *ReplicaState {
 	v2 := NewPopulatedEpochDelimiter(r, easy)
 	this.LastEpochDelimiter = *v2
 	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
+	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -506,6 +549,7 @@ func NewPopulatedVerifierState(r randyLocal, easy bool) *VerifierState {
 	for i := 0; i < v3; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
+	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -634,6 +678,11 @@ func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
 		}
 		i++
 	}
+	if m.LatestTreeSnapshot != 0 {
+		data[i] = 0x30
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.LatestTreeSnapshot))
+	}
 	return i, nil
 }
 
@@ -669,6 +718,11 @@ func (m *VerifierState) MarshalTo(data []byte) (n int, err error) {
 			i = encodeVarintLocal(data, i, uint64(len(m.PreviousSummaryHash)))
 			i += copy(data[i:], m.PreviousSummaryHash)
 		}
+	}
+	if m.LatestTreeSnapshot != 0 {
+		data[i] = 0x20
+		i++
+		i = encodeVarintLocal(data, i, uint64(m.LatestTreeSnapshot))
 	}
 	return i, nil
 }
@@ -709,7 +763,8 @@ func (this *ReplicaState) GoString() string {
 		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
 		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
 		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
-		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates) + `}`}, ", ")
+		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates),
+		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot) + `}`}, ", ")
 	return s
 }
 func (this *VerifierState) GoString() string {
@@ -719,7 +774,8 @@ func (this *VerifierState) GoString() string {
 	s := strings.Join([]string{`&proto.VerifierState{` +
 		`NextIndex:` + fmt.Sprintf("%#v", this.NextIndex),
 		`NextEpoch:` + fmt.Sprintf("%#v", this.NextEpoch),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot) + `}`}, ", ")
 	return s
 }
 func valueToGoStringLocal(v interface{}, typ string) string {
@@ -782,6 +838,9 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 	if this.PendingUpdates != that1.PendingUpdates {
 		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
 	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
+	}
 	return nil
 }
 func (this *ReplicaState) Equal(that interface{}) bool {
@@ -819,6 +878,9 @@ func (this *ReplicaState) Equal(that interface{}) bool {
 	if this.PendingUpdates != that1.PendingUpdates {
 		return false
 	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return false
+	}
 	return true
 }
 func (this *VerifierState) VerboseEqual(that interface{}) error {
@@ -850,6 +912,9 @@ func (this *VerifierState) VerboseEqual(that interface{}) error {
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
 		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
 	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
+	}
 	return nil
 }
 func (this *VerifierState) Equal(that interface{}) bool {
@@ -879,6 +944,9 @@ func (this *VerifierState) Equal(that interface{}) bool {
 		return false
 	}
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return false
+	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
 		return false
 	}
 	return true
