@@ -233,8 +233,7 @@ func (ks *Keyserver) run() {
 		select {
 		case <-ks.stop:
 			return
-		case stepLogEntry := <-ks.log.WaitCommitted():
-			stepBytes := stepLogEntry.Data
+		case stepBytes := <-ks.log.WaitCommitted():
 			if stepBytes == nil {
 				continue // allow logs to skip slots for indexing purposes
 			}

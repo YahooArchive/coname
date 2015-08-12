@@ -110,7 +110,7 @@ type Replica struct {
 	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// PublicKeys lists the public keys of a node, to be joined using a
 	// 1-out-of-n policy. The order of this list is NOT preserved.
-	PublicKeys []*Profile_PreserveEncoding `protobuf:"bytes,2,rep,name=public_keys,customtype=Profile_PreserveEncoding" json:"public_keys,omitempty"`
+	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys" json:"public_keys,omitempty"`
 	// Addr is the network address of the node, such that net.Dial("tcp", Addr)
 	// reaches the node. Supported formats include host.domain:port and ip:port.
 	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
@@ -118,6 +118,13 @@ type Replica struct {
 
 func (m *Replica) Reset()      { *m = Replica{} }
 func (*Replica) ProtoMessage() {}
+
+func (m *Replica) GetPublicKeys() []*PublicKey {
+	if m != nil {
+		return m.PublicKeys
+	}
+	return nil
+}
 
 func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 	if that == nil {
@@ -574,9 +581,9 @@ func NewPopulatedReplica(r randyReplication, easy bool) *Replica {
 	this.Id = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
 		v2 := r.Intn(10)
-		this.PublicKeys = make([]*Profile_PreserveEncoding, v2)
+		this.PublicKeys = make([]*PublicKey, v2)
 		for i := 0; i < v2; i++ {
-			this.PublicKeys[i] = NewPopulatedProfile_PreserveEncoding(r, easy)
+			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
 		}
 	}
 	this.Addr = randStringReplication(r)
