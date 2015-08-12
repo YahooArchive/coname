@@ -236,59 +236,82 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 	return &profile
 }
 
+func runWhileTicking(clk *clock.Mock, f func()) {
+	done := make(chan struct{})
+	go func() {
+		f()
+		close(done)
+	}()
+loop:
+	for {
+		select {
+		case <-time.After(poll):
+			clk.Add(tick)
+		case <-done:
+			break loop
+		}
+	}
+}
+
 func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
+	clk := clock.NewMock()
+	ks, err := Open(cfg, db, clk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ks.Start()
 	defer ks.Stop()
 
-	profile := doUpdate(t, ks, caPool, alice, proto.Profile{
-		Nonce: []byte("noncenoncenonceNONCE"),
-		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-	})
+	runWhileTicking(clk, func() {
+		profile := doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("noncenoncenonceNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+		})
 
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if proof.UserId != alice {
-		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-	}
-	if len(proof.IndexProof) != vrf.ProofSize {
-		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
-		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
-	}
+		conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := proto.NewE2EKSLookupClient(conn)
+		proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if proof.UserId != alice {
+			t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+		}
+		if len(proof.IndexProof) != vrf.ProofSize {
+			t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+		}
+		if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+			t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+		}
+	})
 }
 
 func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
 	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
+	clk := clock.NewMock()
+	ks, err := Open(cfg, db, clk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ks.Start()
 	defer ks.Stop()
 
-	doUpdate(t, ks, caPool, alice, proto.Profile{
-		Nonce: []byte("noncenoncenonceNONCE"),
-		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-	})
+	runWhileTicking(clk, func() {
+		doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("noncenoncenonceNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+		})
 
-	doUpdate(t, ks, caPool, alice, proto.Profile{
-		Nonce: []byte("XYZNONCE"),
-		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
+		doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("XYZNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
+		})
 	})
 }
 
