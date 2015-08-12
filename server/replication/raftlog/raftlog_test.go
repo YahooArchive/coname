@@ -565,3 +565,22 @@ func TestConfigurationChange3Add1Manually(t *testing.T) {
 	}
 	checkReplicasConsistent(t, states)
 }
+
+func TestConfigurationChange4Drop1Manually(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 4, 0)
+	defer teardown()
+
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 0)
+
+	for i := 0; i < 4; i++ {
+		replicas[i].log.DropReplica(4)
+	}
+
+	testAppendMachineEachProposeAndWait(t, replicas[:3], clks[:3], 1, 1, 0)
+
+	states := make(map[int][]byte)
+	for i := 0; i < 4; i++ { // even the removed replica must be consistent (just behind)
+		states[i] = replicas[i].Get()
+	}
+	checkReplicasConsistent(t, states)
+}
