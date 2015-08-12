@@ -32,7 +32,10 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 	case <-ctx.Done():
 		ks.wr.Notify(uid, nil)
 		return nil, ctx.Err()
-	case <-ch:
+	case v := <-ch:
+		if err, ok := v.(error); ok {
+			return nil, err
+		}
 		return ks.Lookup(ctx, req.LookupParameters)
 	}
 }
