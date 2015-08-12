@@ -224,9 +224,6 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
 	if proof.UserId != name {
 		t.Errorf("proof.UserId != \"%q\" (got %q)", name, proof.UserId)
 	}
