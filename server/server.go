@@ -360,10 +360,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// verifiers will block indefinitely. It may or may not be worth
 		// unifying this with epoch delimiter retry logic -- we need one epoch
 		// delimiter per cluster but a majority of replicas need to sign.
-		for _, uid := range ks.pendingUpdateUIDs {
-			ks.wr.Notify(uid, nil)
-		}
-		ks.pendingUpdateUIDs = []uint64{}
 
 	case step.ReplicaSigned != nil:
 		rNew := step.ReplicaSigned
@@ -394,8 +390,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// Only put signatures into the verifier log once.
 		if true {
 			// FIXME: make sure sehs in verifier log are ordered by epoch
-			return ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			return func() {
+				notifyVerifiers()
+				for _, uid := range ks.pendingUpdateUIDs {
+					ks.wr.Notify(uid, nil)
+				}
+				ks.pendingUpdateUIDs = []uint64{}
+			}
 		}
+
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
 		for id := range rNew.Signatures {
