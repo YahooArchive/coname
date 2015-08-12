@@ -178,8 +178,8 @@ func (am *appendMachine) run() {
 			return
 		case stepLogEntry := <-am.log.WaitCommitted():
 			switch {
-			case stepLogEntry.Data != nil:
-				am.state = append(am.state, stepLogEntry.Data...)
+			case stepLogEntry != nil:
+				am.state = append(am.state, stepLogEntry...)
 				am.nextIndexLog++
 				am.persist()
 			}
@@ -295,6 +295,7 @@ func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine
 			var j int
 			_, err := fmt.Sscanf(s[:3], "(%1d:", &j)
 			if err != nil {
+				println(fmt.Sprintf("%q", s))
 				panic(err)
 			}
 			delete(remaining[j-1], s)
@@ -540,7 +541,7 @@ func TestConfigurationChange3Add1Manually(t *testing.T) {
 	}
 
 	for i := 0; i < 4; i++ {
-		replicas[i].log.ApplyConfChange(replication.ConfChangeAddNode, 4)
+		replicas[i].log.AddReplica(4)
 	}
 
 	for len(replicas[3].Get()) < 3 {

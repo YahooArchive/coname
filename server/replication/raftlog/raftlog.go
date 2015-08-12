@@ -48,7 +48,7 @@ type raftLog struct {
 	clk          clock.Clock
 	tickInterval time.Duration
 
-	waitCommitted chan replication.LogEntry
+	waitCommitted chan []byte
 
 	leaderHintSet chan bool
 	leaderHint    bool
@@ -129,7 +129,7 @@ func (l *raftLog) Start(lo uint64) error {
 	}
 
 	l.leaderHintSet = make(chan bool, COMMITTED_BUFFER)
-	l.waitCommitted = make(chan replication.LogEntry, COMMITTED_BUFFER)
+	l.waitCommitted = make(chan []byte, COMMITTED_BUFFER)
 	l.stop = make(chan struct{})
 	l.stopped = make(chan struct{})
 	l.stopOnce = sync.Once{}
@@ -156,15 +156,23 @@ func (l *raftLog) Propose(ctx context.Context, data []byte) {
 }
 
 // Propose implements replication.LogReplicator
-func (l *raftLog) ApplyConfChange(ct replication.ConfChangeType, nodeID uint64) {
+func (l *raftLog) AddReplica(nodeID uint64) {
 	l.node.ApplyConfChange(raftpb.ConfChange{
-		Type:   raftpb.ConfChangeType(ct),
+		Type:   raftpb.ConfChangeAddNode,
+		NodeID: nodeID,
+	})
+}
+
+// Propose implements replication.LogReplicator
+func (l *raftLog) DropReplica(nodeID uint64) {
+	l.node.ApplyConfChange(raftpb.ConfChange{
+		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
 	})
 }
 
 // WaitCommitted implements replication.LogReplicator
-func (l *raftLog) WaitCommitted() <-chan replication.LogEntry {
+func (l *raftLog) WaitCommitted() <-chan []byte {
 	return l.waitCommitted
 }
 
@@ -174,13 +182,13 @@ func (l *raftLog) LeaderHintSet() <-chan bool {
 }
 
 // GetCommitted implements replication.LogReplicator
-func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
+func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
 	es, err := l.getCommittedEntries(lo, hi, maxSize)
 	if err != nil {
 		return nil, err
 	}
 	for _, e := range es {
-		ret = append(ret, replication.LogEntry{Data: e.Data})
+		ret = append(ret, entryData(e))
 	}
 	return ret, err
 }
@@ -199,6 +207,13 @@ func (l *raftLog) getCommittedEntries(lo, hi, maxSize uint64) ([]raftpb.Entry, e
 		i++
 	}
 	return entries[:i], nil
+}
+
+func entryData(e raftpb.Entry) []byte {
+	if e.Type == raftpb.EntryNormal {
+		return e.Data
+	}
+	return nil
 }
 
 // run is the CSP-style main of raftLog; all local struct fields (except
@@ -224,27 +239,10 @@ func (l *raftLog) run() {
 				l.send(&rd.Messages[i])
 			}
 			for _, entry := range rd.CommittedEntries {
-				switch entry.Type {
-				case raftpb.EntryConfChange:
-					var cc raftpb.ConfChange
-					cc.Unmarshal(entry.Data)
-					select {
-					case l.waitCommitted <- replication.LogEntry{
-						ConfChange: &replication.ConfChange{
-							Operation: replication.ConfChangeType(cc.Type),
-							NodeID:    cc.NodeID,
-							Data:      cc.Context,
-						},
-					}:
-					case <-l.stop:
-						return
-					}
-				default:
-					select {
-					case l.waitCommitted <- replication.LogEntry{Data: entry.Data}:
-					case <-l.stop:
-						return
-					}
+				select {
+				case l.waitCommitted <- entryData(entry):
+				case <-l.stop:
+					return
 				}
 			}
 
@@ -257,7 +255,10 @@ func (l *raftLog) run() {
 			l.node.Advance() // let Raft proceed
 			if l.leaderHint != leaderHint {
 				l.leaderHint = leaderHint
-				l.leaderHintSet <- leaderHint
+				select {
+				case l.leaderHintSet <- leaderHint:
+				default:
+				}
 			}
 		}
 	}
