@@ -414,7 +414,7 @@ func TestEpochDelimiterProtoCompactText(t *testing.T) {
 }
 
 func TestReplicaProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplica(popr, true)
 	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
@@ -431,7 +431,7 @@ t.Skip()
 }
 
 func TestReplicaProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplica(popr, true)
 	data := github_com_gogo_protobuf_proto.CompactTextString(p)

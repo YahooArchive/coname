@@ -55,7 +55,9 @@ func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 }
 
 // raft replicas are numbered 1..n  and reside in array indices 0..n-1
-func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replication.LogReplicator, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+	m := nReplicas
+	n := nReplicas + nStandbys
 	replicaIDs := make([]uint64, 0, n)
 	for i := uint64(0); i < uint64(n); i++ {
 		replicaIDs = append(replicaIDs, 1+i)
@@ -87,7 +89,7 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 		s := grpc.NewServer()
 		db, dbDown := setupDB(t)
 		l := New(
-			uint64(i+1), replicaIDs,
+			uint64(i+1), replicaIDs[:m],
 			db, nil,
 			clk, tick,
 			s, lookupDialerFrom(i),
@@ -111,17 +113,22 @@ func setupRaftLogCluster(t *testing.T, n int) (ret []replication.LogReplicator, 
 }
 
 func TestRaftLogStartStop1(t *testing.T) {
-	_, _, _, teardown := setupRaftLogCluster(t, 1)
+	_, _, _, teardown := setupRaftLogCluster(t, 1, 0)
+	defer teardown()
+}
+
+func TestRaftLogStartStop1Standby1(t *testing.T) {
+	_, _, _, teardown := setupRaftLogCluster(t, 1, 1)
 	defer teardown()
 }
 
 func TestRaftLogStartStop3(t *testing.T) {
-	_, _, _, teardown := setupRaftLogCluster(t, 3)
+	_, _, _, teardown := setupRaftLogCluster(t, 3, 0)
 	defer teardown()
 }
 
 func TestRaftLogStartStop5(t *testing.T) {
-	_, _, _, teardown := setupRaftLogCluster(t, 5)
+	_, _, _, teardown := setupRaftLogCluster(t, 5, 0)
 	defer teardown()
 }
 
@@ -170,9 +177,12 @@ func (am *appendMachine) run() {
 		case <-am.stop:
 			return
 		case stepLogEntry := <-am.log.WaitCommitted():
-			am.state = append(am.state, stepLogEntry.Data...)
-			am.nextIndexLog++
-			am.persist()
+			switch {
+			case stepLogEntry.Data != nil:
+				am.state = append(am.state, stepLogEntry.Data...)
+				am.nextIndexLog++
+				am.persist()
+			}
 		}
 	}
 }
@@ -198,9 +208,9 @@ func (am *appendMachine) load() {
 	am.state = am.state[:len(am.state)-8]
 }
 
-func setupAppendMachineCluster(t *testing.T, n int) (ret []*appendMachine, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
-	replicas, clks, nw, teardown := setupRaftLogCluster(t, n)
-	for _, r := range replicas {
+func setupAppendMachineCluster(t *testing.T, nReplicas, nStandbys int) (ret []*appendMachine, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+	rafts, clks, nw, teardown := setupRaftLogCluster(t, nReplicas, nStandbys)
+	for _, r := range rafts {
 		db, td := setupDB(t)
 		am := openAppendMachine(db, r)
 		am.Start()
@@ -211,22 +221,22 @@ func setupAppendMachineCluster(t *testing.T, n int) (ret []*appendMachine, clks 
 }
 
 func TestAppendMachineStartStop1(t *testing.T) {
-	_, _, _, teardown := setupAppendMachineCluster(t, 1)
+	_, _, _, teardown := setupAppendMachineCluster(t, 1, 0)
 	defer teardown()
 }
 
 func TestAppendMachineStartStop3(t *testing.T) {
-	_, _, _, teardown := setupAppendMachineCluster(t, 3)
+	_, _, _, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 }
 
 func TestAppendMachineStartStop5(t *testing.T) {
-	_, _, _, teardown := setupAppendMachineCluster(t, 5)
+	_, _, _, teardown := setupAppendMachineCluster(t, 5, 0)
 	defer teardown()
 }
 
 func TestAppendMachineEachProposeOneAndStop5(t *testing.T) {
-	replicas, _, _, teardown := setupAppendMachineCluster(t, 5)
+	replicas, _, _, teardown := setupAppendMachineCluster(t, 5, 0)
 	defer teardown()
 	for i, am := range replicas {
 		go am.log.Propose(context.TODO(), []byte{byte(i)})
@@ -339,26 +349,26 @@ func partitionMajorityMinority(t *testing.T, nw *nettestutil.Network, n, offset 
 }
 
 func TestAppendMachineEachPropose1AndWait5(t *testing.T) {
-	replicas, clks, _, teardown := setupAppendMachineCluster(t, 5)
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 5, 0)
 	defer teardown()
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 0)
 }
 
 func TestAppendMachineEachPropose13AndWait3(t *testing.T) {
-	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3)
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 13, 0)
 }
 
 func TestAppendMachineEachPropose1WhilePartitioned3(t *testing.T) {
-	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 	partitionMajorityMinority(t, nw, 3, 0)
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 1)
 }
 
 func TestAppendMachineEachPropose7Partitioned7AndWait3(t *testing.T) {
-	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
 	partitionMajorityMinority(t, nw, 3, 0)
@@ -366,7 +376,7 @@ func TestAppendMachineEachPropose7Partitioned7AndWait3(t *testing.T) {
 }
 
 func TestAppendMachineEachPropose7Partitioned5Repartitioned13AndWait3(t *testing.T) {
-	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
 	partitionMajorityMinority(t, nw, 3, 0)
@@ -376,7 +386,7 @@ func TestAppendMachineEachPropose7Partitioned5Repartitioned13AndWait3(t *testing
 }
 
 func TestRecoverFromDisconnect3(t *testing.T) {
-	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3)
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 3, 0)
 	defer teardown()
 
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 7, 0)
@@ -412,7 +422,7 @@ func partitionRandomly(t *testing.T, nw *nettestutil.Network, n int) {
 }
 
 func TestLots(t *testing.T) {
-	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 5)
+	replicas, clks, nw, teardown := setupAppendMachineCluster(t, 5, 0)
 	defer teardown()
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
@@ -505,4 +515,52 @@ func TestLots(t *testing.T) {
 	checkReplicasConsistent(t, states)
 
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 7, 0)
+}
+
+func TestAppendMachineEachPropose1AndWait3Standby1(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3, 1)
+	defer teardown()
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 1)
+}
+
+func TestConfigurationChange3Add1Manually(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3, 1)
+	defer teardown()
+
+	go replicas[0].log.Propose(context.TODO(), []byte("A"))
+	go replicas[1].log.Propose(context.TODO(), []byte("B"))
+	go replicas[2].log.Propose(context.TODO(), []byte("C"))
+
+	for i := 0; i < 3; i++ {
+		for len(replicas[i].Get()) < 3 {
+			for j := 0; j < 3; j++ {
+				clks[j].Add(tick)
+			}
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		replicas[i].log.ApplyConfChange(replication.ConfChangeAddNode, 4)
+	}
+
+	for len(replicas[3].Get()) < 3 {
+		for j := 0; j < 4; j++ {
+			clks[j].Add(tick)
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		for len(replicas[i].Get()) < 4 {
+			replicas[3].log.Propose(context.TODO(), []byte("D"))
+			for j := 0; j < 4; j++ {
+				clks[j].Add(tick)
+			}
+		}
+	}
+
+	states := make(map[int][]byte)
+	for i := 0; i < 4; i++ {
+		states[i] = replicas[i].Get()
+	}
+	checkReplicasConsistent(t, states)
 }

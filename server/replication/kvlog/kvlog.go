@@ -85,11 +85,6 @@ func (l *kvLog) Stop() error {
 }
 
 // ProposeConfChange implements replication.LogReplicator
-func (l *kvLog) ProposeConfChange(context.Context, *replication.ConfChange) {
-	panic("cannot reconfigure kvlog")
-}
-
-// ProposeConfChange implements replication.LogReplicator
 func (l *kvLog) ApplyConfChange(replication.ConfChangeType, uint64) {
 	panic("cannot reconfigure kvlog")
 }

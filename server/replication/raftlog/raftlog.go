@@ -43,7 +43,7 @@ const (
 
 type raftLog struct {
 	config raft.Config
-	node   raft.Node
+	node   raft.Node // nil => we are a hot standby and only see committed ents.
 
 	clk          clock.Clock
 	tickInterval time.Duration
@@ -163,15 +163,6 @@ func (l *raftLog) ApplyConfChange(ct replication.ConfChangeType, nodeID uint64) 
 	})
 }
 
-// Propose implements replication.LogReplicator
-func (l *raftLog) ProposeConfChange(ctx context.Context, cc *replication.ConfChange) {
-	l.node.ProposeConfChange(ctx, raftpb.ConfChange{
-		Type:    raftpb.ConfChangeType(cc.Operation),
-		NodeID:  cc.NodeID,
-		Context: cc.Data,
-	})
-}
-
 // WaitCommitted implements replication.LogReplicator
 func (l *raftLog) WaitCommitted() <-chan replication.LogEntry {
 	return l.waitCommitted
@@ -184,15 +175,30 @@ func (l *raftLog) LeaderHintSet() <-chan bool {
 
 // GetCommitted implements replication.LogReplicator
 func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
-	var entries []raftpb.Entry
-	entries, err = l.config.Storage.(*raftStorage).Entries(lo, hi, maxSize)
+	es, err := l.getCommittedEntries(lo, hi, maxSize)
 	if err != nil {
-		return
+		return nil, err
 	}
-	for _, entry := range entries {
-		ret = append(ret, replication.LogEntry{Data: entry.Data})
+	for _, e := range es {
+		ret = append(ret, replication.LogEntry{Data: e.Data})
 	}
-	return
+	return ret, err
+}
+
+func (l *raftLog) getCommittedEntries(lo, hi, maxSize uint64) ([]raftpb.Entry, error) {
+	hs, _, err := l.config.Storage.InitialState()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := l.config.Storage.(*raftStorage).Entries(lo, hi, maxSize)
+	if err != nil {
+		return nil, err
+	}
+	i := 0
+	for i < len(entries) && entries[i].Index <= hs.Commit {
+		i++
+	}
+	return entries[:i], nil
 }
 
 // run is the CSP-style main of raftLog; all local struct fields (except

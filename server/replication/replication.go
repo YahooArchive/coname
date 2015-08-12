@@ -32,7 +32,7 @@ type ConfChange struct {
 	Data      []byte
 }
 
-type LogEntry struct {
+type LogEntry struct { // TODO(andreser): remove ConfChange and inline Data
 	// At most one may be set
 	Data       []byte
 	ConfChange *ConfChange
@@ -59,10 +59,6 @@ type LogReplicator interface {
 	// entry will get appended, though, due to node or network failures.
 	// data : []*mut // ownership of the slice contents is transferred to LogReplicator
 	Propose(ctx context.Context, data []byte)
-
-	// TODO: figure out whether raft supports it, and if yes, hide the fact
-	// whether a proposal is a conf change from the replication implementation.
-	ProposeConfChange(context.Context, *ConfChange)
 
 	ApplyConfChange(operation ConfChangeType, nodeID uint64)
 
