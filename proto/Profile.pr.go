@@ -25,9 +25,8 @@ type Profile_PreserveEncoding struct {
 	PreservedEncoding []byte
 }
 
-func (m *Profile_PreserveEncoding) UpdateEncoding() (err error) {
-	m.PreservedEncoding, err = m.Profile.Marshal()
-	return err
+func (m *Profile_PreserveEncoding) UpdateEncoding() {
+	m.PreservedEncoding = MustMarshal(&m.Profile)
 }
 
 func (m *Profile_PreserveEncoding) Reset() {

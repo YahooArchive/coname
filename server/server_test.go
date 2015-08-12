@@ -188,10 +188,7 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 	profile := proto.Profile_PreserveEncoding{
 		Profile: profileContents,
 	}
-	err = profile.UpdateEncoding()
-	if err != nil {
-		t.Fatal(err)
-	}
+	profile.UpdateEncoding()
 	h := sha256.Sum256(profile.PreservedEncoding)
 	entry := proto.Entry_PreserveEncoding{
 		Entry: proto.Entry{
@@ -208,10 +205,7 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 			ProfileHash: h[:],
 		},
 	}
-	err = entry.UpdateEncoding()
-	if err != nil {
-		t.Fatal(err)
-	}
+	entry.UpdateEncoding()
 	updateC := proto.NewE2EKSUpdateClient(conn)
 	proof, err := updateC.Update(context.TODO(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
