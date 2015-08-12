@@ -25,7 +25,7 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 
-	"github.com/yahoo/coname/client"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
@@ -49,7 +49,7 @@ func withDB(f func(kv.DB)) {
 }
 
 func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
-	reconstructed, err := client.ReconstructTree(proof, common.ToBits(common.IndexBits, index))
+	reconstructed, err := coname.ReconstructTree(proof, common.ToBits(common.IndexBits, index))
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +60,7 @@ func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
 	if got, want := redoneLookup, value; !bytes.Equal(got, want) {
 		log.Panicf("reconstructed lookup got different result: %v rather than %v", got, want)
 	}
-	recomputedHash, err := client.RecomputeHash(treeNonce, reconstructed)
+	recomputedHash, err := coname.RecomputeHash(treeNonce, reconstructed)
 	if err != nil {
 		panic(err)
 	}
