@@ -252,7 +252,7 @@ func (ks *Keyserver) run() {
 			}
 			// TODO: allow multiple steps per log entry (pipelining). Maybe
 			// this would be better implemented at the log level?
-			ks.step(&step, &ks.rs, wb)
+			deferredIO := ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
@@ -260,6 +260,9 @@ func (ks *Keyserver) run() {
 			}
 			wb.Reset()
 			step.Reset()
+			if deferredIO != nil {
+				deferredIO()
+			}
 		case ks.leaderHint = <-ks.leaderHintSet:
 			ks.maybeEpoch()
 		case <-ks.canEpochSet.C:
@@ -276,7 +279,7 @@ func (ks *Keyserver) run() {
 }
 
 // step is called by run and changes the in-memory state. No i/o allowed.
-func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) {
+func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) (deferredIO func()) {
 	// ks: &const
 	// step, rs, wb: &mut
 	switch {
@@ -309,8 +312,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		rs.PendingUpdates = true
 		wb.Put(tableUpdateRequests(index, rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
-		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
+		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -391,7 +394,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// Only put signatures into the verifier log once.
 		if true {
 			// FIXME: make sure sehs in verifier log are ordered by epoch
-			ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			return ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
 		}
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
