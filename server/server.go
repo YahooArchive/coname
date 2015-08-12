@@ -292,7 +292,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			prevEntry = &prevUpdate.Update.NewEntry.Entry
 		}
 		if err := common.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
-			ks.wr.Notify(step.UID, fmt.Errorf("invalid update")) // TODO more descriptive error
+			ks.wr.Notify(step.UID, err)
 			return
 		}
 		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
@@ -319,7 +319,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.LastEpochDelimiter = *step.EpochDelimiter
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
-		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
 
 		snapshotNumberBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
