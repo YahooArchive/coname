@@ -180,25 +180,13 @@ loop:
 func withServer(func(*testing.T, *Keyserver)) {
 }
 
-func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
-	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks.Start()
-	defer ks.Stop()
-
+func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
 	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
 	profile := proto.Profile_PreserveEncoding{
-		Profile: proto.Profile{
-			Nonce: []byte("noncenoncenonceNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-		},
+		Profile: profileContents,
 	}
 	err = profile.UpdateEncoding()
 	if err != nil {
@@ -207,7 +195,7 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	h := sha256.Sum256(profile.PreservedEncoding)
 	entry := proto.Entry_PreserveEncoding{
 		Entry: proto.Entry{
-			Index:   vrf.Compute([]byte(alice), ks.vrfSecret),
+			Index:   vrf.Compute([]byte(name), ks.vrfSecret),
 			Version: 0,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
@@ -231,18 +219,47 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 			Signatures: make(map[uint64][]byte),
 		},
 		Profile:          profile,
-		LookupParameters: &proto.LookupRequest{UserId: alice},
+		LookupParameters: &proto.LookupRequest{UserId: name},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != name {
+		t.Errorf("proof.UserId != \"%q\" (got %q)", name, proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
+	return &profile
+}
 
-	conn, err = grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
+	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+	defer teardown()
+	ks, err := Open(cfg, db, clock.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+
+	profile := doUpdate(t, ks, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := proto.NewE2EKSLookupClient(conn)
-	proof, err = c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,6 +272,27 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
+}
+
+func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
+	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+	defer teardown()
+	ks, err := Open(cfg, db, clock.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ks.Start()
+	defer ks.Stop()
+
+	doUpdate(t, ks, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	doUpdate(t, ks, caPool, alice, proto.Profile{
+		Nonce: []byte("XYZNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
+	})
 }
 
 // setupVerifier initializes a verifier, but does not start it and does not
