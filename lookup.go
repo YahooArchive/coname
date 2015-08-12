@@ -81,6 +81,10 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 			return nil, fmt.Errorf("VerifyConsensus: epoch chain does not match: %d.epoch != %d.epoch+1", i, i-1)
 		}
 	}
+	// check that the seh is not expired
+	if ratifications[0].Head.Head.NextEpochTime.Time().After(now) {
+		return nil, fmt.Errorf("VerifyConsensus: epoch expired at %v < %v", ratifications[0].Head.Head.NextEpochTime.Time(), now)
+	}
 	// check that there are sufficiently many fresh signatures.
 	pks := rcg.VerificationPolicy.PublicKeys
 	want := rcg.VerificationPolicy.Quorum
@@ -91,14 +95,9 @@ next_verifier:
 		if common.CheckQuorum(want, have) {
 			break // already sufficiently verified, short-circuit
 		}
-		tolerance, ok := rcg.NoOlderThan[id]
-		if !ok {
-			return nil, fmt.Errorf("VerifyConsensus: realm config contains public key %x in VerificationPolicy.Quorum but does not contain a corresponding clock skew tolerance entry in NoOlderThan", id)
-		}
 		for _, seh := range ratifications {
 			if sig, ok := seh.Signatures[id]; ok &&
-				common.VerifySignature(pks[id], seh.Head.PreservedEncoding, sig) &&
-				seh.Head.Timestamp.Time().Add(tolerance.Duration()).After(now) {
+				common.VerifySignature(pks[id], seh.Head.PreservedEncoding, sig) {
 				have[id] = struct{}{}
 				continue next_verifier
 			}

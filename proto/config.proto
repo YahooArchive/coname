@@ -35,13 +35,13 @@ message RealmConfig {
 	string URL = 3;
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
-	// layer is properly used as a one-to-one mapping between real to
+	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
 	bytes VRFPublic  = 4;
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
 	AuthorizationPolicy verification_policy = 5;
-	// NoOlderThan is used to set expiration times on verifier signatures.
-	map<fixed64, Duration> no_older_than = 6;
+
+	// TODO: specify clock skew tolerance parameters
 }

@@ -310,7 +310,7 @@ type EpochHead struct {
 	Realm string `protobuf:"bytes,1,opt,name=realm,proto3" json:"realm,omitempty"`
 	// Epoch is a sequence number tracking distinct ratified states.
 	Epoch uint64 `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
-	// RootHash specifies the authenticated data stru
+	// RootHash specifies the authenticated data structure.
 	RootHash []byte `protobuf:"bytes,3,opt,name=root_hash,proto3" json:"root_hash,omitempty"`
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
@@ -320,10 +320,38 @@ type EpochHead struct {
 	// PreviousSummeryHash for some epoch specifies the states of all
 	// previous epochs.
 	PreviousSummaryHash []byte `protobuf:"bytes,4,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	// NextEpochTime MUST contain the time by which the server plans to sign
+	// and publish the next epoch after this one. The server SHOULD give a
+	// sufficiently pessimistic estimate that, for example, a replicated
+	// state-machine failover would not prevent it from being met. To maintain
+	// a monotonic view of the directory, a server MUST NOT issue an epoch i
+	// with a smaller next_epoch_time than was used for epoch i-1, and if it
+	// does, verifiers MUST NOT sign it.
+	NextEpochTime Timestamp `protobuf:"bytes,5,opt,name=next_epoch_time" json:"next_epoch_time"`
+	// NextEpochPolicy allows for automated server key rollover: the new key(s)
+	// are signed by the current one as a part of the epoch. This field is nil
+	// if no key change is requested. If the server key is distributed with the
+	// client software and benefits from reliable automated updates, clients
+	// MAY ignore this field.
+	NextEpochPolicy AuthorizationPolicy `protobuf:"bytes,6,opt,name=next_epoch_policy" json:"next_epoch_policy"`
 }
 
 func (m *EpochHead) Reset()      { *m = EpochHead{} }
 func (*EpochHead) ProtoMessage() {}
+
+func (m *EpochHead) GetNextEpochTime() Timestamp {
+	if m != nil {
+		return m.NextEpochTime
+	}
+	return Timestamp{}
+}
+
+func (m *EpochHead) GetNextEpochPolicy() AuthorizationPolicy {
+	if m != nil {
+		return m.NextEpochPolicy
+	}
+	return AuthorizationPolicy{}
+}
 
 // AuthorizationPolicy is used to check whether some signatures make up
 // sufficient authorization to back an action.
@@ -1115,6 +1143,12 @@ func (this *EpochHead) VerboseEqual(that interface{}) error {
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
 		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
 	}
+	if !this.NextEpochTime.Equal(&that1.NextEpochTime) {
+		return fmt.Errorf("NextEpochTime this(%v) Not Equal that(%v)", this.NextEpochTime, that1.NextEpochTime)
+	}
+	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
+		return fmt.Errorf("NextEpochPolicy this(%v) Not Equal that(%v)", this.NextEpochPolicy, that1.NextEpochPolicy)
+	}
 	return nil
 }
 func (this *EpochHead) Equal(that interface{}) bool {
@@ -1147,6 +1181,12 @@ func (this *EpochHead) Equal(that interface{}) bool {
 		return false
 	}
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return false
+	}
+	if !this.NextEpochTime.Equal(&that1.NextEpochTime) {
+		return false
+	}
+	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
 		return false
 	}
 	return true
@@ -1468,7 +1508,9 @@ func (this *EpochHead) GoString() string {
 		`Realm:` + fmt.Sprintf("%#v", this.Realm),
 		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
 		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash) + `}`}, ", ")
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`NextEpochTime:` + strings.Replace(this.NextEpochTime.GoString(), `&`, ``, 1),
+		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
 	return s
 }
 func (this *AuthorizationPolicy) GoString() string {
@@ -1961,6 +2003,22 @@ func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
 			i += copy(data[i:], m.PreviousSummaryHash)
 		}
 	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochTime.Size()))
+	n12, err := m.NextEpochTime.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n12
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
+	n13, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n13
 	return i, nil
 }
 
@@ -2001,22 +2059,22 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n12, err := v.MarshalTo(data[i:])
+			n14, err := v.MarshalTo(data[i:])
 			if err != nil {
 				return 0, err
 			}
-			i += n12
+			i += n14
 		}
 	}
 	if m.Quorum != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n13, err := m.Quorum.MarshalTo(data[i:])
+		n15, err := m.Quorum.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n13
+		i += n15
 	}
 	return i, nil
 }
@@ -2304,6 +2362,10 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	for i := 0; i < v25; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
+	v26 := NewPopulatedTimestamp(r, easy)
+	this.NextEpochTime = *v26
+	v27 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v27
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2312,9 +2374,9 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
 	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		v26 := r.Intn(10)
+		v28 := r.Intn(10)
 		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v26; i++ {
+		for i := 0; i < v28; i++ {
 			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -2328,9 +2390,9 @@ func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPol
 
 func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 	this := &PublicKey{}
-	v27 := r.Intn(100)
-	this.Ed25519 = make([]byte, v27)
-	for i := 0; i < v27; i++ {
+	v29 := r.Intn(100)
+	this.Ed25519 = make([]byte, v29)
+	for i := 0; i < v29; i++ {
 		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2341,15 +2403,15 @@ func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v28 := r.Intn(100)
-	this.Candidates = make([]uint64, v28)
-	for i := 0; i < v28; i++ {
+	v30 := r.Intn(100)
+	this.Candidates = make([]uint64, v30)
+	for i := 0; i < v30; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
-		v29 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v29)
-		for i := 0; i < v29; i++ {
+		v31 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v31)
+		for i := 0; i < v31; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
 		}
 	}
@@ -2377,9 +2439,9 @@ func randUTF8RuneClient(r randyClient) rune {
 	return rune(ru + 61)
 }
 func randStringClient(r randyClient) string {
-	v30 := r.Intn(100)
-	tmps := make([]rune, v30)
-	for i := 0; i < v30; i++ {
+	v32 := r.Intn(100)
+	tmps := make([]rune, v32)
+	for i := 0; i < v32; i++ {
 		tmps[i] = randUTF8RuneClient(r)
 	}
 	return string(tmps)
@@ -2401,11 +2463,11 @@ func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateClient(data, uint64(key))
-		v31 := r.Int63()
+		v33 := r.Int63()
 		if r.Intn(2) == 0 {
-			v31 *= -1
+			v33 *= -1
 		}
-		data = encodeVarintPopulateClient(data, uint64(v31))
+		data = encodeVarintPopulateClient(data, uint64(v33))
 	case 1:
 		data = encodeVarintPopulateClient(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -2610,6 +2672,10 @@ func (m *EpochHead) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
+	l = m.NextEpochTime.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.NextEpochPolicy.Size()
+	n += 1 + l + sovClient(uint64(l))
 	return n
 }
 
@@ -2814,6 +2880,8 @@ func (this *EpochHead) String() string {
 		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
 		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`NextEpochTime:` + strings.Replace(strings.Replace(this.NextEpochTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4062,6 +4130,54 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochTime", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.NextEpochTime.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochPolicy", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.NextEpochPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int

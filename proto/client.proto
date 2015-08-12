@@ -200,7 +200,7 @@ message EpochHead {
 	string realm = 1;
 	// Epoch is a sequence number tracking distinct ratified states.
 	uint64 epoch = 2;
-	// RootHash specifies the authenticated data stru
+	// RootHash specifies the authenticated data structure.
 	bytes root_hash = 3;
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
@@ -210,6 +210,21 @@ message EpochHead {
 	// PreviousSummeryHash for some epoch specifies the states of all
 	// previous epochs.
 	bytes previous_summary_hash = 4;
+
+	// NextEpochTime MUST contain the time by which the server plans to sign
+	// and publish the next epoch after this one. The server SHOULD give a
+	// sufficiently pessimistic estimate that, for example, a replicated
+	// state-machine failover would not prevent it from being met. To maintain
+	// a monotonic view of the directory, a server MUST NOT issue an epoch i
+	// with a smaller next_epoch_time than was used for epoch i-1, and if it
+	// does, verifiers MUST NOT sign it.
+	Timestamp next_epoch_time = 5 [(gogoproto.nullable) = false];
+	// NextEpochPolicy allows for automated server key rollover: the new key(s)
+	// are signed by the current one as a part of the epoch. This field is nil
+	// if no key change is requested. If the server key is distributed with the
+	// client software and benefits from reliable automated updates, clients
+	// MAY ignore this field.
+	AuthorizationPolicy next_epoch_policy = 6 [(gogoproto.nullable) = false];
 }
 
 // AuthorizationPolicy is used to check whether some signatures make up
