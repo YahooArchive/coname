@@ -591,10 +591,10 @@ func TestBrutally(t *testing.T) {
 		m := makeTestMerkleTree(db, []byte("tree1"), treeNonce)
 		// Test with randomly distributed keys
 		impls := []Map{&SimpleMap{}, m}
-		compareImplementationsRandomly(impls, 2000, 255, t)
+		compareImplementationsRandomly(impls, 400, 255, t)
 		m2 := makeTestMerkleTree(db, []byte("tree2"), treeNonce)
 		// Test with not as random keys
 		impls = []Map{&SimpleMap{}, m2}
-		compareImplementationsRandomly(impls, 200, -16, t)
+		compareImplementationsRandomly(impls, 100, -16, t)
 	})
 }
