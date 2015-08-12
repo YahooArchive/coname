@@ -15,8 +15,10 @@
 package server
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -178,7 +180,7 @@ loop:
 func withServer(func(*testing.T, *Keyserver)) {
 }
 
-func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
+func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
 	ks, err := Open(cfg, db, clock.New())
@@ -188,12 +190,59 @@ func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
 	ks.Start()
 	defer ks.Stop()
 
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := proto.Profile_PreserveEncoding{
+		Profile: proto.Profile{
+			Nonce: []byte("noncenoncenonceNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+		},
+	}
+	err = profile.UpdateEncoding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := sha256.Sum256(profile.PreservedEncoding)
+	entry := proto.Entry_PreserveEncoding{
+		Entry: proto.Entry{
+			Index:   vrf.Compute([]byte(alice), ks.vrfSecret),
+			Version: 0,
+			UpdatePolicy: &proto.AuthorizationPolicy{
+				PublicKeys: make(map[uint64]*proto.PublicKey),
+				Quorum: &proto.QuorumExpr{
+					Threshold:      0,
+					Candidates:     []uint64{},
+					Subexpressions: []*proto.QuorumExpr{},
+				},
+			},
+			ProfileHash: h[:],
+		},
+	}
+	err = entry.UpdateEncoding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateC := proto.NewE2EKSUpdateClient(conn)
+	proof, err := updateC.Update(context.TODO(), &proto.UpdateRequest{
+		Update: &proto.SignedEntryUpdate{
+			NewEntry:   entry,
+			Signatures: make(map[uint64][]byte),
+		},
+		Profile:          profile,
+		LookupParameters: &proto.LookupRequest{UserId: alice},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conn, err = grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+	proof, err = c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,6 +251,9 @@ func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
 	}
 	if len(proof.IndexProof) != vrf.ProofSize {
 		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 }
 
