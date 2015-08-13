@@ -185,7 +185,7 @@ func (snapshot *NewSnapshot) Lookup(indexBytes []byte) (value []byte, trace *pro
 func (tree *MerkleTree) lookup(root *node, indexBytes []byte) (value []byte, trace *proto.TreeProof, err error) {
 	trace = &proto.TreeProof{}
 	var tracingRoot coname.MerkleNode = makeTracingNode(tree, trace, root)
-	value, err = coname.Lookup(tracingRoot, indexBytes)
+	value, err = coname.TreeLookup(tracingRoot, indexBytes)
 	if err != nil {
 		return nil, nil, err
 	}

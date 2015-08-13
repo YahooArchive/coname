@@ -51,7 +51,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 	}
 
 	entryHash := sha256.Sum256(pf.Entry.PreservedEncoding)
-	verifiedEntryHash, err := VerifiedLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
+	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
 	}
@@ -112,7 +112,7 @@ next_verifier:
 	return ratifications[0].Head.Head.RootHash, nil
 }
 
-func VerifiedLookup(treeNonce []byte, rootHash []byte, index []byte, proof *proto.TreeProof) ([]byte, error) {
+func reconstructTreeAndLookup(treeNonce []byte, rootHash []byte, index []byte, proof *proto.TreeProof) ([]byte, error) {
 	// First, reconstruct the partial tree
 	reconstructed, err := ReconstructTree(proof, ToBits(IndexBits, index))
 	if err != nil {
@@ -128,7 +128,7 @@ func VerifiedLookup(treeNonce []byte, rootHash []byte, index []byte, proof *prot
 		return nil, fmt.Errorf("Root hashes do not match! Reconstructed %x; wanted %x", reconstructedHash, rootHash)
 	}
 	// Then, do the lookup
-	value, err := Lookup(reconstructed, index)
+	value, err := TreeLookup(reconstructed, index)
 	if err != nil {
 		return nil, err
 	}

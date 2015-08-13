@@ -52,7 +52,7 @@ func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
 	if err != nil {
 		panic(err)
 	}
-	redoneLookup, err := coname.Lookup(reconstructed, index)
+	redoneLookup, err := coname.TreeLookup(reconstructed, index)
 	if err != nil {
 		panic(err)
 	}
