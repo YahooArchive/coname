@@ -16,7 +16,7 @@ package verifier
 
 import (
 	"encoding/binary"
-	"github.com/yahoo/coname/common/vrf"
+	"github.com/yahoo/coname/vrf"
 )
 
 var (

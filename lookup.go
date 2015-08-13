@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/vrf"
 )
 
 func GetRealmByDomain(cfg *proto.Config, domain string) (ret *proto.RealmConfig, err error) {

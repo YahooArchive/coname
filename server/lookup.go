@@ -20,10 +20,10 @@ import (
 	"log"
 
 	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
+	"github.com/yahoo/coname/vrf"
 	"golang.org/x/net/context"
 )
 

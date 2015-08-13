@@ -31,12 +31,12 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
 	"github.com/yahoo/coname/server/replication"
 	"github.com/yahoo/coname/server/replication/kvlog"
+	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

@@ -38,12 +38,12 @@ import (
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
 	"github.com/yahoo/coname/verifier"
+	"github.com/yahoo/coname/vrf"
 )
 
 const (
