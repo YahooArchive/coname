@@ -265,10 +265,12 @@ func (m *SignedEntryUpdate) GetSignatures() map[uint64][]byte {
 // A new field will be added here for each application, with the TCP/UDP port
 // number as field number whenever possible to avoid collisions.
 type Profile struct {
-	// 16 bytes. Ensures that somebody curious guess-and-check somebody's
-	// profile contents using Entry.profile_hash. It is the client's
-	// responsibility to generate a random nonce to protect the privacy of its
-	// profile, thus the presence of this field is not checked by the server.
+	// Nonce containst at least 16 bytes (and counts towards the total profile
+	// size limit). Having a nonce in each profile ensures that an attacker
+	// curious guess-and-check somebody's profile contents using
+	// Entry.profile_hash. It is the client's responsibility to generate a
+	// random nonce to protect the privacy of its profile, thus the presence of
+	// this field is not checked by the server.
 	Nonce []byte `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	// Application-specific public keys. The map is keyed by application ID.
 	Keys map[string][]byte `protobuf:"bytes,2,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`

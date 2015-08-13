@@ -22,7 +22,7 @@ import io "io"
 var _ = proto1.Marshal
 
 // KeyserverStep denotes the input to a single step of the keyserver state
-// machine. Linearizable high-availability replication is achieved by
+// machine. Serializable high-availability replication is achieved by
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 type KeyserverStep struct {
