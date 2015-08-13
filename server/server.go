@@ -82,10 +82,11 @@ type Keyserver struct {
 	clk clock.Clock
 	// state used for determining whether we should start a new epoch.
 	// see replication.proto for explanation.
-	leaderHint, canEpoch, mustEpoch       bool
-	leaderHintSet                         <-chan bool
-	canEpochSet, mustEpochSet, retryEpoch *clock.Timer
+	leaderHint, canEpoch, mustEpoch bool
+	leaderHintSet                   <-chan bool
+	canEpochSet, mustEpochSet       *clock.Timer
 	// rs.PendingUpdates is used as well
+	epochProposer *Proposer
 
 	vmb *VerifierBroadcast
 	wr  *WaitingRoom
@@ -128,7 +129,6 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		clk:          clk,
 		canEpochSet:  clk.Timer(0),
 		mustEpochSet: clk.Timer(0),
-		retryEpoch:   clk.Timer(0),
 
 		epochPendingUIDs: make(map[uint64][]uint64),
 	}
@@ -229,7 +229,6 @@ func (ks *Keyserver) Stop() {
 		ks.waitStop.Wait()
 		ks.canEpochSet.Stop()
 		ks.mustEpochSet.Stop()
-		ks.retryEpoch.Stop()
 		ks.log.Stop()
 	})
 }
@@ -272,8 +271,6 @@ func (ks *Keyserver) run() {
 			ks.maybeEpoch()
 		case <-ks.mustEpochSet.C:
 			ks.mustEpoch = true
-			ks.maybeEpoch()
-		case <-ks.retryEpoch.C:
 			ks.maybeEpoch()
 		}
 		runtime.Gosched()
@@ -425,24 +422,62 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	return
 }
 
+type Proposer struct {
+	log      replication.LogReplicator
+	clk      clock.Clock
+	delay    time.Duration
+	proposal []byte
+	stop     chan struct{}
+}
+
+func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal []byte) *Proposer {
+	p := &Proposer{
+		log:      log,
+		clk:      clk,
+		delay:    initialDelay,
+		proposal: proposal,
+		stop:     make(chan struct{}),
+	}
+	go p.run()
+	return p
+}
+
+func (p *Proposer) Stop() {
+	close(p.stop)
+}
+
+func (p *Proposer) run() {
+	timer := p.clk.Timer(0)
+	for {
+		select {
+		case <-timer.C:
+			p.log.Propose(context.TODO(), p.proposal)
+			timer.Reset(p.delay)
+			p.delay = p.delay * 2
+		case <-p.stop:
+			return
+		}
+	}
+}
+
 // shouldEpoch returns true if this node should append an epoch delimiter to the
 // log. see replication.proto for details.
 func (ks *Keyserver) shouldEpoch() bool {
 	return ks.leaderHint && (ks.mustEpoch || ks.canEpoch && ks.rs.PendingUpdates)
 }
 
-// maybeEpoch proposes an epoch delimiter for inclusion in the log if necessary.
+// maybeEpoch either starts or stops the epoch delimiter proposer as necessary
 func (ks *Keyserver) maybeEpoch() {
-	if !ks.shouldEpoch() {
-		return
+	if ks.shouldEpoch() && ks.epochProposer == nil {
+		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryEpochInterval,
+			proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
+				EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
+				Timestamp:   proto.Time(ks.clk.Now()),
+			}}))
+	} else if !ks.shouldEpoch() && ks.epochProposer != nil {
+		ks.epochProposer.Stop()
+		ks.epochProposer = nil
 	}
-	ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
-		EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
-		Timestamp:   proto.Time(ks.clk.Now()),
-	}}))
-	ks.canEpochSet.Stop()
-	ks.mustEpochSet.Stop()
-	ks.retryEpoch.Reset(ks.retryEpochInterval)
 }
 
 func (ks *Keyserver) resetEpochTimers(t time.Time) {
@@ -450,7 +485,6 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	d := t2.Sub(ks.clk.Now())
 	ks.canEpochSet.Reset(d)
 	ks.mustEpochSet.Reset(d)
-	ks.retryEpoch.Stop()
 	ks.canEpoch = false
 	ks.mustEpoch = false
 }
