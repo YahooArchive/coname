@@ -42,8 +42,8 @@ type MerkleNode interface {
 	Value() []byte
 }
 
-// Lookup looks up the entry at a particular index in the snapshot.
-func Lookup(root MerkleNode, indexBytes []byte) (value []byte, err error) {
+// TreeLookup looks up the entry at a particular index in the snapshot.
+func TreeLookup(root MerkleNode, indexBytes []byte) (value []byte, err error) {
 	if len(indexBytes) != IndexBytes {
 		return nil, fmt.Errorf("Wrong index length")
 	}
