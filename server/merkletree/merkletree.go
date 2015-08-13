@@ -208,7 +208,7 @@ func (snapshot *NewSnapshot) Set(indexBytes []byte, value []byte) (err error) {
 	if len(indexBytes) != coname.IndexBytes {
 		return fmt.Errorf("Wrong index length")
 	}
-	if len(value) != common.HashBytes {
+	if len(value) != coname.HashBytes {
 		return fmt.Errorf("Wrong value length")
 	}
 	value = append([]byte(nil), value...) // Make a copy of value
