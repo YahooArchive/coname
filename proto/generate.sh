@@ -43,6 +43,8 @@ sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&Publi
 sed -i.bak -e '/Test.*Text.*testing/a\
 	t.Skip()' *_test.go
 
+rm *.pb.go.bak *_test.go.bak || true
+
 # bound the branching factor of quorum expressions to avoid infinite recursion.
 awk '{
     if ( $0 ~ /^func NewPopulatedQuorumExpr/ ) {f = 1}
