@@ -53,14 +53,38 @@ type LogReplicator interface {
 	Stop() error
 
 	// AddReplica adds nodeID to the set of replicas THIS REPLICA considers a
-	// part of the cluster. The decision to call AddReplica MUST be purely
-	// based on the contents of the log, and MUST be the same at all replicas.
-	// In particular, not allowed to add or drop a replica based on its
-	// observed health (unless, of course, the data about the health is in the
-	// log). Adding a replica to a non-redundant cluster (e.g., two nodes, or
-	// alternatively, three nodes with one of them being dead) will block
-	// progress until the new replica has caught up.
+	// part of the cluster. The cluster reconfiguration methods are subtle and
+	// should be treated with great care to abide by the following requirements:
+	// 1. The decision to call AddReplica MUST be purely based on the contents
+	// of the log, and MUST be the same at all replicas.  In particular, not
+	// allowed to add or drop a replica based on its observed health (unless,
+	// of course, the data about the health is in the log).
+	// 2. The log entry that causes the call to AddReplica (i.e., if that log
+	// entry had not been committed, AddReplica would not be called) MUST be
+	// proposed AND committed under the exact cluster configuration to which
+	// the new replica is being added. There is no way to know that this
+	// condition will hold when a configuration change is proposed, so all
+	// committed configuration changes MUST be checked for races before
+	// applying them.  Configuration changes that were proposed, but which did
+	// not commit before a different configuration change was applied MUST be
+	// ignored. In particular, it NOT OKAY to pipeline committing the log
+	// entries that cause AddReplica to be called and calling AddReplica. For
+	// example, these two timelines are fine:
+	// [propose 1; commit 1; AddReplica(1); propose 2; commit 2; AddReplica(2)]
+	// and
+	// [propose 1; propose 2; commit 1; AddReplica(1); commit 2; *ignore 2*]
+	// but the following is NOT:
+	// [propose 1; propose 2; commit 1; AddReplica(1); commit 2; AddReplica(2)]
+	// 3. Adding a replica to a cluster currently operating with no redundant
+	// replicas (e.g., two nodes, or alternatively, three nodes with one of
+	// them being dead) will block progress until the new replica has caught
+	// up. TODO: add an option for replicas to catch up *before* being added to
+	// the cluster.
 	AddReplica(nodeID uint64)
+	// DropReplica removes nodeID from the set of replicas THIS REPLICA considers
+	// a part of the cluster. See documentation of AddReplica for requirements.
+	// It is not okay to pipeline AddReplica and DropReplica the same way it is
+	// not okay to pipeline AddReplica and AddReplica.
 	DropReplica(nodeID uint64)
 
 	// LeaderHintSet returns a channel that reads true when it becomes likely
