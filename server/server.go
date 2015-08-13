@@ -101,7 +101,7 @@ type Keyserver struct {
 
 	merkletree *merkletree.MerkleTree
 
-	pendingUpdateUIDs []uint64
+	epochPendingUIDs map[uint64][]uint64
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -132,6 +132,8 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		canEpochSet:  clk.Timer(0),
 		mustEpochSet: clk.Timer(0),
 		retryEpoch:   clk.Timer(0),
+
+		epochPendingUIDs: make(map[uint64][]uint64),
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
@@ -314,8 +316,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		rs.PendingUpdates = true
-		wb.Put(tableUpdateRequests(index, rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
-		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
+		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
+		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
+		uids := ks.epochPendingUIDs[epochNr] // fine if nil
+		uids = append(uids, step.UID)
+		ks.epochPendingUIDs[epochNr] = uids
 		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
@@ -394,12 +399,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if true {
 			// FIXME: make sure sehs in verifier log are ordered by epoch
 			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			epochNr := rNew.Head.Head.Epoch
 			return func() {
 				notifyVerifiers()
-				for _, uid := range ks.pendingUpdateUIDs {
-					ks.wr.Notify(uid, nil)
+				if uids, ok := ks.epochPendingUIDs[epochNr]; ok {
+					for _, uid := range uids {
+						ks.wr.Notify(uid, nil)
+					}
+					delete(ks.epochPendingUIDs, epochNr)
 				}
-				ks.pendingUpdateUIDs = []uint64{}
 			}
 		}
 
