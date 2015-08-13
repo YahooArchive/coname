@@ -25,9 +25,8 @@ type SignedEntryUpdate_PreserveEncoding struct {
 	PreservedEncoding []byte
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) UpdateEncoding() (err error) {
-	m.PreservedEncoding, err = m.SignedEntryUpdate.Marshal()
-	return err
+func (m *SignedEntryUpdate_PreserveEncoding) UpdateEncoding() {
+	m.PreservedEncoding = MustMarshal(&m.SignedEntryUpdate)
 }
 
 func (m *SignedEntryUpdate_PreserveEncoding) Reset() {

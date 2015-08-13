@@ -25,9 +25,8 @@ type Thing_PreserveEncoding struct {
 	PreservedEncoding []byte
 }
 
-func (m *Thing_PreserveEncoding) UpdateEncoding() (err error) {
-	m.PreservedEncoding, err = m.Thing.Marshal()
-	return err
+func (m *Thing_PreserveEncoding) UpdateEncoding() {
+	m.PreservedEncoding = MustMarshal(&m.Thing)
 }
 
 func (m *Thing_PreserveEncoding) Reset() {

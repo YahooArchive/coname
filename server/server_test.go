@@ -15,8 +15,10 @@
 package server
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -35,13 +37,12 @@ import (
 	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
 	"github.com/yahoo/coname/verifier"
+	"github.com/yahoo/coname/vrf"
 )
 
 const (
@@ -83,10 +84,16 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		t.Fatal(err)
 	}
 	pked := &proto.PublicKey{Ed25519: pk[:]}
-	replicaID := common.KeyID(pked)
+	replicaID := proto.KeyID(pked)
 	pol = &proto.AuthorizationPolicy{
 		PublicKeys: map[uint64]*proto.PublicKey{replicaID: pked},
 		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
+	}
+
+	_, vrfSecret, err := vrf.GenerateKey(rand.Reader)
+	if err != nil {
+		teardown()
+		t.Fatal(err)
 	}
 
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
@@ -96,6 +103,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		ServerID:        replicaID,
 		ReplicaID:       replicaID,
 		RatificationKey: sk,
+		VRFSecret:       vrfSecret,
 
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
@@ -179,31 +187,133 @@ loop:
 func withServer(func(*testing.T, *Keyserver)) {
 }
 
-func TestKeyserverLookupWithoutQuorumRequirement(t *testing.T) {
+func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
+	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := proto.Profile_PreserveEncoding{
+		Profile: profileContents,
+	}
+	profile.UpdateEncoding()
+	h := sha256.Sum256(profile.PreservedEncoding)
+	entry := proto.Entry_PreserveEncoding{
+		Entry: proto.Entry{
+			Index:   vrf.Compute([]byte(name), ks.vrfSecret),
+			Version: 0,
+			UpdatePolicy: &proto.AuthorizationPolicy{
+				PublicKeys: make(map[uint64]*proto.PublicKey),
+				Quorum: &proto.QuorumExpr{
+					Threshold:      0,
+					Candidates:     []uint64{},
+					Subexpressions: []*proto.QuorumExpr{},
+				},
+			},
+			ProfileHash: h[:],
+		},
+	}
+	entry.UpdateEncoding()
+	updateC := proto.NewE2EKSUpdateClient(conn)
+	proof, err := updateC.Update(context.TODO(), &proto.UpdateRequest{
+		Update: &proto.SignedEntryUpdate{
+			NewEntry:   entry,
+			Signatures: make(map[uint64][]byte),
+		},
+		Profile:          profile,
+		LookupParameters: &proto.LookupRequest{UserId: name},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != name {
+		t.Errorf("proof.UserId != \"%q\" (got %q)", name, proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
+	return &profile
+}
+
+func runWhileTicking(clk *clock.Mock, f func()) {
+	done := make(chan struct{})
+	go func() {
+		f()
+		close(done)
+	}()
+loop:
+	for {
+		select {
+		case <-time.After(poll):
+			clk.Add(tick)
+		case <-done:
+			break loop
+		}
+	}
+}
+
+func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
+	clk := clock.NewMock()
+	ks, err := Open(cfg, db, clk)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ks.Start()
 	defer ks.Stop()
 
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	runWhileTicking(clk, func() {
+		profile := doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("noncenoncenonceNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+		})
+
+		conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := proto.NewE2EKSLookupClient(conn)
+		proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if proof.UserId != alice {
+			t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+		}
+		if len(proof.IndexProof) != vrf.ProofSize {
+			t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+		}
+		if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+			t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+		}
+	})
+}
+
+func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
+	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+	defer teardown()
+	clk := clock.NewMock()
+	ks, err := Open(cfg, db, clk)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if proof.UserId != alice {
-		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-	}
-	if len(proof.IndexProof) != vrf.ProofSize {
-		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-	}
+	ks.Start()
+	defer ks.Stop()
+
+	runWhileTicking(clk, func() {
+		doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("noncenoncenonceNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+		})
+
+		doUpdate(t, ks, caPool, alice, proto.Profile{
+			Nonce: []byte("XYZNONCE"),
+			Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
+		})
+	})
 }
 
 // setupVerifier initializes a verifier, but does not start it and does not
@@ -234,7 +344,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 		KeyserverAddr:  keyserverAddr,
 		KeyserverVerif: keyserverVerif,
 
-		ID:              common.KeyID(sv),
+		ID:              proto.KeyID(sv),
 		RatificationKey: sk,
 		TLS:             &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool},
 	}

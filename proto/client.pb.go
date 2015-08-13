@@ -18,6 +18,7 @@
 		LookupRequest
 		UpdateRequest
 		LookupProof
+		TreeProof
 		Entry
 		SignedEntryUpdate
 		Profile
@@ -145,7 +146,7 @@ type LookupProof struct {
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
-	TreeProof []byte `protobuf:"bytes,4,opt,name=tree_proof,proto3" json:"tree_proof,omitempty"`
+	TreeProof *TreeProof `protobuf:"bytes,4,opt,name=tree_proof" json:"tree_proof,omitempty"`
 	// Entry specifies profile by hash(profile) = entry.profile_hash
 	Entry   Entry_PreserveEncoding   `protobuf:"bytes,5,opt,name=entry,customtype=Entry_PreserveEncoding" json:"entry"`
 	Profile Profile_PreserveEncoding `protobuf:"bytes,6,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
@@ -160,6 +161,36 @@ func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	}
 	return nil
 }
+
+func (m *LookupProof) GetTreeProof() *TreeProof {
+	if m != nil {
+		return m.TreeProof
+	}
+	return nil
+}
+
+// A Proof provides an authentication path through the Merkle Tree that
+// proves that an item is or is not present in the tree.
+type TreeProof struct {
+	// Neighbors is a list of all the adacent nodes along the path from the
+	// bottommost node to the root. To save space, hashes for empty subtrees are
+	// nil, and the number of hashes is equal to the length of the longest common
+	// prefix with another entry in the tree (since a leaf node is moved up to
+	// that point -- subtrees with a single entry are coalesced into a single
+	// node).
+	Neighbors [][]byte `protobuf:"bytes,1,rep,name=neighbors" json:"neighbors,omitempty"`
+	// This is the index for the binding that does exist; it will share a prefix
+	// with vuf, but in case the leaf contains the wrong contents, it will be
+	// different. It will be nil if the requested VRF falls under an empty branch.
+	ExistingIndex []byte `protobuf:"bytes,2,opt,name=existing_index,proto3" json:"existing_index,omitempty"`
+	// This is the hash of the entry for the binding that does exist. If the leaf
+	// contains the wrong contents, the client can use this to verify that it in
+	// fact is at that position in the tree.
+	ExistingEntryHash []byte `protobuf:"bytes,3,opt,name=existing_entry_hash,proto3" json:"existing_entry_hash,omitempty"`
+}
+
+func (m *TreeProof) Reset()      { *m = TreeProof{} }
+func (*TreeProof) ProtoMessage() {}
 
 // Entry is the value type in the authenticated mapping data structure.  The
 // contents of all entries should be considered public (they are served to
@@ -733,7 +764,7 @@ func (this *LookupProof) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
 		}
 	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+	if !this.TreeProof.Equal(that1.TreeProof) {
 		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
 	}
 	if !this.Entry.Equal(that1.Entry) {
@@ -778,13 +809,85 @@ func (this *LookupProof) Equal(that interface{}) bool {
 			return false
 		}
 	}
-	if !bytes.Equal(this.TreeProof, that1.TreeProof) {
+	if !this.TreeProof.Equal(that1.TreeProof) {
 		return false
 	}
 	if !this.Entry.Equal(that1.Entry) {
 		return false
 	}
 	if !this.Profile.Equal(that1.Profile) {
+		return false
+	}
+	return true
+}
+func (this *TreeProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *TreeProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *TreeProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *TreeProofbut is not nil && this == nil")
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return fmt.Errorf("Neighbors this(%v) Not Equal that(%v)", len(this.Neighbors), len(that1.Neighbors))
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return fmt.Errorf("Neighbors this[%v](%v) Not Equal that[%v](%v)", i, this.Neighbors[i], i, that1.Neighbors[i])
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return fmt.Errorf("ExistingIndex this(%v) Not Equal that(%v)", this.ExistingIndex, that1.ExistingIndex)
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
+		return fmt.Errorf("ExistingEntryHash this(%v) Not Equal that(%v)", this.ExistingEntryHash, that1.ExistingEntryHash)
+	}
+	return nil
+}
+func (this *TreeProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return false
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return false
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return false
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
 		return false
 	}
 	return true
@@ -1423,6 +1526,16 @@ func (this *LookupProof) GoString() string {
 		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1) + `}`}, ", ")
 	return s
 }
+func (this *TreeProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TreeProof{` +
+		`Neighbors:` + fmt.Sprintf("%#v", this.Neighbors),
+		`ExistingIndex:` + fmt.Sprintf("%#v", this.ExistingIndex),
+		`ExistingEntryHash:` + fmt.Sprintf("%#v", this.ExistingEntryHash) + `}`}, ", ")
+	return s
+}
 func (this *Entry) GoString() string {
 	if this == nil {
 		return "nil"
@@ -1710,29 +1823,73 @@ func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
 		}
 	}
 	if m.TreeProof != nil {
-		if len(m.TreeProof) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.TreeProof)))
-			i += copy(data[i:], m.TreeProof)
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.TreeProof.Size()))
+		n5, err := m.TreeProof.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
 		}
+		i += n5
 	}
 	data[i] = 0x2a
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
-	n5, err := m.Entry.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	data[i] = 0x32
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-	n6, err := m.Profile.MarshalTo(data[i:])
+	n6, err := m.Entry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n6
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n7, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	return i, nil
+}
+
+func (m *TreeProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TreeProof) MarshalTo(data []byte) (n int, err error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	if m.ExistingIndex != nil {
+		if len(m.ExistingIndex) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
+			i += copy(data[i:], m.ExistingIndex)
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		if len(m.ExistingEntryHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
+			i += copy(data[i:], m.ExistingEntryHash)
+		}
+	}
 	return i, nil
 }
 
@@ -1768,11 +1925,11 @@ func (m *Entry) MarshalTo(data []byte) (n int, err error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
-		n7, err := m.UpdatePolicy.MarshalTo(data[i:])
+		n8, err := m.UpdatePolicy.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n8
 	}
 	if m.ProfileHash != nil {
 		if len(m.ProfileHash) > 0 {
@@ -1803,11 +1960,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n8, err := m.NewEntry.MarshalTo(data[i:])
+	n9, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n8
+	i += n9
 	if len(m.Signatures) > 0 {
 		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
@@ -1898,11 +2055,11 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n9, err := m.Head.MarshalTo(data[i:])
+	n10, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n9
+	i += n10
 	if len(m.Signatures) > 0 {
 		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
@@ -1945,19 +2102,19 @@ func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n10, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n11, err := m.Timestamp.MarshalTo(data[i:])
+	n11, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n11
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n12, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n12
 	return i, nil
 }
 
@@ -2006,19 +2163,19 @@ func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
 	data[i] = 0x2a
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NextEpochTime.Size()))
-	n12, err := m.NextEpochTime.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n12
-	data[i] = 0x32
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
-	n13, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	n13, err := m.NextEpochTime.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n13
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
+	n14, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n14
 	return i, nil
 }
 
@@ -2059,22 +2216,22 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n14, err := v.MarshalTo(data[i:])
+			n15, err := v.MarshalTo(data[i:])
 			if err != nil {
 				return 0, err
 			}
-			i += n14
+			i += n15
 		}
 	}
 	if m.Quorum != nil {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n15, err := m.Quorum.MarshalTo(data[i:])
+		n16, err := m.Quorum.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n15
+		i += n16
 	}
 	return i, nil
 }
@@ -2236,15 +2393,39 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
 		}
 	}
-	v5 := r.Intn(100)
-	this.TreeProof = make([]byte, v5)
-	for i := 0; i < v5; i++ {
-		this.TreeProof[i] = byte(r.Intn(256))
+	if r.Intn(10) != 0 {
+		this.TreeProof = NewPopulatedTreeProof(r, easy)
 	}
-	v6 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.Entry = *v6
-	v7 := NewPopulatedProfile_PreserveEncoding(r, easy)
-	this.Profile = *v7
+	v5 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.Entry = *v5
+	v6 := NewPopulatedProfile_PreserveEncoding(r, easy)
+	this.Profile = *v6
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
+	this := &TreeProof{}
+	v7 := r.Intn(100)
+	this.Neighbors = make([][]byte, v7)
+	for i := 0; i < v7; i++ {
+		v8 := r.Intn(100)
+		this.Neighbors[i] = make([]byte, v8)
+		for j := 0; j < v8; j++ {
+			this.Neighbors[i][j] = byte(r.Intn(256))
+		}
+	}
+	v9 := r.Intn(100)
+	this.ExistingIndex = make([]byte, v9)
+	for i := 0; i < v9; i++ {
+		this.ExistingIndex[i] = byte(r.Intn(256))
+	}
+	v10 := r.Intn(100)
+	this.ExistingEntryHash = make([]byte, v10)
+	for i := 0; i < v10; i++ {
+		this.ExistingEntryHash[i] = byte(r.Intn(256))
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2252,18 +2433,18 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 
 func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 	this := &Entry{}
-	v8 := r.Intn(100)
-	this.Index = make([]byte, v8)
-	for i := 0; i < v8; i++ {
+	v11 := r.Intn(100)
+	this.Index = make([]byte, v11)
+	for i := 0; i < v11; i++ {
 		this.Index[i] = byte(r.Intn(256))
 	}
 	this.Version = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
 		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	v9 := r.Intn(100)
-	this.ProfileHash = make([]byte, v9)
-	for i := 0; i < v9; i++ {
+	v12 := r.Intn(100)
+	this.ProfileHash = make([]byte, v12)
+	for i := 0; i < v12; i++ {
 		this.ProfileHash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2273,17 +2454,17 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 
 func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
 	this := &SignedEntryUpdate{}
-	v10 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.NewEntry = *v10
+	v13 := NewPopulatedEntry_PreserveEncoding(r, easy)
+	this.NewEntry = *v13
 	if r.Intn(10) != 0 {
-		v11 := r.Intn(10)
+		v14 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v11; i++ {
-			v12 := r.Intn(100)
-			v13 := uint64(uint64(r.Uint32()))
-			this.Signatures[v13] = make([]byte, v12)
-			for i := 0; i < v12; i++ {
-				this.Signatures[v13][i] = byte(r.Intn(256))
+		for i := 0; i < v14; i++ {
+			v15 := r.Intn(100)
+			v16 := uint64(uint64(r.Uint32()))
+			this.Signatures[v16] = make([]byte, v15)
+			for i := 0; i < v15; i++ {
+				this.Signatures[v16][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2294,20 +2475,20 @@ func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate 
 
 func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 	this := &Profile{}
-	v14 := r.Intn(100)
-	this.Nonce = make([]byte, v14)
-	for i := 0; i < v14; i++ {
+	v17 := r.Intn(100)
+	this.Nonce = make([]byte, v17)
+	for i := 0; i < v17; i++ {
 		this.Nonce[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v15 := r.Intn(10)
+		v18 := r.Intn(10)
 		this.Keys = make(map[string][]byte)
-		for i := 0; i < v15; i++ {
-			v16 := r.Intn(100)
-			v17 := randStringClient(r)
-			this.Keys[v17] = make([]byte, v16)
-			for i := 0; i < v16; i++ {
-				this.Keys[v17][i] = byte(r.Intn(256))
+		for i := 0; i < v18; i++ {
+			v19 := r.Intn(100)
+			v20 := randStringClient(r)
+			this.Keys[v20] = make([]byte, v19)
+			for i := 0; i < v19; i++ {
+				this.Keys[v20][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2318,17 +2499,17 @@ func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 
 func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 	this := &SignedEpochHead{}
-	v18 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v18
+	v21 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v21
 	if r.Intn(10) != 0 {
-		v19 := r.Intn(10)
+		v22 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v19; i++ {
-			v20 := r.Intn(100)
-			v21 := uint64(uint64(r.Uint32()))
-			this.Signatures[v21] = make([]byte, v20)
-			for i := 0; i < v20; i++ {
-				this.Signatures[v21][i] = byte(r.Intn(256))
+		for i := 0; i < v22; i++ {
+			v23 := r.Intn(100)
+			v24 := uint64(uint64(r.Uint32()))
+			this.Signatures[v24] = make([]byte, v23)
+			for i := 0; i < v23; i++ {
+				this.Signatures[v24][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2339,10 +2520,10 @@ func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 
 func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
 	this := &TimestampedEpochHead{}
-	v22 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v22
-	v23 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v23
+	v25 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
+	this.Head = *v25
+	v26 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v26
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2352,20 +2533,20 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	this := &EpochHead{}
 	this.Realm = randStringClient(r)
 	this.Epoch = uint64(uint64(r.Uint32()))
-	v24 := r.Intn(100)
-	this.RootHash = make([]byte, v24)
-	for i := 0; i < v24; i++ {
+	v27 := r.Intn(100)
+	this.RootHash = make([]byte, v27)
+	for i := 0; i < v27; i++ {
 		this.RootHash[i] = byte(r.Intn(256))
 	}
-	v25 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v25)
-	for i := 0; i < v25; i++ {
+	v28 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v28)
+	for i := 0; i < v28; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
-	v26 := NewPopulatedTimestamp(r, easy)
-	this.NextEpochTime = *v26
-	v27 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v27
+	v29 := NewPopulatedTimestamp(r, easy)
+	this.NextEpochTime = *v29
+	v30 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v30
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2374,9 +2555,9 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
 	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		v28 := r.Intn(10)
+		v31 := r.Intn(10)
 		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v28; i++ {
+		for i := 0; i < v31; i++ {
 			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -2390,9 +2571,9 @@ func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPol
 
 func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 	this := &PublicKey{}
-	v29 := r.Intn(100)
-	this.Ed25519 = make([]byte, v29)
-	for i := 0; i < v29; i++ {
+	v32 := r.Intn(100)
+	this.Ed25519 = make([]byte, v32)
+	for i := 0; i < v32; i++ {
 		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2403,15 +2584,15 @@ func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v30 := r.Intn(100)
-	this.Candidates = make([]uint64, v30)
-	for i := 0; i < v30; i++ {
+	v33 := r.Intn(100)
+	this.Candidates = make([]uint64, v33)
+	for i := 0; i < v33; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
-		v31 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v31)
-		for i := 0; i < v31; i++ {
+		v34 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v34)
+		for i := 0; i < v34; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
 		}
 	}
@@ -2439,9 +2620,9 @@ func randUTF8RuneClient(r randyClient) rune {
 	return rune(ru + 61)
 }
 func randStringClient(r randyClient) string {
-	v32 := r.Intn(100)
-	tmps := make([]rune, v32)
-	for i := 0; i < v32; i++ {
+	v35 := r.Intn(100)
+	tmps := make([]rune, v35)
+	for i := 0; i < v35; i++ {
 		tmps[i] = randUTF8RuneClient(r)
 	}
 	return string(tmps)
@@ -2463,11 +2644,11 @@ func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateClient(data, uint64(key))
-		v33 := r.Int63()
+		v36 := r.Int63()
 		if r.Intn(2) == 0 {
-			v33 *= -1
+			v36 *= -1
 		}
-		data = encodeVarintPopulateClient(data, uint64(v33))
+		data = encodeVarintPopulateClient(data, uint64(v36))
 	case 1:
 		data = encodeVarintPopulateClient(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -2551,15 +2732,37 @@ func (m *LookupProof) Size() (n int) {
 		}
 	}
 	if m.TreeProof != nil {
-		l = len(m.TreeProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+		l = m.TreeProof.Size()
+		n += 1 + l + sovClient(uint64(l))
 	}
 	l = m.Entry.Size()
 	n += 1 + l + sovClient(uint64(l))
 	l = m.Profile.Size()
 	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *TreeProof) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			l = len(b)
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingIndex != nil {
+		l = len(m.ExistingIndex)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		l = len(m.ExistingEntryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -2777,9 +2980,21 @@ func (this *LookupProof) String() string {
 		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
 		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
 		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
-		`TreeProof:` + fmt.Sprintf("%v", this.TreeProof) + `,`,
+		`TreeProof:` + strings.Replace(fmt.Sprintf("%v", this.TreeProof), "TreeProof", "TreeProof", 1) + `,`,
 		`Entry:` + strings.Replace(strings.Replace(this.Entry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
 		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TreeProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TreeProof{`,
+		`Neighbors:` + fmt.Sprintf("%v", this.Neighbors) + `,`,
+		`ExistingIndex:` + fmt.Sprintf("%v", this.ExistingIndex) + `,`,
+		`ExistingEntryHash:` + fmt.Sprintf("%v", this.ExistingEntryHash) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3278,23 +3493,28 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TreeProof", wireType)
 			}
-			var byteLen int
+			var msglen int
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
+				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
 			}
-			postIndex := iNdEx + byteLen
+			postIndex := iNdEx + msglen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TreeProof = append([]byte{}, data[iNdEx:postIndex]...)
+			if m.TreeProof == nil {
+				m.TreeProof = &TreeProof{}
+			}
+			if err := m.TreeProof.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -3343,6 +3563,115 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if err := m.Profile.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		default:
+			var sizeOfWire int
+			for {
+				sizeOfWire++
+				wire >>= 7
+				if wire == 0 {
+					break
+				}
+			}
+			iNdEx -= sizeOfWire
+			skippy, err := skipClient(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	return nil
+}
+func (m *TreeProof) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Neighbors", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Neighbors = append(m.Neighbors, make([]byte, postIndex-iNdEx))
+			copy(m.Neighbors[len(m.Neighbors)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExistingIndex", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExistingIndex = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ExistingEntryHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ExistingEntryHash = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int

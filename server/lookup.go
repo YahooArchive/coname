@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/merkletree"
+	"github.com/yahoo/coname/vrf"
 	"golang.org/x/net/context"
 )
 
@@ -36,17 +37,21 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		index = vrf.Compute([]byte(req.UserId), ks.vrfSecret)
 		ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	}
-	remainingVerifiers := common.ListQuorum(req.QuorumRequirement, nil)
+	remainingVerifiers := coname.ListQuorum(req.QuorumRequirement, nil)
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
 	// find latest epoch, iterate backwards until quorum requirement is met
 	oldestEpoch, newestEpoch := uint64(1), ks.lastRatifiedEpoch()
+	if newestEpoch == 0 {
+		log.Printf("ERROR: no epochs created yet, so lookup fails: %x", index)
+		return nil, fmt.Errorf("internal error")
+	}
 	// 0 is bad for iterating uint64 in the negative direction and there is no epoch 0
 	if newestEpoch-oldestEpoch > lookupMaxChainLength {
 		oldestEpoch = newestEpoch - lookupMaxChainLength
 	}
 	lookupEpoch := newestEpoch
 	for epoch := newestEpoch; epoch >= oldestEpoch &&
-		!common.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
+		!coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
 		len(remainingVerifiers) != 0; epoch-- {
 		for verifier := range remainingVerifiers {
 			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
@@ -74,7 +79,16 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		a, b := ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i]
 		ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i] = b, a
 	}
-	// TODO(dmz): ret.TreeProof = ks.merkletreeForEpoch(lookupEpoch).Lookup(index)
+	tree, err := ks.merkletreeForEpoch(lookupEpoch)
+	if err != nil {
+		log.Printf("ERROR: couldn't get merkle tree for epoch %d: %s", lookupEpoch, err)
+		return nil, fmt.Errorf("internal error")
+	}
+	_, ret.TreeProof, err = tree.Lookup(index)
+	if err != nil {
+		log.Printf("ERROR: merkle tree lookup %x at or before epoch %d: %s", index, lookupEpoch, err)
+		return nil, fmt.Errorf("internal error")
+	}
 	urq, err := ks.getUpdate(index, lookupEpoch)
 	if err != nil {
 		log.Printf("ERROR: getProfile of %x at or before epoch %d: %s", index, lookupEpoch, err)
@@ -83,10 +97,26 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	if urq != nil {
 		ret.Profile = urq.Profile
 	}
-	if !common.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
+	if !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
 		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 	}
 	return ret, nil
+}
+
+func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, error) {
+	if epoch == 0 {
+		// Special-case epoch 0: It is always empty
+		return ks.merkletree.GetSnapshot(0), nil
+	}
+	snapshotNrBytes, err := ks.db.Get(tableMerkleTreeSnapshot(epoch))
+	if err != nil {
+		return nil, err
+	}
+	if len(snapshotNrBytes) != 8 {
+		return nil, fmt.Errorf("bad snapshot number for epoch %d: %x", epoch, snapshotNrBytes)
+	}
+	snapshotNr := binary.BigEndian.Uint64(snapshotNrBytes)
+	return ks.merkletree.GetSnapshot(snapshotNr), nil
 }
 
 // lastRatifiedEpoch returns the last epoch for which we have a seh.

@@ -1,0 +1,34 @@
+CoW scheme
+- Snapshots are just pointers to root nodes
+- Conceptually, nodes are addressed by an arbitrary node ID (which counts up sequentially)
+- For locality, we prepend IDs by the index in the tree
+- We build up the tree for a new epoch in-memory:
+	- We lazy-load nodes that are accessed
+	- Set() only touches changed nodes (nodes store childHashes so sibling nodes are not accessed), so all in-memory nodes are considered dirty
+	- Flush() writes out loaded nodes and returns the new snapshot number
+
+
+Questions
+- Implement in purely functional style? (Probably still don't want to expose API
+  that way)
+	- Due to inertia I won't right now
+- Only set node IDs upon flush?
+- Cache nodes in-memory? Currently we do not (but LevelDB caches)
+	- Would have to add a dirty bit so flush() doesn't write out all the cached nodes
+- Use binary encoding library rather than hand-serialization?
+- Support deletion?
+	- Currently the lazy-loading logic breaks this
+
+Comments
+- Would be even nicer if you couldn't get access to a new snapshot number until
+  the writebatch was flushed
+- Confusion about nodes being nil because they're not loaded vs they're actually
+  not present
+- Confusion about when what is nil in proto.TreeProof
+- Trace construction very brittle (magically depends on lookup code)
+
+Hashing
+0. Take CONIKS scheme
+1. Add identifier for internal nodes (and maybe path, like Joe suggested?)
+2. Commitment -> just hash of Entry (Profile includes nonce; our VRF hashes in
+	the name so we don't have to worry about collisions)

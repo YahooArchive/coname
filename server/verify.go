@@ -110,13 +110,15 @@ func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedEpochH
 // 2) mark the log entry as used
 // 3) share the new log entry with verifiers
 // called from step: no io
-func (ks *Keyserver) verifierLogAppend(m *proto.VerifierStep, rs *proto.ReplicaState, wb kv.Batch) {
+func (ks *Keyserver) verifierLogAppend(m *proto.VerifierStep, rs *proto.ReplicaState, wb kv.Batch) func() {
 	// m : *mut // RECURSIVE transfer of ownership
 	// ks : &const // read-only
 	// rs, wb : &mut
 	wb.Put(tableVerifierLog(rs.NextIndexVerifier), proto.MustMarshal(m))
 	rs.NextIndexVerifier++
-	ks.vmb.Send(m)
+	return func() {
+		ks.vmb.Send(m)
+	}
 }
 
 func saturatingAdd(a, b uint64) uint64 {

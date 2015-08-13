@@ -25,9 +25,8 @@ type AuthorizationPolicy_PreserveEncoding struct {
 	PreservedEncoding []byte
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) UpdateEncoding() (err error) {
-	m.PreservedEncoding, err = m.AuthorizationPolicy.Marshal()
-	return err
+func (m *AuthorizationPolicy_PreserveEncoding) UpdateEncoding() {
+	m.PreservedEncoding = MustMarshal(&m.AuthorizationPolicy)
 }
 
 func (m *AuthorizationPolicy_PreserveEncoding) Reset() {

@@ -25,9 +25,8 @@ type TimestampedEpochHead_PreserveEncoding struct {
 	PreservedEncoding []byte
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) UpdateEncoding() (err error) {
-	m.PreservedEncoding, err = m.TimestampedEpochHead.Marshal()
-	return err
+func (m *TimestampedEpochHead_PreserveEncoding) UpdateEncoding() {
+	m.PreservedEncoding = MustMarshal(&m.TimestampedEpochHead)
 }
 
 func (m *TimestampedEpochHead_PreserveEncoding) Reset() {

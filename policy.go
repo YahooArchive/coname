@@ -12,16 +12,18 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package common
+package coname
 
 import (
 	"fmt"
 
+	"github.com/agl/ed25519"
 	"github.com/yahoo/coname/proto"
 )
 
 // VerifyUpdate returns nil iff replacing entry current (nil if none) with next
 // is justified given the evidence in update. Globally deterministic.
+// current, update : &const // none of the inputs are modified
 func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 	next := &update.NewEntry
 	if current != nil {
@@ -49,6 +51,7 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 // VerifyPolicy returns whether, by policy, action is justified by evidence.
 // Evidence is in the form of digital signatures denoting agreement, and the
 // policy contains public keys and a quorum rule.
+// policy, action, evidence : &const // none of the inputs are modified
 func VerifyPolicy(policy *proto.AuthorizationPolicy, action []byte, evidence map[uint64][]byte) bool {
 	have := make(map[uint64]struct{}, len(evidence))
 	for id, pk := range policy.PublicKeys {
@@ -64,8 +67,25 @@ func VerifyPolicy(policy *proto.AuthorizationPolicy, action []byte, evidence map
 	}
 }
 
+// VerifySignature returns true iff sig is a valid signature of message by
+// verifier.
+// pk, message, sig : &const // none of the inputs are modified
+func VerifySignature(pk *proto.PublicKey, message []byte, sig []byte) bool {
+	switch {
+	case pk.Ed25519 != nil:
+		var edpk [32]byte
+		var edsig [64]byte
+		copy(edpk[:], pk.Ed25519[:])
+		copy(edsig[:], sig)
+		return ed25519.Verify(&edpk, message, &edsig)
+	default:
+		return false
+	}
+}
+
 // CheckQuorum evaluates whether the quorum requirement want can be satisfied
 // by ratifications of the verifiers in have.
+// want, have : &const // none of the inputs are modified
 func CheckQuorum(want *proto.QuorumExpr, have map[uint64]struct{}) bool {
 	if want == nil {
 		return true // no requirements
@@ -87,6 +107,8 @@ func CheckQuorum(want *proto.QuorumExpr, have map[uint64]struct{}) bool {
 // ListQuorum inserts all verifiers mentioned in e to out. If out is nil, a new
 // map is allocated. ListQuorum is NOT intended to be used for implementing
 // quorum verification, use CheckQuorum instead.
+// e : &const
+// out : *mut map mut // both the map and its contents can be modified arbitrarily
 func ListQuorum(e *proto.QuorumExpr, out map[uint64]struct{}) map[uint64]struct{} {
 	if e == nil {
 		return make(map[uint64]struct{}, 0)

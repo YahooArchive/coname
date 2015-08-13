@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"runtime"
@@ -29,12 +30,13 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
-	"github.com/yahoo/coname/common"
-	"github.com/yahoo/coname/common/vrf"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/server/merkletree"
 	"github.com/yahoo/coname/server/replication"
 	"github.com/yahoo/coname/server/replication/kvlog"
+	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -61,6 +63,8 @@ type Config struct {
 
 	MinEpochInterval, MaxEpochInterval, RetryEpochInterval time.Duration
 	// FIXME: tls.Config is not serializable, replicate relevant fields
+
+	TreeNonce []byte
 }
 
 // Keyserver manages a single end-to-end keyserver realm.
@@ -94,6 +98,10 @@ type Keyserver struct {
 	stopOnce sync.Once
 	stop     chan struct{}
 	waitStop sync.WaitGroup
+
+	merkletree *merkletree.MerkleTree
+
+	pendingUpdateUIDs []uint64
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -180,6 +188,11 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 			}
 		}()
 	}
+	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, cfg.TreeNonce)
+	if err != nil {
+		return nil, err
+	}
+
 	ok = true
 	return ks, nil
 }
@@ -242,7 +255,7 @@ func (ks *Keyserver) run() {
 			}
 			// TODO: allow multiple steps per log entry (pipelining). Maybe
 			// this would be better implemented at the log level?
-			ks.step(&step, &ks.rs, wb)
+			deferredIO := ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
@@ -250,6 +263,9 @@ func (ks *Keyserver) run() {
 			}
 			wb.Reset()
 			step.Reset()
+			if deferredIO != nil {
+				deferredIO()
+			}
 		case ks.leaderHint = <-ks.log.LeaderHintSet():
 			ks.maybeEpoch()
 		case <-ks.canEpochSet.C:
@@ -266,19 +282,41 @@ func (ks *Keyserver) run() {
 }
 
 // step is called by run and changes the in-memory state. No i/o allowed.
-func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) {
+func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) (deferredIO func()) {
 	// ks: &const
 	// step, rs, wb: &mut
 	switch {
 	case step.Update != nil:
-		if err := common.VerifyUpdate( /*TODO(dmz): tree lookup*/ nil, step.Update.Update); err != nil {
-			// TODO: return the client-bound error code
+		index := step.Update.Update.NewEntry.Index
+		prevUpdate, err := ks.getUpdate(index, rs.LastEpochDelimiter.EpochNumber)
+		if err != nil {
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
 			return
 		}
-		// TODO(dmz): set entry in tree
+		var prevEntry *proto.Entry
+		if prevUpdate != nil {
+			prevEntry = &prevUpdate.Update.NewEntry.Entry
+		}
+		if err := coname.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
+			ks.wr.Notify(step.UID, err)
+			return
+		}
+		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
+		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
+		newTree, err := latestTree.BeginModification()
+		if err != nil {
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
+			return
+		}
+		if err := newTree.Set(index, entryHash[:]); err != nil {
+			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
+			return
+		}
+		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		rs.PendingUpdates = true
-		wb.Put(tableUpdateRequests(step.Update.Update.NewEntry.Index, ks.rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
-		ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+		wb.Put(tableUpdateRequests(index, rs.LastEpochDelimiter.EpochNumber+1), proto.MustMarshal(step.Update))
+		ks.pendingUpdateUIDs = append(ks.pendingUpdateUIDs, step.UID)
+		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -288,10 +326,19 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
 
+		snapshotNumberBytes := make([]byte, 8)
+		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
+		wb.Put(tableMerkleTreeSnapshot(step.EpochDelimiter.EpochNumber), snapshotNumberBytes)
+
+		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
+		rootHash, err := latestTree.GetRootHash()
+		if err != nil {
+			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
+		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
 				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
-					RootHash:            nil, // TODO(dmz): ret.TreeProof = merklemap.GetRootHash()
+					RootHash:            rootHash,
 					PreviousSummaryHash: rs.PreviousSummaryHash,
 					Realm:               ks.realm,
 					Epoch:               step.EpochDelimiter.EpochNumber,
@@ -346,8 +393,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// Only put signatures into the verifier log once.
 		if true {
 			// FIXME: make sure sehs in verifier log are ordered by epoch
-			ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
+			return func() {
+				notifyVerifiers()
+				for _, uid := range ks.pendingUpdateUIDs {
+					ks.wr.Notify(uid, nil)
+				}
+				ks.pendingUpdateUIDs = []uint64{}
+			}
 		}
+
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
 		for id := range rNew.Signatures {
@@ -357,8 +412,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
 			wb.Put(dbkey, proto.MustMarshal(rNew))
-			ks.wr.Notify(step.UID, nil)
 		}
+		ks.wr.Notify(step.UID, nil)
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
