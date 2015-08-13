@@ -27,7 +27,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
-	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
@@ -179,7 +179,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 	case step.Update != nil:
 		index := step.Update.NewEntry.Index
 		prevEntry, err := vr.getEntry(index, vs.NextEpoch)
-		if err := common.VerifyUpdate(prevEntry, step.Update); err != nil {
+		if err := coname.VerifyUpdate(prevEntry, step.Update); err != nil {
 			// the keyserver should filter all bad updates
 			log.Fatalf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
@@ -196,7 +196,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.PreservedEncoding)
 
 	case step.Epoch != nil:
-		ok := common.VerifyPolicy(
+		ok := coname.VerifyPolicy(
 			vr.keyserverVerif,
 			step.Epoch.Head.PreservedEncoding,
 			step.Epoch.Signatures)

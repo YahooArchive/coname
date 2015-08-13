@@ -12,17 +12,15 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package common
+package proto
 
 import (
 	"crypto/sha256"
 	"encoding/binary"
-
-	"github.com/yahoo/coname/proto"
 )
 
 // KeyID computes the ID of public key.
-func KeyID(sv *proto.PublicKey) uint64 {
-	h := sha256.Sum256(proto.MustMarshal(sv))
+func KeyID(sv *PublicKey) uint64 {
+	h := sha256.Sum256(MustMarshal(sv))
 	return binary.LittleEndian.Uint64(h[:8])
 }

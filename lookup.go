@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 )
@@ -91,22 +90,22 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 	// check that there are sufficiently many fresh signatures.
 	pks := rcg.VerificationPolicy.PublicKeys
 	want := rcg.VerificationPolicy.Quorum
-	can := common.ListQuorum(want, nil)
+	can := ListQuorum(want, nil)
 	have := make(map[uint64]struct{})
 next_verifier:
 	for id := range can {
-		if common.CheckQuorum(want, have) {
+		if CheckQuorum(want, have) {
 			break // already sufficiently verified, short-circuit
 		}
 		for _, seh := range ratifications {
 			if sig, ok := seh.Signatures[id]; ok &&
-				common.VerifySignature(pks[id], seh.Head.PreservedEncoding, sig) {
+				VerifySignature(pks[id], seh.Head.PreservedEncoding, sig) {
 				have[id] = struct{}{}
 				continue next_verifier
 			}
 		}
 	}
-	if !common.CheckQuorum(want, have) {
+	if !CheckQuorum(want, have) {
 		return nil, fmt.Errorf("VerifyConsensus: insufficient signatures (have %v, want %v)", have, want)
 	}
 
@@ -115,7 +114,7 @@ next_verifier:
 
 func VerifiedLookup(treeNonce []byte, rootHash []byte, index []byte, proof *proto.TreeProof) ([]byte, error) {
 	// First, reconstruct the partial tree
-	reconstructed, err := ReconstructTree(proof, common.ToBits(common.IndexBits, index))
+	reconstructed, err := ReconstructTree(proof, ToBits(IndexBits, index))
 	if err != nil {
 		return nil, err
 	}
@@ -129,25 +128,25 @@ func VerifiedLookup(treeNonce []byte, rootHash []byte, index []byte, proof *prot
 		return nil, fmt.Errorf("Root hashes do not match! Reconstructed %x; wanted %x", reconstructedHash, rootHash)
 	}
 	// Then, do the lookup
-	value, err := common.Lookup(reconstructed, index)
+	value, err := Lookup(reconstructed, index)
 	if err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
-func RecomputeHash(treeNonce []byte, node common.MerkleNode) ([]byte, error) {
+func RecomputeHash(treeNonce []byte, node MerkleNode) ([]byte, error) {
 	return recomputeHash(treeNonce, []bool{}, node)
 }
 
 // assumes ownership of the array underlying prefixBits
-func recomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) ([]byte, error) {
+func recomputeHash(treeNonce []byte, prefixBits []bool, node MerkleNode) ([]byte, error) {
 	if node.IsEmpty() {
-		return common.HashEmptyBranch(treeNonce, prefixBits), nil
+		return HashEmptyBranch(treeNonce, prefixBits), nil
 	} else if node.IsLeaf() {
-		return common.HashLeaf(treeNonce, node.Index(), node.Depth(), node.Value()), nil
+		return HashLeaf(treeNonce, node.Index(), node.Depth(), node.Value()), nil
 	} else {
-		var childHashes [2][common.HashBytes]byte
+		var childHashes [2][HashBytes]byte
 		for i := 0; i < 2; i++ {
 			rightChild := i == 1
 			h := node.ChildHash(rightChild)
@@ -163,7 +162,7 @@ func recomputeHash(treeNonce []byte, prefixBits []bool, node common.MerkleNode) 
 			}
 			copy(childHashes[i][:], h)
 		}
-		return common.HashInternalNode(prefixBits, &childHashes), nil
+		return HashInternalNode(prefixBits, &childHashes), nil
 	}
 }
 
@@ -203,13 +202,13 @@ func reconstructBranch(trace *proto.TreeProof, lookupIndexBits []bool, depth int
 			depth:  depth,
 		}
 		presentChild := lookupIndexBits[depth]
-		node.children[common.BitToIndex(presentChild)].Present = reconstructBranch(trace, lookupIndexBits, depth+1)
-		node.children[common.BitToIndex(!presentChild)].Omitted = trace.Neighbors[depth]
+		node.children[BitToIndex(presentChild)].Present = reconstructBranch(trace, lookupIndexBits, depth+1)
+		node.children[BitToIndex(!presentChild)].Omitted = trace.Neighbors[depth]
 		return node
 	}
 }
 
-var _ common.MerkleNode = (*ReconstructedNode)(nil)
+var _ MerkleNode = (*ReconstructedNode)(nil)
 
 func (n *ReconstructedNode) IsEmpty() bool {
 	return n == nil
@@ -224,16 +223,16 @@ func (n *ReconstructedNode) Depth() int {
 }
 
 func (n *ReconstructedNode) ChildHash(rightChild bool) []byte {
-	return n.children[common.BitToIndex(rightChild)].Omitted
+	return n.children[BitToIndex(rightChild)].Omitted
 }
 
-func (n *ReconstructedNode) Child(rightChild bool) (common.MerkleNode, error) {
+func (n *ReconstructedNode) Child(rightChild bool) (MerkleNode, error) {
 	// Give an error if the lookup algorithm tries to access anything the server didn't provide us.
-	if n.children[common.BitToIndex(rightChild)].Omitted != nil {
+	if n.children[BitToIndex(rightChild)].Omitted != nil {
 		return nil, fmt.Errorf("can't access omitted node")
 	}
 	// This might still be nil if the branch is in fact empty.
-	return n.children[common.BitToIndex(rightChild)].Present, nil
+	return n.children[BitToIndex(rightChild)].Present, nil
 }
 
 func (n *ReconstructedNode) Index() []byte {

@@ -30,7 +30,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
-	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
@@ -294,7 +294,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if prevUpdate != nil {
 			prevEntry = &prevUpdate.Update.NewEntry.Entry
 		}
-		if err := common.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
+		if err := coname.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
 			ks.wr.Notify(step.UID, err)
 			return
 		}

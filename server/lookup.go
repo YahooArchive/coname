@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yahoo/coname/common"
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
@@ -37,7 +37,7 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		index = vrf.Compute([]byte(req.UserId), ks.vrfSecret)
 		ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	}
-	remainingVerifiers := common.ListQuorum(req.QuorumRequirement, nil)
+	remainingVerifiers := coname.ListQuorum(req.QuorumRequirement, nil)
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
 	// find latest epoch, iterate backwards until quorum requirement is met
 	oldestEpoch, newestEpoch := uint64(1), ks.lastRatifiedEpoch()
@@ -51,7 +51,7 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	}
 	lookupEpoch := newestEpoch
 	for epoch := newestEpoch; epoch >= oldestEpoch &&
-		!common.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
+		!coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
 		len(remainingVerifiers) != 0; epoch-- {
 		for verifier := range remainingVerifiers {
 			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
@@ -97,7 +97,7 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	if urq != nil {
 		ret.Profile = urq.Profile
 	}
-	if !common.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
+	if !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
 		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 	}
 	return ret, nil

@@ -37,7 +37,6 @@ import (
 	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
@@ -84,7 +83,7 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		t.Fatal(err)
 	}
 	pked := &proto.PublicKey{Ed25519: pk[:]}
-	replicaID := common.KeyID(pked)
+	replicaID := proto.KeyID(pked)
 	pol = &proto.AuthorizationPolicy{
 		PublicKeys: map[uint64]*proto.PublicKey{replicaID: pked},
 		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
@@ -344,7 +343,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 		KeyserverAddr:  keyserverAddr,
 		KeyserverVerif: keyserverVerif,
 
-		ID:              common.KeyID(sv),
+		ID:              proto.KeyID(sv),
 		RatificationKey: sk,
 		TLS:             &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool},
 	}

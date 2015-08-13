@@ -26,7 +26,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/common"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
@@ -49,11 +48,11 @@ func withDB(f func(kv.DB)) {
 }
 
 func verifyProof(s *Snapshot, index, value []byte, proof *proto.TreeProof) {
-	reconstructed, err := coname.ReconstructTree(proof, common.ToBits(common.IndexBits, index))
+	reconstructed, err := coname.ReconstructTree(proof, coname.ToBits(coname.IndexBits, index))
 	if err != nil {
 		panic(err)
 	}
-	redoneLookup, err := common.Lookup(reconstructed, index)
+	redoneLookup, err := coname.Lookup(reconstructed, index)
 	if err != nil {
 		panic(err)
 	}
@@ -323,7 +322,7 @@ type SimpleMap struct {
 
 type SimpleSnapshot struct {
 	nr       uint64
-	entries  map[[common.HashBytes]byte][common.HashBytes]byte
+	entries  map[[coname.HashBytes]byte][coname.HashBytes]byte
 	wholeMap *SimpleMap
 }
 
@@ -337,7 +336,7 @@ var _ NewMapSnapshot = (*SimpleNewSnapshot)(nil)
 
 func (m *SimpleMap) GetSnapshot(nr uint64) MapSnapshot {
 	if len(m.snapshots) == 0 {
-		m.snapshots = append(m.snapshots, &SimpleSnapshot{wholeMap: m, entries: make(map[[common.HashBytes]byte][common.HashBytes]byte)})
+		m.snapshots = append(m.snapshots, &SimpleSnapshot{wholeMap: m, entries: make(map[[coname.HashBytes]byte][coname.HashBytes]byte)})
 	}
 	return m.snapshots[nr]
 }
@@ -349,7 +348,7 @@ func (s *SimpleSnapshot) GetNr() uint64 {
 }
 
 func (s *SimpleSnapshot) Lookup(indexBytes []byte) (value []byte) {
-	var bytes [common.HashBytes]byte
+	var bytes [coname.HashBytes]byte
 	copy(bytes[:], indexBytes)
 	if comm, ok := s.entries[bytes]; ok {
 		return comm[:]
@@ -359,7 +358,7 @@ func (s *SimpleSnapshot) Lookup(indexBytes []byte) (value []byte) {
 }
 
 func (s *SimpleSnapshot) clone() (cloned *SimpleSnapshot) {
-	cloned = &SimpleSnapshot{nr: s.nr, entries: make(map[[common.HashBytes]byte][common.HashBytes]byte), wholeMap: s.wholeMap}
+	cloned = &SimpleSnapshot{nr: s.nr, entries: make(map[[coname.HashBytes]byte][coname.HashBytes]byte), wholeMap: s.wholeMap}
 	for k, v := range s.entries {
 		cloned.entries[k] = v
 	}
@@ -371,7 +370,7 @@ func (s *SimpleSnapshot) BeginModification() NewMapSnapshot {
 }
 
 func (s *SimpleNewSnapshot) Set(indexBytes, value []byte) {
-	var bytes, comm [common.HashBytes]byte
+	var bytes, comm [coname.HashBytes]byte
 	copy(bytes[:], indexBytes)
 	copy(comm[:], value)
 	s.entries[bytes] = comm
@@ -470,19 +469,19 @@ func (s *NewComparingSnapshot) Flush() MapSnapshot {
 var dbg = 1
 
 func compareImplementationsRandomly(implementations []Map, itCount, byteRange int, t testing.TB) {
-	bytez := func(b byte) [common.HashBytes]byte {
-		var bytes [common.HashBytes]byte
+	bytez := func(b byte) [coname.HashBytes]byte {
+		var bytes [coname.HashBytes]byte
 		for i := range bytes {
 			bytes[i] = b<<4 | b
 		}
 		return bytes
 	}
 	randBytes := func() []byte {
-		var bs [common.HashBytes]byte
+		var bs [coname.HashBytes]byte
 		if byteRange < 0 {
 			bs = bytez(byte(rand.Intn(-byteRange)))
 			bs[0] = byte(rand.Intn(-byteRange))
-			bs[common.HashBytes-1] = byte(rand.Intn(-byteRange))
+			bs[coname.HashBytes-1] = byte(rand.Intn(-byteRange))
 			return bs[:]
 		} else {
 			for i := range bs {
