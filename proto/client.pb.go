@@ -31,8 +31,6 @@
 */
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 // discarding unused import gogoproto "gogoproto"
 
 import (
@@ -44,18 +42,15 @@ import fmt "fmt"
 import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
-import github_com_gogo_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
+import github_com_andres_erbsen_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
 
 import errors "errors"
 
 import io "io"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 type LookupRequest struct {
 	// Epoch as of which to perform the lookup ("latest" if not specified)
@@ -1557,7 +1552,7 @@ func (this *SignedEntryUpdate) GoString() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
@@ -1576,7 +1571,7 @@ func (this *Profile) GoString() string {
 	for k, _ := range this.Keys {
 		keysForKeys = append(keysForKeys, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
 	mapStringForKeys := "map[string][]byte{"
 	for _, k := range keysForKeys {
 		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
@@ -1595,7 +1590,7 @@ func (this *SignedEpochHead) GoString() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
@@ -1636,7 +1631,7 @@ func (this *AuthorizationPolicy) GoString() string {
 	for k, _ := range this.PublicKeys {
 		keysForPublicKeys = append(keysForPublicKeys, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
 	mapStringForPublicKeys := "map[uint64]*PublicKey{"
 	for _, k := range keysForPublicKeys {
 		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
@@ -1673,7 +1668,7 @@ func valueToGoStringClient(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringClient(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringClient(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -1700,7 +1695,7 @@ func (m *LookupRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *LookupRequest) MarshalTo(data []byte) (n int, err error) {
+func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1747,7 +1742,7 @@ func (m *UpdateRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *UpdateRequest) MarshalTo(data []byte) (n int, err error) {
+func (m *UpdateRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1793,7 +1788,7 @@ func (m *LookupProof) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *LookupProof) MarshalTo(data []byte) (n int, err error) {
+func (m *LookupProof) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1863,7 +1858,7 @@ func (m *TreeProof) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *TreeProof) MarshalTo(data []byte) (n int, err error) {
+func (m *TreeProof) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1905,7 +1900,7 @@ func (m *Entry) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Entry) MarshalTo(data []byte) (n int, err error) {
+func (m *Entry) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1954,7 +1949,7 @@ func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
+func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -1972,7 +1967,7 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (n int, err error) {
 		for k, _ := range m.Signatures {
 			keysForSignatures = append(keysForSignatures, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
@@ -2001,7 +1996,7 @@ func (m *Profile) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Profile) MarshalTo(data []byte) (n int, err error) {
+func (m *Profile) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2019,7 +2014,7 @@ func (m *Profile) MarshalTo(data []byte) (n int, err error) {
 		for k, _ := range m.Keys {
 			keysForKeys = append(keysForKeys, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+		github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
 		for _, k := range keysForKeys {
 			data[i] = 0x12
 			i++
@@ -2049,7 +2044,7 @@ func (m *SignedEpochHead) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
+func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2067,7 +2062,7 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (n int, err error) {
 		for k, _ := range m.Signatures {
 			keysForSignatures = append(keysForSignatures, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
@@ -2096,7 +2091,7 @@ func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *TimestampedEpochHead) MarshalTo(data []byte) (n int, err error) {
+func (m *TimestampedEpochHead) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2130,7 +2125,7 @@ func (m *EpochHead) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *EpochHead) MarshalTo(data []byte) (n int, err error) {
+func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2191,7 +2186,7 @@ func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
+func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2201,7 +2196,7 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (n int, err error) {
 		for k, _ := range m.PublicKeys {
 			keysForPublicKeys = append(keysForPublicKeys, k)
 		}
-		github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
 		for _, k := range keysForPublicKeys {
 			data[i] = 0xa
 			i++
@@ -2248,7 +2243,7 @@ func (m *PublicKey) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *PublicKey) MarshalTo(data []byte) (n int, err error) {
+func (m *PublicKey) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -2274,7 +2269,7 @@ func (m *QuorumExpr) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *QuorumExpr) MarshalTo(data []byte) (n int, err error) {
+func (m *QuorumExpr) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -3022,7 +3017,7 @@ func (this *SignedEntryUpdate) String() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
@@ -3043,7 +3038,7 @@ func (this *Profile) String() string {
 	for k, _ := range this.Keys {
 		keysForKeys = append(keysForKeys, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Strings(keysForKeys)
+	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
 	mapStringForKeys := "map[string][]byte{"
 	for _, k := range keysForKeys {
 		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
@@ -3064,7 +3059,7 @@ func (this *SignedEpochHead) String() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
@@ -3111,7 +3106,7 @@ func (this *AuthorizationPolicy) String() string {
 	for k, _ := range this.PublicKeys {
 		keysForPublicKeys = append(keysForPublicKeys, k)
 	}
-	github_com_gogo_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
 	mapStringForPublicKeys := "map[uint64]*PublicKey{"
 	for _, k := range keysForPublicKeys {
 		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
@@ -3227,6 +3222,9 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3250,6 +3248,9 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3273,6 +3274,9 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -3319,6 +3323,9 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3346,6 +3353,9 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3370,6 +3380,9 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3393,6 +3406,9 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -3460,6 +3476,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3483,6 +3502,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3508,6 +3530,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3535,6 +3560,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3559,6 +3587,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3579,6 +3610,9 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -3624,6 +3658,9 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3647,6 +3684,9 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3669,6 +3709,9 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3688,6 +3731,9 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -3733,6 +3779,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3772,6 +3821,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3798,6 +3850,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -3817,6 +3872,9 @@ func (m *Entry) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -3863,6 +3921,9 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3887,6 +3948,9 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -3965,6 +4029,9 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4009,6 +4076,9 @@ func (m *Profile) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -4032,6 +4102,9 @@ func (m *Profile) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4115,6 +4188,9 @@ func (m *Profile) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4160,6 +4236,9 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4184,6 +4263,9 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4262,6 +4344,9 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4307,6 +4392,9 @@ func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4331,6 +4419,9 @@ func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4351,6 +4442,9 @@ func (m *TimestampedEpochHead) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -4434,6 +4528,9 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -4455,6 +4552,9 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 				if b < 0x80 {
 					break
 				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
 			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
@@ -4479,6 +4579,9 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4503,6 +4606,9 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4523,6 +4629,9 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -4569,6 +4678,9 @@ func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4622,6 +4734,9 @@ func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 				}
 			}
 			postmsgIndex := iNdEx + mapmsglen
+			if mapmsglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postmsgIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4652,6 +4767,9 @@ func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4675,6 +4793,9 @@ func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -4720,6 +4841,9 @@ func (m *PublicKey) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -4739,6 +4863,9 @@ func (m *PublicKey) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -4819,6 +4946,9 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthClient
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -4840,6 +4970,9 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 			skippy, err := skipClient(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthClient
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -4896,6 +5029,9 @@ func skipClient(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthClient
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -4934,3 +5070,7 @@ func skipClient(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthClient = fmt.Errorf("proto: negative length found during unmarshaling")
+)

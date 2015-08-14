@@ -4,22 +4,17 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 // discarding unused import gogoproto "gogoproto"
 
 import fmt "fmt"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 // KeyserverStep denotes the input to a single step of the keyserver state
 // machine. Serializable high-availability replication is achieved by
@@ -261,7 +256,7 @@ func valueToGoStringReplication(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringReplication(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringReplication(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -288,7 +283,7 @@ func (m *KeyserverStep) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *KeyserverStep) MarshalTo(data []byte) (n int, err error) {
+func (m *KeyserverStep) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -351,7 +346,7 @@ func (m *EpochDelimiter) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *EpochDelimiter) MarshalTo(data []byte) (n int, err error) {
+func (m *EpochDelimiter) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -636,6 +631,9 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -663,6 +661,9 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -690,6 +691,9 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -717,6 +721,9 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -740,6 +747,9 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			skippy, err := skipReplication(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthReplication
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -802,6 +812,9 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -822,6 +835,9 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 			skippy, err := skipReplication(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthReplication
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -878,6 +894,9 @@ func skipReplication(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthReplication
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -916,3 +935,7 @@ func skipReplication(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthReplication = fmt.Errorf("proto: negative length found during unmarshaling")
+)

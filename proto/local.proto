@@ -16,16 +16,21 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "replication.proto";
+import "client.proto";
 
 // ReplicaState contains the persistent internal state of a single replica.
 message ReplicaState {
+	// cached values derived purely from the state of the log
 	uint64 next_index_log = 1; // index of the next replicated state machine input to be processed
-	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers
+	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers (this MUST be deterministic because verifiers see it through new indices)
 	bytes previous_summary_hash = 3;
 	EpochDelimiter last_epoch_delimiter = 4 [(gogoproto.nullable) = false];
-	bool pending_updates = 5; // are there any updates after the last epoch delimiter?
-	uint64 latest_tree_snapshot = 6;
-	// NOTE: this definition is incomplete and subject to change as implementation progresses
+	SignedEpochHead last_signed_epoch_head = 5 [(gogoproto.nullable) = false];
+	bool pending_updates = 6; // are there any updates after the last epoch delimiter?
+
+	// local variables
+	uint64 latest_tree_snapshot = 7; // NOTE: this might be deterministic, but we definitely shouldn't rely on that
+	
 }
 
 // Verifier contains the persistent internal state of a verifier.

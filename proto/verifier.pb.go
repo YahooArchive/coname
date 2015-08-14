@@ -4,8 +4,6 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 // discarding unused import gogoproto "gogoproto"
 
 import (
@@ -16,15 +14,12 @@ import (
 import fmt "fmt"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
@@ -398,7 +393,7 @@ func valueToGoStringVerifier(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringVerifier(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringVerifier(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -425,7 +420,7 @@ func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *VerifierStreamRequest) MarshalTo(data []byte) (n int, err error) {
+func (m *VerifierStreamRequest) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -453,7 +448,7 @@ func (m *VerifierStep) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *VerifierStep) MarshalTo(data []byte) (n int, err error) {
+func (m *VerifierStep) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -491,7 +486,7 @@ func (m *Nothing) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
+func (m *Nothing) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -776,6 +771,9 @@ func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -821,6 +819,9 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthVerifier
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -848,6 +849,9 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthVerifier
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -871,6 +875,9 @@ func (m *VerifierStep) Unmarshal(data []byte) error {
 			skippy, err := skipVerifier(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -912,6 +919,9 @@ func (m *Nothing) Unmarshal(data []byte) error {
 			skippy, err := skipVerifier(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -968,6 +978,9 @@ func skipVerifier(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthVerifier
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -1006,3 +1019,7 @@ func skipVerifier(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthVerifier = fmt.Errorf("proto: negative length found during unmarshaling")
+)

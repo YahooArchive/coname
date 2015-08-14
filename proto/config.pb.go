@@ -4,23 +4,18 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 // discarding unused import gogoproto "gogoproto"
 
 import fmt "fmt"
 import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 type Config struct {
 	Realms []*RealmConfig `protobuf:"bytes,1,rep,name=realms" json:"realms,omitempty"`
@@ -249,7 +244,7 @@ func valueToGoStringConfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringConfig(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringConfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -276,7 +271,7 @@ func (m *Config) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Config) MarshalTo(data []byte) (n int, err error) {
+func (m *Config) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -306,7 +301,7 @@ func (m *RealmConfig) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *RealmConfig) MarshalTo(data []byte) (n int, err error) {
+func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -637,6 +632,9 @@ func (m *Config) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthConfig
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -658,6 +656,9 @@ func (m *Config) Unmarshal(data []byte) error {
 			skippy, err := skipConfig(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfig
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -769,6 +770,9 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthConfig
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -792,6 +796,9 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthConfig
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -818,6 +825,9 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthConfig
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -837,6 +847,9 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			skippy, err := skipConfig(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfig
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -893,6 +906,9 @@ func skipConfig(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthConfig
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -931,3 +947,7 @@ func skipConfig(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthConfig = fmt.Errorf("proto: negative length found during unmarshaling")
+)

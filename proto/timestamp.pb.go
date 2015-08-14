@@ -4,20 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 import fmt "fmt"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 // A Timestamp represents a point in time independent of any time zone
 // or calendar, represented as seconds and fractions of seconds at
@@ -160,7 +155,7 @@ func valueToGoStringTimestamp(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringTimestamp(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringTimestamp(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -187,7 +182,7 @@ func (m *Timestamp) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *Timestamp) MarshalTo(data []byte) (n int, err error) {
+func (m *Timestamp) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -428,6 +423,9 @@ func (m *Timestamp) Unmarshal(data []byte) error {
 			if err != nil {
 				return err
 			}
+			if skippy < 0 {
+				return ErrInvalidLengthTimestamp
+			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -483,6 +481,9 @@ func skipTimestamp(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthTimestamp
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -521,3 +522,7 @@ func skipTimestamp(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthTimestamp = fmt.Errorf("proto: negative length found during unmarshaling")
+)

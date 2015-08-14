@@ -7,28 +7,26 @@ package proto
 import testing "testing"
 import math_rand "math/rand"
 import time "time"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import github_com_gogo_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
 import fmt "fmt"
 import go_parser "go/parser"
-import proto1 "github.com/andres-erbsen/protobuf/proto"
 
 // discarding unused import gogoproto "gogoproto"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 func TestVerifierStreamRequestProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &VerifierStreamRequest{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
+	littlefuzz := make([]byte, len(data))
+	copy(littlefuzz, data)
 	for i := range data {
 		data[i] = byte(popr.Intn(256))
 	}
@@ -37,6 +35,15 @@ func TestVerifierStreamRequestProto(t *testing.T) {
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("%#v !Proto %#v", msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -53,7 +60,7 @@ func TestVerifierStreamRequestMarshalTo(t *testing.T) {
 		panic(err)
 	}
 	msg := &VerifierStreamRequest{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	for i := range data {
@@ -76,7 +83,7 @@ func BenchmarkVerifierStreamRequestProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -90,7 +97,7 @@ func BenchmarkVerifierStreamRequestProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedVerifierStreamRequest(popr, false))
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedVerifierStreamRequest(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -100,7 +107,7 @@ func BenchmarkVerifierStreamRequestProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -110,14 +117,16 @@ func BenchmarkVerifierStreamRequestProtoUnmarshal(b *testing.B) {
 func TestVerifierStepProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &VerifierStep{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
+	littlefuzz := make([]byte, len(data))
+	copy(littlefuzz, data)
 	for i := range data {
 		data[i] = byte(popr.Intn(256))
 	}
@@ -126,6 +135,15 @@ func TestVerifierStepProto(t *testing.T) {
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("%#v !Proto %#v", msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -142,7 +160,7 @@ func TestVerifierStepMarshalTo(t *testing.T) {
 		panic(err)
 	}
 	msg := &VerifierStep{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	for i := range data {
@@ -165,7 +183,7 @@ func BenchmarkVerifierStepProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -179,7 +197,7 @@ func BenchmarkVerifierStepProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedVerifierStep(popr, false))
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedVerifierStep(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -189,7 +207,7 @@ func BenchmarkVerifierStepProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -199,14 +217,16 @@ func BenchmarkVerifierStepProtoUnmarshal(b *testing.B) {
 func TestNothingProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Nothing{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
+	littlefuzz := make([]byte, len(data))
+	copy(littlefuzz, data)
 	for i := range data {
 		data[i] = byte(popr.Intn(256))
 	}
@@ -215,6 +235,15 @@ func TestNothingProto(t *testing.T) {
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("%#v !Proto %#v", msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -231,7 +260,7 @@ func TestNothingMarshalTo(t *testing.T) {
 		panic(err)
 	}
 	msg := &Nothing{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	for i := range data {
@@ -254,7 +283,7 @@ func BenchmarkNothingProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -268,7 +297,7 @@ func BenchmarkNothingProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedNothing(popr, false))
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedNothing(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -278,7 +307,7 @@ func BenchmarkNothingProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -288,13 +317,13 @@ func BenchmarkNothingProtoUnmarshal(b *testing.B) {
 func TestVerifierStreamRequestJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
+	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	msg := &VerifierStreamRequest{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,13 +337,13 @@ func TestVerifierStreamRequestJSON(t *testing.T) {
 func TestVerifierStepJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
+	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	msg := &VerifierStep{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,13 +357,13 @@ func TestVerifierStepJSON(t *testing.T) {
 func TestNothingJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
+	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	msg := &Nothing{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,9 +378,9 @@ func TestVerifierStreamRequestProtoText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
 	msg := &VerifierStreamRequest{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -366,9 +395,9 @@ func TestVerifierStreamRequestProtoCompactText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
 	msg := &VerifierStreamRequest{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -383,9 +412,9 @@ func TestVerifierStepProtoText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
 	msg := &VerifierStep{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -400,9 +429,9 @@ func TestVerifierStepProtoCompactText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
 	msg := &VerifierStep{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -417,9 +446,9 @@ func TestNothingProtoText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
 	msg := &Nothing{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -434,9 +463,9 @@ func TestNothingProtoCompactText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
 	msg := &Nothing{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -450,12 +479,12 @@ func TestNothingProtoCompactText(t *testing.T) {
 func TestVerifierStreamRequestVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &VerifierStreamRequest{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -465,12 +494,12 @@ func TestVerifierStreamRequestVerboseEqual(t *testing.T) {
 func TestVerifierStepVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &VerifierStep{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -480,12 +509,12 @@ func TestVerifierStepVerboseEqual(t *testing.T) {
 func TestNothingVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Nothing{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -521,8 +550,8 @@ func TestVerifierStepGoString(t *testing.T) {
 func TestVerifierStreamRequestSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -533,7 +562,7 @@ func TestVerifierStreamRequestSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
 	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
+	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
 	}
@@ -556,8 +585,8 @@ func BenchmarkVerifierStreamRequestSize(b *testing.B) {
 func TestVerifierStepSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierStep(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -568,7 +597,7 @@ func TestVerifierStepSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
 	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
+	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
 	}
@@ -591,8 +620,8 @@ func BenchmarkVerifierStepSize(b *testing.B) {
 func TestNothingSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedNothing(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -603,7 +632,7 @@ func TestNothingSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
 	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
+	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
 	}
