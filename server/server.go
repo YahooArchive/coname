@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -61,7 +60,7 @@ type Config struct {
 	UpdateAddr, LookupAddr, VerifierAddr string
 	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
 
-	MinEpochInterval, MaxEpochInterval, RetryEpochInterval time.Duration
+	MinEpochInterval, MaxEpochInterval, RetryProposalInterval time.Duration
 	// FIXME: tls.Config is not serializable, replicate relevant fields
 
 	TreeNonce []byte
@@ -83,25 +82,38 @@ type Keyserver struct {
 	updateServer, lookupServer, verifierServer *grpc.Server
 	updateListen, lookupListen, verifierListen net.Listener
 
-	minEpochInterval, maxEpochInterval, retryEpochInterval time.Duration
-
 	clk clock.Clock
-	// state used for determining whether we should start a new epoch.
-	// see replication.proto for explanation.
-	leaderHint, canEpoch, mustEpoch       bool
-	canEpochSet, mustEpochSet, retryEpoch *clock.Timer
-	// rs.PendingUpdates is used as well
+
+	minEpochInterval, maxEpochInterval, retryProposalInterval time.Duration
+
+	// epochProposer makes sure we try to advance epochs.
+	epochProposer *Proposer
+	// whether we should be advancing epochs is determined based on the
+	// following variables (sensitivity list wantEpochProposer) {
+	leaderHint bool
+
+	minEpochIntervalPassed, maxEpochIntervalPassed bool
+	minEpochIntervalTimer, maxEpochIntervalTimer   *clock.Timer
+	// rs.PendingUpdates
+	// rs.ThisReplicaNeedsToSignLastEpoch
+	// }
+
+	// signatureProposer makes sure we try to sign epochs.
+	signatureProposer *Proposer
+	// whether our signature is needed is determined by this sensitivity list {
+	// rs.ThisReplicaNeedsToSignLastEpoch
+	//}
 
 	vmb *VerifierBroadcast
 	wr  *WaitingRoom
 
 	stopOnce sync.Once
 	stop     chan struct{}
-	waitStop sync.WaitGroup
+	stopped  chan struct{}
 
 	merkletree *merkletree.MerkleTree
 
-	epochPendingUIDs map[uint64][]uint64
+	epochPending, signaturePending []uint64
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -113,27 +125,28 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	}
 
 	ks = &Keyserver{
-		realm:              cfg.Realm,
-		serverID:           cfg.ServerID,
-		replicaID:          cfg.ReplicaID,
-		sehKey:             cfg.RatificationKey,
-		vrfSecret:          cfg.VRFSecret,
-		minEpochInterval:   cfg.MinEpochInterval,
-		maxEpochInterval:   cfg.MaxEpochInterval,
-		retryEpochInterval: cfg.RetryEpochInterval,
-		db:                 db,
-		log:                log,
-		stop:               make(chan struct{}),
-		wr:                 NewWaitingRoom(),
+		realm:                 cfg.Realm,
+		serverID:              cfg.ServerID,
+		replicaID:             cfg.ReplicaID,
+		sehKey:                cfg.RatificationKey,
+		vrfSecret:             cfg.VRFSecret,
+		minEpochInterval:      cfg.MinEpochInterval,
+		maxEpochInterval:      cfg.MaxEpochInterval,
+		retryProposalInterval: cfg.RetryProposalInterval,
+		db:      db,
+		log:     log,
+		stop:    make(chan struct{}),
+		stopped: make(chan struct{}),
+		wr:      NewWaitingRoom(),
 
 		leaderHint: true,
 
-		clk:          clk,
-		canEpochSet:  clk.Timer(0),
-		mustEpochSet: clk.Timer(0),
-		retryEpoch:   clk.Timer(0),
+		clk: clk,
+		minEpochIntervalTimer: clk.Timer(0),
+		maxEpochIntervalTimer: clk.Timer(0),
 
-		epochPendingUIDs: make(map[uint64][]uint64),
+		epochPending:     make([]uint64, 0),
+		signaturePending: make([]uint64, 0),
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
@@ -146,7 +159,9 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	default:
 		return nil, err
 	}
+	ks.leaderHint = true
 	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
+	ks.updateEpochProposer()
 
 	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
@@ -211,8 +226,7 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
-	ks.waitStop.Add(1)
-	go func() { ks.run(); ks.waitStop.Done() }()
+	go ks.run()
 }
 
 // Stop cleanly shuts down the keyserver and then returns.
@@ -229,10 +243,11 @@ func (ks *Keyserver) Stop() {
 			ks.verifierServer.Stop()
 		}
 		close(ks.stop)
-		ks.waitStop.Wait()
-		ks.canEpochSet.Stop()
-		ks.mustEpochSet.Stop()
-		ks.retryEpoch.Stop()
+		<-ks.stopped
+		ks.minEpochIntervalTimer.Stop()
+		ks.maxEpochIntervalTimer.Stop()
+		ks.epochProposer.Stop()
+		ks.signatureProposer.Stop()
 		ks.log.Stop()
 	})
 }
@@ -242,6 +257,7 @@ func (ks *Keyserver) Stop() {
 // either interpret data and modify their mutable arguments OR interact with the
 // network and disk, but not both.
 func (ks *Keyserver) run() {
+	defer close(ks.stopped)
 	var step proto.KeyserverStep
 	wb := ks.db.NewBatch()
 	for {
@@ -269,17 +285,14 @@ func (ks *Keyserver) run() {
 				deferredIO()
 			}
 		case ks.leaderHint = <-ks.log.LeaderHintSet():
-			ks.maybeEpoch()
-		case <-ks.canEpochSet.C:
-			ks.canEpoch = true
-			ks.maybeEpoch()
-		case <-ks.mustEpochSet.C:
-			ks.mustEpoch = true
-			ks.maybeEpoch()
-		case <-ks.retryEpoch.C:
-			ks.maybeEpoch()
+			ks.updateEpochProposer()
+		case <-ks.minEpochIntervalTimer.C:
+			ks.minEpochIntervalPassed = true
+			ks.updateEpochProposer()
+		case <-ks.maxEpochIntervalTimer.C:
+			ks.maxEpochIntervalPassed = true
+			ks.updateEpochProposer()
 		}
-		runtime.Gosched()
 	}
 }
 
@@ -315,12 +328,13 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
-		rs.PendingUpdates = true
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
 		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
-		uids := ks.epochPendingUIDs[epochNr] // fine if nil
-		uids = append(uids, step.UID)
-		ks.epochPendingUIDs[epochNr] = uids
+		ks.epochPending = append(ks.epochPending, step.UID)
+
+		rs.PendingUpdates = true
+		ks.updateEpochProposer()
+
 		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
@@ -328,8 +342,13 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return // a duplicate of this step has already been handled
 		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
+
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
+		rs.ThisReplicaNeedsToSignLastEpoch = true
+		ks.updateEpochProposer()
+		ks.signaturePending, ks.epochPending = ks.epochPending, nil
+		deferredIO = ks.updateSignatureProposer
 
 		snapshotNumberBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
@@ -350,64 +369,62 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				}, nil},
 				Timestamp: step.EpochDelimiter.Timestamp,
 			}, nil},
-			Signatures: make(map[uint64][]byte, 1),
+			Signatures: make(map[uint64][]byte),
 		}
-
 		seh.Head.Head.UpdateEncoding()
 		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
 		rs.PreviousSummaryHash = h[:]
-
 		seh.Head.UpdateEncoding()
-		seh.Signatures[ks.replicaID] = ed25519.Sign(ks.sehKey, proto.MustMarshal(&seh.Head))[:]
-		ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
-		// TODO: Propose may fail silently when replicas crash. We want to
-		// keep retrying ReplicaRatifications because if not enough of
-		// them go in, the epoch will not be properly signed. Note that it
-		// is okay to create new epochs while we dont have signatures for the
-		// last one, but we must eventually sign all of them, otherwise
-		// verifiers will block indefinitely. It may or may not be worth
-		// unifying this with epoch delimiter retry logic -- we need one epoch
-		// delimiter per cluster but a majority of replicas need to sign.
+
+		wb.Put(tableRatifications(step.EpochDelimiter.EpochNumber, ks.serverID), proto.MustMarshal(seh))
 
 	case step.ReplicaSigned != nil:
-		rNew := step.ReplicaSigned
-		dbkey := tableRatifications(rNew.Head.Head.Epoch, ks.serverID)
-		switch rExistingBytes, err := ks.db.Get(dbkey); err {
-		default: // not nil and not ignored
-			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", rNew.Head.Head.Epoch, ks.serverID, err)
-		case ks.db.ErrNotFound():
-			wb.Put(dbkey, proto.MustMarshal(rNew))
-		case nil:
-			rExisting := new(proto.SignedEpochHead)
-			if err := rExisting.Unmarshal(rExistingBytes); err != nil {
-				log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s", rNew.Head.Head.Epoch, ks.serverID, err)
+		newSEH := step.ReplicaSigned
+		dbkey := tableRatifications(newSEH.Head.Head.Epoch, ks.serverID)
+		sehBytes, err := ks.db.Get(dbkey)
+		if err != nil {
+			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", newSEH.Head.Head.Epoch, ks.serverID, err)
+		}
+		seh := new(proto.SignedEpochHead)
+		if err := seh.Unmarshal(sehBytes); err != nil {
+			log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s",
+				newSEH.Head.Head.Epoch, ks.serverID, err)
+		}
+		if !seh.Head.Equal(newSEH.Head) {
+			log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)",
+				newSEH.Head.Head.Epoch, ks.serverID, seh.Head.VerboseEqual(newSEH.Head), seh.Head, newSEH.Head)
+		}
+
+		if seh.Signatures == nil {
+			seh.Signatures = make(map[uint64][]byte, 1)
+		}
+		for id, sig := range newSEH.Signatures {
+			if _, already := seh.Signatures[id]; !already {
+				seh.Signatures[id] = sig
 			}
-			if !rExisting.Head.Equal(rNew.Head) {
-				log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)", rNew.Head.Head.Epoch, ks.serverID, rExisting.Head.VerboseEqual(rNew.Head), rExisting.Head, rNew.Head)
-			}
-			for id, sig := range rNew.Signatures {
-				if _, already := rExisting.Signatures[id]; !already {
-					rExisting.Signatures[id] = sig
-				}
-			}
-			wb.Put(dbkey, proto.MustMarshal(rExisting))
-			rNew = rExisting
+		}
+		log.Print(seh)
+		wb.Put(dbkey, proto.MustMarshal(seh))
+
+		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
+			rs.ThisReplicaNeedsToSignLastEpoch = false
+			ks.updateEpochProposer()
+			// updateSignatureProposer should in general be called after writes
+			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
+			// false we know that updateSignatureProposer will not access the db.
+			ks.updateSignatureProposer()
 		}
 		// TODO: check against the cluster configuration that the signatures we
 		// have are sufficient to pass verification. For now, 1 is a majority of 1.
 		// Only put signatures into the verifier log once.
 		if true {
-			// FIXME: make sure sehs in verifier log are ordered by epoch
-			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: rNew}, rs, wb)
-			epochNr := rNew.Head.Head.Epoch
+			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: seh}, rs, wb)
 			return func() {
 				notifyVerifiers()
-				if uids, ok := ks.epochPendingUIDs[epochNr]; ok {
-					for _, uid := range uids {
-						ks.wr.Notify(uid, nil)
-					}
-					delete(ks.epochPendingUIDs, epochNr)
+				for _, uid := range ks.signaturePending {
+					ks.wr.Notify(uid, nil)
 				}
+				ks.signaturePending = nil
 			}
 		}
 
@@ -428,34 +445,120 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	return
 }
 
-// shouldEpoch returns true if this node should append an epoch delimiter to the
-// log. see replication.proto for details.
-func (ks *Keyserver) shouldEpoch() bool {
-	return ks.leaderHint && (ks.mustEpoch || ks.canEpoch && ks.rs.PendingUpdates)
+type Proposer struct {
+	log      replication.LogReplicator
+	clk      clock.Clock
+	delay    time.Duration
+	proposal []byte
+
+	stop     chan struct{}
+	stopped  chan struct{}
+	stopOnce sync.Once
 }
 
-// maybeEpoch proposes an epoch delimiter for inclusion in the log if necessary.
-func (ks *Keyserver) maybeEpoch() {
-	if !ks.shouldEpoch() {
+func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal []byte) *Proposer {
+	p := &Proposer{
+		log:      log,
+		clk:      clk,
+		delay:    initialDelay,
+		proposal: proposal,
+		stop:     make(chan struct{}),
+		stopped:  make(chan struct{}),
+	}
+	go p.run()
+	return p
+}
+
+func (p *Proposer) Stop() {
+	if p == nil {
 		return
 	}
-	ks.log.Propose(context.TODO(), proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
-		EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
-		Timestamp:   proto.Time(ks.clk.Now()),
-	}}))
-	ks.canEpochSet.Stop()
-	ks.mustEpochSet.Stop()
-	ks.retryEpoch.Reset(ks.retryEpochInterval)
+	p.stopOnce.Do(func() {
+		close(p.stop)
+		<-p.stopped
+	})
+}
+
+func (p *Proposer) run() {
+	defer close(p.stopped)
+	timer := p.clk.Timer(0)
+	for {
+		select {
+		case <-timer.C:
+			p.log.Propose(context.TODO(), p.proposal)
+			timer.Reset(p.delay)
+			p.delay = p.delay * 2
+		case <-p.stop:
+			return
+		}
+	}
+}
+
+// shouldEpoch returns true if this node should append an epoch delimiter to the
+// log.
+func (ks *Keyserver) wantEpochProposer() bool {
+	if ks.rs.ThisReplicaNeedsToSignLastEpoch {
+		return false
+	}
+	return ks.leaderHint && (ks.maxEpochIntervalPassed || ks.minEpochIntervalPassed && ks.rs.PendingUpdates)
+}
+
+// updateEpochProposer either starts or stops the epoch delimiter proposer as necessary.
+func (ks *Keyserver) updateEpochProposer() {
+	want := ks.wantEpochProposer()
+	have := ks.epochProposer != nil
+	if have == want {
+		return
+	}
+
+	switch want {
+	case true:
+		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
+			proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
+				EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
+				Timestamp:   proto.Time(ks.clk.Now()),
+			}}))
+	case false:
+		ks.epochProposer.Stop()
+		ks.epochProposer = nil
+	}
+}
+
+func (ks *Keyserver) updateSignatureProposer() {
+	// invariant: do not access the db if ThisReplicaNeedsToSignLastEpoch = false
+	want := ks.rs.ThisReplicaNeedsToSignLastEpoch
+	have := ks.signatureProposer != nil
+	if have == want {
+		return
+	}
+
+	switch want {
+	case true:
+		sehBytes, err := ks.db.Get(tableRatifications(ks.rs.LastEpochDelimiter.EpochNumber, ks.serverID))
+		if err != nil {
+			log.Panicf("ThisReplicaSignedLastEpoch but no SEH for last epoch in db", err)
+		}
+		seh := new(proto.SignedEpochHead)
+		if err := seh.Unmarshal(sehBytes); err != nil {
+			log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s", ks.rs.LastEpochDelimiter.EpochNumber, ks.serverID, err)
+		}
+		seh.Signatures = map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, seh.Head.PreservedEncoding)[:]}
+		ks.signatureProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
+			proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
+	case false:
+		ks.signatureProposer.Stop()
+		ks.signatureProposer = nil
+	}
 }
 
 func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	t2 := t.Add(ks.minEpochInterval)
 	d := t2.Sub(ks.clk.Now())
-	ks.canEpochSet.Reset(d)
-	ks.mustEpochSet.Reset(d)
-	ks.retryEpoch.Stop()
-	ks.canEpoch = false
-	ks.mustEpoch = false
+	ks.minEpochIntervalTimer.Reset(d)
+	ks.maxEpochIntervalTimer.Reset(d)
+	ks.minEpochIntervalPassed = false
+	ks.maxEpochIntervalPassed = false
+	// caller MUST call updateEpochProposer
 }
 
 func genUID() uint64 {

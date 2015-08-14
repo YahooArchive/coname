@@ -7,26 +7,24 @@ package proto
 import testing "testing"
 import math_rand "math/rand"
 import time "time"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import github_com_gogo_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
 import fmt "fmt"
 import go_parser "go/parser"
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 func TestDurationProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Duration{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
+	littlefuzz := make([]byte, len(data))
+	copy(littlefuzz, data)
 	for i := range data {
 		data[i] = byte(popr.Intn(256))
 	}
@@ -35,6 +33,15 @@ func TestDurationProto(t *testing.T) {
 	}
 	if !p.Equal(msg) {
 		t.Fatalf("%#v !Proto %#v", msg, p)
+	}
+	if len(littlefuzz) > 0 {
+		fuzzamount := 100
+		for i := 0; i < fuzzamount; i++ {
+			littlefuzz[popr.Intn(len(littlefuzz))] = byte(popr.Intn(256))
+			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
+		}
+		// shouldn't panic
+		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -51,7 +58,7 @@ func TestDurationMarshalTo(t *testing.T) {
 		panic(err)
 	}
 	msg := &Duration{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	for i := range data {
@@ -74,7 +81,7 @@ func BenchmarkDurationProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -88,7 +95,7 @@ func BenchmarkDurationProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedDuration(popr, false))
+		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedDuration(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -98,7 +105,7 @@ func BenchmarkDurationProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -108,13 +115,13 @@ func BenchmarkDurationProtoUnmarshal(b *testing.B) {
 func TestDurationJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, true)
-	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
+	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	msg := &Duration{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,9 +136,9 @@ func TestDurationProtoText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, true)
-	data := github_com_gogo_protobuf_proto.MarshalTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
 	msg := &Duration{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -146,9 +153,9 @@ func TestDurationProtoCompactText(t *testing.T) {
 	t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, true)
-	data := github_com_gogo_protobuf_proto.CompactTextString(p)
+	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
 	msg := &Duration{}
-	if err := github_com_gogo_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -162,12 +169,12 @@ func TestDurationProtoCompactText(t *testing.T) {
 func TestDurationVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, false)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Duration{}
-	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -190,8 +197,8 @@ func TestDurationGoString(t *testing.T) {
 func TestDurationSize(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, true)
-	size2 := github_com_gogo_protobuf_proto.Size(p)
-	data, err := github_com_gogo_protobuf_proto.Marshal(p)
+	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
@@ -202,7 +209,7 @@ func TestDurationSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("size %v != before marshal proto.Size %v", size, size2)
 	}
-	size3 := github_com_gogo_protobuf_proto.Size(p)
+	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("size %v != after marshal proto.Size %v", size, size3)
 	}

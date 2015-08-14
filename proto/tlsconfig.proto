@@ -1,0 +1,133 @@
+syntax = "proto3";
+package proto;
+
+// TLSConfig structure is used to configure a TLS client or server.
+message TLSConfig {
+    // Certificates contains one or more certificate chains
+    // to present to the other side of the connection.
+    // Server configurations must include at least one certificate.
+	// The 
+    repeated CertificateAndKeyID certificates = 1;
+
+    // NameToCertificate maps from a certificate name to an element of
+    // Certificates. Note that a certificate name can be of the form
+    // '*.example.com' and so doesn't have to be a domain name as such.
+    // See Config.BuildNameToCertificate
+    // The nil value causes the first element of Certificates to be used
+    // for all connections.
+    // map<string, CertificateAndKeyID> name_to_certificate = 2;
+
+    // RootCAs defines the set of root certificate authorities
+    // that clients use when verifying server certificates.
+    // If RootCAs is nil, TLS uses the host's root CA set.
+	// The certificates are expected in DER format.
+    repeated bytes root_CAs = 3;
+
+    // NextProtos is a list of supported, application level protocols.
+    repeated string next_protos = 4;
+
+    // ServerName is used to verify the hostname on the returned
+	// certificates. It is also included in the client's handshake to support
+	// virtual hosting.
+    string server_name = 5;
+
+    // ClientAuth determines the server's policy for
+    // TLS Client Authentication. The default is NoClientCert.
+    ClientAuthType client_auth  = 6;
+
+	// ClientCAs defines the set of root certificate authorities that servers
+	// use if required to verify a client certificate by the policy in
+	// ClientAuth. The certificates are expected in DER format.
+    repeated bytes client_CAs = 7;
+
+    // CipherSuites is a list of supported cipher suites. If CipherSuites
+    // is nil, TLS uses a list of suites supported by the implementation.
+    repeated CipherSuite cipher_suites = 8;
+
+    // PreferServerCipherSuites controls whether the server selects the
+    // client's most preferred ciphersuite, or the server's most preferred
+    // ciphersuite. If true then the server's preference, as expressed in
+    // the order of elements in CipherSuites, is used.
+    bool prefer_server_cipher_suites = 9;
+
+	// SessionTicketsEnabled may be set to true to enable session ticket
+	// (resumption) support. Enabling session tickets limits forward secrecy to
+	// until after the lifetime of the session ticket key (which, by default,
+	// lives as long as the server process).
+    bool session_tickets_enabled = 10;
+
+	// SessionTicketKey (32 bytes) is used by TLS servers to provide session
+	// resumption. See RFC 5077. If zero, it will be filled with random data
+	// before the first server handshake.
+    //
+    // If multiple servers are terminating connections for the same host
+    // they should all have the same SessionTicketKey. If the
+    // SessionTicketKey leaks, previously recorded and future TLS
+    // connections using that key are compromised.
+    bytes session_ticket_key_id = 11;
+
+    // MinVersion contains the minimum SSL/TLS version that is acceptable.
+    // If zero, then SSLv3 is taken as the minimum.
+    TLSVersion min_version = 12;
+
+    // MaxVersion contains the maximum SSL/TLS version that is acceptable.
+    // If zero, then the maximum version supported by this package is used,
+    // which is currently TLS 1.2.
+    TLSVersion max_version = 13;
+
+    // CurvePreferences contains the elliptic curves that will be used in
+    // an ECDHE handshake, in preference order. If empty, the default will
+    // be used.
+    repeated CurveID curve_preferences = 14;
+}
+
+message CertificateAndKeyID {
+	// Certificate contains the public certificate in DER format.
+	bytes certificate = 1;
+	string key_id = 2;
+}
+
+enum TLSVersion {
+    TLSVersion_UNSPECIFIED = 0;
+
+    VERSION_SSL30 = 0x0300;
+    VERSION_TLS10 = 0x0301;
+    VERSION_TLS11 = 0x0302;
+    VERSION_TLS12 = 0x0303;
+}
+
+enum ClientAuthType {
+    NO_CLIENT_CERT = 0;
+    REQUEST_CLIENT_CERT = 1;
+    REQUIRE_ANY_CLIENT_CERT = 2;
+    VERIFY_CLIENT_CERT_IF_GIVEN = 3;
+    REQUIRE_AND_VERIFY_CLIENT_CERT = 4;
+}
+
+enum CipherSuite {
+    CipherSuite_UNSPECIFIED = 0;
+
+    TLS_RSA_WITH_RC4_128_SHA                = 0x0005;
+    TLS_RSA_WITH_3DES_EDE_CBC_SHA           = 0x000a;
+    TLS_RSA_WITH_AES_128_CBC_SHA            = 0x002f;
+    TLS_RSA_WITH_AES_256_CBC_SHA            = 0x0035;
+    TLS_ECDHE_ECDSA_WITH_RC4_128_SHA        = 0xc007;
+    TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA    = 0xc009;
+    TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA    = 0xc00a;
+    TLS_ECDHE_RSA_WITH_RC4_128_SHA          = 0xc011;
+    TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA     = 0xc012;
+    TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA      = 0xc013;
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA      = 0xc014;
+    TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   = 0xc02f;
+    TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 = 0xc02b;
+
+	TLS_FALLBACK_SCSV = 0x5600;
+}
+
+enum CurveID {
+    CurveID_UNSPECIFIED = 0;
+
+    P256 = 23;
+    P384 = 24;
+    P521 = 25;
+}

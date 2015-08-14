@@ -4,32 +4,30 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
-
 // discarding unused import gogoproto "gogoproto"
 
 import fmt "fmt"
 import bytes "bytes"
 
 import strings "strings"
-import github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
 
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
-
 // ReplicaState contains the persistent internal state of a single replica.
 type ReplicaState struct {
-	NextIndexLog        uint64         `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
-	NextIndexVerifier   uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
-	PreviousSummaryHash []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
-	LastEpochDelimiter  EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
-	PendingUpdates      bool           `protobuf:"varint,5,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
-	LatestTreeSnapshot  uint64         `protobuf:"varint,6,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	// cached values derived purely from the state of the log
+	NextIndexLog                    uint64         `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
+	NextIndexVerifier               uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
+	PreviousSummaryHash             []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	LastEpochDelimiter              EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
+	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
+	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	// local variables
+	LatestTreeSnapshot uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
 }
 
 func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
@@ -85,6 +83,9 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
 		return fmt.Errorf("LastEpochDelimiter this(%v) Not Equal that(%v)", this.LastEpochDelimiter, that1.LastEpochDelimiter)
 	}
+	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
+		return fmt.Errorf("ThisReplicaNeedsToSignLastEpoch this(%v) Not Equal that(%v)", this.ThisReplicaNeedsToSignLastEpoch, that1.ThisReplicaNeedsToSignLastEpoch)
+	}
 	if this.PendingUpdates != that1.PendingUpdates {
 		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
 	}
@@ -123,6 +124,9 @@ func (this *ReplicaState) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
+		return false
+	}
+	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
 		return false
 	}
 	if this.PendingUpdates != that1.PendingUpdates {
@@ -210,6 +214,7 @@ func (this *ReplicaState) GoString() string {
 		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
 		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
 		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
+		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch),
 		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates),
 		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot) + `}`}, ", ")
 	return s
@@ -233,7 +238,7 @@ func valueToGoStringLocal(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringLocal(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
+func extensionToGoStringLocal(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -260,7 +265,7 @@ func (m *ReplicaState) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
+func (m *ReplicaState) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -291,8 +296,18 @@ func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
 		return 0, err
 	}
 	i += n1
-	if m.PendingUpdates {
+	if m.ThisReplicaNeedsToSignLastEpoch {
 		data[i] = 0x28
+		i++
+		if m.ThisReplicaNeedsToSignLastEpoch {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.PendingUpdates {
+		data[i] = 0x30
 		i++
 		if m.PendingUpdates {
 			data[i] = 1
@@ -302,7 +317,7 @@ func (m *ReplicaState) MarshalTo(data []byte) (n int, err error) {
 		i++
 	}
 	if m.LatestTreeSnapshot != 0 {
-		data[i] = 0x30
+		data[i] = 0x38
 		i++
 		i = encodeVarintLocal(data, i, uint64(m.LatestTreeSnapshot))
 	}
@@ -319,7 +334,7 @@ func (m *VerifierState) Marshal() (data []byte, err error) {
 	return data[:n], nil
 }
 
-func (m *VerifierState) MarshalTo(data []byte) (n int, err error) {
+func (m *VerifierState) MarshalTo(data []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
@@ -388,6 +403,7 @@ func NewPopulatedReplicaState(r randyLocal, easy bool) *ReplicaState {
 	}
 	v2 := NewPopulatedEpochDelimiter(r, easy)
 	this.LastEpochDelimiter = *v2
+	this.ThisReplicaNeedsToSignLastEpoch = bool(bool(r.Intn(2) == 0))
 	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
 	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
@@ -499,6 +515,9 @@ func (m *ReplicaState) Size() (n int) {
 	}
 	l = m.LastEpochDelimiter.Size()
 	n += 1 + l + sovLocal(uint64(l))
+	if m.ThisReplicaNeedsToSignLastEpoch {
+		n += 2
+	}
 	if m.PendingUpdates {
 		n += 2
 	}
@@ -551,6 +570,7 @@ func (this *ReplicaState) String() string {
 		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
 		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
+		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
 		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
 		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
 		`}`,
@@ -645,6 +665,9 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthLocal
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -668,6 +691,9 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				}
 			}
 			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthLocal
+			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
@@ -676,6 +702,23 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ThisReplicaNeedsToSignLastEpoch", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ThisReplicaNeedsToSignLastEpoch = bool(v != 0)
+		case 6:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PendingUpdates", wireType)
 			}
@@ -692,7 +735,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				}
 			}
 			m.PendingUpdates = bool(v != 0)
-		case 6:
+		case 7:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LatestTreeSnapshot", wireType)
 			}
@@ -721,6 +764,9 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			skippy, err := skipLocal(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthLocal
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -798,6 +844,9 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 					break
 				}
 			}
+			if byteLen < 0 {
+				return ErrInvalidLengthLocal
+			}
 			postIndex := iNdEx + byteLen
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
@@ -833,6 +882,9 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 			skippy, err := skipLocal(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthLocal
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -889,6 +941,9 @@ func skipLocal(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthLocal
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -927,3 +982,7 @@ func skipLocal(data []byte) (n int, err error) {
 	}
 	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthLocal = fmt.Errorf("proto: negative length found during unmarshaling")
+)
