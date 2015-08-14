@@ -9,6 +9,7 @@
 		client.proto
 		config.proto
 		duration.proto
+		keyserverconfig.proto
 		local.proto
 		replication.proto
 		timestamp.proto

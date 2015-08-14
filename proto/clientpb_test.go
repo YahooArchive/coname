@@ -9,6 +9,7 @@ It is generated from these files:
 	client.proto
 	config.proto
 	duration.proto
+	keyserverconfig.proto
 	local.proto
 	replication.proto
 	timestamp.proto

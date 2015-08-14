@@ -15,9 +15,9 @@
 package server
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -39,31 +39,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-// TODO: make this a protobuf, Unmarshal from JSON
-type Replica struct {
-	PublicKey *proto.PublicKey
-	Address   string // host:port
-}
-
-// Config encapsulates everything that needs to be specified about a single
-// replica of one realm's keyserver to operate it.
-// TODO: make this a protobuf, Unmarshal from JSON
-type Config struct {
-	Realm string
-
-	ServerID, ReplicaID uint64
-	RatificationKey     *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	VRFSecret           *[vrf.SecretKeySize]byte
-
-	UpdateAddr, LookupAddr, VerifierAddr string
-	UpdateTLS, LookupTLS, VerifierTLS    *tls.Config
-
-	MinEpochInterval, MaxEpochInterval, RetryProposalInterval time.Duration
-	// FIXME: tls.Config is not serializable, replicate relevant fields
-
-	TreeNonce []byte
-}
 
 // Keyserver manages a single end-to-end keyserver realm.
 type Keyserver struct {
@@ -117,16 +92,37 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error)) (ks *Keyserver, err error) {
+	signingKey, err := getKey(cfg.SigningKeyID)
+	if err != nil {
+		return nil, err
+	}
+	vrfKey, err := getKey(cfg.VRFKeyID)
+	if err != nil {
+		return nil, err
+	}
+	lookupTLS, err := cfg.VerifierTLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+	updateTLS, err := cfg.VerifierTLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+	verifierTLS, err := cfg.VerifierTLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+
 	ks = &Keyserver{
 		realm:                 cfg.Realm,
 		serverID:              cfg.ServerID,
 		replicaID:             cfg.ReplicaID,
-		sehKey:                cfg.RatificationKey,
-		vrfSecret:             cfg.VRFSecret,
-		minEpochInterval:      cfg.MinEpochInterval,
-		maxEpochInterval:      cfg.MaxEpochInterval,
-		retryProposalInterval: cfg.RetryProposalInterval,
+		sehKey:                signingKey.(*[ed25519.PrivateKeySize]byte),
+		vrfSecret:             vrfKey.(*[vrf.SecretKeySize]byte),
+		minEpochInterval:      cfg.MinEpochInterval.Duration(),
+		maxEpochInterval:      cfg.MaxEpochInterval.Duration(),
+		retryProposalInterval: cfg.ProposalRetryInterval.Duration(),
 		db:      db,
 		log:     log,
 		stop:    make(chan struct{}),
@@ -161,7 +157,7 @@ func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock)
 
 	ok := false
 	if cfg.UpdateAddr != "" {
-		ks.updateServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.UpdateTLS)))
+		ks.updateServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(updateTLS)))
 		proto.RegisterE2EKSUpdateServer(ks.updateServer, ks)
 		ks.updateListen, err = net.Listen("tcp", cfg.UpdateAddr)
 		if err != nil {
@@ -174,7 +170,7 @@ func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock)
 		}()
 	}
 	if cfg.LookupAddr != "" {
-		ks.lookupServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.LookupTLS)))
+		ks.lookupServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(lookupTLS)))
 		proto.RegisterE2EKSLookupServer(ks.lookupServer, ks)
 		ks.lookupListen, err = net.Listen("tcp", cfg.LookupAddr)
 		if err != nil {
@@ -187,7 +183,7 @@ func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock)
 		}()
 	}
 	if cfg.VerifierAddr != "" {
-		ks.verifierServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(cfg.VerifierTLS)))
+		ks.verifierServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(verifierTLS)))
 		proto.RegisterE2EKSVerificationServer(ks.verifierServer, ks)
 		ks.verifierListen, err = net.Listen("tcp", cfg.VerifierAddr)
 		if err != nil {
@@ -199,7 +195,7 @@ func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock)
 			}
 		}()
 	}
-	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, cfg.TreeNonce)
+	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, nil)
 	if err != nil {
 		return nil, err
 	}

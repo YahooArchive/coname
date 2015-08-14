@@ -1,5 +1,6 @@
 syntax = "proto3";
 package proto;
+import "gogoproto/gogo.proto";
 
 // TLSConfig structure is used to configure a TLS client or server.
 message TLSConfig {
@@ -21,7 +22,7 @@ message TLSConfig {
     // that clients use when verifying server certificates.
     // If RootCAs is nil, TLS uses the host's root CA set.
 	// The certificates are expected in DER format.
-    repeated bytes root_CAs = 3;
+    repeated bytes root_cas = 3 [(gogoproto.customname) = "RootCAs"];
 
     // NextProtos is a list of supported, application level protocols.
     repeated string next_protos = 4;
@@ -38,7 +39,7 @@ message TLSConfig {
 	// ClientCAs defines the set of root certificate authorities that servers
 	// use if required to verify a client certificate by the policy in
 	// ClientAuth. The certificates are expected in DER format.
-    repeated bytes client_CAs = 7;
+    repeated bytes client_cas = 7 [(gogoproto.customname) = "ClientCAs"];
 
     // CipherSuites is a list of supported cipher suites. If CipherSuites
     // is nil, TLS uses a list of suites supported by the implementation.
@@ -64,7 +65,7 @@ message TLSConfig {
     // they should all have the same SessionTicketKey. If the
     // SessionTicketKey leaks, previously recorded and future TLS
     // connections using that key are compromised.
-    bytes session_ticket_key_id = 11;
+    string session_ticket_key_id = 11 [(gogoproto.customname) = "SessionTicketKeyID"];
 
     // MinVersion contains the minimum SSL/TLS version that is acceptable.
     // If zero, then SSLv3 is taken as the minimum.
@@ -82,9 +83,10 @@ message TLSConfig {
 }
 
 message CertificateAndKeyID {
-	// Certificate contains the public certificate in DER format.
-	bytes certificate = 1;
-	string key_id = 2;
+	// Certificate contains the public certificates in DER format, leaf first.
+	repeated bytes certificate = 1;
+	string key_id = 2 [(gogoproto.customname) = "KeyID"];
+	bytes OCSP_staple = 3;
 }
 
 enum TLSVersion {
