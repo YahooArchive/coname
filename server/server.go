@@ -77,23 +77,28 @@ type Keyserver struct {
 	updateServer, lookupServer, verifierServer *grpc.Server
 	updateListen, lookupListen, verifierListen net.Listener
 
+	clk clock.Clock
+
 	minEpochInterval, maxEpochInterval, retryEpochInterval time.Duration
 
-	clk clock.Clock
-	// state used for determining whether we should start a new epoch.
-	// see replication.proto for explanation.
-	leaderHint, canEpoch, mustEpoch bool
-	leaderHintSet                   <-chan bool
-	canEpochSet, mustEpochSet       *clock.Timer
-	// rs.PendingUpdates is used as well
+	// epochProposer makes sure we try to advance epochs.
 	epochProposer *Proposer
+	// whether we should be advancing epochs is determined based on the
+	// following variables (sensitivity list wantEpochProposer) {
+	leaderHint    bool
+	leaderHintSet <-chan bool
+
+	minEpochIntervalPassed, maxEpochIntervalPassed bool
+	minEpochIntervalTimer, maxEpochIntervalTimer   *clock.Timer
+	// rs.PendingUpdates
+	// }
 
 	vmb *VerifierBroadcast
 	wr  *WaitingRoom
 
 	stopOnce sync.Once
 	stop     chan struct{}
-	waitStop sync.WaitGroup
+	stopped  chan struct{}
 
 	merkletree *merkletree.MerkleTree
 
@@ -120,15 +125,15 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 		db:                 db,
 		log:                log,
 		stop:               make(chan struct{}),
+		stopped:            make(chan struct{}),
 		wr:                 NewWaitingRoom(),
 
 		// TODO: change when using actual replication
-		leaderHint:    true,
 		leaderHintSet: nil,
 
-		clk:          clk,
-		canEpochSet:  clk.Timer(0),
-		mustEpochSet: clk.Timer(0),
+		clk: clk,
+		minEpochIntervalTimer: clk.Timer(0),
+		maxEpochIntervalTimer: clk.Timer(0),
 
 		epochPendingUIDs: make(map[uint64][]uint64),
 	}
@@ -143,7 +148,9 @@ func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
 	default:
 		return nil, err
 	}
+	ks.leaderHint = true
 	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
+	ks.updateEpochProposer()
 
 	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
@@ -208,8 +215,7 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
-	ks.waitStop.Add(1)
-	go func() { ks.run(); ks.waitStop.Done() }()
+	go ks.run()
 }
 
 // Stop cleanly shuts down the keyserver and then returns.
@@ -226,9 +232,10 @@ func (ks *Keyserver) Stop() {
 			ks.verifierServer.Stop()
 		}
 		close(ks.stop)
-		ks.waitStop.Wait()
-		ks.canEpochSet.Stop()
-		ks.mustEpochSet.Stop()
+		<-ks.stopped
+		ks.minEpochIntervalTimer.Stop()
+		ks.maxEpochIntervalTimer.Stop()
+		ks.epochProposer.Stop()
 		ks.log.Stop()
 	})
 }
@@ -238,6 +245,7 @@ func (ks *Keyserver) Stop() {
 // either interpret data and modify their mutable arguments OR interact with the
 // network and disk, but not both.
 func (ks *Keyserver) run() {
+	defer close(ks.stopped)
 	var step proto.KeyserverStep
 	wb := ks.db.NewBatch()
 	for {
@@ -265,13 +273,13 @@ func (ks *Keyserver) run() {
 				deferredIO()
 			}
 		case ks.leaderHint = <-ks.leaderHintSet:
-			ks.maybeEpoch()
-		case <-ks.canEpochSet.C:
-			ks.canEpoch = true
-			ks.maybeEpoch()
-		case <-ks.mustEpochSet.C:
-			ks.mustEpoch = true
-			ks.maybeEpoch()
+			ks.updateEpochProposer()
+		case <-ks.minEpochIntervalTimer.C:
+			ks.minEpochIntervalPassed = true
+			ks.updateEpochProposer()
+		case <-ks.maxEpochIntervalTimer.C:
+			ks.maxEpochIntervalPassed = true
+			ks.updateEpochProposer()
 		}
 		runtime.Gosched()
 	}
@@ -309,12 +317,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
-		rs.PendingUpdates = true
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
 		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
 		uids := ks.epochPendingUIDs[epochNr] // fine if nil
 		uids = append(uids, step.UID)
 		ks.epochPendingUIDs[epochNr] = uids
+
+		rs.PendingUpdates = true
+		ks.updateEpochProposer()
+
 		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
 
 	case step.EpochDelimiter != nil:
@@ -322,8 +333,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return // a duplicate of this step has already been handled
 		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
+
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
+		ks.updateEpochProposer()
 
 		snapshotNumberBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
@@ -427,7 +440,10 @@ type Proposer struct {
 	clk      clock.Clock
 	delay    time.Duration
 	proposal []byte
+
 	stop     chan struct{}
+	stopped  chan struct{}
+	stopOnce sync.Once
 }
 
 func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal []byte) *Proposer {
@@ -437,16 +453,24 @@ func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay 
 		delay:    initialDelay,
 		proposal: proposal,
 		stop:     make(chan struct{}),
+		stopped:  make(chan struct{}),
 	}
 	go p.run()
 	return p
 }
 
 func (p *Proposer) Stop() {
-	close(p.stop)
+	if p == nil {
+		return
+	}
+	p.stopOnce.Do(func() {
+		close(p.stop)
+		<-p.stopped
+	})
 }
 
 func (p *Proposer) run() {
+	defer close(p.stopped)
 	timer := p.clk.Timer(0)
 	for {
 		select {
@@ -462,19 +486,26 @@ func (p *Proposer) run() {
 
 // shouldEpoch returns true if this node should append an epoch delimiter to the
 // log. see replication.proto for details.
-func (ks *Keyserver) shouldEpoch() bool {
-	return ks.leaderHint && (ks.mustEpoch || ks.canEpoch && ks.rs.PendingUpdates)
+func (ks *Keyserver) wantEpochProposer() bool {
+	return ks.leaderHint && (ks.maxEpochIntervalPassed || ks.minEpochIntervalPassed && ks.rs.PendingUpdates)
 }
 
 // maybeEpoch either starts or stops the epoch delimiter proposer as necessary
-func (ks *Keyserver) maybeEpoch() {
-	if ks.shouldEpoch() && ks.epochProposer == nil {
+func (ks *Keyserver) updateEpochProposer() {
+	want := ks.wantEpochProposer()
+	have := ks.epochProposer != nil
+	if have == want {
+		return
+	}
+
+	switch want {
+	case true:
 		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryEpochInterval,
 			proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
 				EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
 				Timestamp:   proto.Time(ks.clk.Now()),
 			}}))
-	} else if !ks.shouldEpoch() && ks.epochProposer != nil {
+	case false:
 		ks.epochProposer.Stop()
 		ks.epochProposer = nil
 	}
@@ -483,10 +514,11 @@ func (ks *Keyserver) maybeEpoch() {
 func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	t2 := t.Add(ks.minEpochInterval)
 	d := t2.Sub(ks.clk.Now())
-	ks.canEpochSet.Reset(d)
-	ks.mustEpochSet.Reset(d)
-	ks.canEpoch = false
-	ks.mustEpoch = false
+	ks.minEpochIntervalTimer.Reset(d)
+	ks.maxEpochIntervalTimer.Reset(d)
+	ks.minEpochIntervalPassed = false
+	ks.maxEpochIntervalPassed = false
+	// caller MUST call updateEpochProposer
 }
 
 func genUID() uint64 {
