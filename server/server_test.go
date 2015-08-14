@@ -180,7 +180,7 @@ loop:
 		for l = runtime.Stack(stackBuf, true); l == len(stackBuf) && l < 128*1024; {
 			stackBuf = append(stackBuf, stackBuf...)
 		}
-		t.Logf("%d goroutines in existance after Stop:\n%s", n, stackBuf[:l])
+		t.Logf("%d goroutines in existence after Stop:\n%s", n, stackBuf[:l])
 	}
 }
 
