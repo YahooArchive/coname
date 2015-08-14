@@ -408,7 +408,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			rs.ThisReplicaNeedsToSignLastEpoch = false
 			ks.updateEpochProposer()
 			// updateSignatureProposer should in general be called after writes
-			// have been flused to db, but given ThisReplicaNeedsToSignLast =
+			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
 			// false we know that updateSignatureProposer will not access the db.
 			ks.updateSignatureProposer()
 		}
@@ -501,7 +501,7 @@ func (ks *Keyserver) wantEpochProposer() bool {
 	return ks.leaderHint && (ks.maxEpochIntervalPassed || ks.minEpochIntervalPassed && ks.rs.PendingUpdates)
 }
 
-// maybeEpoch either starts or stops the epoch delimiter proposer as necessary
+// updateEpochProposer either starts or stops the epoch delimiter proposer as necessary.
 func (ks *Keyserver) updateEpochProposer() {
 	want := ks.wantEpochProposer()
 	have := ks.epochProposer != nil
