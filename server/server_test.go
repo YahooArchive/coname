@@ -111,9 +111,9 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 		LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
 		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
 
-		MinEpochInterval:   tick,
-		MaxEpochInterval:   tick,
-		RetryEpochInterval: poll,
+		MinEpochInterval:      tick,
+		MaxEpochInterval:      tick,
+		RetryProposalInterval: poll,
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
@@ -236,21 +236,24 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 	return &profile
 }
 
-func runWhileTicking(clk *clock.Mock, f func()) {
+func stoppableClock(clk *clock.Mock) chan<- struct{} {
 	done := make(chan struct{})
 	go func() {
-		f()
-		close(done)
-	}()
-loop:
-	for {
-		select {
-		case <-time.After(poll):
-			clk.Add(tick)
-		case <-done:
-			break loop
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				clk.Add(tick)
+			}
 		}
-	}
+	}()
+	return done
+}
+
+func runWhileTicking(clk *clock.Mock, f func()) {
+	defer close(stoppableClock(clk))
+	f()
 }
 
 func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
@@ -360,7 +363,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
 		// We are waiting for an epoch to be ratified (in case there are no
 		// verifiers, blocking on them does not help).
-		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+		if len(put.Key) < 1 || put.Key[0] != tableVerifierLogPrefix {
 			return
 		}
 		ksDoneOnce.Do(func() { close(ksDone) })
@@ -460,8 +463,10 @@ func TestKeyserverLookupRequireKeyserver(t *testing.T) {
 }
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
-	ks, caPool, _, verifiers, teardown := setupRealm(t, 3)
+	ks, caPool, clk, verifiers, teardown := setupRealm(t, 3)
 	defer teardown()
+	stop := stoppableClock(clk)
+	defer close(stop)
 
 	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
