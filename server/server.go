@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -290,7 +289,6 @@ func (ks *Keyserver) run() {
 			ks.maxEpochIntervalPassed = true
 			ks.updateEpochProposer()
 		}
-		runtime.Gosched()
 	}
 }
 
