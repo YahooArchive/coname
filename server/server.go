@@ -329,7 +329,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
 		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
 		ks.epochPending = append(ks.epochPending, step.UID)
-		println("U", step.UID)
 
 		rs.PendingUpdates = true
 		ks.updateEpochProposer()
@@ -377,8 +376,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 		wb.Put(tableRatifications(step.EpochDelimiter.EpochNumber, ks.serverID), proto.MustMarshal(seh))
 
-		println("D", rs.LastEpochDelimiter.EpochNumber)
-
 	case step.ReplicaSigned != nil:
 		newSEH := step.ReplicaSigned
 		dbkey := tableRatifications(newSEH.Head.Head.Epoch, ks.serverID)
@@ -395,7 +392,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)",
 				newSEH.Head.Head.Epoch, ks.serverID, seh.Head.VerboseEqual(newSEH.Head), seh.Head, newSEH.Head)
 		}
-		println("R", newSEH.Head.Head.Epoch)
 
 		if seh.Signatures == nil {
 			seh.Signatures = make(map[uint64][]byte, 1)
@@ -424,7 +420,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return func() {
 				notifyVerifiers()
 				for _, uid := range ks.signaturePending {
-					println("done", uid)
 					ks.wr.Notify(uid, nil)
 				}
 				ks.signaturePending = nil
@@ -468,7 +463,6 @@ func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay 
 		stop:     make(chan struct{}),
 		stopped:  make(chan struct{}),
 	}
-	println("start", p)
 	go p.run()
 	return p
 }
@@ -487,16 +481,12 @@ func (p *Proposer) run() {
 	defer close(p.stopped)
 	timer := p.clk.Timer(0)
 	for {
-		println("loop", p)
 		select {
 		case <-timer.C:
-			println("propose", p)
 			p.log.Propose(context.TODO(), p.proposal)
-			println("proposed", p)
 			timer.Reset(p.delay)
 			p.delay = p.delay * 2
 		case <-p.stop:
-			println("stop", p)
 			return
 		}
 	}
@@ -536,7 +526,6 @@ func (ks *Keyserver) updateSignatureProposer() {
 	// invariant: do not access the db if ThisReplicaNeedsToSignLastEpoch = false
 	want := ks.rs.ThisReplicaNeedsToSignLastEpoch
 	have := ks.signatureProposer != nil
-	println(have, want)
 	if have == want {
 		return
 	}
