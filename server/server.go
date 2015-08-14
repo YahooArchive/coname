@@ -101,11 +101,11 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 	if err != nil {
 		return nil, err
 	}
-	lookupTLS, err := cfg.VerifierTLS.Config(getKey)
+	lookupTLS, err := cfg.LookupTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
-	updateTLS, err := cfg.VerifierTLS.Config(getKey)
+	updateTLS, err := cfg.UpdateTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
