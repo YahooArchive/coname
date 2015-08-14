@@ -12,6 +12,7 @@ It is generated from these files:
 	local.proto
 	replication.proto
 	timestamp.proto
+	tlsconfig.proto
 	verifier.proto
 
 It has these top-level messages:

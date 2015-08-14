@@ -35,6 +35,7 @@ preserve AuthorizationPolicy
 
 # import patched package from correct JSON output
 sed -i.bak -e 's:/gogo/:/andres-erbsen/:g' *pb*.go
+sed -i.bak -e 's:\bproto1\b:github_com_andres_erbsen_protobuf_proto:g' tlsconfig*pb*.go
 
 # preserve the encoding of repeated public keys
 sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
