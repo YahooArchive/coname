@@ -136,7 +136,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	defer teardown()
 	// db = logkv.WithDefaultLogging(db)
 
-	// the db writes are test output. We are waiting for epoch 5 to be ratified
+	// the db writes are test output. We are waiting for epoch 3 to be ratified
 	// as a primitive progress check.
 	progressCh := make(chan struct{})
 	var closeOnce sync.Once
