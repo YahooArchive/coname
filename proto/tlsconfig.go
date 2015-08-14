@@ -20,9 +20,12 @@ func certPool(certs [][]byte) (*x509.CertPool, error) {
 }
 
 func (m *TLSConfig) Config(getKey func(string) (crypto.PrivateKey, error)) (cfg *tls.Config, err error) {
+	if m == nil {
+		return nil, nil
+	}
 	cfg = new(tls.Config)
 	for _, t := range m.Certificates {
-		key, err := getKey(t.KeyId)
+		key, err := getKey(t.KeyID)
 		if err != nil {
 			return nil, err
 		}
@@ -32,14 +35,14 @@ func (m *TLSConfig) Config(getKey func(string) (crypto.PrivateKey, error)) (cfg 
 			OCSPStaple:  t.OCSPStaple,
 		})
 	}
-	cfg.RootCAs, err = certPool(m.RootCas)
+	cfg.RootCAs, err = certPool(m.RootCAs)
 	if err != nil {
 		return nil, err
 	}
 	cfg.NextProtos = m.NextProtos
 	cfg.ServerName = m.ServerName
 	cfg.ClientAuth = tls.ClientAuthType(m.ClientAuth)
-	cfg.ClientCAs, err = certPool(m.ClientCas)
+	cfg.ClientCAs, err = certPool(m.ClientCAs)
 	if err != nil {
 		return nil, err
 	}
@@ -48,15 +51,17 @@ func (m *TLSConfig) Config(getKey func(string) (crypto.PrivateKey, error)) (cfg 
 	}
 	cfg.PreferServerCipherSuites = m.PreferServerCipherSuites
 	cfg.SessionTicketsDisabled = !m.SessionTicketsEnabled
-	stk, err := getKey(m.SessionTicketKeyId)
-	if err != nil {
-		return nil, err
+	if m.SessionTicketKeyID != "" {
+		stk, err := getKey(m.SessionTicketKeyID)
+		if err != nil {
+			return nil, err
+		}
+		stk32, ok := stk.([32]byte)
+		if !ok {
+			return nil, fmt.Errorf("SessionTicketKey must be [32]byte, got %T (%v)", stk, stk)
+		}
+		cfg.SessionTicketKey = stk32
 	}
-	stk32, ok := stk.([32]byte)
-	if !ok {
-		return nil, fmt.Errorf("SessionTicketKey must be [32]byte, got %T (%v)", stk, stk)
-	}
-	cfg.SessionTicketKey = stk32
 	cfg.MinVersion = uint16(m.MinVersion)
 	cfg.MaxVersion = uint16(m.MaxVersion)
 	for _, cid := range m.CurvePreferences {

@@ -16,6 +16,7 @@ package server
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/sha256"
@@ -64,7 +65,7 @@ func chain(fs ...func()) func() {
 
 // setupKeyserver initializes a keyserver, but does not start it and does not
 // wait for it to sign anything.
-func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+func setupKeyserver(t *testing.T) (cfg *proto.ReplicaConfig, db kv.DB, getKey func(string) (crypto.PrivateKey, error), pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
@@ -97,32 +98,47 @@ func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.Authorizati
 
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
-	cfg = &Config{
-		Realm:           testingRealm,
-		ServerID:        replicaID,
-		ReplicaID:       replicaID,
-		RatificationKey: sk,
-		VRFSecret:       vrfSecret,
+	pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
+	cfg = &proto.ReplicaConfig{
+		KeyserverConfig: proto.KeyserverConfig{
+			Realm:    testingRealm,
+			ServerID: replicaID,
+			VRFKeyID: "vrf",
 
+			MinEpochInterval:      proto.DurationStamp(tick),
+			MaxEpochInterval:      proto.DurationStamp(tick),
+			ProposalRetryInterval: proto.DurationStamp(poll),
+		},
+
+		SigningKeyID: "signing",
+		ReplicaID:    replicaID,
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
 		VerifierAddr: "localhost:0",
-		UpdateTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
-		LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
-		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
-
-		MinEpochInterval:      tick,
-		MaxEpochInterval:      tick,
-		RetryProposalInterval: poll,
+		UpdateTLS:    &proto.TLSConfig{Certificates: pcerts},
+		LookupTLS:    &proto.TLSConfig{Certificates: pcerts},
+		VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+	}
+	getKey = func(keyid string) (crypto.PrivateKey, error) {
+		switch keyid {
+		case "vrf":
+			return vrfSecret, nil
+		case "signing":
+			return sk, nil
+		case "tls":
+			return cert.PrivateKey, nil
+		default:
+			panic("unknown key requested in test")
+		}
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
 }
 
 func TestKeyserverStartStop(t *testing.T) {
-	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
+	cfg, db, gk, _, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
+	ks, err := Open(cfg, db, clock.New(), gk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +147,7 @@ func TestKeyserverStartStop(t *testing.T) {
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
-	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
+	cfg, db, gk, _, _, _, _, teardown := setupKeyserver(t)
 	defer teardown()
 	// db = logkv.WithDefaultLogging(db)
 
@@ -151,7 +167,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	})
 
 	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk)
+	ks, err := Open(cfg, db, clk, gk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,10 +273,10 @@ func runWhileTicking(clk *clock.Mock, f func()) {
 }
 
 func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+	cfg, db, gk, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
 	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk)
+	ks, err := Open(cfg, db, clk, gk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,10 +311,10 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 }
 
 func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+	cfg, db, gk, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
 	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk)
+	ks, err := Open(cfg, db, clk, gk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +373,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 // setupRealm initializes one keyserver and nVerifiers verifiers, and then
 // waits until each one of them has signed an epoch.
 func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, clk *clock.Mock, verifiers []uint64, teardown func()) {
-	cfg, db, pol, caCert, caPool, caKey, teardown := setupKeyserver(t)
+	cfg, db, gk, pol, caCert, caPool, caKey, teardown := setupKeyserver(t)
 	ksDone := make(chan struct{})
 	var ksDoneOnce sync.Once
 	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
@@ -407,7 +423,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		}(i)
 	}
 	clk = clock.NewMock()
-	ks, err := Open(cfg, db, clk)
+	ks, err := Open(cfg, db, clk, gk)
 	if err != nil {
 		t.Fatal(err)
 	}
