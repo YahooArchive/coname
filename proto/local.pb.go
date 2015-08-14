@@ -24,7 +24,7 @@ type ReplicaState struct {
 	NextIndexVerifier               uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
 	PreviousSummaryHash             []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 	LastEpochDelimiter              EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
-	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_signed_last_epoch,proto3" json:"this_replica_signed_last_epoch,omitempty"`
+	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
 	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
 	// local variables
 	LatestTreeSnapshot uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
@@ -84,7 +84,7 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 		return fmt.Errorf("LastEpochDelimiter this(%v) Not Equal that(%v)", this.LastEpochDelimiter, that1.LastEpochDelimiter)
 	}
 	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
-		return fmt.Errorf("ThisReplicaSignedLastEpoch this(%v) Not Equal that(%v)", this.ThisReplicaNeedsToSignLastEpoch, that1.ThisReplicaNeedsToSignLastEpoch)
+		return fmt.Errorf("ThisReplicaNeedsToSignLastEpoch this(%v) Not Equal that(%v)", this.ThisReplicaNeedsToSignLastEpoch, that1.ThisReplicaNeedsToSignLastEpoch)
 	}
 	if this.PendingUpdates != that1.PendingUpdates {
 		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
@@ -214,7 +214,7 @@ func (this *ReplicaState) GoString() string {
 		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
 		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
 		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
-		`ThisReplicaSignedLastEpoch:` + fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch),
+		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch),
 		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates),
 		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot) + `}`}, ", ")
 	return s
@@ -570,7 +570,7 @@ func (this *ReplicaState) String() string {
 		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
 		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
-		`ThisReplicaSignedLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
+		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
 		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
 		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
 		`}`,
@@ -703,7 +703,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ThisReplicaSignedLastEpoch", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ThisReplicaNeedsToSignLastEpoch", wireType)
 			}
 			var v int
 			for shift := uint(0); ; shift += 7 {

@@ -24,7 +24,7 @@ message ReplicaState {
 	uint64 next_index_verifier = 2; // index for the next RSM input to be given to verifiers (this MUST be deterministic because verifiers see it through new indices)
 	bytes previous_summary_hash = 3;
 	EpochDelimiter last_epoch_delimiter = 4 [(gogoproto.nullable) = false];
-	bool this_replica_signed_last_epoch = 5;
+	bool this_replica_needs_to_sign_last_epoch = 5;
 	bool pending_updates = 6; // are there any updates after the last epoch delimiter?
 
 	// local variables
