@@ -21,7 +21,7 @@ message TLSConfig {
     // that clients use when verifying server certificates.
     // If RootCAs is nil, TLS uses the host's root CA set.
 	// The certificates are expected in DER format.
-    repeated bytes root_CAs = 3;
+    repeated bytes root_cas = 3;
 
     // NextProtos is a list of supported, application level protocols.
     repeated string next_protos = 4;
@@ -38,7 +38,7 @@ message TLSConfig {
 	// ClientCAs defines the set of root certificate authorities that servers
 	// use if required to verify a client certificate by the policy in
 	// ClientAuth. The certificates are expected in DER format.
-    repeated bytes client_CAs = 7;
+    repeated bytes client_cas = 7;
 
     // CipherSuites is a list of supported cipher suites. If CipherSuites
     // is nil, TLS uses a list of suites supported by the implementation.
@@ -64,7 +64,7 @@ message TLSConfig {
     // they should all have the same SessionTicketKey. If the
     // SessionTicketKey leaks, previously recorded and future TLS
     // connections using that key are compromised.
-    bytes session_ticket_key_id = 11;
+    string session_ticket_key_id = 11;
 
     // MinVersion contains the minimum SSL/TLS version that is acceptable.
     // If zero, then SSLv3 is taken as the minimum.
@@ -82,9 +82,10 @@ message TLSConfig {
 }
 
 message CertificateAndKeyID {
-	// Certificate contains the public certificate in DER format.
-	bytes certificate = 1;
+	// Certificate contains the public certificates in DER format, leaf first.
+	repeated bytes certificate = 1;
 	string key_id = 2;
+	bytes OCSP_staple = 3;
 }
 
 enum TLSVersion {
