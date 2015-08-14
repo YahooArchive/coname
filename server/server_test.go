@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"net"
 	"os"
 	"runtime"
 	"sync"
@@ -41,7 +42,11 @@ import (
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
-	"github.com/yahoo/coname/verifier"
+	"github.com/yahoo/coname/server/replication"
+	"github.com/yahoo/coname/server/replication/raftlog"
+	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
+	raftproto "github.com/yahoo/coname/server/replication/raftlog/proto"
+	// "github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )
 
@@ -63,100 +68,202 @@ func chain(fs ...func()) func() {
 	return ret
 }
 
-// setupKeyserver initializes a keyserver, but does not start it and does not
-// wait for it to sign anything.
-func setupKeyserver(t *testing.T) (cfg *Config, db kv.DB, pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) })
+	teardown = func() { os.RemoveAll(dir) }
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
 		t.Fatal(err)
 	}
 	teardown = chain(func() { ldb.Close() }, teardown)
+	return leveldbkv.Wrap(ldb), teardown
+}
 
-	pk, sk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		teardown()
-		t.Fatal(err)
+// raft replicas are numbered 1..n  and reside in array indices 0..n-1
+// A copy of this function exists in raftlog_test.go
+func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replication.LogReplicator, dbs []kv.DB, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+	m := nReplicas
+	n := nReplicas + nStandbys
+	replicaIDs := make([]uint64, 0, n)
+	for i := uint64(0); i < uint64(n); i++ {
+		replicaIDs = append(replicaIDs, 1+i)
 	}
-	pked := &proto.PublicKey{Ed25519: pk[:]}
-	replicaID := proto.KeyID(pked)
-	pol = &proto.AuthorizationPolicy{
-		PublicKeys: map[uint64]*proto.PublicKey{replicaID: pked},
-		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
+
+	addrs := make([]string, 0, n)
+	nw = nettestutil.New(n)
+	lookupDialerFrom := func(src int) func(uint64) raftproto.RaftClient {
+		return func(dstPlus1 uint64) raftproto.RaftClient {
+			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithDialer(
+				func(addr string, timeout time.Duration) (net.Conn, error) {
+					nc, err := net.DialTimeout("tcp", addr, timeout)
+					return nw.Wrap(nc, src, int(dstPlus1-1)), err
+				}))
+			if err != nil {
+				panic(err) // async dial should not err
+			}
+			return raftproto.NewRaftClient(cc)
+		}
 	}
+	teardown = func() {}
+
+	for i := 0; i < n; i++ {
+		clk := clock.NewMock()
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := grpc.NewServer()
+		db, dbDown := setupDB(t)
+		dbs = append(dbs, db)
+		l := raftlog.New(
+			uint64(i+1), replicaIDs[:m],
+			db, nil,
+			clk, tick,
+			s, lookupDialerFrom(i),
+		)
+		go s.Serve(ln)
+
+		ret = append(ret, l)
+		clks = append(clks, clk)
+		addrs = append(addrs, ln.Addr().String())
+		teardown = chain(func() { s.Stop(); ln.Close(); l.Stop() }, dbDown, teardown)
+	}
+
+	for _, l := range ret {
+		l.Start(0)
+		go func(l replication.LogReplicator) {
+			for _ = range l.LeaderHintSet() {
+			}
+		}(l)
+	}
+	return ret, dbs, clks, nw, teardown
+}
+
+func majority(nReplicas int) uint32 {
+	return uint32(nReplicas/2 + 1)
+}
+
+// [TODO] setupKeyserver initializes a keyserver, but does not start it and does not
+// wait for it to sign anything.
+func setupKeyservers(t *testing.T, nReplicas int) (cfgs []*Config, pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 
 	_, vrfSecret, err := vrf.GenerateKey(rand.Reader)
 	if err != nil {
-		teardown()
 		t.Fatal(err)
 	}
 
-	caCert, caPool, caKey = tlstestutil.CA(t, nil)
-	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
-	cfg = &Config{
-		Realm:           testingRealm,
-		ServerID:        replicaID,
-		ReplicaID:       replicaID,
-		RatificationKey: sk,
-		VRFSecret:       vrfSecret,
+	teardown = func() {}
 
-		UpdateAddr:   "localhost:0",
-		LookupAddr:   "localhost:0",
-		VerifierAddr: "localhost:0",
-		UpdateTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
-		LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
-		VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
+	pks := make(map[uint64]*proto.PublicKey)
+	replicaIDs := []uint64{}
+	for n := 0; n < nReplicas; n++ {
+		pk, sk, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			teardown()
+			t.Fatal(err)
+		}
+		pked := &proto.PublicKey{Ed25519: pk[:]}
+		replicaID := proto.KeyID(pked)
+		pks[replicaID] = pked
+		replicaIDs = append(replicaIDs, replicaID)
 
-		MinEpochInterval:      tick,
-		MaxEpochInterval:      tick,
-		RetryProposalInterval: poll,
+		cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
+		cfgs = append(cfgs, &Config{
+			Realm:           testingRealm,
+			ServerID:        replicaID,
+			ReplicaID:       replicaID,
+			RatificationKey: sk,
+			VRFSecret:       vrfSecret,
+
+			UpdateAddr:   "localhost:0",
+			LookupAddr:   "localhost:0",
+			VerifierAddr: "localhost:0",
+			UpdateTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
+			LookupTLS:    &tls.Config{Certificates: []tls.Certificate{cert}},
+			VerifierTLS:  &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool, ClientCAs: caPool, ClientAuth: tls.RequireAndVerifyClientCert},
+
+			MinEpochInterval:      tick,
+			MaxEpochInterval:      tick,
+			RetryProposalInterval: poll,
+		})
 	}
-	db = leveldbkv.Wrap(ldb)
+	pol = &proto.AuthorizationPolicy{
+		PublicKeys: pks,
+		Quorum:     &proto.QuorumExpr{Threshold: majority(nReplicas), Candidates: replicaIDs},
+	}
 	return
 }
 
-func TestKeyserverStartStop(t *testing.T) {
-	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
+func TestOneKeyserverStartStop(t *testing.T) {
+	testKeyserverStartStop(t, 1)
+}
+
+func TestThreeKeyserversStartStop(t *testing.T) {
+	testKeyserverStartStop(t, 3)
+}
+
+func testKeyserverStartStop(t *testing.T, nReplicas int) {
+	cfgs, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New())
-	if err != nil {
-		t.Fatal(err)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		kss = append(kss, ks)
 	}
-	ks.Start()
-	defer ks.Stop()
+	for _, ks := range kss {
+		ks.Stop()
+	}
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
-	cfg, db, _, _, _, _, teardown := setupKeyserver(t)
+	nReplicas := 3
+	cfgs, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	// db = logkv.WithDefaultLogging(db)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
 
 	// the db writes are test output. We are waiting for epoch 3 to be ratified
-	// as a primitive progress check.
-	progressCh := make(chan struct{})
-	var closeOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
-		if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
-			return
-		}
-		var sr proto.SignedEpochHead
-		sr.Unmarshal(update.Value)
-		if sr.Head.Head.Epoch == 3 {
-			closeOnce.Do(func() { close(progressCh) })
-		}
-	})
+	// by all replicas as a primitive progress check.
+	kss := []*Keyserver{}
+	var done sync.WaitGroup
+	done.Add(nReplicas)
+	for i := 0; i < nReplicas; i++ {
+		var closeOnce sync.Once
+		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
+				return
+			}
+			var sr proto.SignedEpochHead
+			sr.Unmarshal(update.Value)
+			if sr.Head.Head.Epoch == 3 {
+				closeOnce.Do(func() { done.Done() })
+			}
+		})
 
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk)
-	if err != nil {
-		t.Fatal(err)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		kss = append(kss, ks)
 	}
-	ks.Start()
+
+	progressCh := make(chan struct{})
+	go func() {
+		done.Wait()
+		close(progressCh)
+	}()
 
 loop:
 	for {
@@ -164,12 +271,18 @@ loop:
 		case <-progressCh:
 			break loop
 		case <-time.After(poll):
-			clk.Add(tick)
+			// TODO: try advancing clocks a little out of sync?
+			for _, clk := range clks {
+				clk.Add(tick)
+			}
 			runtime.Gosched()
 		}
 	}
 
-	ks.Stop()
+	for _, ks := range kss {
+		ks.Stop()
+	}
+	teardown2()
 	teardown()
 
 	if testing.Verbose() {
@@ -187,7 +300,7 @@ loop:
 func withServer(func(*testing.T, *Keyserver)) {
 }
 
-func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
+func doUpdate(t *testing.T, ks *Keyserver, quorum *proto.QuorumExpr, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
 	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
@@ -220,7 +333,7 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 			Signatures: make(map[uint64][]byte),
 		},
 		Profile:          profile,
-		LookupParameters: &proto.LookupRequest{UserId: name},
+		LookupParameters: &proto.LookupRequest{UserId: name, QuorumRequirement: quorum},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -252,11 +365,24 @@ func stoppableClock(clk *clock.Mock) chan<- struct{} {
 	return done
 }
 
-func runWhileTicking(clk *clock.Mock, f func()) {
-	defer close(stoppableClock(clk))
-	f()
+func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				for _, clk := range clks {
+					clk.Add(tick)
+				}
+			}
+		}
+	}()
+	return done
 }
 
+/*
 func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
 	defer teardown()
@@ -294,31 +420,40 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 		}
 	})
 }
+*/
 
-func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, _, _, caPool, _, teardown := setupKeyserver(t)
+func TestKeyserverUpdate(t *testing.T) {
+	nReplicas := 3
+	cfgs, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk)
-	if err != nil {
-		t.Fatal(err)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		kss = append(kss, ks)
 	}
-	ks.Start()
-	defer ks.Stop()
 
-	runWhileTicking(clk, func() {
-		doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("noncenoncenonceNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-		})
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
 
-		doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("XYZNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
-		})
+	doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("XYZNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
 	})
 }
 
+/*
 // setupVerifier initializes a verifier, but does not start it and does not
 // wait for it to sign anything.
 func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
@@ -501,3 +636,4 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 		lastEpoch = r.Head.Head.Epoch
 	}
 }
+*/

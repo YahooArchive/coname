@@ -55,6 +55,7 @@ func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 }
 
 // raft replicas are numbered 1..n  and reside in array indices 0..n-1
+// A copy of this function exists in server_test.go
 func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replication.LogReplicator, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
 	m := nReplicas
 	n := nReplicas + nStandbys

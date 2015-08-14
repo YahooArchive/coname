@@ -34,7 +34,6 @@ import (
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
 	"github.com/yahoo/coname/server/replication"
-	"github.com/yahoo/coname/server/replication/kvlog"
 	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"
@@ -118,12 +117,7 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *Config, db kv.DB, clk clock.Clock) (ks *Keyserver, err error) {
-	log, err := kvlog.New(db, []byte{tableReplicationLogPrefix})
-	if err != nil {
-		return nil, err
-	}
-
+func Open(cfg *Config, db kv.DB, log replication.LogReplicator, clk clock.Clock) (ks *Keyserver, err error) {
 	ks = &Keyserver{
 		realm:                 cfg.Realm,
 		serverID:              cfg.ServerID,
