@@ -40,19 +40,23 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 		for ; iter.Next() && start < limit; start++ {
 			select {
 			case <-stream.Context().Done():
+				iter.Release()
 				return stream.Context().Err()
 			default:
 			}
 			dbIdx := binary.BigEndian.Uint64(iter.Key()[1:])
 			if dbIdx != start {
 				log.Printf("ERROR: non-consecutive entries in verifier log (wanted %d, got %d)", start, dbIdx)
+				iter.Release()
 				return fmt.Errorf("internal error")
 			}
 			if err := step.Unmarshal(iter.Value()); err != nil {
 				log.Printf("ERROR: invalid protobuf entry in verifier log (index %d)", start)
+				iter.Release()
 				return fmt.Errorf("internal error")
 			}
 			if err := stream.Send(&step); err != nil {
+				iter.Release()
 				return err
 			}
 			step.Reset()

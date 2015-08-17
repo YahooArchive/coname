@@ -122,11 +122,11 @@ func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, err
 // lastRatifiedEpoch returns the last epoch for which we have a seh.
 func (ks *Keyserver) lastRatifiedEpoch() uint64 {
 	iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableRatificationsPrefix}))
+	defer iter.Release()
 	if !iter.Last() {
 		return 0
 	}
 	ret := binary.BigEndian.Uint64(iter.Key()[1 : 1+8])
-	iter.Release()
 	if iter.Error() != nil {
 		log.Printf("ERROR: db scan for last seh: %s", iter.Error())
 		return 0
@@ -146,6 +146,7 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, 
 		Start: prefixIdxEpoch[:1+len(idx)],
 		Limit: prefixIdxEpoch,
 	})
+	defer iter.Release()
 	if !iter.Last() {
 		if iter.Error() != nil {
 			return nil, iter.Error()
@@ -156,6 +157,5 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, 
 	if err := ret.Unmarshal(iter.Value()); err != nil {
 		return nil, iter.Error()
 	}
-	iter.Release()
 	return ret, nil
 }
