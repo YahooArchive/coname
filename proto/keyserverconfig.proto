@@ -31,6 +31,8 @@ message ReplicaConfig {
 	TLSConfig lookup_tls = 7 [(gogoproto.customname) = "LookupTLS"];
 	string verifier_addr = 8;
 	TLSConfig verifier_tls = 9 [(gogoproto.customname) = "VerifierTLS"];
+	string hkp_addr = 10 [(gogoproto.customname) = "HKPAddr"];
+	TLSConfig hkp_tls = 11 [(gogoproto.customname) = "HKPTLS"];
 }
 
 message KeyserverConfig {

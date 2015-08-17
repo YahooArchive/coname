@@ -18,6 +18,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -30,6 +31,7 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/yahoo/coname"
+	"github.com/yahoo/coname/hkpfront"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/merkletree"
@@ -54,8 +56,9 @@ type Keyserver struct {
 	log replication.LogReplicator
 	rs  proto.ReplicaState
 
-	updateServer, lookupServer, verifierServer *grpc.Server
-	updateListen, lookupListen, verifierListen net.Listener
+	updateServer, lookupServer, verifierServer            *grpc.Server
+	hkpFront                                              *hkpfront.HKPFront
+	updateListen, lookupListen, verifierListen, hkpListen net.Listener
 
 	clk clock.Clock
 
@@ -112,6 +115,10 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, clk clock.Clock, getKey func(strin
 		return nil, err
 	}
 	verifierTLS, err := cfg.VerifierTLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+	hkpTLS, err := cfg.HKPTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
@@ -203,6 +210,18 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, clk clock.Clock, getKey func(strin
 			}
 		}()
 	}
+	if cfg.HKPAddr != "" {
+		ks.hkpListen, err = tls.Listen("tcp", cfg.HKPAddr, hkpTLS)
+		if err != nil {
+			return nil, err
+		}
+		ks.hkpFront = &hkpfront.HKPFront{InsecureSkipVerify: true, Lookup: ks.Lookup, Clk: ks.clk}
+		defer func() {
+			if !ok {
+				ks.hkpListen.Close()
+			}
+		}()
+	}
 	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, nil)
 	if err != nil {
 		return nil, err
@@ -224,6 +243,9 @@ func (ks *Keyserver) Start() {
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
 	}
+	if ks.hkpFront != nil {
+		ks.hkpFront.Start(ks.hkpListen)
+	}
 	go ks.run()
 }
 
@@ -231,6 +253,7 @@ func (ks *Keyserver) Start() {
 // TODO: figure out what will happen to connected clients?
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
+		// FIXME: where are the listeners closed?
 		if ks.updateServer != nil {
 			ks.updateServer.Stop()
 		}
@@ -239,6 +262,9 @@ func (ks *Keyserver) Stop() {
 		}
 		if ks.verifierServer != nil {
 			ks.verifierServer.Stop()
+		}
+		if ks.hkpFront != nil {
+			ks.hkpFront.Stop()
 		}
 		close(ks.stop)
 		<-ks.stopped
@@ -401,7 +427,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				seh.Signatures[id] = sig
 			}
 		}
-		log.Print(seh)
 		wb.Put(dbkey, proto.MustMarshal(seh))
 
 		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {

@@ -27,6 +27,8 @@ type ReplicaConfig struct {
 	LookupTLS    *TLSConfig `protobuf:"bytes,7,opt,name=lookup_tls" json:"lookup_tls,omitempty"`
 	VerifierAddr string     `protobuf:"bytes,8,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
 	VerifierTLS  *TLSConfig `protobuf:"bytes,9,opt,name=verifier_tls" json:"verifier_tls,omitempty"`
+	HKPAddr      string     `protobuf:"bytes,10,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
+	HKPTLS       *TLSConfig `protobuf:"bytes,11,opt,name=hkp_tls" json:"hkp_tls,omitempty"`
 }
 
 func (m *ReplicaConfig) Reset()      { *m = ReplicaConfig{} }
@@ -49,6 +51,13 @@ func (m *ReplicaConfig) GetLookupTLS() *TLSConfig {
 func (m *ReplicaConfig) GetVerifierTLS() *TLSConfig {
 	if m != nil {
 		return m.VerifierTLS
+	}
+	return nil
+}
+
+func (m *ReplicaConfig) GetHKPTLS() *TLSConfig {
+	if m != nil {
+		return m.HKPTLS
 	}
 	return nil
 }
@@ -133,6 +142,12 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 	if !this.VerifierTLS.Equal(that1.VerifierTLS) {
 		return fmt.Errorf("VerifierTLS this(%v) Not Equal that(%v)", this.VerifierTLS, that1.VerifierTLS)
 	}
+	if this.HKPAddr != that1.HKPAddr {
+		return fmt.Errorf("HKPAddr this(%v) Not Equal that(%v)", this.HKPAddr, that1.HKPAddr)
+	}
+	if !this.HKPTLS.Equal(that1.HKPTLS) {
+		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
+	}
 	return nil
 }
 func (this *ReplicaConfig) Equal(that interface{}) bool {
@@ -180,6 +195,12 @@ func (this *ReplicaConfig) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.VerifierTLS.Equal(that1.VerifierTLS) {
+		return false
+	}
+	if this.HKPAddr != that1.HKPAddr {
+		return false
+	}
+	if !this.HKPTLS.Equal(that1.HKPTLS) {
 		return false
 	}
 	return true
@@ -277,7 +298,9 @@ func (this *ReplicaConfig) GoString() string {
 		`LookupAddr:` + fmt.Sprintf("%#v", this.LookupAddr),
 		`LookupTLS:` + fmt.Sprintf("%#v", this.LookupTLS),
 		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
-		`VerifierTLS:` + fmt.Sprintf("%#v", this.VerifierTLS) + `}`}, ", ")
+		`VerifierTLS:` + fmt.Sprintf("%#v", this.VerifierTLS),
+		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
+		`HKPTLS:` + fmt.Sprintf("%#v", this.HKPTLS) + `}`}, ", ")
 	return s
 }
 func (this *KeyserverConfig) GoString() string {
@@ -400,6 +423,22 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 		}
 		i += n4
 	}
+	if len(m.HKPAddr) > 0 {
+		data[i] = 0x52
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HKPAddr)))
+		i += copy(data[i:], m.HKPAddr)
+	}
+	if m.HKPTLS != nil {
+		data[i] = 0x5a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.HKPTLS.Size()))
+		n5, err := m.HKPTLS.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
 	return i, nil
 }
 
@@ -438,27 +477,27 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n5, err := m.MinEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	data[i] = 0x2a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n6, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	n6, err := m.MinEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n6
-	data[i] = 0x32
+	data[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n7, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
+	n7, err := m.MaxEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n7
+	data[i] = 0x32
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
+	n8, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n8
 	return i, nil
 }
 
@@ -506,6 +545,10 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 	this.VerifierAddr = randStringKeyserverconfig(r)
 	if r.Intn(10) != 0 {
 		this.VerifierTLS = NewPopulatedTLSConfig(r, easy)
+	}
+	this.HKPAddr = randStringKeyserverconfig(r)
+	if r.Intn(10) != 0 {
+		this.HKPTLS = NewPopulatedTLSConfig(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -636,6 +679,14 @@ func (m *ReplicaConfig) Size() (n int) {
 		l = m.VerifierTLS.Size()
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
+	l = len(m.HKPAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	if m.HKPTLS != nil {
+		l = m.HKPTLS.Size()
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
 	return n
 }
 
@@ -689,6 +740,8 @@ func (this *ReplicaConfig) String() string {
 		`LookupTLS:` + strings.Replace(fmt.Sprintf("%v", this.LookupTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
 		`VerifierTLS:` + strings.Replace(fmt.Sprintf("%v", this.VerifierTLS), "TLSConfig", "TLSConfig", 1) + `,`,
+		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
+		`HKPTLS:` + strings.Replace(fmt.Sprintf("%v", this.HKPTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -953,6 +1006,58 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				m.VerifierTLS = &TLSConfig{}
 			}
 			if err := m.VerifierTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HKPAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.HKPAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HKPTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.HKPTLS == nil {
+				m.HKPTLS = &TLSConfig{}
+			}
+			if err := m.HKPTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

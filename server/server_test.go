@@ -23,12 +23,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"runtime"
 	"sync"
 	"testing"
 	"time"
 
+	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
@@ -48,7 +50,7 @@ import (
 
 const (
 	testingRealm = "testing"
-	alice        = "alice"
+	alice        = "alice@wonder.land"
 	tick         = time.Second
 	poll         = 100 * time.Microsecond
 )
@@ -115,9 +117,11 @@ func setupKeyserver(t *testing.T) (cfg *proto.ReplicaConfig, db kv.DB, getKey fu
 		UpdateAddr:   "localhost:0",
 		LookupAddr:   "localhost:0",
 		VerifierAddr: "localhost:0",
+		HKPAddr:      "localhost:0",
 		UpdateTLS:    &proto.TLSConfig{Certificates: pcerts},
 		LookupTLS:    &proto.TLSConfig{Certificates: pcerts},
 		VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+		HKPTLS:       &proto.TLSConfig{Certificates: pcerts},
 	}
 	getKey = func(keyid string) (crypto.PrivateKey, error) {
 		switch keyid {
@@ -514,5 +518,51 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 			t.Errorf("proof.Head.Heads[%d].Ratification.Epoch > proof.Ratifications[%d].Ratification.Epoch (%d > %d), but the list is supposed to be oldest-first", i-1, i, lastEpoch, r.Head.Head.Epoch)
 		}
 		lastEpoch = r.Head.Head.Epoch
+	}
+}
+
+func TestKeyserverHKP(t *testing.T) {
+	ks, caPool, clk, _, teardown := setupRealm(t, 0)
+	defer teardown()
+	stop := stoppableClock(clk)
+	defer close(stop)
+
+	pgpKeyRef := []byte("this-is-alices-pgp-key")
+	doUpdate(t, ks, caPool, alice, proto.Profile{
+		Nonce: []byte("definitely used only once"),
+		Keys:  map[string][]byte{"pgp": pgpKeyRef},
+	})
+
+	c := &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: caPool},
+	}}
+	url := "https://" + ks.hkpListen.Addr().String() + "/pks/lookup?op=get&search=" + alice
+	resp, err := c.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.Status != "200 OK" {
+		b, e := ioutil.ReadAll(resp.Body)
+		t.Fatalf("%s (%s)", b, e)
+	}
+
+	pgpBlock, err := armor.Decode(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := pgpBlock.Type, "PGP PUBLIC KEY BLOCK"; got != want {
+		t.Error("pgpBlock.Type: got %v but wanted %v", got, want)
+	}
+	if got, want := len(pgpBlock.Header), 0; got != want {
+		t.Error("len(pgpBlock.Header): got %v but wanted %v", got, want)
+	}
+	pgpKey, err := ioutil.ReadAll(pgpBlock.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
+		t.Error("pgpKey: got %q but wanted %q", got, want)
 	}
 }
