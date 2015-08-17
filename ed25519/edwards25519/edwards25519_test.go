@@ -10,92 +10,74 @@ import (
 )
 
 func TestScNegMulAddIdentity(t *testing.T) {
-	N := 10000
-	if testing.Short() {
-		N /= 20
-	}
-	for i := 0; i < N; i++ {
-		one := [32]byte{1}
-		var seed [64]byte
-		var a, minusA, x [32]byte
+	one := [32]byte{1}
+	var seed [64]byte
+	var a, minusA, x [32]byte
 
-		rand.Reader.Read(seed[:])
-		ScReduce(&a, &seed)
-		copy(minusA[:], a[:])
-		ScNeg(&minusA, &minusA)
-		ScMulAdd(&x, &one, &a, &minusA)
-		if x != [32]byte{} {
-			t.Errorf("%x --neg--> %x --sum--> %x", a, minusA, x)
-		}
+	rand.Reader.Read(seed[:])
+	ScReduce(&a, &seed)
+	copy(minusA[:], a[:])
+	ScNeg(&minusA, &minusA)
+	ScMulAdd(&x, &one, &a, &minusA)
+	if x != [32]byte{} {
+		t.Errorf("%x --neg--> %x --sum--> %x", a, minusA, x)
 	}
 }
 
 func TestGeAddAgainstgeAdd(t *testing.T) {
-	N := 1000
-	if testing.Short() {
-		N /= 20
-	}
-	for i := 0; i < N; i++ {
-		var x, y [32]byte
-		rand.Reader.Read(x[:])
-		rand.Reader.Read(y[:])
-		var X, Y ExtendedGroupElement
-		x[31] &= 127
-		y[31] &= 127
-		GeScalarMultBase(&X, &x)
-		GeScalarMultBase(&Y, &y)
+	var x, y [32]byte
+	rand.Reader.Read(x[:])
+	rand.Reader.Read(y[:])
+	var X, Y ExtendedGroupElement
+	x[31] &= 127
+	y[31] &= 127
+	GeScalarMultBase(&X, &x)
+	GeScalarMultBase(&Y, &y)
 
-		var SBytesRef [32]byte
-		var SRef ExtendedGroupElement
-		var Ycached CachedGroupElement
-		var SCompletedRef CompletedGroupElement
-		Y.ToCached(&Ycached)
-		geAdd(&SCompletedRef, &X, &Ycached)
-		SCompletedRef.ToExtended(&SRef)
-		SRef.ToBytes(&SBytesRef)
+	var SBytesRef [32]byte
+	var SRef ExtendedGroupElement
+	var Ycached CachedGroupElement
+	var SCompletedRef CompletedGroupElement
+	Y.ToCached(&Ycached)
+	geAdd(&SCompletedRef, &X, &Ycached)
+	SCompletedRef.ToExtended(&SRef)
+	SRef.ToBytes(&SBytesRef)
 
-		var SBytes [32]byte
-		var S ExtendedGroupElement
-		GeAdd(&S, &X, &Y)
-		S.ToBytes(&SBytes)
+	var SBytes [32]byte
+	var S ExtendedGroupElement
+	GeAdd(&S, &X, &Y)
+	S.ToBytes(&SBytes)
 
-		if SBytes != SBytesRef {
-			t.Errorf("GeAdd does not match geAdd: %x != %x", SBytes, SBytesRef)
-		}
+	if SBytes != SBytesRef {
+		t.Errorf("GeAdd does not match geAdd: %x != %x", SBytes, SBytesRef)
 	}
 }
 
 func TestGeScalarMultAgainstDoubleScalarMult(t *testing.T) {
-	N := 1000
-	if testing.Short() {
-		N /= 20
-	}
-	for i := 0; i < N; i++ {
-		var zero [32]byte
+	var zero [32]byte
 
-		var x [32]byte
-		rand.Reader.Read(x[:])
-		var X ExtendedGroupElement
-		x[31] &= 127
-		GeScalarMultBase(&X, &x)
+	var x [32]byte
+	rand.Reader.Read(x[:])
+	var X ExtendedGroupElement
+	x[31] &= 127
+	GeScalarMultBase(&X, &x)
 
-		var a [32]byte
-		rand.Reader.Read(a[:])
-		a[31] &= 127
+	var a [32]byte
+	rand.Reader.Read(a[:])
+	a[31] &= 127
 
-		var ABytesRef [32]byte
-		var Aref ProjectiveGroupElement
-		GeDoubleScalarMultVartime(&Aref, &a, &X, &zero)
-		Aref.ToBytes(&ABytesRef)
+	var ABytesRef [32]byte
+	var Aref ProjectiveGroupElement
+	GeDoubleScalarMultVartime(&Aref, &a, &X, &zero)
+	Aref.ToBytes(&ABytesRef)
 
-		var ABytes [32]byte
-		var A ExtendedGroupElement
-		GeScalarMult(&A, &a, &X)
-		A.ToBytes(&ABytes)
+	var ABytes [32]byte
+	var A ExtendedGroupElement
+	GeScalarMult(&A, &a, &X)
+	A.ToBytes(&ABytes)
 
-		if ABytes != ABytesRef {
-			t.Errorf("GeScalarMult does not match GeDoubleScalarMultVartime: %x != %x", ABytes, ABytesRef)
-		}
+	if ABytes != ABytesRef {
+		t.Errorf("GeScalarMult does not match GeDoubleScalarMultVartime: %x != %x", ABytes, ABytesRef)
 	}
 }
 
@@ -108,39 +90,27 @@ func inc(b *[32]byte) {
 }
 
 func TestGeAddAgainstScalarMult(t *testing.T) {
-	for k := 0; k < 20; k++ {
-		N := 100
-		if testing.Short() {
-			N = 3
-		}
-		var x, s [32]byte
-		rand.Reader.Read(x[:])
-		x[31] &= 127
-		var X ExtendedGroupElement
-		GeScalarMultBase(&X, &x)
-		var A ExtendedGroupElement
-		A.Zero()
-		for i := 0; i < N; i++ {
-			var ABytes, ABytesMult [32]byte
-			A.ToBytes(&ABytes)
-			var AMult ExtendedGroupElement
-			GeScalarMult(&AMult, &s, &X)
-			AMult.ToBytes(&ABytesMult)
-			if ABytes != ABytesMult {
-				t.Errorf("addition does not match multiplication before iteration %d (%x) -> %x != %x", i, s, ABytes, ABytesMult)
-			}
-
-			GeAdd(&A, &A, &X)
-			inc(&s)
-		}
+	var x, s [32]byte
+	rand.Reader.Read(x[:])
+	x[31] &= 127
+	var X ExtendedGroupElement
+	GeScalarMultBase(&X, &x)
+	var A ExtendedGroupElement
+	A.Zero()
+	var ABytes, ABytesMult [32]byte
+	A.ToBytes(&ABytes)
+	var AMult ExtendedGroupElement
+	GeScalarMult(&AMult, &s, &X)
+	AMult.ToBytes(&ABytesMult)
+	if ABytes != ABytesMult {
+		t.Errorf("addition does not match multiplication (%x) -> %x != %x", s, ABytes, ABytesMult)
 	}
+
+	GeAdd(&A, &A, &X)
+	inc(&s)
 }
 
 func TestGeAddAgainstDoubleScalarMult(t *testing.T) {
-	N := 1000
-	if testing.Short() {
-		N /= 20
-	}
 	var zero, x, s [32]byte
 	rand.Reader.Read(x[:])
 	x[31] &= 127
@@ -148,19 +118,17 @@ func TestGeAddAgainstDoubleScalarMult(t *testing.T) {
 	GeScalarMultBase(&X, &x)
 	var A ExtendedGroupElement
 	A.Zero()
-	for i := 0; i < N; i++ {
-		var ABytes, ABytesMult [32]byte
-		A.ToBytes(&ABytes)
-		var AMult ProjectiveGroupElement
-		GeDoubleScalarMultVartime(&AMult, &s, &X, &zero)
-		AMult.ToBytes(&ABytesMult)
-		if ABytes != ABytesMult {
-			t.Errorf("addition does not match multiplication before iteration %d (%x)", i, s)
-		}
-
-		GeAdd(&A, &A, &X)
-		inc(&s)
+	var ABytes, ABytesMult [32]byte
+	A.ToBytes(&ABytes)
+	var AMult ProjectiveGroupElement
+	GeDoubleScalarMultVartime(&AMult, &s, &X, &zero)
+	AMult.ToBytes(&ABytesMult)
+	if ABytes != ABytesMult {
+		t.Errorf("addition does not match multiplication (%x)", s)
 	}
+
+	GeAdd(&A, &A, &X)
+	inc(&s)
 }
 
 func TestGeScalarMultiBaseScalarMultDH(t *testing.T) {
