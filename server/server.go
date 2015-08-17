@@ -337,8 +337,19 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
+		// rs.ThisReplicaNeedsToSignLastEpoch might already be true, if a majority
+		// signed that did not include us. This will make us skip signing the last
+		// epoch, but that's fine.
 		rs.ThisReplicaNeedsToSignLastEpoch = true
+		// However, it's not okay to see a new epoch delimiter before the previous
+		// epoch has been ratified.
+		if rs.LastEpochNeedsRatification {
+			log.Panicf("new epoch delimiter but last epoch not ratified")
+		}
+		rs.LastEpochNeedsRatification = true
 		ks.updateEpochProposer()
+		// This should also only be the case if the last epoch wasn't ratified yet
+		// (according to log order).
 		if len(ks.signaturePending) != 0 {
 			log.Panicf("still pending updates -- should not happen!")
 		}
@@ -399,7 +410,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				seh.Signatures[id] = sig
 			}
 		}
-		log.Print(seh)
 		wb.Put(dbkey, proto.MustMarshal(seh))
 
 		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
@@ -412,9 +422,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		newSehRatified := coname.VerifyPolicy(ks.serverAuthorized, seh.Head.PreservedEncoding, seh.Signatures)
 		if !oldSehRatified && newSehRatified {
-			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: seh}, rs, wb)
+			if !rs.LastEpochNeedsRatification {
+				log.Panicf("thought last epoch was not already ratified, but it was")
+			}
+			rs.LastEpochNeedsRatification = false
+			ks.updateEpochProposer()
+			nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: seh}, rs, wb)
 			return func() {
-				notifyVerifiers()
+				nestedDeferredIO()
 				for _, uid := range ks.signaturePending {
 					ks.wr.Notify(uid, nil)
 				}
@@ -491,10 +506,8 @@ func (p *Proposer) run() {
 // shouldEpoch returns true if this node should append an epoch delimiter to the
 // log.
 func (ks *Keyserver) wantEpochProposer() bool {
-	if ks.rs.ThisReplicaNeedsToSignLastEpoch {
-		return false
-	}
-	return ks.leaderHint && (ks.maxEpochIntervalPassed || ks.minEpochIntervalPassed && ks.rs.PendingUpdates)
+	return !ks.rs.LastEpochNeedsRatification && ks.leaderHint &&
+		(ks.maxEpochIntervalPassed || ks.minEpochIntervalPassed && ks.rs.PendingUpdates)
 }
 
 // updateEpochProposer either starts or stops the epoch delimiter proposer as necessary.
