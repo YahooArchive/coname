@@ -60,17 +60,3 @@ message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
 	Timestamp timestamp = 2 [(gogoproto.nullable) = false];
 }
-
-message Replica {
-	// Id is used to distinguish between nodes during consistent replication.
-	// All node ID-s MUST be unique, MUST NOT be reused (e.g., using IP-s or
-	// hostnames is probably a bad idea) and SHOULD be set to the ID of the
-	// first public key by convention.
-	uint64 id = 1;
-	// PublicKeys lists the public keys of a node, to be joined using a
-	// 1-out-of-n policy. The order of this list is NOT preserved.
-	repeated PublicKey public_keys = 2;
-	// Addr is the network address of the node, such that net.Dial("tcp", Addr)
-	// reaches the node. Supported formats include host.domain:port and ip:port.
-	string addr = 3;
-}

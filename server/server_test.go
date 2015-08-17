@@ -163,6 +163,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (cfgs []*proto.ReplicaConfig, 
 
 	pks := make(map[uint64]*proto.PublicKey)
 	replicaIDs := []uint64{}
+	pol = &proto.AuthorizationPolicy{}
 	for n := 0; n < nReplicas; n++ {
 		pk, sk, err := ed25519.GenerateKey(rand.Reader)
 		if err != nil {
@@ -178,9 +179,10 @@ func setupKeyservers(t *testing.T, nReplicas int) (cfgs []*proto.ReplicaConfig, 
 		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
 		cfgs = append(cfgs, &proto.ReplicaConfig{
 			KeyserverConfig: proto.KeyserverConfig{
-				Realm:    testingRealm,
-				ServerID: replicaID,
-				VRFKeyID: "vrf",
+				Realm:                      testingRealm,
+				ServerID:                   replicaID,
+				InitialAuthorizationPolicy: pol,
+				VRFKeyID:                   "vrf",
 
 				MinEpochInterval:      proto.DurationStamp(tick),
 				MaxEpochInterval:      proto.DurationStamp(tick),
@@ -209,10 +211,8 @@ func setupKeyservers(t *testing.T, nReplicas int) (cfgs []*proto.ReplicaConfig, 
 			}
 		})
 	}
-	pol = &proto.AuthorizationPolicy{
-		PublicKeys: pks,
-		Quorum:     &proto.QuorumExpr{Threshold: majority(nReplicas), Candidates: replicaIDs},
-	}
+	pol.PublicKeys = pks
+	pol.Quorum = &proto.QuorumExpr{Threshold: majority(nReplicas), Candidates: replicaIDs}
 	return
 }
 

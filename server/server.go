@@ -44,6 +44,7 @@ import (
 type Keyserver struct {
 	realm               string
 	serverID, replicaID uint64
+	serverAuthorized    *proto.AuthorizationPolicy
 
 	thresholdSigningIndex uint32
 	sehKey                *[ed25519.PrivateKeySize]byte
@@ -118,6 +119,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 		realm:                 cfg.Realm,
 		serverID:              cfg.ServerID,
 		replicaID:             cfg.ReplicaID,
+		serverAuthorized:      cfg.InitialAuthorizationPolicy,
 		sehKey:                signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:             vrfKey.(*[vrf.SecretKeySize]byte),
 		minEpochInterval:      cfg.MinEpochInterval.Duration(),
@@ -337,6 +339,9 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
 		rs.ThisReplicaNeedsToSignLastEpoch = true
 		ks.updateEpochProposer()
+		if len(ks.signaturePending) != 0 {
+			log.Panicf("still pending updates -- should not happen!")
+		}
 		ks.signaturePending, ks.epochPending = ks.epochPending, nil
 		deferredIO = ks.updateSignatureProposer
 
@@ -388,6 +393,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if seh.Signatures == nil {
 			seh.Signatures = make(map[uint64][]byte, 1)
 		}
+		oldSehRatified := coname.VerifyPolicy(ks.serverAuthorized, seh.Head.PreservedEncoding, seh.Signatures)
 		for id, sig := range newSEH.Signatures {
 			if _, already := seh.Signatures[id]; !already {
 				seh.Signatures[id] = sig
@@ -404,10 +410,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			// false we know that updateSignatureProposer will not access the db.
 			ks.updateSignatureProposer()
 		}
-		// TODO: check against the cluster configuration that the signatures we
-		// have are sufficient to pass verification. For now, 1 is a majority of 1.
-		// Only put signatures into the verifier log once.
-		if true {
+		newSehRatified := coname.VerifyPolicy(ks.serverAuthorized, seh.Head.PreservedEncoding, seh.Signatures)
+		if !oldSehRatified && newSehRatified {
 			notifyVerifiers := ks.verifierLogAppend(&proto.VerifierStep{Epoch: seh}, rs, wb)
 			return func() {
 				notifyVerifiers()

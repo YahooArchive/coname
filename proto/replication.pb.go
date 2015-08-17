@@ -97,30 +97,6 @@ func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	return Timestamp{}
 }
 
-type Replica struct {
-	// Id is used to distinguish between nodes during consistent replication.
-	// All node ID-s MUST be unique, MUST NOT be reused (e.g., using IP-s or
-	// hostnames is probably a bad idea) and SHOULD be set to the ID of the
-	// first public key by convention.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	// PublicKeys lists the public keys of a node, to be joined using a
-	// 1-out-of-n policy. The order of this list is NOT preserved.
-	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys" json:"public_keys,omitempty"`
-	// Addr is the network address of the node, such that net.Dial("tcp", Addr)
-	// reaches the node. Supported formats include host.domain:port and ip:port.
-	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
-}
-
-func (m *Replica) Reset()      { *m = Replica{} }
-func (*Replica) ProtoMessage() {}
-
-func (m *Replica) GetPublicKeys() []*PublicKey {
-	if m != nil {
-		return m.PublicKeys
-	}
-	return nil
-}
-
 func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -251,78 +227,6 @@ func (this *EpochDelimiter) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (this *Replica) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return fmt.Errorf("that is not of type *Replica")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Replica but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
-	}
-	if this.Id != that1.Id {
-		return fmt.Errorf("Id this(%v) Not Equal that(%v)", this.Id, that1.Id)
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	if this.Addr != that1.Addr {
-		return fmt.Errorf("Addr this(%v) Not Equal that(%v)", this.Addr, that1.Addr)
-	}
-	return nil
-}
-func (this *Replica) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Id != that1.Id {
-		return false
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
-	}
-	if this.Addr != that1.Addr {
-		return false
-	}
-	return true
-}
 func (this *KeyserverStep) GoString() string {
 	if this == nil {
 		return "nil"
@@ -342,16 +246,6 @@ func (this *EpochDelimiter) GoString() string {
 	s := strings.Join([]string{`&proto.EpochDelimiter{` +
 		`EpochNumber:` + fmt.Sprintf("%#v", this.EpochNumber),
 		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *Replica) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Replica{` +
-		`Id:` + fmt.Sprintf("%#v", this.Id),
-		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
-		`Addr:` + fmt.Sprintf("%#v", this.Addr) + `}`}, ", ")
 	return s
 }
 func valueToGoStringReplication(v interface{}, typ string) string {
@@ -473,47 +367,6 @@ func (m *EpochDelimiter) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Replica) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Replica) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Id != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintReplication(data, i, uint64(m.Id))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, msg := range m.PublicKeys {
-			data[i] = 0x12
-			i++
-			i = encodeVarintReplication(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.Addr) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintReplication(data, i, uint64(len(m.Addr)))
-		i += copy(data[i:], m.Addr)
-	}
-	return i, nil
-}
-
 func encodeFixed64Replication(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -571,22 +424,6 @@ func NewPopulatedEpochDelimiter(r randyReplication, easy bool) *EpochDelimiter {
 	return this
 }
 
-func NewPopulatedReplica(r randyReplication, easy bool) *Replica {
-	this := &Replica{}
-	this.Id = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		v2 := r.Intn(10)
-		this.PublicKeys = make([]*PublicKey, v2)
-		for i := 0; i < v2; i++ {
-			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	this.Addr = randStringReplication(r)
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
 type randyReplication interface {
 	Float32() float32
 	Float64() float64
@@ -606,9 +443,9 @@ func randUTF8RuneReplication(r randyReplication) rune {
 	return rune(ru + 61)
 }
 func randStringReplication(r randyReplication) string {
-	v3 := r.Intn(100)
-	tmps := make([]rune, v3)
-	for i := 0; i < v3; i++ {
+	v2 := r.Intn(100)
+	tmps := make([]rune, v2)
+	for i := 0; i < v2; i++ {
 		tmps[i] = randUTF8RuneReplication(r)
 	}
 	return string(tmps)
@@ -630,11 +467,11 @@ func randFieldReplication(data []byte, r randyReplication, fieldNumber int, wire
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateReplication(data, uint64(key))
-		v4 := r.Int63()
+		v3 := r.Int63()
 		if r.Intn(2) == 0 {
-			v4 *= -1
+			v3 *= -1
 		}
-		data = encodeVarintPopulateReplication(data, uint64(v4))
+		data = encodeVarintPopulateReplication(data, uint64(v3))
 	case 1:
 		data = encodeVarintPopulateReplication(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -695,25 +532,6 @@ func (m *EpochDelimiter) Size() (n int) {
 	return n
 }
 
-func (m *Replica) Size() (n int) {
-	var l int
-	_ = l
-	if m.Id != 0 {
-		n += 1 + sovReplication(uint64(m.Id))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, e := range m.PublicKeys {
-			l = e.Size()
-			n += 1 + l + sovReplication(uint64(l))
-		}
-	}
-	l = len(m.Addr)
-	if l > 0 {
-		n += 1 + l + sovReplication(uint64(l))
-	}
-	return n
-}
-
 func sovReplication(x uint64) (n int) {
 	for {
 		n++
@@ -748,18 +566,6 @@ func (this *EpochDelimiter) String() string {
 	s := strings.Join([]string{`&EpochDelimiter{`,
 		`EpochNumber:` + fmt.Sprintf("%v", this.EpochNumber) + `,`,
 		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Replica) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Replica{`,
-		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
-		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
-		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1015,117 +821,6 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipReplication(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthReplication
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *Replica) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
-			}
-			m.Id = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Id |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthReplication
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PublicKeys = append(m.PublicKeys, &PublicKey{})
-			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Addr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
