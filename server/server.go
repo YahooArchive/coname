@@ -15,6 +15,7 @@
 package server
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
@@ -365,87 +366,98 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
 		}
-		seh := &proto.SignedEpochHead{
-			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
-				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
-					RootHash:            rootHash,
-					PreviousSummaryHash: rs.PreviousSummaryHash,
-					Realm:               ks.realm,
-					Epoch:               step.EpochDelimiter.EpochNumber,
-				}, nil},
-				Timestamp: step.EpochDelimiter.Timestamp,
+		teh := &proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
+			Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
+				RootHash:            rootHash,
+				PreviousSummaryHash: rs.PreviousSummaryHash,
+				Realm:               ks.realm,
+				Epoch:               step.EpochDelimiter.EpochNumber,
 			}, nil},
-			Signatures: make(map[uint64][]byte),
-		}
-		seh.Head.Head.UpdateEncoding()
-		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
+			Timestamp: step.EpochDelimiter.Timestamp,
+		}, nil}
+		teh.Head.UpdateEncoding()
+		h := sha256.Sum256(teh.Head.PreservedEncoding)
 		rs.PreviousSummaryHash = h[:]
-		seh.Head.UpdateEncoding()
+		teh.UpdateEncoding()
 
-		wb.Put(tableRatifications(step.EpochDelimiter.EpochNumber, ks.serverID), proto.MustMarshal(seh))
+		wb.Put(tableEpochHeads(step.EpochDelimiter.EpochNumber), proto.MustMarshal(teh))
 
 	case step.ReplicaSigned != nil:
 		newSEH := step.ReplicaSigned
-		dbkey := tableRatifications(newSEH.Head.Head.Epoch, ks.serverID)
-		sehBytes, err := ks.db.Get(dbkey)
+		epochNr := newSEH.Head.Head.Epoch
+		// get epoch head
+		tehBytes, err := ks.db.Get(tableEpochHeads(epochNr))
 		if err != nil {
-			log.Panicf("db.Get(tableRatifications(%d, %d)) failed: %s", newSEH.Head.Head.Epoch, ks.serverID, err)
+			log.Panicf("get tableEpochHeads(%d): %s", epochNr, err)
 		}
-		seh := new(proto.SignedEpochHead)
-		if err := seh.Unmarshal(sehBytes); err != nil {
-			log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s",
-				newSEH.Head.Head.Epoch, ks.serverID, err)
-		}
-		if !seh.Head.Equal(newSEH.Head) {
-			log.Panicf("tableRatifications(%d, %d) differs from another replica: %s (%#v != %#v)",
-				newSEH.Head.Head.Epoch, ks.serverID, seh.Head.VerboseEqual(newSEH.Head), seh.Head, newSEH.Head)
+		// compare epoch head to signed epoch head
+		if got, want := tehBytes, newSEH.Head.PreservedEncoding; !bytes.Equal(got, want) {
+			log.Panicf("replica signed different head: wanted %x, got %x", want, got)
 		}
 
-		if seh.Signatures == nil {
-			seh.Signatures = make(map[uint64][]byte, 1)
-		}
-		oldSehRatified := coname.VerifyPolicy(ks.serverAuthorized, seh.Head.PreservedEncoding, seh.Signatures)
+		// insert all the new signatures into the ratifications table (there should
+		// actually only be one)
 		for id, sig := range newSEH.Signatures {
-			if _, already := seh.Signatures[id]; !already {
-				seh.Signatures[id] = sig
-			}
+			// the entry might already exist in the DB (if the proposals got
+			// duplicated), but it doesn't matter
+			wb.Put(tableRatifications(epochNr, id), sig)
 		}
-		wb.Put(dbkey, proto.MustMarshal(seh))
 
-		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
-			rs.ThisReplicaNeedsToSignLastEpoch = false
-			ks.updateEpochProposer()
-			// updateSignatureProposer should in general be called after writes
-			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
-			// false we know that updateSignatureProposer will not access the db.
-			ks.updateSignatureProposer()
-		}
-		newSehRatified := coname.VerifyPolicy(ks.serverAuthorized, seh.Head.PreservedEncoding, seh.Signatures)
-		if !oldSehRatified && newSehRatified {
-			if !rs.LastEpochNeedsRatification {
-				log.Panicf("thought last epoch was not already ratified, but it was")
+		if epochNr == rs.LastEpochDelimiter.EpochNumber {
+			if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
+				rs.ThisReplicaNeedsToSignLastEpoch = false
+				ks.updateEpochProposer()
+				// updateSignatureProposer should in general be called after writes
+				// have been flushed to db, but given ThisReplicaNeedsToSignLast =
+				// false we know that updateSignatureProposer will not access the db.
+				ks.updateSignatureProposer()
 			}
-			rs.LastEpochNeedsRatification = false
-			ks.updateEpochProposer()
-			nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: seh}, rs, wb)
-			return func() {
-				nestedDeferredIO()
-				for _, uid := range ks.signaturePending {
-					ks.wr.Notify(uid, nil)
+			// get all existing ratifications for this epoch
+			allSignatures, err := ks.allRatificationsForEpoch(epochNr)
+			if err != nil {
+				log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
+			}
+			// check whether the epoch was already ratified
+			wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+			for id, sig := range newSEH.Signatures {
+				allSignatures[id] = sig
+			}
+			// check whether the epoch has now become ratified
+			nowRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+			if !wasRatified && nowRatified {
+				if !rs.LastEpochNeedsRatification {
+					log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
 				}
-				ks.signaturePending = nil
+				rs.LastEpochNeedsRatification = false
+				ks.updateEpochProposer()
+				var teh proto.TimestampedEpochHead_PreserveEncoding
+				err = teh.Unmarshal(tehBytes)
+				if err != nil {
+					log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
+				}
+				allSignaturesSEH := &proto.SignedEpochHead{
+					Head:       teh,
+					Signatures: allSignatures,
+				}
+				nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+				return func() {
+					nestedDeferredIO()
+					for _, uid := range ks.signaturePending {
+						ks.wr.Notify(uid, nil)
+					}
+					ks.signaturePending = nil
+				}
 			}
 		}
 
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
-		for id := range rNew.Signatures {
-			if id == ks.serverID {
-				log.Printf("verifier sent us an acclaimed signature with our id :/")
-				continue
-			}
+		for id, sig := range rNew.Signatures {
+			// Note: The signature *must* have been verified before being inserted
+			// into the log, or else verifiers could just trample over everyone else's
+			// signatures, including our own.
 			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
-			wb.Put(dbkey, proto.MustMarshal(rNew))
+			wb.Put(dbkey, sig)
 		}
 		ks.wr.Notify(step.UID, nil)
 	default:
@@ -541,15 +553,18 @@ func (ks *Keyserver) updateSignatureProposer() {
 
 	switch want {
 	case true:
-		sehBytes, err := ks.db.Get(tableRatifications(ks.rs.LastEpochDelimiter.EpochNumber, ks.serverID))
+		tehBytes, err := ks.db.Get(tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber))
 		if err != nil {
-			log.Panicf("ThisReplicaSignedLastEpoch but no SEH for last epoch in db", err)
+			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db", err)
 		}
-		seh := new(proto.SignedEpochHead)
-		if err := seh.Unmarshal(sehBytes); err != nil {
-			log.Panicf("tableRatifications(%d, %d) invalid (this is our ID!): %s", ks.rs.LastEpochDelimiter.EpochNumber, ks.serverID, err)
+		var teh proto.TimestampedEpochHead_PreserveEncoding
+		if err := teh.Unmarshal(tehBytes); err != nil {
+			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 		}
-		seh.Signatures = map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, seh.Head.PreservedEncoding)[:]}
+		seh := &proto.SignedEpochHead{
+			Head:       teh,
+			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, tehBytes)[:]},
+		}
 		ks.signatureProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
 			proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
 	case false:
@@ -566,6 +581,21 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	ks.minEpochIntervalPassed = false
 	ks.maxEpochIntervalPassed = false
 	// caller MUST call updateEpochProposer
+}
+
+func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64][]byte, error) {
+	iter := ks.db.NewIterator(&kv.Range{tableRatifications(epoch, 0), tableRatifications(epoch+1, 0)})
+	defer iter.Release()
+	sigs := make(map[uint64][]byte)
+	for iter.Next() {
+		sig := append([]byte{}, iter.Value()...)
+		id := binary.BigEndian.Uint64(iter.Key()[1+8 : 1+8+8])
+		sigs[id] = sig
+	}
+	if err := iter.Error(); err != nil {
+		return nil, err
+	}
+	return sigs, nil
 }
 
 func genUID() uint64 {

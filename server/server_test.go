@@ -22,8 +22,12 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"io/ioutil"
+	"log"
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -58,6 +62,21 @@ const (
 	tick         = time.Second
 	poll         = 100 * time.Microsecond
 )
+
+func dieOnCtrlC() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		panic("quit!")
+	}()
+}
+
+func pprof() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+}
 
 func chain(fs ...func()) func() {
 	ret := func() {}
@@ -244,6 +263,8 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
+	dieOnCtrlC()
+	pprof()
 	nReplicas := 3
 	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
@@ -261,9 +282,8 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 				return
 			}
-			var sr proto.SignedEpochHead
-			sr.Unmarshal(update.Value)
-			if sr.Head.Head.Epoch == 3 {
+			epoch := binary.BigEndian.Uint64(update.Key[1 : 1+8])
+			if epoch == 3 {
 				closeOnce.Do(func() { done.Done() })
 			}
 		})
@@ -440,12 +460,6 @@ func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
 */
 
 func TestKeyserverUpdate(t *testing.T) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-	go func() {
-		<-ch
-		panic("quit!")
-	}()
 
 	nReplicas := 3
 	cfgs, gks, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
@@ -460,6 +474,7 @@ func TestKeyserverUpdate(t *testing.T) {
 			t.Fatal(err)
 		}
 		ks.Start()
+		defer ks.Stop()
 		kss = append(kss, ks)
 	}
 
@@ -547,10 +562,10 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 			if len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 				return
 			}
-			var sr proto.SignedEpochHead
-			sr.Unmarshal(update.Value)
 			<-vrBarrier
-			if _, s := sr.Signatures[vcfg.ID]; s && sr.Head.Head.Epoch == 1 {
+			epoch := binary.BigEndian.Uint64(update.Key[1 : 1+8])
+			id := binary.BigEndian.Uint64(update.Key[1+8 : 1+8+8])
+			if id == vcfg.ID && epoch == 1 {
 				doneOnce.Do(func() { doneVerifiers <- doneVerifier{verifierTeardown, vcfg.ID} })
 			}
 		})
