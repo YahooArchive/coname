@@ -52,7 +52,7 @@ import (
 	"github.com/yahoo/coname/server/replication/raftlog"
 	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
 	raftproto "github.com/yahoo/coname/server/replication/raftlog/proto"
-	// "github.com/yahoo/coname/verifier"
+	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )
 
@@ -263,7 +263,6 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
-	dieOnCtrlC()
 	pprof()
 	nReplicas := 3
 	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
@@ -419,48 +418,53 @@ func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
 	return done
 }
 
-/*
-func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, gk, _, _, caPool, _, teardown := setupKeyserver(t)
+func TestKeyserverRoundtrip(t *testing.T) {
+	nReplicas := 3
+	cfgs, gks, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		defer ks.Stop()
+		kss = append(kss, ks)
+	}
+
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	profile := doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ks.Start()
-	defer ks.Stop()
-
-	runWhileTicking(clk, func() {
-		profile := doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("noncenoncenonceNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-		})
-
-		conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-		if err != nil {
-			t.Fatal(err)
-		}
-		c := proto.NewE2EKSLookupClient(conn)
-		proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if proof.UserId != alice {
-			t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-		}
-		if len(proof.IndexProof) != vrf.ProofSize {
-			t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-		}
-		if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
-			t.Errorf("profile didn't roundtrip: %x != %x", got, want)
-		}
-	})
+	c := proto.NewE2EKSLookupClient(conn)
+	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != alice {
+		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
 }
-*/
 
 func TestKeyserverUpdate(t *testing.T) {
-
 	nReplicas := 3
 	cfgs, gks, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
@@ -492,7 +496,6 @@ func TestKeyserverUpdate(t *testing.T) {
 	})
 }
 
-/*
 // setupVerifier initializes a verifier, but does not start it and does not
 // wait for it to sign anything.
 func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, teardown func()) {
@@ -529,20 +532,26 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 	return
 }
 
-// setupRealm initializes one keyserver and nVerifiers verifiers, and then
-// waits until each one of them has signed an epoch.
-func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, clk *clock.Mock, verifiers []uint64, teardown func()) {
-	cfg, db, gk, pol, caCert, caPool, caKey, teardown := setupKeyserver(t)
-	ksDone := make(chan struct{})
-	var ksDoneOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
-		// We are waiting for an epoch to be ratified (in case there are no
-		// verifiers, blocking on them does not help).
-		if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableVerifierLogPrefix {
-			return
-		}
-		ksDoneOnce.Do(func() { close(ksDone) })
-	})
+// setupRealm initializes nReplicas keyserver replicas and nVerifiers
+// verifiers, and then waits until each one of them has signed an epoch.
+func setupRealm(t *testing.T, nReplicas, nVerifiers int) (kss []*Keyserver, caPool *x509.CertPool, clks []*clock.Mock, verifiers []uint64, pol *proto.AuthorizationPolicy, teardown func()) {
+	cfgs, gks, pol, caCert, caPool, caKey, teardown := setupKeyservers(t, nReplicas)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	teardown = chain(teardown2, teardown)
+
+	var ksDone sync.WaitGroup
+	ksDone.Add(nReplicas)
+	for i := range dbs {
+		var ksDoneOnce sync.Once
+		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
+			// We are waiting for an epoch to be ratified (in case there are no
+			// verifiers, blocking on them does not help).
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableVerifierLogPrefix {
+				return
+			}
+			ksDoneOnce.Do(func() { ksDone.Done() })
+		})
+	}
 
 	type doneVerifier struct {
 		teardown func()
@@ -555,7 +564,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		var verifierTeardown func()
 		var vcfg *verifier.Config
 		var doneOnce sync.Once
-		db = tracekv.WithSimpleTracing(db, func(update tracekv.Update) {
+		dbs[0] = tracekv.WithSimpleTracing(dbs[0], func(update tracekv.Update) {
 			// We are waiting for epoch 1 to be ratified by the verifier and
 			// reach the client because before that lookups requiring this
 			// verifier will immediately fail.
@@ -572,7 +581,7 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, verifierTeardown = setupVerifier(t, pol, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			vcfg, vdb, verifierTeardown = setupVerifier(t, pol, kss[i%nReplicas].verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
 			_, err := verifier.Start(vcfg, vdb)
@@ -581,21 +590,31 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 			}
 		}(i)
 	}
-	clk = clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
-	if err != nil {
-		t.Fatal(err)
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		teardown = chain(ks.Stop, teardown)
+		kss = append(kss, ks)
 	}
 	close(ksBarrier)
-	ks.Start()
-	teardown = chain(ks.Stop, teardown)
+
+	ksDoneCh := make(chan struct{})
+	go func() {
+		ksDone.Wait()
+		close(ksDoneCh)
+	}()
 
 loop:
 	for {
 		select {
 		case <-time.After(poll):
-			clk.Add(tick)
-		case <-ksDone:
+			for _, clk := range clks {
+				clk.Add(tick)
+			}
+		case <-ksDoneCh:
 			break loop
 		}
 	}
@@ -604,46 +623,22 @@ loop:
 		verifiers = append(verifiers, v.id)
 		teardown = chain(v.teardown, teardown)
 	}
-	return ks, caPool, clk, verifiers, teardown
-}
-
-func TestKeyserverLookupRequireKeyserver(t *testing.T) {
-	ks, caPool, _, _, teardown := setupRealm(t, 0)
-	defer teardown()
-
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
-		UserId: alice,
-		QuorumRequirement: &proto.QuorumExpr{
-			Threshold:  1,
-			Candidates: []uint64{ks.serverID},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if proof.UserId != alice {
-		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-	}
-	if len(proof.IndexProof) != vrf.ProofSize {
-		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-	}
-	if len(proof.Ratifications) < 1 {
-		t.Errorf("expected 1 seh, got %d", len(proof.Ratifications))
-	}
+	// TODO: add verifiers to pol
+	return kss, caPool, clks, verifiers, pol, teardown
 }
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
-	ks, caPool, clk, verifiers, teardown := setupRealm(t, 3)
+	kss, caPool, clks, verifiers, pol, teardown := setupRealm(t, 3, 0)
 	defer teardown()
-	stop := stoppableClock(clk)
+	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	profile := doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -664,6 +659,9 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	if len(proof.IndexProof) != vrf.ProofSize {
 		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
 	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
 	if len(proof.Ratifications) < len(verifiers) {
 		t.Errorf("expected %d sehs, got %d", len(verifiers), len(proof.Ratifications))
 	}
@@ -675,4 +673,3 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 		lastEpoch = r.Head.Head.Epoch
 	}
 }
-*/
