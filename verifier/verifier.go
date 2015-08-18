@@ -211,7 +211,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		if r.Head.Epoch != vs.NextEpoch {
 			log.Fatalf("%d: got epoch %d instead: %#v", vs.NextEpoch, r.Head.Epoch, *step)
 		}
-		s := &r.Head
+		s := r.Head
 		if !bytes.Equal(s.PreviousSummaryHash, vs.PreviousSummaryHash) {
 			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vs.NextEpoch, s.PreviousSummaryHash, vs.PreviousSummaryHash, *step)
 		}
@@ -225,17 +225,11 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
-				Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
-					RootHash:            rootHash,
-					PreviousSummaryHash: vs.PreviousSummaryHash,
-					Realm:               vr.realm,
-					Epoch:               vs.NextEpoch,
-				}, nil},
+				Head:      s,
 				Timestamp: proto.Time(time.Now()),
 			}, nil},
 			Signatures: make(map[uint64][]byte, 1),
 		}
-		seh.Head.Head.UpdateEncoding()
 		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
 		vs.PreviousSummaryHash = h[:]
 		seh.Head.UpdateEncoding()
