@@ -329,16 +329,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	switch {
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
-		prevUpdate, err := ks.getUpdate(index, rs.LastEpochDelimiter.EpochNumber)
-		if err != nil {
-			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
-			return
-		}
-		var prevEntry *proto.Entry
-		if prevUpdate != nil {
-			prevEntry = &prevUpdate.Update.NewEntry.Entry
-		}
-		if err := coname.VerifyUpdate(prevEntry, step.Update.Update); err != nil {
+		if err := ks.verifyUpdate(step.Update); err != nil {
 			ks.wr.Notify(step.UID, err)
 			return
 		}
