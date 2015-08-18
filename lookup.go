@@ -71,16 +71,10 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 	if len(ratifications) == 0 {
 		return nil, fmt.Errorf("VerifyConsensus: no signed epoch heads provided")
 	}
-	// check that the first SEH is referenced by all following SEH-s.
+	// check that all the SEHs have the same head
 	for i := 1; i < len(ratifications); i++ {
-		this := ratifications[i]
-		prev := ratifications[i-1]
-		computedHash := sha256.Sum256(prev.Head.Head.PreservedEncoding)
-		if !bytes.Equal(computedHash[:], this.Head.Head.PreviousSummaryHash) {
-			return nil, fmt.Errorf("VerifyConsensus: hash chain does not match: %d.prev != h(%d)", i, i-1)
-		}
-		if prev.Head.Head.Epoch+1 != this.Head.Head.Epoch {
-			return nil, fmt.Errorf("VerifyConsensus: epoch chain does not match: %d.epoch != %d.epoch+1", i, i-1)
+		if want, got := ratifications[0].Head.Head.PreservedEncoding, ratifications[i].Head.Head.PreservedEncoding; !bytes.Equal(want, got) {
+			return nil, fmt.Errorf("VerifyConsensus: epoch heads don't match: %x vs %x", want, got)
 		}
 	}
 	// check that the seh is not expired

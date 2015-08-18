@@ -29,6 +29,60 @@ import (
 
 const lookupMaxChainLength = 100
 
+func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (uint64, []*proto.SignedEpochHead, error) {
+	verifiers := coname.ListQuorum(quorum, nil)
+	// find latest epoch, iterate backwards until quorum requirement is met
+	// 0 is bad for iterating uint64 in the negative direction and there is no epoch 0
+	oldestEpoch, newestEpoch := uint64(1), ks.lastSignedEpoch()
+	if newestEpoch == 0 {
+		log.Printf("ERROR: no epochs created yet, so lookup failed")
+		return 0, nil, fmt.Errorf("internal error")
+	}
+	if newestEpoch-oldestEpoch > lookupMaxChainLength {
+		oldestEpoch = newestEpoch - lookupMaxChainLength
+	}
+	// TODO: optimize this for the case where verifiers sign everything
+	// consecutively
+	for epoch := newestEpoch; epoch >= oldestEpoch; epoch-- {
+		tehBytes, err := ks.db.Get(tableEpochHeads(epoch))
+		if err != nil {
+			log.Printf("ERROR: ks.db.Get(tableEpochHeads(%d)): %s", epoch, err)
+			return 0, nil, fmt.Errorf("internal error")
+		}
+		var teh proto.TimestampedEpochHead_PreserveEncoding
+		if err := teh.Unmarshal(tehBytes); err != nil {
+			log.Printf("ERROR: tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
+			return 0, nil, fmt.Errorf("internal error")
+		}
+		ratifications := []*proto.SignedEpochHead{}
+		haveVerifiers := make(map[uint64]struct{})
+		for verifier := range verifiers {
+			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
+			switch err {
+			case nil:
+			case ks.db.ErrNotFound():
+				continue
+			default:
+				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
+				return 0, nil, fmt.Errorf("internal error")
+			}
+			seh := new(proto.SignedEpochHead)
+			err = seh.Unmarshal(sehBytes)
+			if err != nil {
+				log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
+				return 0, nil, fmt.Errorf("internal error")
+			}
+			ratifications = append(ratifications, seh)
+			haveVerifiers[verifier] = struct{}{}
+		}
+		if coname.CheckQuorum(quorum, haveVerifiers) {
+			return epoch, ratifications, nil
+		}
+	}
+	// TODO: return whatever ratification we could find
+	return 0, nil, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
+}
+
 // Lookup implements proto.E2EKSLookupServer
 func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
 	ret := &proto.LookupProof{UserId: req.UserId}
@@ -37,56 +91,11 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		index = vrf.Compute([]byte(req.UserId), ks.vrfSecret)
 		ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	}
-	remainingVerifiers := coname.ListQuorum(req.QuorumRequirement, nil)
-	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
-	// find latest epoch, iterate backwards until quorum requirement is met
-	oldestEpoch, newestEpoch := uint64(1), ks.lastSignedEpoch()
-	if newestEpoch == 0 {
-		log.Printf("ERROR: no epochs created yet, so lookup fails: %x", index)
-		return nil, fmt.Errorf("internal error")
+	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
+	if err != nil {
+		return nil, err
 	}
-	// 0 is bad for iterating uint64 in the negative direction and there is no epoch 0
-	if newestEpoch-oldestEpoch > lookupMaxChainLength {
-		oldestEpoch = newestEpoch - lookupMaxChainLength
-	}
-	lookupEpoch := newestEpoch
-	for epoch := newestEpoch; epoch >= oldestEpoch &&
-		!coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
-		len(remainingVerifiers) != 0; epoch-- {
-		tehBytes, err := ks.db.Get(tableEpochHeads(epoch))
-		if err != nil {
-			log.Printf("ERROR: ks.db.Get(tableEpochHeads(%d)): %s", epoch, err)
-		}
-		var teh proto.TimestampedEpochHead_PreserveEncoding
-		if err := teh.Unmarshal(tehBytes); err != nil {
-			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
-		}
-		for verifier := range remainingVerifiers {
-			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
-			switch err {
-			case nil:
-			case ks.db.ErrNotFound():
-				continue
-			default:
-				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
-				return nil, fmt.Errorf("internal error")
-			}
-			seh := new(proto.SignedEpochHead)
-			err = seh.Unmarshal(sehBytes)
-			if err != nil {
-				log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
-			}
-			ret.Ratifications = append(ret.Ratifications, seh)
-			lookupEpoch = epoch
-			delete(remainingVerifiers, verifier)
-			haveVerifiers[verifier] = struct{}{}
-		}
-	}
-	// reverse the order
-	for i := 0; i < len(ret.Ratifications)/2; i++ {
-		a, b := ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i]
-		ret.Ratifications[i], ret.Ratifications[len(ret.Ratifications)-1-i] = b, a
-	}
+	ret.Ratifications = ratifications
 	tree, err := ks.merkletreeForEpoch(lookupEpoch)
 	if err != nil {
 		log.Printf("ERROR: couldn't get merkle tree for epoch %d: %s", lookupEpoch, err)
@@ -104,9 +113,6 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	}
 	if urq != nil {
 		ret.Profile = urq.Profile
-	}
-	if !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
-		return ret, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 	}
 	return ret, nil
 }

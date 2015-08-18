@@ -77,19 +77,16 @@ message LookupProof {
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
 	bytes index_proof = 2;
-	// ratifications contains signed directory state summaries for consecutive
-	// epochs, ending with the one as of which the lookup was performed.
+	// ratifications contains signed directory state summaries for the epoch under
+	// which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
 	// that the r.ratification.summary.root_hash summarizes the authenticated
 	// data structure containing the unique and correct mapping from indices to
 	// entries as of epoch r.ratification.epoch at human time
 	// r.ratification.timestamp.
-	// The ratifications of the later epochs indirectly vouch for the first one
-	// through directory state summary hash chaining. Only the latest valid
-	// signature from each verifier is provided, so some returned ratifications
-	// may have no signatures on them. A client MUST ignore a proof if the
-	// ratifications do not satisfy its quorum requirement and MUST require the
-	// keyserver itself to be in the quorum.
+	// Each ratification must contain the same epoch head. A client MUST ignore a
+	// proof if the ratifications do not satisfy its quorum requirement and MUST
+	// require the keyserver itself to be in the quorum.
 	repeated SignedEpochHead ratifications = 3;
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
