@@ -89,10 +89,10 @@ func (h *HKPFront) Stop() {
 func (h *HKPFront) updateConnState(c net.Conn, s http.ConnState) {
 	h.connStateMu.Lock()
 	defer h.connStateMu.Unlock()
+	h.connState[c] = s
 	switch s {
 	case http.StateNew:
 		h.waitStop.Add(1)
-		h.connState[c] = s
 	case http.StateIdle:
 		select {
 		case <-h.stop:
