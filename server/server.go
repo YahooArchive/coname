@@ -423,10 +423,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 		// insert all the new signatures into the ratifications table (there should
 		// actually only be one)
-		for id, sig := range newSEH.Signatures {
+		newSehBytes := proto.MustMarshal(newSEH)
+		for id := range newSEH.Signatures {
 			// the entry might already exist in the DB (if the proposals got
 			// duplicated), but it doesn't matter
-			wb.Put(tableRatifications(epochNr, id), sig)
+			wb.Put(tableRatifications(epochNr, id), newSehBytes)
 		}
 
 		if epochNr == rs.LastEpochDelimiter.EpochNumber {
@@ -439,9 +440,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				ks.updateSignatureProposer()
 			}
 			// get all existing ratifications for this epoch
-			allSignatures, err := ks.allRatificationsForEpoch(epochNr)
+			allSignatures := make(map[uint64][]byte)
+			existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
 			if err != nil {
 				log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
+			}
+			for _, seh := range existingRatifications {
+				for id, sig := range seh.Signatures {
+					allSignatures[id] = sig
+				}
 			}
 			// check whether the epoch was already ratified
 			wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
@@ -478,12 +485,12 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 	case step.VerifierSigned != nil:
 		rNew := step.VerifierSigned
-		for id, sig := range rNew.Signatures {
-			// Note: The signature *must* have been verified before being inserted
+		for id := range rNew.Signatures {
+			// Note: The signature *must* have been authenticated before being inserted
 			// into the log, or else verifiers could just trample over everyone else's
 			// signatures, including our own.
 			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
-			wb.Put(dbkey, sig)
+			wb.Put(dbkey, proto.MustMarshal(rNew))
 		}
 		ks.wr.Notify(step.UID, nil)
 	default:
@@ -609,19 +616,23 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 	// caller MUST call updateEpochProposer
 }
 
-func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64][]byte, error) {
+func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64]*proto.SignedEpochHead, error) {
 	iter := ks.db.NewIterator(&kv.Range{tableRatifications(epoch, 0), tableRatifications(epoch+1, 0)})
 	defer iter.Release()
-	sigs := make(map[uint64][]byte)
+	sehs := make(map[uint64]*proto.SignedEpochHead)
 	for iter.Next() {
-		sig := append([]byte{}, iter.Value()...)
 		id := binary.BigEndian.Uint64(iter.Key()[1+8 : 1+8+8])
-		sigs[id] = sig
+		seh := new(proto.SignedEpochHead)
+		err := seh.Unmarshal(iter.Value())
+		if err != nil {
+			log.Panicf("tableRatifications(%d, %d) invalid: %s", epoch, id, err)
+		}
+		sehs[id] = seh
 	}
 	if err := iter.Error(); err != nil {
 		return nil, err
 	}
-	return sigs, nil
+	return sehs, nil
 }
 
 func genUID() uint64 {

@@ -52,6 +52,8 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 // Evidence is in the form of digital signatures denoting agreement, and the
 // policy contains public keys and a quorum rule.
 // policy, action, evidence : &const // none of the inputs are modified
+// NOTE: This does not work for verifier signatures on epoch heads because the
+// signed contents will differ in their timestamps.
 func VerifyPolicy(policy *proto.AuthorizationPolicy, action []byte, evidence map[uint64][]byte) bool {
 	have := make(map[uint64]struct{}, len(evidence))
 	for id, pk := range policy.PublicKeys {

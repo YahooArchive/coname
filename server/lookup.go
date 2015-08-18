@@ -62,7 +62,7 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 		}
 		for verifier := range remainingVerifiers {
-			sig, err := ks.db.Get(tableRatifications(epoch, verifier))
+			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
 			switch err {
 			case nil:
 			case ks.db.ErrNotFound():
@@ -71,9 +71,10 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
 				return nil, fmt.Errorf("internal error")
 			}
-			seh := &proto.SignedEpochHead{
-				Head:       teh,
-				Signatures: map[uint64][]byte{verifier: sig},
+			seh := new(proto.SignedEpochHead)
+			err = seh.Unmarshal(sehBytes)
+			if err != nil {
+				log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
 			}
 			ret.Ratifications = append(ret.Ratifications, seh)
 			lookupEpoch = epoch
