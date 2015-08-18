@@ -22,9 +22,14 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"os/signal"
 	"runtime"
 	"sync"
 	"testing"
@@ -44,6 +49,10 @@ import (
 	"github.com/yahoo/coname/server/kv"
 	"github.com/yahoo/coname/server/kv/leveldbkv"
 	"github.com/yahoo/coname/server/kv/tracekv"
+	"github.com/yahoo/coname/server/replication"
+	"github.com/yahoo/coname/server/replication/raftlog"
+	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
+	raftproto "github.com/yahoo/coname/server/replication/raftlog/proto"
 	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )
@@ -55,127 +64,245 @@ const (
 	poll         = 100 * time.Microsecond
 )
 
+func dieOnCtrlC() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		panic("quit!")
+	}()
+}
+
+func pprof() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+}
+
 func chain(fs ...func()) func() {
 	ret := func() {}
 	for _, f := range fs {
 		// the functions are copied to the heap, the closure refers to a unique copy of its own
 		oldRet := ret
-		ret = func() { oldRet(); f() }
+		thisF := f
+		ret = func() { oldRet(); thisF() }
 	}
 	return ret
 }
 
-// setupKeyserver initializes a keyserver, but does not start it and does not
-// wait for it to sign anything.
-func setupKeyserver(t *testing.T) (cfg *proto.ReplicaConfig, db kv.DB, getKey func(string) (crypto.PrivateKey, error), pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+func setupDB(t *testing.T) (db kv.DB, teardown func()) {
 	dir, err := ioutil.TempDir("", "keyserver")
 	if err != nil {
 		t.Fatal(err)
 	}
-	teardown = chain(func() { os.RemoveAll(dir) })
+	teardown = func() { os.RemoveAll(dir) }
 	ldb, err := leveldb.OpenFile(dir, nil)
 	if err != nil {
 		teardown()
 		t.Fatal(err)
 	}
 	teardown = chain(func() { ldb.Close() }, teardown)
+	return leveldbkv.Wrap(ldb), teardown
+}
 
-	pk, sk, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		teardown()
-		t.Fatal(err)
+// raft replicas are numbered 1..n  and reside in array indices 0..n-1
+// A copy of this function exists in raftlog_test.go
+func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replication.LogReplicator, dbs []kv.DB, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
+	m := nReplicas
+	n := nReplicas + nStandbys
+	replicaIDs := make([]uint64, 0, n)
+	for i := uint64(0); i < uint64(n); i++ {
+		replicaIDs = append(replicaIDs, 1+i)
 	}
-	pked := &proto.PublicKey{Ed25519: pk[:]}
-	replicaID := proto.KeyID(pked)
-	pol = &proto.AuthorizationPolicy{
-		PublicKeys: map[uint64]*proto.PublicKey{replicaID: pked},
-		Quorum:     &proto.QuorumExpr{Threshold: 1, Candidates: []uint64{replicaID}},
+
+	addrs := make([]string, 0, n)
+	nw = nettestutil.New(n)
+	lookupDialerFrom := func(src int) func(uint64) raftproto.RaftClient {
+		return func(dstPlus1 uint64) raftproto.RaftClient {
+			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithDialer(
+				func(addr string, timeout time.Duration) (net.Conn, error) {
+					nc, err := net.DialTimeout("tcp", addr, timeout)
+					return nw.Wrap(nc, src, int(dstPlus1-1)), err
+				}))
+			if err != nil {
+				panic(err) // async dial should not err
+			}
+			return raftproto.NewRaftClient(cc)
+		}
 	}
+	teardown = func() {}
+
+	for i := 0; i < n; i++ {
+		clk := clock.NewMock()
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := grpc.NewServer()
+		db, dbDown := setupDB(t)
+		dbs = append(dbs, db)
+		l := raftlog.New(
+			uint64(i+1), replicaIDs[:m],
+			db, nil,
+			clk, tick,
+			s, lookupDialerFrom(i),
+		)
+		go s.Serve(ln)
+
+		ret = append(ret, l)
+		clks = append(clks, clk)
+		addrs = append(addrs, ln.Addr().String())
+		teardown = chain(func() { s.Stop(); ln.Close(); l.Stop() }, dbDown, teardown)
+	}
+
+	for _, l := range ret {
+		l.Start(0)
+		go func(l replication.LogReplicator) {
+			for _ = range l.LeaderHintSet() {
+			}
+		}(l)
+	}
+	return ret, dbs, clks, nw, teardown
+}
+
+func majority(nReplicas int) uint32 {
+	return uint32(nReplicas/2 + 1)
+}
+
+// setupKeyservers initializes everything needed to start a set of keyserver
+// replicas, but does not actually start them yet
+func setupKeyservers(t *testing.T, nReplicas int) (cfgs []*proto.ReplicaConfig, keyGetters []func(string) (crypto.PrivateKey, error), pol *proto.AuthorizationPolicy, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func()) {
+	caCert, caPool, caKey = tlstestutil.CA(t, nil)
 
 	_, vrfSecret, err := vrf.GenerateKey(rand.Reader)
 	if err != nil {
-		teardown()
 		t.Fatal(err)
 	}
 
-	caCert, caPool, caKey = tlstestutil.CA(t, nil)
-	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
-	pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
-	cfg = &proto.ReplicaConfig{
-		KeyserverConfig: proto.KeyserverConfig{
-			Realm:    testingRealm,
-			ServerID: replicaID,
-			VRFKeyID: "vrf",
+	teardown = func() {}
 
-			MinEpochInterval:      proto.DurationStamp(tick),
-			MaxEpochInterval:      proto.DurationStamp(tick),
-			ProposalRetryInterval: proto.DurationStamp(poll),
-		},
-
-		SigningKeyID: "signing",
-		ReplicaID:    replicaID,
-		UpdateAddr:   "localhost:0",
-		LookupAddr:   "localhost:0",
-		VerifierAddr: "localhost:0",
-		HKPAddr:      "localhost:0",
-		UpdateTLS:    &proto.TLSConfig{Certificates: pcerts},
-		LookupTLS:    &proto.TLSConfig{Certificates: pcerts},
-		VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-		HKPTLS:       &proto.TLSConfig{Certificates: pcerts},
-	}
-	getKey = func(keyid string) (crypto.PrivateKey, error) {
-		switch keyid {
-		case "vrf":
-			return vrfSecret, nil
-		case "signing":
-			return sk, nil
-		case "tls":
-			return cert.PrivateKey, nil
-		default:
-			panic("unknown key requested in test")
+	pks := make(map[uint64]*proto.PublicKey)
+	replicaIDs := []uint64{}
+	pol = &proto.AuthorizationPolicy{}
+	for n := 0; n < nReplicas; n++ {
+		pk, sk, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			teardown()
+			t.Fatal(err)
 		}
+		pked := &proto.PublicKey{Ed25519: pk[:]}
+		replicaID := proto.KeyID(pked)
+		pks[replicaID] = pked
+		replicaIDs = append(replicaIDs, replicaID)
+
+		cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
+		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
+		cfgs = append(cfgs, &proto.ReplicaConfig{
+			KeyserverConfig: proto.KeyserverConfig{
+				Realm:                      testingRealm,
+				ServerID:                   replicaID,
+				InitialAuthorizationPolicy: pol,
+				VRFKeyID:                   "vrf",
+
+				MinEpochInterval:      proto.DurationStamp(tick),
+				MaxEpochInterval:      proto.DurationStamp(tick),
+				ProposalRetryInterval: proto.DurationStamp(poll),
+			},
+
+			SigningKeyID: "signing",
+			ReplicaID:    replicaID,
+			UpdateAddr:   "localhost:0",
+			LookupAddr:   "localhost:0",
+			VerifierAddr: "localhost:0",
+			HKPAddr:      "localhost:0",
+			UpdateTLS:    &proto.TLSConfig{Certificates: pcerts},
+			LookupTLS:    &proto.TLSConfig{Certificates: pcerts},
+			VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+			HKPTLS:       &proto.TLSConfig{Certificates: pcerts},
+		})
+		keyGetters = append(keyGetters, func(keyid string) (crypto.PrivateKey, error) {
+			switch keyid {
+			case "vrf":
+				return vrfSecret, nil
+			case "signing":
+				return sk, nil
+			case "tls":
+				return cert.PrivateKey, nil
+			default:
+				panic("unknown key requested in test")
+			}
+		})
 	}
-	db = leveldbkv.Wrap(ldb)
+	pol.PublicKeys = pks
+	pol.Quorum = &proto.QuorumExpr{Threshold: majority(nReplicas), Candidates: replicaIDs}
 	return
 }
 
-func TestKeyserverStartStop(t *testing.T) {
-	cfg, db, gk, _, _, _, _, teardown := setupKeyserver(t)
+func TestOneKeyserverStartStop(t *testing.T) {
+	testKeyserverStartStop(t, 1)
+}
+
+func TestThreeKeyserversStartStop(t *testing.T) {
+	testKeyserverStartStop(t, 3)
+}
+
+func testKeyserverStartStop(t *testing.T, nReplicas int) {
+	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	ks, err := Open(cfg, db, clock.New(), gk)
-	if err != nil {
-		t.Fatal(err)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		kss = append(kss, ks)
 	}
-	ks.Start()
-	defer ks.Stop()
+	for _, ks := range kss {
+		ks.Stop()
+	}
 }
 
 func TestKeyserverStartProgressStop(t *testing.T) {
-	cfg, db, gk, _, _, _, _, teardown := setupKeyserver(t)
+	pprof()
+	nReplicas := 3
+	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	// db = logkv.WithDefaultLogging(db)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
 
-	// the db writes are test output. We are waiting for epoch 5 to be ratified
-	// as a primitive progress check.
-	progressCh := make(chan struct{})
-	var closeOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
-		if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
-			return
-		}
-		var sr proto.SignedEpochHead
-		sr.Unmarshal(put.Value)
-		if sr.Head.Head.Epoch == 3 {
-			closeOnce.Do(func() { close(progressCh) })
-		}
-	})
+	// the db writes are test output. We are waiting for epoch 3 to be ratified
+	// by all replicas as a primitive progress check.
+	kss := []*Keyserver{}
+	var done sync.WaitGroup
+	done.Add(nReplicas)
+	for i := 0; i < nReplicas; i++ {
+		var closeOnce sync.Once
+		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
+				return
+			}
+			epoch := binary.BigEndian.Uint64(update.Key[1 : 1+8])
+			if epoch == 3 {
+				closeOnce.Do(func() { done.Done() })
+			}
+		})
 
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
-	if err != nil {
-		t.Fatal(err)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		kss = append(kss, ks)
 	}
-	ks.Start()
+
+	progressCh := make(chan struct{})
+	go func() {
+		done.Wait()
+		close(progressCh)
+	}()
 
 loop:
 	for {
@@ -183,12 +310,18 @@ loop:
 		case <-progressCh:
 			break loop
 		case <-time.After(poll):
-			clk.Add(tick)
+			// TODO: try advancing clocks a little out of sync?
+			for _, clk := range clks {
+				clk.Add(tick)
+			}
 			runtime.Gosched()
 		}
 	}
 
-	ks.Stop()
+	for _, ks := range kss {
+		ks.Stop()
+	}
+	teardown2()
 	teardown()
 
 	if testing.Verbose() {
@@ -199,14 +332,14 @@ loop:
 		for l = runtime.Stack(stackBuf, true); l == len(stackBuf) && l < 128*1024; {
 			stackBuf = append(stackBuf, stackBuf...)
 		}
-		t.Logf("%d goroutines in existance after Stop:\n%s", n, stackBuf[:l])
+		t.Logf("%d goroutines in existence after Stop:\n%s", n, stackBuf[:l])
 	}
 }
 
 func withServer(func(*testing.T, *Keyserver)) {
 }
 
-func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
+func doUpdate(t *testing.T, ks *Keyserver, quorum *proto.QuorumExpr, caPool *x509.CertPool, name string, profileContents proto.Profile) *proto.Profile_PreserveEncoding {
 	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
@@ -239,7 +372,7 @@ func doUpdate(t *testing.T, ks *Keyserver, caPool *x509.CertPool, name string, p
 			Signatures: make(map[uint64][]byte),
 		},
 		Profile:          profile,
-		LookupParameters: &proto.LookupRequest{UserId: name},
+		LookupParameters: &proto.LookupRequest{UserId: name, QuorumRequirement: quorum},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -271,70 +404,98 @@ func stoppableClock(clk *clock.Mock) chan<- struct{} {
 	return done
 }
 
-func runWhileTicking(clk *clock.Mock, f func()) {
-	defer close(stoppableClock(clk))
-	f()
+func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
+	done := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				for _, clk := range clks {
+					clk.Add(tick)
+				}
+			}
+		}
+	}()
+	return done
 }
 
-func TestKeyserverRoundtripWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, gk, _, _, caPool, _, teardown := setupKeyserver(t)
+func TestKeyserverRoundtrip(t *testing.T) {
+	nReplicas := 3
+	cfgs, gks, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
-	if err != nil {
-		t.Fatal(err)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		defer ks.Stop()
+		kss = append(kss, ks)
 	}
-	ks.Start()
-	defer ks.Stop()
 
-	runWhileTicking(clk, func() {
-		profile := doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("noncenoncenonceNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-		})
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
 
-		conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-		if err != nil {
-			t.Fatal(err)
-		}
-		c := proto.NewE2EKSLookupClient(conn)
-		proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if proof.UserId != alice {
-			t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-		}
-		if len(proof.IndexProof) != vrf.ProofSize {
-			t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-		}
-		if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
-			t.Errorf("profile didn't roundtrip: %x != %x", got, want)
-		}
+	profile := doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
-}
 
-func TestKeyserverUpdateWithoutQuorumRequirement(t *testing.T) {
-	cfg, db, gk, _, _, caPool, _, teardown := setupKeyserver(t)
-	defer teardown()
-	clk := clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
+	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ks.Start()
-	defer ks.Stop()
+	c := proto.NewE2EKSLookupClient(conn)
+	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{UserId: alice})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.UserId != alice {
+		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
+	}
+	if len(proof.IndexProof) != vrf.ProofSize {
+		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
+	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
+}
 
-	runWhileTicking(clk, func() {
-		doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("noncenoncenonceNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
-		})
+func TestKeyserverUpdate(t *testing.T) {
+	nReplicas := 3
+	cfgs, gks, pol, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	defer teardown()
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
 
-		doUpdate(t, ks, caPool, alice, proto.Profile{
-			Nonce: []byte("XYZNONCE"),
-			Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
-		})
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		defer ks.Stop()
+		kss = append(kss, ks)
+	}
+
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("XYZNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
 	})
 }
 
@@ -374,20 +535,26 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 	return
 }
 
-// setupRealm initializes one keyserver and nVerifiers verifiers, and then
-// waits until each one of them has signed an epoch.
-func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertPool, clk *clock.Mock, verifiers []uint64, teardown func()) {
-	cfg, db, gk, pol, caCert, caPool, caKey, teardown := setupKeyserver(t)
-	ksDone := make(chan struct{})
-	var ksDoneOnce sync.Once
-	db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
-		// We are waiting for an epoch to be ratified (in case there are no
-		// verifiers, blocking on them does not help).
-		if len(put.Key) < 1 || put.Key[0] != tableVerifierLogPrefix {
-			return
-		}
-		ksDoneOnce.Do(func() { close(ksDone) })
-	})
+// setupRealm initializes nReplicas keyserver replicas and nVerifiers
+// verifiers, and then waits until each one of them has signed an epoch.
+func setupRealm(t *testing.T, nReplicas, nVerifiers int) (kss []*Keyserver, caPool *x509.CertPool, clks []*clock.Mock, verifiers []uint64, pol *proto.AuthorizationPolicy, teardown func()) {
+	cfgs, gks, pol, caCert, caPool, caKey, teardown := setupKeyservers(t, nReplicas)
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	teardown = chain(teardown2, teardown)
+
+	var ksDone sync.WaitGroup
+	ksDone.Add(nReplicas)
+	for i := range dbs {
+		var ksDoneOnce sync.Once
+		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
+			// We are waiting for an epoch to be ratified (in case there are no
+			// verifiers, blocking on them does not help).
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableVerifierLogPrefix {
+				return
+			}
+			ksDoneOnce.Do(func() { ksDone.Done() })
+		})
+	}
 
 	type doneVerifier struct {
 		teardown func()
@@ -400,24 +567,24 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 		var verifierTeardown func()
 		var vcfg *verifier.Config
 		var doneOnce sync.Once
-		db = tracekv.WithSimpleTracing(db, func(put tracekv.Put) {
+		dbs[0] = tracekv.WithSimpleTracing(dbs[0], func(update tracekv.Update) {
 			// We are waiting for epoch 1 to be ratified by the verifier and
 			// reach the client because before that lookups requiring this
 			// verifier will immediately fail.
-			if len(put.Key) < 1 || put.Key[0] != tableRatificationsPrefix {
+			if len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
 				return
 			}
-			var sr proto.SignedEpochHead
-			sr.Unmarshal(put.Value)
 			<-vrBarrier
-			if _, s := sr.Signatures[vcfg.ID]; s && sr.Head.Head.Epoch == 1 {
+			epoch := binary.BigEndian.Uint64(update.Key[1 : 1+8])
+			id := binary.BigEndian.Uint64(update.Key[1+8 : 1+8+8])
+			if id == vcfg.ID && epoch == 1 {
 				doneOnce.Do(func() { doneVerifiers <- doneVerifier{verifierTeardown, vcfg.ID} })
 			}
 		})
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, verifierTeardown = setupVerifier(t, pol, ks.verifierListen.Addr().String(), caCert, caPool, caKey)
+			vcfg, vdb, verifierTeardown = setupVerifier(t, pol, kss[i%nReplicas].verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
 			_, err := verifier.Start(vcfg, vdb)
@@ -426,21 +593,31 @@ func setupRealm(t *testing.T, nVerifiers int) (ks *Keyserver, caPool *x509.CertP
 			}
 		}(i)
 	}
-	clk = clock.NewMock()
-	ks, err := Open(cfg, db, clk, gk)
-	if err != nil {
-		t.Fatal(err)
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		teardown = chain(ks.Stop, teardown)
+		kss = append(kss, ks)
 	}
 	close(ksBarrier)
-	ks.Start()
-	teardown = chain(ks.Stop, teardown)
+
+	ksDoneCh := make(chan struct{})
+	go func() {
+		ksDone.Wait()
+		close(ksDoneCh)
+	}()
 
 loop:
 	for {
 		select {
 		case <-time.After(poll):
-			clk.Add(tick)
-		case <-ksDone:
+			for _, clk := range clks {
+				clk.Add(tick)
+			}
+		case <-ksDoneCh:
 			break loop
 		}
 	}
@@ -449,46 +626,22 @@ loop:
 		verifiers = append(verifiers, v.id)
 		teardown = chain(v.teardown, teardown)
 	}
-	return ks, caPool, clk, verifiers, teardown
-}
-
-func TestKeyserverLookupRequireKeyserver(t *testing.T) {
-	ks, caPool, _, _, teardown := setupRealm(t, 0)
-	defer teardown()
-
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-	if err != nil {
-		t.Fatal(err)
-	}
-	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
-		UserId: alice,
-		QuorumRequirement: &proto.QuorumExpr{
-			Threshold:  1,
-			Candidates: []uint64{ks.serverID},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if proof.UserId != alice {
-		t.Errorf("proof.UserId != \"alice\" (got %q)", proof.UserId)
-	}
-	if len(proof.IndexProof) != vrf.ProofSize {
-		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
-	}
-	if len(proof.Ratifications) < 1 {
-		t.Errorf("expected 1 seh, got %d", len(proof.Ratifications))
-	}
+	// TODO: add verifiers to pol
+	return kss, caPool, clks, verifiers, pol, teardown
 }
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
-	ks, caPool, clk, verifiers, teardown := setupRealm(t, 3)
+	kss, caPool, clks, verifiers, pol, teardown := setupRealm(t, 3, 0)
 	defer teardown()
-	stop := stoppableClock(clk)
+	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	conn, err := grpc.Dial(ks.lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	profile := doUpdate(t, kss[0], pol.Quorum, caPool, alice, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -509,6 +662,9 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	if len(proof.IndexProof) != vrf.ProofSize {
 		t.Errorf("len(proof.IndexProof) != %d (it is %d)", vrf.ProofSize, len(proof.IndexProof))
 	}
+	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
 	if len(proof.Ratifications) < len(verifiers) {
 		t.Errorf("expected %d sehs, got %d", len(verifiers), len(proof.Ratifications))
 	}
@@ -522,13 +678,15 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 }
 
 func TestKeyserverHKP(t *testing.T) {
-	ks, caPool, clk, _, teardown := setupRealm(t, 0)
+	dieOnCtrlC()
+	kss, caPool, clk, _, pol, teardown := setupRealm(t, 1, 0)
+	ks := kss[0]
 	defer teardown()
-	stop := stoppableClock(clk)
+	stop := stoppableSyncedClocks(clk)
 	defer close(stop)
 
 	pgpKeyRef := []byte("this-is-alices-pgp-key")
-	doUpdate(t, ks, caPool, alice, proto.Profile{
+	doUpdate(t, ks, pol.Quorum, caPool, alice, proto.Profile{
 		Nonce: []byte("definitely used only once"),
 		Keys:  map[string][]byte{"pgp": pgpKeyRef},
 	})

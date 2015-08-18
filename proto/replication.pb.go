@@ -84,7 +84,7 @@ func (m *KeyserverStep) GetVerifierSigned() *SignedEpochHead {
 
 type EpochDelimiter struct {
 	EpochNumber uint64    `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
-	Timestamp   Timestamp `protobuf:"bytes,4,opt,name=timestamp" json:"timestamp"`
+	Timestamp   Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
 }
 
 func (m *EpochDelimiter) Reset()      { *m = EpochDelimiter{} }
@@ -356,7 +356,7 @@ func (m *EpochDelimiter) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
 	}
-	data[i] = 0x22
+	data[i] = 0x12
 	i++
 	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
 	n5, err := m.Timestamp.MarshalTo(data[i:])
@@ -795,7 +795,7 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 					break
 				}
 			}
-		case 4:
+		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Timestamp", wireType)
 			}

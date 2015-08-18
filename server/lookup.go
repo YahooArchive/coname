@@ -40,7 +40,7 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	remainingVerifiers := coname.ListQuorum(req.QuorumRequirement, nil)
 	haveVerifiers := make(map[uint64]struct{}, len(remainingVerifiers))
 	// find latest epoch, iterate backwards until quorum requirement is met
-	oldestEpoch, newestEpoch := uint64(1), ks.lastRatifiedEpoch()
+	oldestEpoch, newestEpoch := uint64(1), ks.lastSignedEpoch()
 	if newestEpoch == 0 {
 		log.Printf("ERROR: no epochs created yet, so lookup fails: %x", index)
 		return nil, fmt.Errorf("internal error")
@@ -53,8 +53,16 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 	for epoch := newestEpoch; epoch >= oldestEpoch &&
 		!coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) &&
 		len(remainingVerifiers) != 0; epoch-- {
+		tehBytes, err := ks.db.Get(tableEpochHeads(epoch))
+		if err != nil {
+			log.Printf("ERROR: ks.db.Get(tableEpochHeads(%d)): %s", epoch, err)
+		}
+		var teh proto.TimestampedEpochHead_PreserveEncoding
+		if err := teh.Unmarshal(tehBytes); err != nil {
+			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
+		}
 		for verifier := range remainingVerifiers {
-			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
+			sig, err := ks.db.Get(tableRatifications(epoch, verifier))
 			switch err {
 			case nil:
 			case ks.db.ErrNotFound():
@@ -63,10 +71,9 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
 				return nil, fmt.Errorf("internal error")
 			}
-			seh := new(proto.SignedEpochHead)
-			if err := seh.Unmarshal(sehBytes); err != nil {
-				log.Printf("ERROR: invalid protobuf in sehs db (epoch %d, verifier %d): %s", epoch, verifier, err)
-				return nil, fmt.Errorf("internal error")
+			seh := &proto.SignedEpochHead{
+				Head:       teh,
+				Signatures: map[uint64][]byte{verifier: sig},
 			}
 			ret.Ratifications = append(ret.Ratifications, seh)
 			lookupEpoch = epoch
@@ -119,14 +126,14 @@ func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, err
 	return ks.merkletree.GetSnapshot(snapshotNr), nil
 }
 
-// lastRatifiedEpoch returns the last epoch for which we have a seh.
-func (ks *Keyserver) lastRatifiedEpoch() uint64 {
+// lastSignedEpoch returns the last epoch for which we have any signature.
+func (ks *Keyserver) lastSignedEpoch() uint64 {
 	iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableRatificationsPrefix}))
+	defer iter.Release()
 	if !iter.Last() {
 		return 0
 	}
 	ret := binary.BigEndian.Uint64(iter.Key()[1 : 1+8])
-	iter.Release()
 	if iter.Error() != nil {
 		log.Printf("ERROR: db scan for last seh: %s", iter.Error())
 		return 0
@@ -146,6 +153,7 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, 
 		Start: prefixIdxEpoch[:1+len(idx)],
 		Limit: prefixIdxEpoch,
 	})
+	defer iter.Release()
 	if !iter.Last() {
 		if iter.Error() != nil {
 			return nil, iter.Error()
@@ -156,6 +164,5 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, 
 	if err := ret.Unmarshal(iter.Value()); err != nil {
 		return nil, iter.Error()
 	}
-	iter.Release()
 	return ret, nil
 }

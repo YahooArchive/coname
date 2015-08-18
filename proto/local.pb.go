@@ -27,7 +27,8 @@ type ReplicaState struct {
 	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
 	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
 	// local variables
-	LatestTreeSnapshot uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	LatestTreeSnapshot         uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	LastEpochNeedsRatification bool   `protobuf:"varint,8,opt,name=last_epoch_needs_ratification,proto3" json:"last_epoch_needs_ratification,omitempty"`
 }
 
 func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
@@ -92,6 +93,9 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
 		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
 	}
+	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
+		return fmt.Errorf("LastEpochNeedsRatification this(%v) Not Equal that(%v)", this.LastEpochNeedsRatification, that1.LastEpochNeedsRatification)
+	}
 	return nil
 }
 func (this *ReplicaState) Equal(that interface{}) bool {
@@ -133,6 +137,9 @@ func (this *ReplicaState) Equal(that interface{}) bool {
 		return false
 	}
 	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return false
+	}
+	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
 		return false
 	}
 	return true
@@ -216,7 +223,8 @@ func (this *ReplicaState) GoString() string {
 		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
 		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch),
 		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates),
-		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot) + `}`}, ", ")
+		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot),
+		`LastEpochNeedsRatification:` + fmt.Sprintf("%#v", this.LastEpochNeedsRatification) + `}`}, ", ")
 	return s
 }
 func (this *VerifierState) GoString() string {
@@ -321,6 +329,16 @@ func (m *ReplicaState) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintLocal(data, i, uint64(m.LatestTreeSnapshot))
 	}
+	if m.LastEpochNeedsRatification {
+		data[i] = 0x40
+		i++
+		if m.LastEpochNeedsRatification {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	return i, nil
 }
 
@@ -406,6 +424,7 @@ func NewPopulatedReplicaState(r randyLocal, easy bool) *ReplicaState {
 	this.ThisReplicaNeedsToSignLastEpoch = bool(bool(r.Intn(2) == 0))
 	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
 	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
+	this.LastEpochNeedsRatification = bool(bool(r.Intn(2) == 0))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -524,6 +543,9 @@ func (m *ReplicaState) Size() (n int) {
 	if m.LatestTreeSnapshot != 0 {
 		n += 1 + sovLocal(uint64(m.LatestTreeSnapshot))
 	}
+	if m.LastEpochNeedsRatification {
+		n += 2
+	}
 	return n
 }
 
@@ -573,6 +595,7 @@ func (this *ReplicaState) String() string {
 		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
 		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
 		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
+		`LastEpochNeedsRatification:` + fmt.Sprintf("%v", this.LastEpochNeedsRatification) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -751,6 +774,23 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 					break
 				}
 			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochNeedsRatification", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.LastEpochNeedsRatification = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {

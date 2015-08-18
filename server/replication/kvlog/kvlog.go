@@ -31,6 +31,7 @@ type kvLog struct {
 	nextIndex  uint64
 	skipBefore uint64
 
+	leaderHintSet chan bool
 	propose       chan []byte
 	waitCommitted chan []byte
 
@@ -53,11 +54,14 @@ func New(db kv.DB, prefix []byte) (replication.LogReplicator, error) {
 		return nil, err
 	}
 
+	leaderHintSet := make(chan bool, 1)
+	leaderHintSet <- true
 	return &kvLog{
 		db:            db,
 		prefix:        prefix,
 		nextIndex:     nextIndex,
 		propose:       make(chan []byte, 100),
+		leaderHintSet: leaderHintSet,
 		waitCommitted: make(chan []byte),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
@@ -80,6 +84,10 @@ func (l *kvLog) Stop() error {
 	return nil
 }
 
+// ProposeConfChange implements replication.LogReplicator
+func (l *kvLog) AddReplica(uint64)  {}
+func (l *kvLog) DropReplica(uint64) {}
+
 // Propose implements replication.LogReplicator
 // The following is true for kvLog.Propose but not necessarilty for other
 // implementations of replication.LogReplicator: If Propose(x) returns, then
@@ -94,6 +102,11 @@ func (l *kvLog) Propose(ctx context.Context, data []byte) {
 // WaitCommitted implements replication.LogReplicator
 func (l *kvLog) WaitCommitted() <-chan []byte {
 	return l.waitCommitted
+}
+
+// WaitCommitted implements replication.LogReplicator
+func (l *kvLog) LeaderHintSet() <-chan bool {
+	return l.leaderHintSet
 }
 
 // GetCommitted implements replication.LogReplicator
@@ -121,11 +134,15 @@ func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
 }
 
 // get returns entry number i from l.db
-func (l *kvLog) get(i uint64) ([]byte, error) {
+func (l *kvLog) get(i uint64) (le []byte, err error) {
 	dbkey := make([]byte, len(l.prefix)+8)
 	copy(dbkey, l.prefix)
 	binary.BigEndian.PutUint64(dbkey[len(l.prefix):], i)
-	return l.db.Get(dbkey[:])
+	entryBytes, err := l.db.Get(dbkey[:])
+	if err != nil {
+		return le, err
+	}
+	return entryBytes, nil
 }
 
 // run is the CSP-style main of kvLog, all local struct fields (except

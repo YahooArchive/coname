@@ -26,25 +26,33 @@ import (
 
 type traceLogger log.Logger
 
-func (l *traceLogger) put(p tracekv.Put) {
-	(*log.Logger)(l).Printf("put %q = %q", p.Key, p.Value)
+func toString(p tracekv.Update) string {
+	if p.IsDeletion {
+		return fmt.Sprintf("delete %q", p.Key)
+	} else {
+		return fmt.Sprintf("put %q = %q", p.Key, p.Value)
+	}
 }
 
-func (l *traceLogger) batch(ps []tracekv.Put) {
+func (l *traceLogger) put(p tracekv.Update) {
+	(*log.Logger)(l).Print(toString(p))
+}
+
+func (l *traceLogger) batch(ps []tracekv.Update) {
 	var ss []string
 	for _, p := range ps {
-		ss = append(ss, fmt.Sprintf("%q = %q", p.Key, p.Value))
+		ss = append(ss, toString(p))
 	}
 	(*log.Logger)(l).Printf("batch{%s}", strings.Join(ss, "; "))
 }
 
-// WithDefaultLogging logs all Put-s and Write-s to db to os.Stdout with
+// WithDefaultLogging logs all Update-s and Write-s to db to os.Stdout with
 // log.LstdFlags.
 func WithDefaultLogging(db kv.DB) kv.DB {
 	return WithLogging(db, log.New(os.Stdout, "", log.LstdFlags))
 }
 
-// WithLogging logs all Put-s and Write-s to db to l.
+// WithLogging logs all Update-s and Write-s to db to l.
 func WithLogging(db kv.DB, l *log.Logger) kv.DB {
 	trace := (*traceLogger)(l)
 	return tracekv.WithTracing(db, trace.put, trace.batch)

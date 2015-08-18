@@ -17,6 +17,7 @@ package proto;
 import "gogoproto/gogo.proto";
 import "tlsconfig.proto";
 import "duration.proto";
+import "client.proto";
 
 message ReplicaConfig {
 	KeyserverConfig keyserver_config = 1 [(gogoproto.embed) = true, (gogoproto.nullable) = false];
@@ -43,4 +44,21 @@ message KeyserverConfig {
 	Duration min_epoch_interval = 4 [(gogoproto.nullable) = false];
 	Duration max_epoch_interval = 5 [(gogoproto.nullable) = false];
 	Duration proposal_retry_interval = 6 [(gogoproto.nullable) = false];
+
+	repeated Replica initial_replicas = 7;
+	AuthorizationPolicy initial_authorization_policy = 8;
+}
+
+message Replica {
+	// Id is used to distinguish between nodes during consistent replication.
+	// All node ID-s MUST be unique, MUST NOT be reused (e.g., using IP-s or
+	// hostnames is probably a bad idea) and SHOULD be set to the ID of the
+	// first public key by convention.
+	uint64 id = 1;
+	// PublicKeys lists the public keys of a node, to be joined using a
+	// 1-out-of-n policy. The order of this list is NOT preserved.
+	repeated PublicKey public_keys = 2;
+	// Addr is the network address of the node, such that net.Dial("tcp", Addr)
+	// reaches the node. Supported formats include host.domain:port and ip:port.
+	string addr = 3;
 }

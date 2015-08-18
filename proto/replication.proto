@@ -58,5 +58,5 @@ message KeyserverStep {
 
 message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
-	Timestamp timestamp = 4 [(gogoproto.nullable) = false];
+	Timestamp timestamp = 2 [(gogoproto.nullable) = false];
 }

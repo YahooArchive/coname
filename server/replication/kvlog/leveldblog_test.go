@@ -197,7 +197,7 @@ func TestLeveldbLogGetCommittedSize(t *testing.T) {
 	l, _, teardown := setupLog1through15Start(t)
 	defer teardown()
 
-	entriesLimited, err := l.GetCommitted(3, 14, 16)
+	entriesLimited, err := l.GetCommitted(3, 14, 18)
 	if err != nil {
 		t.Fatal(err)
 	}

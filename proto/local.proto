@@ -29,7 +29,7 @@ message ReplicaState {
 
 	// local variables
 	uint64 latest_tree_snapshot = 7; // NOTE: this might be deterministic, but we definitely shouldn't rely on that
-	
+	bool last_epoch_needs_ratification = 8;
 }
 
 // Verifier contains the persistent internal state of a verifier.

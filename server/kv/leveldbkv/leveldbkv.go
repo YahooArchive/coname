@@ -39,6 +39,10 @@ func (db *leveldbkv) Put(key, value []byte) error {
 	return (*leveldb.DB)(db).Put(key, value, &opt.WriteOptions{Sync: true})
 }
 
+func (db *leveldbkv) Delete(key []byte) error {
+	return (*leveldb.DB)(db).Delete(key, &opt.WriteOptions{Sync: true})
+}
+
 func (db *leveldbkv) NewBatch() kv.Batch {
 	return new(leveldb.Batch)
 }
