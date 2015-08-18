@@ -74,7 +74,7 @@ message LookupProof {
 	// to index to get the public key of user_id.
 	bytes index_proof = 2;
 	// ratifications contains signed directory state summaries for consecutive
-	// epochs, starting with the one as of which the lookup was performed.
+	// epochs, ending with the one as of which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
 	// that the r.ratification.summary.root_hash summarizes the authenticated
 	// data structure containing the unique and correct mapping from indices to
