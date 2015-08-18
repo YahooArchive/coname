@@ -71,6 +71,8 @@ type KeyserverConfig struct {
 	ProposalRetryInterval      Duration             `protobuf:"bytes,6,opt,name=proposal_retry_interval" json:"proposal_retry_interval"`
 	InitialReplicas            []*Replica           `protobuf:"bytes,7,rep,name=initial_replicas" json:"initial_replicas,omitempty"`
 	InitialAuthorizationPolicy *AuthorizationPolicy `protobuf:"bytes,8,opt,name=initial_authorization_policy" json:"initial_authorization_policy,omitempty"`
+	EmailProofToAddr           string               `protobuf:"bytes,9,opt,name=email_proof_to_addr,proto3" json:"email_proof_to_addr,omitempty"`
+	EmailProofSubjectPrefix    string               `protobuf:"bytes,10,opt,name=email_proof_subject_prefix,proto3" json:"email_proof_subject_prefix,omitempty"`
 }
 
 func (m *KeyserverConfig) Reset()      { *m = KeyserverConfig{} }
@@ -294,6 +296,12 @@ func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
 	if !this.InitialAuthorizationPolicy.Equal(that1.InitialAuthorizationPolicy) {
 		return fmt.Errorf("InitialAuthorizationPolicy this(%v) Not Equal that(%v)", this.InitialAuthorizationPolicy, that1.InitialAuthorizationPolicy)
 	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
+		return fmt.Errorf("EmailProofSubjectPrefix this(%v) Not Equal that(%v)", this.EmailProofSubjectPrefix, that1.EmailProofSubjectPrefix)
+	}
 	return nil
 }
 func (this *KeyserverConfig) Equal(that interface{}) bool {
@@ -343,6 +351,12 @@ func (this *KeyserverConfig) Equal(that interface{}) bool {
 		}
 	}
 	if !this.InitialAuthorizationPolicy.Equal(that1.InitialAuthorizationPolicy) {
+		return false
+	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return false
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
 		return false
 	}
 	return true
@@ -449,7 +463,9 @@ func (this *KeyserverConfig) GoString() string {
 		`MaxEpochInterval:` + strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1),
 		`ProposalRetryInterval:` + strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1),
 		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
-		`InitialAuthorizationPolicy:` + fmt.Sprintf("%#v", this.InitialAuthorizationPolicy) + `}`}, ", ")
+		`InitialAuthorizationPolicy:` + fmt.Sprintf("%#v", this.InitialAuthorizationPolicy),
+		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
+		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix) + `}`}, ", ")
 	return s
 }
 func (this *Replica) GoString() string {
@@ -666,6 +682,18 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 		}
 		i += n9
 	}
+	if len(m.EmailProofToAddr) > 0 {
+		data[i] = 0x4a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofToAddr)))
+		i += copy(data[i:], m.EmailProofToAddr)
+	}
+	if len(m.EmailProofSubjectPrefix) > 0 {
+		data[i] = 0x52
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofSubjectPrefix)))
+		i += copy(data[i:], m.EmailProofSubjectPrefix)
+	}
 	return i, nil
 }
 
@@ -785,6 +813,8 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 	if r.Intn(10) != 0 {
 		this.InitialAuthorizationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
+	this.EmailProofToAddr = randStringKeyserverconfig(r)
+	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -955,6 +985,14 @@ func (m *KeyserverConfig) Size() (n int) {
 		l = m.InitialAuthorizationPolicy.Size()
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
+	l = len(m.EmailProofToAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.EmailProofSubjectPrefix)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
 	return n
 }
 
@@ -1023,6 +1061,8 @@ func (this *KeyserverConfig) String() string {
 		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
 		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
 		`InitialAuthorizationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.InitialAuthorizationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
+		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
+		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1582,6 +1622,50 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if err := m.InitialAuthorizationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofToAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProofToAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofSubjectPrefix", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProofSubjectPrefix = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int

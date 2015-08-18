@@ -58,6 +58,10 @@ message UpdateRequest {
 	Profile profile = 2
 		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
+
+	// UserID specifies the id for the new account to be registered.
+	string user_id = 1000 [(gogoproto.customname) = "UserID"];
+	bytes dkim_proof = 1001 [(gogoproto.customname) = "DKIMProof"];
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at

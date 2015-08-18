@@ -15,13 +15,60 @@
 package server
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"log"
+	"math"
+
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/server/dkim"
 	"golang.org/x/net/context"
 )
 
+func (ks *Keyserver) verifyUpdate(req *proto.UpdateRequest) error {
+	prevUpdate, err := ks.getUpdate(req.Update.NewEntry.Index, math.MaxUint64)
+	if err != nil {
+		log.Print(err)
+		return fmt.Errorf("internal error")
+	}
+	if prevUpdate == nil { // registration: check email proof
+		if !ks.insecureSkipEmailProof {
+			email, payload, err := dkim.CheckEmailProof(req.DKIMProof, ks.emailProofToAddr,
+				ks.emailProofSubjectPrefix, ks.lookupTXT, ks.clk.Now)
+			if err != nil {
+				return err
+			}
+			if email != req.UserID {
+				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", req.UserID, email)
+			}
+			entryHash, err := base64.StdEncoding.DecodeString(payload)
+			if err != nil {
+				return fmt.Errorf("bad base64 in email proof: %q", payload)
+			}
+			entryHashProposed := sha256.Sum256(req.Update.NewEntry.PreservedEncoding)
+			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
+				return fmt.Errorf("email proof does not match requested entry")
+			}
+		}
+		return nil
+	}
+
+	prevEntry := &prevUpdate.Update.NewEntry.Entry
+	if err := coname.VerifyUpdate(prevEntry, req.Update); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
-	// TODO: ask for username and verify index (and more validation)
+	if err := ks.verifyUpdate(req); err != nil {
+		return nil, err
+	}
+
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{

@@ -49,9 +49,12 @@ type Keyserver struct {
 	serverID, replicaID uint64
 	serverAuthorized    *proto.AuthorizationPolicy
 
-	thresholdSigningIndex uint32
-	sehKey                *[ed25519.PrivateKeySize]byte
-	vrfSecret             *[vrf.SecretKeySize]byte
+	thresholdSigningIndex   uint32
+	sehKey                  *[ed25519.PrivateKeySize]byte
+	vrfSecret               *[vrf.SecretKeySize]byte
+	emailProofToAddr        string
+	emailProofSubjectPrefix string
+	insecureSkipEmailProof  bool
 
 	db  kv.DB
 	log replication.LogReplicator
@@ -61,7 +64,8 @@ type Keyserver struct {
 	hkpFront                                              *hkpfront.HKPFront
 	updateListen, lookupListen, verifierListen, hkpListen net.Listener
 
-	clk clock.Clock
+	clk       clock.Clock
+	lookupTXT func(string) ([]string, error)
 
 	minEpochInterval, maxEpochInterval, retryProposalInterval time.Duration
 
@@ -83,21 +87,21 @@ type Keyserver struct {
 	// rs.ThisReplicaNeedsToSignLastEpoch
 	//}
 
+	merkletree *merkletree.MerkleTree
+
+	epochPending, signaturePending []uint64
+
 	vmb *VerifierBroadcast
 	wr  *WaitingRoom
 
 	stopOnce sync.Once
 	stop     chan struct{}
 	stopped  chan struct{}
-
-	merkletree *merkletree.MerkleTree
-
-	epochPending, signaturePending []uint64
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error)) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
 	signingKey, err := getKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
@@ -124,15 +128,17 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 	}
 
 	ks = &Keyserver{
-		realm:                 cfg.Realm,
-		serverID:              cfg.ServerID,
-		replicaID:             cfg.ReplicaID,
-		serverAuthorized:      cfg.InitialAuthorizationPolicy,
-		sehKey:                signingKey.(*[ed25519.PrivateKeySize]byte),
-		vrfSecret:             vrfKey.(*[vrf.SecretKeySize]byte),
-		minEpochInterval:      cfg.MinEpochInterval.Duration(),
-		maxEpochInterval:      cfg.MaxEpochInterval.Duration(),
-		retryProposalInterval: cfg.ProposalRetryInterval.Duration(),
+		realm:                   cfg.Realm,
+		serverID:                cfg.ServerID,
+		replicaID:               cfg.ReplicaID,
+		serverAuthorized:        cfg.InitialAuthorizationPolicy,
+		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
+		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
+		emailProofToAddr:        cfg.EmailProofToAddr,
+		emailProofSubjectPrefix: cfg.EmailProofToAddr,
+		minEpochInterval:        cfg.MinEpochInterval.Duration(),
+		maxEpochInterval:        cfg.MaxEpochInterval.Duration(),
+		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
 		db:      db,
 		log:     log,
 		stop:    make(chan struct{}),
@@ -141,7 +147,8 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 
 		leaderHint: true,
 
-		clk: clk,
+		clk:                   clk,
+		lookupTXT:             LookupTXT,
 		minEpochIntervalTimer: clk.Timer(0),
 		maxEpochIntervalTimer: clk.Timer(0),
 

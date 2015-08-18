@@ -47,6 +47,9 @@ message KeyserverConfig {
 
 	repeated Replica initial_replicas = 7;
 	AuthorizationPolicy initial_authorization_policy = 8;
+
+	string email_proof_to_addr = 9;
+	string email_proof_subject_prefix = 10;
 }
 
 message Replica {

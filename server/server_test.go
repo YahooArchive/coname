@@ -252,10 +252,11 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 	defer teardown2()
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		ks.insecureSkipEmailProof = true
 		ks.Start()
 		kss = append(kss, ks)
 	}
@@ -289,10 +290,11 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 			}
 		})
 
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		ks.insecureSkipEmailProof = true
 		ks.Start()
 		kss = append(kss, ks)
 	}
@@ -429,10 +431,11 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		ks.insecureSkipEmailProof = true
 		ks.Start()
 		defer ks.Stop()
 		kss = append(kss, ks)
@@ -475,10 +478,11 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		ks.insecureSkipEmailProof = true
 		ks.Start()
 		defer ks.Stop()
 		kss = append(kss, ks)
@@ -593,10 +597,11 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (kss []*Keyserver, caPo
 		}(i)
 	}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i])
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
+		ks.insecureSkipEmailProof = true
 		ks.Start()
 		teardown = chain(ks.Stop, teardown)
 		kss = append(kss, ks)
