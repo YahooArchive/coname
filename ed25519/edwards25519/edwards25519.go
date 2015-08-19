@@ -1925,9 +1925,6 @@ func ScNeg(r, s *[32]byte) {
 		// carry for next iteration
 		carry = negative & (-1) // -1 if negative, 0 otherwise
 	}
-	if carry != 0 {
-		panic("ScNeg: s > l")
-	}
 }
 
 // Input:
