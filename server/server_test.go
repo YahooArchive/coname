@@ -171,6 +171,10 @@ func majority(nReplicas int) int {
 	return nReplicas/2 + 1
 }
 
+func majorityQuorum(candidates []uint64) *proto.QuorumExpr {
+	return &proto.QuorumExpr{Threshold: uint32(majority(len(candidates))), Candidates: candidates}
+}
+
 // setupKeyservers initializes everything needed to start a set of keyserver
 // replicas, but does not actually start them yet
 func setupKeyservers(t *testing.T, nReplicas int) (
@@ -212,10 +216,9 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
 		cfgs = append(cfgs, &proto.ReplicaConfig{
 			KeyserverConfig: proto.KeyserverConfig{
-				Realm:                      testingRealm,
-				ServerID:                   replicaID,
-				InitialAuthorizationPolicy: pol,
-				VRFKeyID:                   "vrf",
+				Realm:    testingRealm,
+				ServerID: replicaID,
+				VRFKeyID: "vrf",
 
 				MinEpochInterval:      proto.DurationStamp(tick),
 				MaxEpochInterval:      proto.DurationStamp(tick),
@@ -247,7 +250,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		})
 	}
 	pol.PublicKeys = pks
-	pol.Quorum = &proto.QuorumExpr{Threshold: uint32(majority(nReplicas)), Candidates: replicaIDs}
+	pol.Quorum = majorityQuorum(replicaIDs)
 	return
 }
 
@@ -260,13 +263,13 @@ func TestThreeKeyserversStartStop(t *testing.T) {
 }
 
 func testKeyserverStartStop(t *testing.T, nReplicas int) {
-	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -282,7 +285,7 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 func TestKeyserverStartProgressStop(t *testing.T) {
 	pprof()
 	nReplicas := 3
-	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -304,7 +307,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 			}
 		})
 
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -446,7 +449,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -495,7 +498,7 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -619,7 +622,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 		}(i)
 	}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}

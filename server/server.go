@@ -49,7 +49,6 @@ type Keyserver struct {
 	serverID, replicaID uint64
 	serverAuthorized    *proto.AuthorizationPolicy
 
-	thresholdSigningIndex   uint32
 	sehKey                  *[ed25519.PrivateKeySize]byte
 	vrfSecret               *[vrf.SecretKeySize]byte
 	emailProofToAddr        string
@@ -101,7 +100,7 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
 	signingKey, err := getKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
@@ -131,7 +130,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 		realm:                   cfg.Realm,
 		serverID:                cfg.ServerID,
 		replicaID:               cfg.ReplicaID,
-		serverAuthorized:        cfg.InitialAuthorizationPolicy,
+		serverAuthorized:        initialAuthorizationPolicy,
 		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
 		emailProofToAddr:        cfg.EmailProofToAddr,
