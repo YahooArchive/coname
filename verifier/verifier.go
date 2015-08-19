@@ -38,7 +38,7 @@ import (
 )
 
 // Config encapsulates everything that needs to be specified about a verifer.
-// TODO: make this a protobuf, Unmarshal from JSON
+// TODO: make this a protobuf like ReplicaConfig, Unmarshal from JSON
 type Config struct {
 	Realm          string
 	KeyserverVerif *proto.AuthorizationPolicy
@@ -46,7 +46,7 @@ type Config struct {
 
 	ID              uint64
 	RatificationKey *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	TLS             *tls.Config                   // FIXME: tls.Config is not serializable, replicate relevant fields
+	TLS             *tls.Config                   // TODO: use proto.TLSConfig
 
 	TreeNonce []byte
 }
@@ -140,7 +140,7 @@ func (vr *Verifier) run() {
 		log.Fatalf("dial %s: %s", vr.keyserverAddr, err)
 	}
 	vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
-	stream, err := vr.keyserver.VerifierStream(context.TODO(), &proto.VerifierStreamRequest{
+	stream, err := vr.keyserver.VerifierStream(context.Background(), &proto.VerifierStreamRequest{
 		Start:    vr.vs.NextIndex,
 		PageSize: math.MaxUint64,
 	})
@@ -238,7 +238,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		vs.NextEpoch++
 		return func() {
 			_, err := vr.keyserver.PushRatification(context.TODO(), seh)
-			if err != nil { // TODO: how should this error be handled (grpc issue #238 may be relevant)
+			if err != nil {
 				log.Printf("PushRatification: %s", err)
 			}
 		}
