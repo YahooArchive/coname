@@ -328,7 +328,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	switch {
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
-		if err := ks.verifyUpdate(step.Update); err != nil {
+		if err := ks.verifyUpdateDeterministic(step.Update); err != nil {
 			ks.wr.Notify(step.UID, err)
 			return
 		}
