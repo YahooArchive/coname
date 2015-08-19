@@ -89,10 +89,9 @@ type Keyserver struct {
 
 	merkletree *merkletree.MerkleTree
 
-	epochPending, signaturePending []uint64
-
-	vmb *VerifierBroadcast
-	wr  *WaitingRoom
+	vmb                *VerifierBroadcast
+	wr                 *WaitingRoom
+	signatureBroadcast *Broadcaster
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -139,11 +138,12 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 		minEpochInterval:        cfg.MinEpochInterval.Duration(),
 		maxEpochInterval:        cfg.MaxEpochInterval.Duration(),
 		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
-		db:      db,
-		log:     log,
-		stop:    make(chan struct{}),
-		stopped: make(chan struct{}),
-		wr:      NewWaitingRoom(),
+		db:                 db,
+		log:                log,
+		stop:               make(chan struct{}),
+		stopped:            make(chan struct{}),
+		wr:                 NewWaitingRoom(),
+		signatureBroadcast: NewBroadcaster(),
 
 		leaderHint: true,
 
@@ -151,9 +151,6 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 		lookupTXT:             LookupTXT,
 		minEpochIntervalTimer: clk.Timer(0),
 		maxEpochIntervalTimer: clk.Timer(0),
-
-		epochPending:     make([]uint64, 0),
-		signaturePending: make([]uint64, 0),
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
@@ -275,6 +272,7 @@ func (ks *Keyserver) Stop() {
 		ks.epochProposer.Stop()
 		ks.signatureProposer.Stop()
 		ks.log.Stop()
+		ks.signatureBroadcast.Stop()
 	})
 }
 
@@ -330,24 +328,24 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
 		if err := ks.verifyUpdate(step.Update); err != nil {
-			ks.wr.Notify(step.UID, err)
+			ks.wr.Notify(step.UID, updateOutput{Error: err})
 			return
 		}
 		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
-			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
+			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		if err := newTree.Set(index, entryHash[:]); err != nil {
-			ks.wr.Notify(step.UID, fmt.Errorf("internal error"))
+			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
 		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
-		ks.epochPending = append(ks.epochPending, step.UID)
+		ks.wr.Notify(step.UID, updateOutput{Epoch: epochNr})
 
 		rs.PendingUpdates = true
 		ks.updateEpochProposer()
@@ -373,12 +371,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		rs.LastEpochNeedsRatification = true
 		ks.updateEpochProposer()
-		// This should also only be the case if the last epoch wasn't ratified yet
-		// (according to log order).
-		if len(ks.signaturePending) != 0 {
-			log.Panicf("still pending updates -- should not happen!")
-		}
-		ks.signaturePending, ks.epochPending = ks.epochPending, nil
 		deferredIO = ks.updateSignatureProposer
 
 		snapshotNumberBytes := make([]byte, 8)
@@ -428,6 +420,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			wb.Put(tableRatifications(epochNr, id), newSehBytes)
 		}
 
+		deferredIO = func() {
+			// First write to DB, *then* notify subscribers. That way, if subscribers
+			// start listening before searching the DB, they're guaranteed to see the
+			// signature: either it's already in the DB, or they'll get notified. If
+			// the order was reversed, they could miss the notification but still not
+			// see anything in the DB.
+			ks.signatureBroadcast.Publish(epochNr, newSEH)
+		}
+
 		if epochNr == rs.LastEpochDelimiter.EpochNumber {
 			if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
 				rs.ThisReplicaNeedsToSignLastEpoch = false
@@ -470,13 +471,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 					Head:       teh,
 					Signatures: allSignatures,
 				}
-				nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
-				return func() {
-					nestedDeferredIO()
-					for _, uid := range ks.signaturePending {
-						ks.wr.Notify(uid, nil)
-					}
-					ks.signaturePending = nil
+				oldDeferredIO := deferredIO
+				newDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+				deferredIO = func() {
+					newDeferredIO()
+					oldDeferredIO()
 				}
 			}
 		}
@@ -491,6 +490,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			wb.Put(dbkey, proto.MustMarshal(rNew))
 		}
 		ks.wr.Notify(step.UID, nil)
+		return func() {
+			// As above, first write to DB, *then* notify subscribers.
+			ks.signatureBroadcast.Publish(rNew.Head.Head.Epoch, rNew)
+		}
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}

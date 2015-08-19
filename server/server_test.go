@@ -655,10 +655,13 @@ loop:
 		teardown = chain(v.teardown, teardown)
 	}
 	pol := copyAuthorizationPolicy(clientConfig.Realms[0].VerificationPolicy)
+	pol.Quorum = &proto.QuorumExpr{
+		Subexpressions: []*proto.QuorumExpr{pol.Quorum},
+		Threshold:      uint32(1 + nVerifiers),
+		Candidates:     verifiers,
+	}
 	for i := 0; i < nVerifiers; i++ {
-		pol.PublicKeys[verifiers[i]] = vpks[i]
-		pol.Quorum.Candidates = append(pol.Quorum.Candidates, verifiers[i])
-		pol.Quorum.Threshold++
+		pol.PublicKeys[proto.KeyID(vpks[i])] = vpks[i]
 	}
 	clientConfig.Realms[0].VerificationPolicy = pol
 	return kss, caPool, clks, verifiers, clientConfig, teardown
@@ -679,7 +682,8 @@ func copyAuthorizationPolicy(pol *proto.AuthorizationPolicy) *proto.Authorizatio
 }
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
-	t.Skip() // currently fails
+	t.Skip() // currently fails sometimes because updates are sent to verifiers in the wrong epoch
+	pprof()
 	kss, caPool, clks, verifiers, clientConfig, teardown := setupRealm(t, 3, 3)
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
@@ -696,11 +700,8 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	}
 	c := proto.NewE2EKSLookupClient(conn)
 	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
-		UserId: alice,
-		QuorumRequirement: &proto.QuorumExpr{
-			Threshold:  uint32(len(verifiers)),
-			Candidates: verifiers,
-		},
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -718,7 +719,6 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 }
 
 func TestKeyserverHKP(t *testing.T) {
-	dieOnCtrlC()
 	kss, caPool, clks, _, clientConfig, teardown := setupRealm(t, 1, 0)
 	ks := kss[0]
 	defer teardown()

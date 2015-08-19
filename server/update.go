@@ -63,6 +63,11 @@ func (ks *Keyserver) verifyUpdate(req *proto.UpdateRequest) error {
 	return nil
 }
 
+type updateOutput struct {
+	Epoch uint64 // which epoch the update will appear in
+	Error error
+}
+
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
 	if err := ks.verifyUpdate(req); err != nil {
@@ -80,9 +85,10 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 		ks.wr.Notify(uid, nil)
 		return nil, ctx.Err()
 	case v := <-ch:
-		if err, ok := v.(error); ok {
-			return nil, err
+		out := v.(updateOutput)
+		if out.Error != nil {
+			return nil, out.Error
 		}
-		return ks.Lookup(ctx, req.LookupParameters)
+		return ks.blockingLookup(ctx, req.LookupParameters, out.Epoch)
 	}
 }

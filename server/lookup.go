@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
@@ -27,7 +28,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-const lookupMaxChainLength = 100
+const (
+	lookupMaxChainLength   = 100
+	blockingLookupTimeout  = 1 * time.Minute
+	newSignatureBufferSize = 10 // To avoid blocking the keyserver while we're finding signatures in the DB
+)
 
 func (ks *Keyserver) findRatificationsForEpoch(epoch uint64, desiredVerifiers map[uint64]struct{}) (
 	ratifications []*proto.SignedEpochHead, haveVerifiers map[uint64]struct{}, err error,
@@ -137,6 +142,48 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		}
 	}
 	return ks.assembleLookupProof(req, lookupEpoch, ratifications)
+}
+
+// Waits until a sufficient quorum is assembled
+func (ks *Keyserver) blockingLookup(ctx context.Context, req *proto.LookupRequest, epoch uint64) (*proto.LookupProof, error) {
+	newSignatures := make(chan interface{}, newSignatureBufferSize)
+	ks.signatureBroadcast.Subscribe(epoch, newSignatures)
+	defer ks.signatureBroadcast.Unsubscribe(epoch, newSignatures)
+	verifiersLeft := coname.ListQuorum(req.QuorumRequirement, nil)
+	ratifications, haveVerifiers, err := ks.findRatificationsForEpoch(epoch, verifiersLeft)
+	if err != nil {
+		return nil, err
+	}
+	for v := range haveVerifiers {
+		delete(verifiersLeft, v)
+	}
+	timeout := ks.clk.After(blockingLookupTimeout)
+	timedOut := false
+	log.Printf("waiting to sat %v", req.QuorumRequirement)
+loop:
+	for !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
+		select {
+		case <-timeout:
+			timedOut = true
+			break loop
+		case v := <-newSignatures:
+			newSig := v.(*proto.SignedEpochHead)
+			log.Printf("new sig %v; left = %v", newSig, verifiersLeft)
+			for id := range newSig.Signatures {
+				if _, ok := verifiersLeft[id]; ok {
+					ratifications = append(ratifications, newSig)
+					delete(verifiersLeft, id)
+					haveVerifiers[id] = struct{}{}
+				}
+			}
+		}
+	}
+	if timedOut {
+		// TODO: return whatever ratification we could find
+		return nil, fmt.Errorf("timed out while waiting for ratification")
+	}
+	log.Printf("rats: %v", ratifications)
+	return ks.assembleLookupProof(req, epoch, ratifications)
 }
 
 func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, error) {
