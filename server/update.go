@@ -28,7 +28,23 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (ks *Keyserver) verifyUpdate(req *proto.UpdateRequest) error {
+func (ks *Keyserver) verifyUpdateDeterministic(req *proto.UpdateRequest) error {
+	prevUpdate, err := ks.getUpdate(req.Update.NewEntry.Index, math.MaxUint64)
+	if err != nil {
+		log.Print(err)
+		return fmt.Errorf("internal error")
+	}
+	if prevUpdate == nil {
+		return nil
+	}
+	prevEntry := &prevUpdate.Update.NewEntry.Entry
+	if err := coname.VerifyUpdate(prevEntry, req.Update); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 	prevUpdate, err := ks.getUpdate(req.Update.NewEntry.Index, math.MaxUint64)
 	if err != nil {
 		log.Print(err)
@@ -48,7 +64,7 @@ func (ks *Keyserver) verifyUpdate(req *proto.UpdateRequest) error {
 			if err != nil {
 				return fmt.Errorf("bad base64 in email proof: %q", payload)
 			}
-			entryHashProposed := sha256.Sum256(req.Update.NewEntry.PreservedEncoding)
+			entryHashProposed := sha256.Sum256(req.Update.NewEntry.Encoding)
 			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
 				return fmt.Errorf("email proof does not match requested entry")
 			}
@@ -70,7 +86,7 @@ type updateOutput struct {
 
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
-	if err := ks.verifyUpdate(req); err != nil {
+	if err := ks.verifyUpdateEdge(req); err != nil {
 		return nil, err
 	}
 

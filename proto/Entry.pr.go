@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type Entry_PreserveEncoding struct {
+type EncodedEntry struct {
 	Entry
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *Entry_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.Entry)
+func (m *EncodedEntry) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.Entry)
 }
 
-func (m *Entry_PreserveEncoding) Reset() {
-	*m = Entry_PreserveEncoding{}
+func (m *EncodedEntry) Reset() {
+	*m = EncodedEntry{}
 }
 
-func (m *Entry_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedEntry) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *Entry_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedEntry) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *Entry_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *Entry_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedEntry) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *Entry_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedEntry) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.Entry.Unmarshal(data)
 }
 
-func NewPopulatedEntry_PreserveEncoding(r randyClient, easy bool) *Entry_PreserveEncoding {
-	this := &Entry_PreserveEncoding{Entry: *NewPopulatedEntry(r, easy)}
+func NewPopulatedEncodedEntry(r randyClient, easy bool) *EncodedEntry {
+	this := &EncodedEntry{Entry: *NewPopulatedEntry(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *Entry_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*Entry_PreserveEncoding); ok {
+func (this *EncodedEntry) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedEntry); ok {
 		return this.Entry.VerboseEqual(&thatP.Entry)
 	}
-	if thatP, ok := that.(Entry_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedEntry); ok {
 		return this.Entry.VerboseEqual(&thatP.Entry)
 	}
-	return fmt.Errorf("types don't match: %T != Entry_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedEntry")
 }
 
-func (this *Entry_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*Entry_PreserveEncoding); ok {
+func (this *EncodedEntry) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedEntry); ok {
 		return this.Entry.Equal(&thatP.Entry)
 	}
-	if thatP, ok := that.(Entry_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedEntry); ok {
 		return this.Entry.Equal(&thatP.Entry)
 	}
 	return false
 }
 
-func (this *Entry_PreserveEncoding) GoString() string {
+func (this *EncodedEntry) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.Entry_PreserveEncoding{Entry: ` + this.Entry.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedEntry{Entry: ` + this.Entry.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *Entry_PreserveEncoding) String() string {
+func (this *EncodedEntry) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.Entry_PreserveEncoding{Entry: ` + this.Entry.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedEntry{Entry: ` + this.Entry.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *Entry_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedEntry) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *Entry_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedEntry) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *Entry_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*Entry_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*Entry_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedEntry)(nil)
+var _ json.Unmarshaler = (*EncodedEntry)(nil)

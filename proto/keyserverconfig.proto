@@ -19,13 +19,19 @@ import "tlsconfig.proto";
 import "duration.proto";
 import "client.proto";
 
+// ReplicaConfig contains the local configuration of a single replica of a
+// keyserver. It is valid to have just one replica, but a larger odd number is
+// desireable for availability.
 message ReplicaConfig {
 	KeyserverConfig keyserver_config = 1 [(gogoproto.embed) = true, (gogoproto.nullable) = false];
 
+	// ReplicaID is a globally unique identifier. See Replica.ID.
 	uint64 replica_id = 2 [(gogoproto.customname) = "ReplicaID"];
 	string signing_key_id = 3 [(gogoproto.customname) = "SigningKeyID"];
 
-	// server-side listening
+	// The following fields describe how this particular replica should accept
+	// requests from the network.
+
 	string update_addr = 4;
 	TLSConfig update_tls = 5 [(gogoproto.customname) = "UpdateTLS"];
 	string lookup_addr = 6;
@@ -36,6 +42,8 @@ message ReplicaConfig {
 	TLSConfig hkp_tls = 11 [(gogoproto.customname) = "HKPTLS"];
 }
 
+// KeyserverConfig describes the keyserver-wide configuration. All replicas
+// MUST use the same KeyserverConfig.
 message KeyserverConfig {
 	uint64 server_id = 1 [(gogoproto.customname) = "ServerID"];
 	string realm = 2;
@@ -45,11 +53,14 @@ message KeyserverConfig {
 	Duration max_epoch_interval = 5 [(gogoproto.nullable) = false];
 	Duration proposal_retry_interval = 6 [(gogoproto.nullable) = false];
 
+	// InitialReplicas contains the cluster configuration at the beginning of
+	// time. It MUST NOT be modified ever after, and it MUST be the same for
+	// all replicas. Use AddReplica and RemoveReplica to change the current
+	// cluster configuration.
 	repeated Replica initial_replicas = 7;
-	AuthorizationPolicy initial_authorization_policy = 8;
 
-	string email_proof_to_addr = 9;
-	string email_proof_subject_prefix = 10;
+	string email_proof_to_addr = 8;
+	string email_proof_subject_prefix = 9;
 }
 
 message Replica {
@@ -57,7 +68,7 @@ message Replica {
 	// All node ID-s MUST be unique, MUST NOT be reused (e.g., using IP-s or
 	// hostnames is probably a bad idea) and SHOULD be set to the ID of the
 	// first public key by convention.
-	uint64 id = 1;
+	uint64 id = 1 [(gogoproto.customname) = "ID"];
 	// PublicKeys lists the public keys of a node, to be joined using a
 	// 1-out-of-n policy. The order of this list is NOT preserved.
 	repeated PublicKey public_keys = 2;

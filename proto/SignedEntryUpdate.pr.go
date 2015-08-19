@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type SignedEntryUpdate_PreserveEncoding struct {
+type EncodedSignedEntryUpdate struct {
 	SignedEntryUpdate
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.SignedEntryUpdate)
+func (m *EncodedSignedEntryUpdate) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.SignedEntryUpdate)
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) Reset() {
-	*m = SignedEntryUpdate_PreserveEncoding{}
+func (m *EncodedSignedEntryUpdate) Reset() {
+	*m = EncodedSignedEntryUpdate{}
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedSignedEntryUpdate) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedSignedEntryUpdate) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *SignedEntryUpdate_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedSignedEntryUpdate) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedSignedEntryUpdate) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.SignedEntryUpdate.Unmarshal(data)
 }
 
-func NewPopulatedSignedEntryUpdate_PreserveEncoding(r randyClient, easy bool) *SignedEntryUpdate_PreserveEncoding {
-	this := &SignedEntryUpdate_PreserveEncoding{SignedEntryUpdate: *NewPopulatedSignedEntryUpdate(r, easy)}
+func NewPopulatedEncodedSignedEntryUpdate(r randyClient, easy bool) *EncodedSignedEntryUpdate {
+	this := &EncodedSignedEntryUpdate{SignedEntryUpdate: *NewPopulatedSignedEntryUpdate(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *SignedEntryUpdate_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*SignedEntryUpdate_PreserveEncoding); ok {
+func (this *EncodedSignedEntryUpdate) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedSignedEntryUpdate); ok {
 		return this.SignedEntryUpdate.VerboseEqual(&thatP.SignedEntryUpdate)
 	}
-	if thatP, ok := that.(SignedEntryUpdate_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedSignedEntryUpdate); ok {
 		return this.SignedEntryUpdate.VerboseEqual(&thatP.SignedEntryUpdate)
 	}
-	return fmt.Errorf("types don't match: %T != SignedEntryUpdate_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedSignedEntryUpdate")
 }
 
-func (this *SignedEntryUpdate_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*SignedEntryUpdate_PreserveEncoding); ok {
+func (this *EncodedSignedEntryUpdate) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedSignedEntryUpdate); ok {
 		return this.SignedEntryUpdate.Equal(&thatP.SignedEntryUpdate)
 	}
-	if thatP, ok := that.(SignedEntryUpdate_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedSignedEntryUpdate); ok {
 		return this.SignedEntryUpdate.Equal(&thatP.SignedEntryUpdate)
 	}
 	return false
 }
 
-func (this *SignedEntryUpdate_PreserveEncoding) GoString() string {
+func (this *EncodedSignedEntryUpdate) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.SignedEntryUpdate_PreserveEncoding{SignedEntryUpdate: ` + this.SignedEntryUpdate.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedSignedEntryUpdate{SignedEntryUpdate: ` + this.SignedEntryUpdate.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *SignedEntryUpdate_PreserveEncoding) String() string {
+func (this *EncodedSignedEntryUpdate) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.SignedEntryUpdate_PreserveEncoding{SignedEntryUpdate: ` + this.SignedEntryUpdate.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedSignedEntryUpdate{SignedEntryUpdate: ` + this.SignedEntryUpdate.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedSignedEntryUpdate) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *SignedEntryUpdate_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedSignedEntryUpdate) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *SignedEntryUpdate_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*SignedEntryUpdate_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*SignedEntryUpdate_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedSignedEntryUpdate)(nil)
+var _ json.Unmarshaler = (*EncodedSignedEntryUpdate)(nil)

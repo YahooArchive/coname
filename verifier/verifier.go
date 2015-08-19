@@ -38,7 +38,7 @@ import (
 )
 
 // Config encapsulates everything that needs to be specified about a verifer.
-// TODO: make this a protobuf, Unmarshal from JSON
+// TODO: make this a protobuf like ReplicaConfig, Unmarshal from JSON
 type Config struct {
 	Realm          string
 	KeyserverVerif *proto.AuthorizationPolicy
@@ -46,7 +46,7 @@ type Config struct {
 
 	ID              uint64
 	RatificationKey *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	TLS             *tls.Config                   // FIXME: tls.Config is not serializable, replicate relevant fields
+	TLS             *tls.Config                   // TODO: use proto.TLSConfig
 
 	TreeNonce []byte
 }
@@ -140,7 +140,7 @@ func (vr *Verifier) run() {
 		log.Fatalf("dial %s: %s", vr.keyserverAddr, err)
 	}
 	vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
-	stream, err := vr.keyserver.VerifierStream(context.TODO(), &proto.VerifierStreamRequest{
+	stream, err := vr.keyserver.VerifierStream(context.Background(), &proto.VerifierStreamRequest{
 		Start:    vr.vs.NextIndex,
 		PageSize: math.MaxUint64,
 	})
@@ -183,7 +183,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			// the keyserver should filter all bad updates
 			log.Fatalf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
-		entryHash := sha256.Sum256(step.Update.NewEntry.PreservedEncoding)
+		entryHash := sha256.Sum256(step.Update.NewEntry.Encoding)
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -193,12 +193,12 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			log.Fatalf("%d: Set(%x,%x): %s", vs.NextIndex, index, entryHash[:], err)
 		}
 		vs.LatestTreeSnapshot = newTree.Flush(wb).Nr
-		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.PreservedEncoding)
+		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.Encoding)
 
 	case step.Epoch != nil:
 		ok := coname.VerifyPolicy(
 			vr.keyserverVerif,
-			step.Epoch.Head.PreservedEncoding,
+			step.Epoch.Head.Encoding,
 			step.Epoch.Signatures)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
@@ -224,13 +224,13 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			log.Fatalf("%d: seh with root hash %q, expected %q: %#v", vs.NextEpoch, s.RootHash, rootHash, *step)
 		}
 		seh := &proto.SignedEpochHead{
-			Head: proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
+			Head: proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
 				Head:      s,
 				Timestamp: proto.Time(time.Now()),
 			}, nil},
 			Signatures: make(map[uint64][]byte, 1),
 		}
-		h := sha256.Sum256(seh.Head.Head.PreservedEncoding)
+		h := sha256.Sum256(seh.Head.Head.Encoding)
 		vs.PreviousSummaryHash = h[:]
 		seh.Head.UpdateEncoding()
 		seh.Signatures[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
@@ -238,7 +238,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		vs.NextEpoch++
 		return func() {
 			_, err := vr.keyserver.PushRatification(context.TODO(), seh)
-			if err != nil { // TODO: how should this error be handled (grpc issue #238 may be relevant)
+			if err != nil {
 				log.Printf("PushRatification: %s", err)
 			}
 		}

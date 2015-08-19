@@ -25,6 +25,7 @@ import (
 	"encoding/binary"
 	"io/ioutil"
 	"log"
+	mathrand "math/rand"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -170,6 +171,10 @@ func majority(nReplicas int) int {
 	return nReplicas/2 + 1
 }
 
+func majorityQuorum(candidates []uint64) *proto.QuorumExpr {
+	return &proto.QuorumExpr{Threshold: uint32(majority(len(candidates))), Candidates: candidates}
+}
+
 // setupKeyservers initializes everything needed to start a set of keyserver
 // replicas, but does not actually start them yet
 func setupKeyservers(t *testing.T, nReplicas int) (
@@ -211,10 +216,9 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
 		cfgs = append(cfgs, &proto.ReplicaConfig{
 			KeyserverConfig: proto.KeyserverConfig{
-				Realm:                      testingRealm,
-				ServerID:                   replicaID,
-				InitialAuthorizationPolicy: pol,
-				VRFKeyID:                   "vrf",
+				Realm:    testingRealm,
+				ServerID: replicaID,
+				VRFKeyID: "vrf",
 
 				MinEpochInterval:      proto.DurationStamp(tick),
 				MaxEpochInterval:      proto.DurationStamp(tick),
@@ -246,7 +250,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		})
 	}
 	pol.PublicKeys = pks
-	pol.Quorum = &proto.QuorumExpr{Threshold: uint32(majority(nReplicas)), Candidates: replicaIDs}
+	pol.Quorum = majorityQuorum(replicaIDs)
 	return
 }
 
@@ -259,13 +263,13 @@ func TestThreeKeyserversStartStop(t *testing.T) {
 }
 
 func testKeyserverStartStop(t *testing.T, nReplicas int) {
-	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -281,7 +285,7 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 func TestKeyserverStartProgressStop(t *testing.T) {
 	pprof()
 	nReplicas := 3
-	cfgs, gks, _, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -303,7 +307,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 			}
 		})
 
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -323,12 +327,9 @@ loop:
 		select {
 		case <-progressCh:
 			break loop
-		case <-time.After(poll):
-			// TODO: try advancing clocks a little out of sync?
-			for _, clk := range clks {
-				clk.Add(tick)
-			}
-			runtime.Gosched()
+		default:
+			i := mathrand.Intn(len(kss))
+			clks[i].Add(tick)
 		}
 	}
 
@@ -356,17 +357,17 @@ func withServer(func(*testing.T, *Keyserver)) {
 func doUpdate(
 	t *testing.T, ks *Keyserver, clientConfig *proto.Config, caPool *x509.CertPool, now time.Time,
 	name string, profileContents proto.Profile,
-) *proto.Profile_PreserveEncoding {
+) *proto.EncodedProfile {
 	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := proto.Profile_PreserveEncoding{
+	profile := proto.EncodedProfile{
 		Profile: profileContents,
 	}
 	profile.UpdateEncoding()
-	h := sha256.Sum256(profile.PreservedEncoding)
-	entry := proto.Entry_PreserveEncoding{
+	h := sha256.Sum256(profile.Encoding)
+	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   vrf.Compute([]byte(name), ks.vrfSecret), // TODO remove this
 			Version: 0,
@@ -383,7 +384,7 @@ func doUpdate(
 	}
 	entry.UpdateEncoding()
 	updateC := proto.NewE2EKSUpdateClient(conn)
-	proof, err := updateC.Update(context.TODO(), &proto.UpdateRequest{
+	proof, err := updateC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
 			Signatures: make(map[uint64][]byte),
@@ -397,7 +398,7 @@ func doUpdate(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	_, err = coname.VerifyLookup(clientConfig, name, proof, now)
@@ -448,7 +449,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -472,14 +473,14 @@ func TestKeyserverRoundtrip(t *testing.T) {
 	}
 	c := proto.NewE2EKSLookupClient(conn)
 
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
 		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	_, err = coname.VerifyLookup(clientConfig, alice, proof, clks[0].Now())
@@ -497,7 +498,7 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -621,7 +622,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 		}(i)
 	}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clks[i], gks[i], nil)
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -699,14 +700,14 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
 		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	if got, want := len(proof.Ratifications), majority(len(kss))+len(verifiers); got < want {

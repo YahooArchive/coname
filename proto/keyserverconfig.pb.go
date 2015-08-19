@@ -16,11 +16,14 @@ import reflect "reflect"
 
 import io "io"
 
+// ReplicaConfig contains the local configuration of a single replica of a
+// keyserver. It is valid to have just one replica, but a larger odd number is
+// desireable for availability.
 type ReplicaConfig struct {
 	KeyserverConfig `protobuf:"bytes,1,opt,name=keyserver_config,embedded=keyserver_config" json:"keyserver_config"`
-	ReplicaID       uint64 `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
-	SigningKeyID    string `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
-	// server-side listening
+	// ReplicaID is a globally unique identifier. See Replica.ID.
+	ReplicaID    uint64     `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
+	SigningKeyID string     `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
 	UpdateAddr   string     `protobuf:"bytes,4,opt,name=update_addr,proto3" json:"update_addr,omitempty"`
 	UpdateTLS    *TLSConfig `protobuf:"bytes,5,opt,name=update_tls" json:"update_tls,omitempty"`
 	LookupAddr   string     `protobuf:"bytes,6,opt,name=lookup_addr,proto3" json:"lookup_addr,omitempty"`
@@ -62,17 +65,22 @@ func (m *ReplicaConfig) GetHKPTLS() *TLSConfig {
 	return nil
 }
 
+// KeyserverConfig describes the keyserver-wide configuration. All replicas
+// MUST use the same KeyserverConfig.
 type KeyserverConfig struct {
-	ServerID                   uint64               `protobuf:"varint,1,opt,name=server_id,proto3" json:"server_id,omitempty"`
-	Realm                      string               `protobuf:"bytes,2,opt,name=realm,proto3" json:"realm,omitempty"`
-	VRFKeyID                   string               `protobuf:"bytes,3,opt,name=vrf_key_id,proto3" json:"vrf_key_id,omitempty"`
-	MinEpochInterval           Duration             `protobuf:"bytes,4,opt,name=min_epoch_interval" json:"min_epoch_interval"`
-	MaxEpochInterval           Duration             `protobuf:"bytes,5,opt,name=max_epoch_interval" json:"max_epoch_interval"`
-	ProposalRetryInterval      Duration             `protobuf:"bytes,6,opt,name=proposal_retry_interval" json:"proposal_retry_interval"`
-	InitialReplicas            []*Replica           `protobuf:"bytes,7,rep,name=initial_replicas" json:"initial_replicas,omitempty"`
-	InitialAuthorizationPolicy *AuthorizationPolicy `protobuf:"bytes,8,opt,name=initial_authorization_policy" json:"initial_authorization_policy,omitempty"`
-	EmailProofToAddr           string               `protobuf:"bytes,9,opt,name=email_proof_to_addr,proto3" json:"email_proof_to_addr,omitempty"`
-	EmailProofSubjectPrefix    string               `protobuf:"bytes,10,opt,name=email_proof_subject_prefix,proto3" json:"email_proof_subject_prefix,omitempty"`
+	ServerID              uint64   `protobuf:"varint,1,opt,name=server_id,proto3" json:"server_id,omitempty"`
+	Realm                 string   `protobuf:"bytes,2,opt,name=realm,proto3" json:"realm,omitempty"`
+	VRFKeyID              string   `protobuf:"bytes,3,opt,name=vrf_key_id,proto3" json:"vrf_key_id,omitempty"`
+	MinEpochInterval      Duration `protobuf:"bytes,4,opt,name=min_epoch_interval" json:"min_epoch_interval"`
+	MaxEpochInterval      Duration `protobuf:"bytes,5,opt,name=max_epoch_interval" json:"max_epoch_interval"`
+	ProposalRetryInterval Duration `protobuf:"bytes,6,opt,name=proposal_retry_interval" json:"proposal_retry_interval"`
+	// InitialReplicas contains the cluster configuration at the beginning of
+	// time. It MUST NOT be modified ever after, and it MUST be the same for
+	// all replicas. Use AddReplica and RemoveReplica to change the current
+	// cluster configuration.
+	InitialReplicas         []*Replica `protobuf:"bytes,7,rep,name=initial_replicas" json:"initial_replicas,omitempty"`
+	EmailProofToAddr        string     `protobuf:"bytes,8,opt,name=email_proof_to_addr,proto3" json:"email_proof_to_addr,omitempty"`
+	EmailProofSubjectPrefix string     `protobuf:"bytes,9,opt,name=email_proof_subject_prefix,proto3" json:"email_proof_subject_prefix,omitempty"`
 }
 
 func (m *KeyserverConfig) Reset()      { *m = KeyserverConfig{} }
@@ -106,19 +114,12 @@ func (m *KeyserverConfig) GetInitialReplicas() []*Replica {
 	return nil
 }
 
-func (m *KeyserverConfig) GetInitialAuthorizationPolicy() *AuthorizationPolicy {
-	if m != nil {
-		return m.InitialAuthorizationPolicy
-	}
-	return nil
-}
-
 type Replica struct {
 	// Id is used to distinguish between nodes during consistent replication.
 	// All node ID-s MUST be unique, MUST NOT be reused (e.g., using IP-s or
 	// hostnames is probably a bad idea) and SHOULD be set to the ID of the
 	// first public key by convention.
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	ID uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// PublicKeys lists the public keys of a node, to be joined using a
 	// 1-out-of-n policy. The order of this list is NOT preserved.
 	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys" json:"public_keys,omitempty"`
@@ -293,9 +294,6 @@ func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("InitialReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.InitialReplicas[i], i, that1.InitialReplicas[i])
 		}
 	}
-	if !this.InitialAuthorizationPolicy.Equal(that1.InitialAuthorizationPolicy) {
-		return fmt.Errorf("InitialAuthorizationPolicy this(%v) Not Equal that(%v)", this.InitialAuthorizationPolicy, that1.InitialAuthorizationPolicy)
-	}
 	if this.EmailProofToAddr != that1.EmailProofToAddr {
 		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
 	}
@@ -350,9 +348,6 @@ func (this *KeyserverConfig) Equal(that interface{}) bool {
 			return false
 		}
 	}
-	if !this.InitialAuthorizationPolicy.Equal(that1.InitialAuthorizationPolicy) {
-		return false
-	}
 	if this.EmailProofToAddr != that1.EmailProofToAddr {
 		return false
 	}
@@ -381,8 +376,8 @@ func (this *Replica) VerboseEqual(that interface{}) error {
 	} else if this == nil {
 		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
 	}
-	if this.Id != that1.Id {
-		return fmt.Errorf("Id this(%v) Not Equal that(%v)", this.Id, that1.Id)
+	if this.ID != that1.ID {
+		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
 	}
 	if len(this.PublicKeys) != len(that1.PublicKeys) {
 		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
@@ -417,7 +412,7 @@ func (this *Replica) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
-	if this.Id != that1.Id {
+	if this.ID != that1.ID {
 		return false
 	}
 	if len(this.PublicKeys) != len(that1.PublicKeys) {
@@ -463,7 +458,6 @@ func (this *KeyserverConfig) GoString() string {
 		`MaxEpochInterval:` + strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1),
 		`ProposalRetryInterval:` + strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1),
 		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
-		`InitialAuthorizationPolicy:` + fmt.Sprintf("%#v", this.InitialAuthorizationPolicy),
 		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
 		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix) + `}`}, ", ")
 	return s
@@ -473,7 +467,7 @@ func (this *Replica) GoString() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&proto.Replica{` +
-		`Id:` + fmt.Sprintf("%#v", this.Id),
+		`ID:` + fmt.Sprintf("%#v", this.ID),
 		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
 		`Addr:` + fmt.Sprintf("%#v", this.Addr) + `}`}, ", ")
 	return s
@@ -672,24 +666,14 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if m.InitialAuthorizationPolicy != nil {
-		data[i] = 0x42
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.InitialAuthorizationPolicy.Size()))
-		n9, err := m.InitialAuthorizationPolicy.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n9
-	}
 	if len(m.EmailProofToAddr) > 0 {
-		data[i] = 0x4a
+		data[i] = 0x42
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofToAddr)))
 		i += copy(data[i:], m.EmailProofToAddr)
 	}
 	if len(m.EmailProofSubjectPrefix) > 0 {
-		data[i] = 0x52
+		data[i] = 0x4a
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofSubjectPrefix)))
 		i += copy(data[i:], m.EmailProofSubjectPrefix)
@@ -712,10 +696,10 @@ func (m *Replica) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Id != 0 {
+	if m.ID != 0 {
 		data[i] = 0x8
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.Id))
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.ID))
 	}
 	if len(m.PublicKeys) > 0 {
 		for _, msg := range m.PublicKeys {
@@ -810,9 +794,6 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
 		}
 	}
-	if r.Intn(10) != 0 {
-		this.InitialAuthorizationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
-	}
 	this.EmailProofToAddr = randStringKeyserverconfig(r)
 	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
 	if !easy && r.Intn(10) != 0 {
@@ -822,7 +803,7 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 
 func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
 	this := &Replica{}
-	this.Id = uint64(uint64(r.Uint32()))
+	this.ID = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
 		v6 := r.Intn(10)
 		this.PublicKeys = make([]*PublicKey, v6)
@@ -981,10 +962,6 @@ func (m *KeyserverConfig) Size() (n int) {
 			n += 1 + l + sovKeyserverconfig(uint64(l))
 		}
 	}
-	if m.InitialAuthorizationPolicy != nil {
-		l = m.InitialAuthorizationPolicy.Size()
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
 	l = len(m.EmailProofToAddr)
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
@@ -999,8 +976,8 @@ func (m *KeyserverConfig) Size() (n int) {
 func (m *Replica) Size() (n int) {
 	var l int
 	_ = l
-	if m.Id != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.Id))
+	if m.ID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ID))
 	}
 	if len(m.PublicKeys) > 0 {
 		for _, e := range m.PublicKeys {
@@ -1060,7 +1037,6 @@ func (this *KeyserverConfig) String() string {
 		`MaxEpochInterval:` + strings.Replace(strings.Replace(this.MaxEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
 		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
 		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
-		`InitialAuthorizationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.InitialAuthorizationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
 		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
 		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
 		`}`,
@@ -1072,7 +1048,7 @@ func (this *Replica) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Replica{`,
-		`Id:` + fmt.Sprintf("%v", this.Id) + `,`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`}`,
@@ -1595,36 +1571,6 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 8:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InitialAuthorizationPolicy", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.InitialAuthorizationPolicy == nil {
-				m.InitialAuthorizationPolicy = &AuthorizationPolicy{}
-			}
-			if err := m.InitialAuthorizationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofToAddr", wireType)
 			}
 			var stringLen uint64
@@ -1645,7 +1591,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			}
 			m.EmailProofToAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 10:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofSubjectPrefix", wireType)
 			}
@@ -1714,16 +1660,16 @@ func (m *Replica) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Id", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
 			}
-			m.Id = 0
+			m.ID = 0
 			for shift := uint(0); ; shift += 7 {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
 				b := data[iNdEx]
 				iNdEx++
-				m.Id |= (uint64(b) & 0x7F) << shift
+				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}

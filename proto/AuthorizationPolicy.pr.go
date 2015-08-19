@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type AuthorizationPolicy_PreserveEncoding struct {
+type EncodedAuthorizationPolicy struct {
 	AuthorizationPolicy
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.AuthorizationPolicy)
+func (m *EncodedAuthorizationPolicy) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.AuthorizationPolicy)
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) Reset() {
-	*m = AuthorizationPolicy_PreserveEncoding{}
+func (m *EncodedAuthorizationPolicy) Reset() {
+	*m = EncodedAuthorizationPolicy{}
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedAuthorizationPolicy) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedAuthorizationPolicy) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *AuthorizationPolicy_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedAuthorizationPolicy) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedAuthorizationPolicy) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.AuthorizationPolicy.Unmarshal(data)
 }
 
-func NewPopulatedAuthorizationPolicy_PreserveEncoding(r randyClient, easy bool) *AuthorizationPolicy_PreserveEncoding {
-	this := &AuthorizationPolicy_PreserveEncoding{AuthorizationPolicy: *NewPopulatedAuthorizationPolicy(r, easy)}
+func NewPopulatedEncodedAuthorizationPolicy(r randyClient, easy bool) *EncodedAuthorizationPolicy {
+	this := &EncodedAuthorizationPolicy{AuthorizationPolicy: *NewPopulatedAuthorizationPolicy(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *AuthorizationPolicy_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*AuthorizationPolicy_PreserveEncoding); ok {
+func (this *EncodedAuthorizationPolicy) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedAuthorizationPolicy); ok {
 		return this.AuthorizationPolicy.VerboseEqual(&thatP.AuthorizationPolicy)
 	}
-	if thatP, ok := that.(AuthorizationPolicy_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedAuthorizationPolicy); ok {
 		return this.AuthorizationPolicy.VerboseEqual(&thatP.AuthorizationPolicy)
 	}
-	return fmt.Errorf("types don't match: %T != AuthorizationPolicy_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedAuthorizationPolicy")
 }
 
-func (this *AuthorizationPolicy_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*AuthorizationPolicy_PreserveEncoding); ok {
+func (this *EncodedAuthorizationPolicy) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedAuthorizationPolicy); ok {
 		return this.AuthorizationPolicy.Equal(&thatP.AuthorizationPolicy)
 	}
-	if thatP, ok := that.(AuthorizationPolicy_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedAuthorizationPolicy); ok {
 		return this.AuthorizationPolicy.Equal(&thatP.AuthorizationPolicy)
 	}
 	return false
 }
 
-func (this *AuthorizationPolicy_PreserveEncoding) GoString() string {
+func (this *EncodedAuthorizationPolicy) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.AuthorizationPolicy_PreserveEncoding{AuthorizationPolicy: ` + this.AuthorizationPolicy.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedAuthorizationPolicy{AuthorizationPolicy: ` + this.AuthorizationPolicy.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *AuthorizationPolicy_PreserveEncoding) String() string {
+func (this *EncodedAuthorizationPolicy) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.AuthorizationPolicy_PreserveEncoding{AuthorizationPolicy: ` + this.AuthorizationPolicy.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedAuthorizationPolicy{AuthorizationPolicy: ` + this.AuthorizationPolicy.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedAuthorizationPolicy) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *AuthorizationPolicy_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedAuthorizationPolicy) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *AuthorizationPolicy_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*AuthorizationPolicy_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*AuthorizationPolicy_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedAuthorizationPolicy)(nil)
+var _ json.Unmarshaler = (*EncodedAuthorizationPolicy)(nil)

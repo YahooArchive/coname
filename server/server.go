@@ -49,7 +49,6 @@ type Keyserver struct {
 	serverID, replicaID uint64
 	serverAuthorized    *proto.AuthorizationPolicy
 
-	thresholdSigningIndex   uint32
 	sehKey                  *[ed25519.PrivateKeySize]byte
 	vrfSecret               *[vrf.SecretKeySize]byte
 	emailProofToAddr        string
@@ -100,7 +99,7 @@ type Keyserver struct {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
 	signingKey, err := getKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
@@ -130,7 +129,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, clk
 		realm:                   cfg.Realm,
 		serverID:                cfg.ServerID,
 		replicaID:               cfg.ReplicaID,
-		serverAuthorized:        cfg.InitialAuthorizationPolicy,
+		serverAuthorized:        initialAuthorizationPolicy,
 		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
 		emailProofToAddr:        cfg.EmailProofToAddr,
@@ -249,7 +248,6 @@ func (ks *Keyserver) Start() {
 }
 
 // Stop cleanly shuts down the keyserver and then returns.
-// TODO: figure out what will happen to connected clients?
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
 		// FIXME: where are the listeners closed?
@@ -295,8 +293,8 @@ func (ks *Keyserver) run() {
 			if err := step.Unmarshal(stepBytes); err != nil {
 				log.Panicf("invalid step pb in replicated log: %s", err)
 			}
-			// TODO: allow multiple steps per log entry (pipelining). Maybe
-			// this would be better implemented at the log level?
+			// TODO: (for throughput) allow multiple steps per log entry
+			// (pipelining). Maybe this would be better implemented at the log level?
 			deferredIO := ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
@@ -327,11 +325,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	switch {
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
-		if err := ks.verifyUpdate(step.Update); err != nil {
+		if err := ks.verifyUpdateDeterministic(step.Update); err != nil {
 			ks.wr.Notify(step.UID, updateOutput{Error: err})
 			return
 		}
-		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
+		entryHash := sha256.Sum256(step.Update.Update.NewEntry.Encoding)
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -382,8 +380,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
 		}
-		teh := &proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
-			Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
+		teh := &proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
+			Head: proto.EncodedEpochHead{proto.EpochHead{
 				RootHash:            rootHash,
 				PreviousSummaryHash: rs.PreviousSummaryHash,
 				Realm:               ks.realm,
@@ -392,7 +390,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Timestamp: step.EpochDelimiter.Timestamp,
 		}, nil}
 		teh.Head.UpdateEncoding()
-		h := sha256.Sum256(teh.Head.PreservedEncoding)
+		h := sha256.Sum256(teh.Head.Encoding)
 		rs.PreviousSummaryHash = h[:]
 		teh.UpdateEncoding()
 
@@ -407,7 +405,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			log.Panicf("get tableEpochHeads(%d): %s", epochNr, err)
 		}
 		// compare epoch head to signed epoch head
-		if got, want := tehBytes, newSEH.Head.PreservedEncoding; !bytes.Equal(got, want) {
+		if got, want := tehBytes, newSEH.Head.Encoding; !bytes.Equal(got, want) {
 			log.Panicf("replica signed different head: wanted %x, got %x", want, got)
 		}
 
@@ -429,55 +427,60 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			ks.signatureBroadcast.Publish(epochNr, newSEH)
 		}
 
-		if epochNr == rs.LastEpochDelimiter.EpochNumber {
-			if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
-				rs.ThisReplicaNeedsToSignLastEpoch = false
-				ks.updateEpochProposer()
-				// updateSignatureProposer should in general be called after writes
-				// have been flushed to db, but given ThisReplicaNeedsToSignLast =
-				// false we know that updateSignatureProposer will not access the db.
-				ks.updateSignatureProposer()
-			}
-			// get all existing ratifications for this epoch
-			allSignatures := make(map[uint64][]byte)
-			existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
-			if err != nil {
-				log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
-			}
-			for _, seh := range existingRatifications {
-				for id, sig := range seh.Signatures {
-					allSignatures[id] = sig
-				}
-			}
-			// check whether the epoch was already ratified
-			wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
-			for id, sig := range newSEH.Signatures {
+		if epochNr != rs.LastEpochDelimiter.EpochNumber {
+			break
+		}
+		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
+			rs.ThisReplicaNeedsToSignLastEpoch = false
+			ks.updateEpochProposer()
+			// updateSignatureProposer should in general be called after writes
+			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
+			// false we know that updateSignatureProposer will not access the db.
+			ks.updateSignatureProposer()
+		}
+		// get all existing ratifications for this epoch
+		allSignatures := make(map[uint64][]byte)
+		existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
+		if err != nil {
+			log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
+		}
+		for _, seh := range existingRatifications {
+			for id, sig := range seh.Signatures {
 				allSignatures[id] = sig
 			}
-			// check whether the epoch has now become ratified
-			nowRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
-			if !wasRatified && nowRatified {
-				if !rs.LastEpochNeedsRatification {
-					log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
-				}
-				rs.LastEpochNeedsRatification = false
-				ks.updateEpochProposer()
-				var teh proto.TimestampedEpochHead_PreserveEncoding
-				err = teh.Unmarshal(tehBytes)
-				if err != nil {
-					log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
-				}
-				allSignaturesSEH := &proto.SignedEpochHead{
-					Head:       teh,
-					Signatures: allSignatures,
-				}
-				oldDeferredIO := deferredIO
-				newDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
-				deferredIO = func() {
-					newDeferredIO()
-					oldDeferredIO()
-				}
-			}
+		}
+		// check whether the epoch was already ratified
+		wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+		if wasRatified {
+			break
+		}
+		for id, sig := range newSEH.Signatures {
+			allSignatures[id] = sig
+		}
+		// check whether the epoch has now become ratified
+		nowRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+		if !nowRatified {
+			break
+		}
+		if !rs.LastEpochNeedsRatification {
+			log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
+		}
+		rs.LastEpochNeedsRatification = false
+		ks.updateEpochProposer()
+		var teh proto.EncodedTimestampedEpochHead
+		err = teh.Unmarshal(tehBytes)
+		if err != nil {
+			log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
+		}
+		allSignaturesSEH := &proto.SignedEpochHead{
+			Head:       teh,
+			Signatures: allSignatures,
+		}
+		oldDeferredIO := deferredIO
+		newDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+		deferredIO = func() {
+			newDeferredIO()
+			oldDeferredIO()
 		}
 
 	case step.VerifierSigned != nil:
@@ -540,7 +543,7 @@ func (p *Proposer) run() {
 	for {
 		select {
 		case <-timer.C:
-			p.log.Propose(context.TODO(), p.proposal)
+			p.log.Propose(context.Background(), p.proposal)
 			timer.Reset(p.delay)
 			p.delay = p.delay * 2
 		case <-p.stop:
@@ -591,7 +594,7 @@ func (ks *Keyserver) updateSignatureProposer() {
 		if err != nil {
 			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db", err)
 		}
-		var teh proto.TimestampedEpochHead_PreserveEncoding
+		var teh proto.EncodedTimestampedEpochHead
 		if err := teh.Unmarshal(tehBytes); err != nil {
 			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 		}

@@ -18,6 +18,7 @@ import "gogoproto/gogo.proto";
 import "replication.proto";
 
 // ReplicaState contains the persistent internal state of a single replica.
+// Additional on-disk state is descried in server/table.go.
 message ReplicaState {
 	// cached values derived purely from the state of the log
 	uint64 next_index_log = 1; // index of the next replicated state machine input to be processed
@@ -33,6 +34,7 @@ message ReplicaState {
 }
 
 // Verifier contains the persistent internal state of a verifier.
+// Additional on-disk state is descried in verifier/table.go.
 message VerifierState {
 	uint64 next_index = 1;
 	uint64 next_epoch = 2;

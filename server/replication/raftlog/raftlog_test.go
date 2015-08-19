@@ -240,7 +240,7 @@ func TestAppendMachineEachProposeOneAndStop5(t *testing.T) {
 	replicas, _, _, teardown := setupAppendMachineCluster(t, 5, 0)
 	defer teardown()
 	for i, am := range replicas {
-		go am.log.Propose(context.TODO(), []byte{byte(i)})
+		go am.log.Propose(context.Background(), []byte{byte(i)})
 	}
 }
 
@@ -276,7 +276,7 @@ func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine
 				panic("slen mismatch")
 			}
 			remaining[i][s] = struct{}{}
-			go am.log.Propose(context.TODO(), []byte(s))
+			go am.log.Propose(context.Background(), []byte(s))
 		}
 	}
 
@@ -309,7 +309,7 @@ func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine
 		// just one entry at a time, though -- this loop will run again.
 		am := replicas[i]
 		for s := range remaining[i] {
-			go am.log.Propose(context.TODO(), []byte(s))
+			go am.log.Propose(context.Background(), []byte(s))
 			break
 		}
 	}
@@ -397,7 +397,7 @@ func TestRecoverFromDisconnect3(t *testing.T) {
 	nw.Partition([]int{0}, []int{1}, []int{2})
 	for j := 0; j < 100; j++ {
 		i := rand.Intn(len(replicas))
-		go replicas[i].log.Propose(context.TODO(), []byte(fmt.Sprintf("(%1d:%01d%03d)", i+1, 1, j)))
+		go replicas[i].log.Propose(context.Background(), []byte(fmt.Sprintf("(%1d:%01d%03d)", i+1, 1, j)))
 		clks[i].Add(tick)
 	}
 
@@ -442,7 +442,7 @@ func TestLots(t *testing.T) {
 			case <-time.After(time.Microsecond * time.Duration(1*1000*rand.Float64())):
 			}
 			i := rand.Intn(len(replicas))
-			go replicas[i].log.Propose(context.TODO(), []byte(fmt.Sprintf("(%1d:%04d)", i+1, j)))
+			go replicas[i].log.Propose(context.Background(), []byte(fmt.Sprintf("(%1d:%04d)", i+1, j)))
 		}
 	}()
 
@@ -529,9 +529,9 @@ func TestConfigurationChange3Add1Manually(t *testing.T) {
 	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3, 1)
 	defer teardown()
 
-	go replicas[0].log.Propose(context.TODO(), []byte("A"))
-	go replicas[1].log.Propose(context.TODO(), []byte("B"))
-	go replicas[2].log.Propose(context.TODO(), []byte("C"))
+	go replicas[0].log.Propose(context.Background(), []byte("A"))
+	go replicas[1].log.Propose(context.Background(), []byte("B"))
+	go replicas[2].log.Propose(context.Background(), []byte("C"))
 
 	for i := 0; i < 3; i++ {
 		for len(replicas[i].Get()) < 3 {
@@ -553,7 +553,7 @@ func TestConfigurationChange3Add1Manually(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		for len(replicas[i].Get()) < 4 {
-			replicas[3].log.Propose(context.TODO(), []byte("D"))
+			replicas[3].log.Propose(context.Background(), []byte("D"))
 			for j := 0; j < 4; j++ {
 				clks[j].Add(tick)
 			}

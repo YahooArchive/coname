@@ -52,7 +52,7 @@ message UpdateRequest {
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
 	Profile profile = 2
-		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
+		[(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
 
 	// UserID specifies the id for the new account to be registered.
@@ -90,9 +90,9 @@ message LookupProof {
 	TreeProof tree_proof = 4;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
 	Entry entry = 5
-		[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
+		[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = false];
 	Profile profile = 6
-		[(gogoproto.customtype) = "Profile_PreserveEncoding", (gogoproto.nullable) = false];
+		[(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
 }
 
 // A Proof provides an authentication path through the Merkle Tree that
@@ -155,7 +155,7 @@ message Entry {
 // SignedEntryUpdate is the main input type.
 message SignedEntryUpdate {
 	Entry new_entry = 1
-		[(gogoproto.customtype) = "Entry_PreserveEncoding", (gogoproto.nullable) = false];
+		[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = false];
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
 	// Both the keyserver and verifiers MUST check these signatures against the
@@ -188,7 +188,7 @@ message Profile {
 // NOT be signed in any other circumstances.
 message SignedEpochHead {
 	TimestampedEpochHead head = 1 // signed field, do not re-encode
-			[(gogoproto.customtype) = "TimestampedEpochHead_PreserveEncoding", (gogoproto.nullable) = false];
+			[(gogoproto.customtype) = "EncodedTimestampedEpochHead", (gogoproto.nullable) = false];
 	// Signatures is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
 	// All signatures are tagged with ID of the public key that generated them.
@@ -199,7 +199,7 @@ message TimestampedEpochHead {
 	// EpochHead specifies the entire state and history of the
 	// realm. 
 	EpochHead head = 1 // hashed field, do not re-encode
-		[(gogoproto.customtype) = "EpochHead_PreserveEncoding", (gogoproto.nullable) = false];
+		[(gogoproto.customtype) = "EncodedEpochHead", (gogoproto.nullable) = false];
 	// Timestamp specifies when the requirements for SignedEpochHead
 	// were checked. Clients will accept a SignedEpochHead timestamped
 	// with at most a fixed amount of time into the past, and MUST fail

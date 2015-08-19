@@ -78,8 +78,8 @@ type LogReplicator interface {
 	// 3. Adding a replica to a cluster currently operating with no redundant
 	// replicas (e.g., two nodes, or alternatively, three nodes with one of
 	// them being dead) will block progress until the new replica has caught
-	// up. TODO: add an option for replicas to catch up *before* being added to
-	// the cluster.
+	// up. TODO: (for availability) add an option for replicas to catch up
+	// *before* being added to the cluster.
 	AddReplica(nodeID uint64)
 	// DropReplica removes nodeID from the set of replicas THIS REPLICA considers
 	// a part of the cluster. See documentation of AddReplica for requirements.

@@ -97,10 +97,11 @@ type NewSnapshot struct {
 	root *node
 }
 
-// GetSnapshot loads the snapshot with a particular ID. Use 0 for a new empty snapshot.
+// GetSnapshot loads the snapshot with a particular ID. Use 0 for a new empty
+// snapshot.  GetSnapshot always returns a snapshot handle, regardless of
+// whether the snapshot actually exists. It is an error to call GetSnapshot(nr)
+// if snapshot nr does not exist (a dangling snapshot handle will be returned).
 func (tree *MerkleTree) GetSnapshot(nr uint64) *Snapshot {
-	// TODO: This can't actually determine whether the snapshot exists, since a missing entry might just
-	// indicate an empty tree. Is that okay?
 	return &Snapshot{tree, nr}
 }
 

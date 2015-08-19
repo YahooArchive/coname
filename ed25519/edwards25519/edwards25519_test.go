@@ -219,7 +219,7 @@ func BenchmarkGeDoubleScalarMultVartime(b *testing.B) {
 	var s [32]byte
 	rand.Reader.Read(s[:])
 
-	var P ExtendedGroupElement
+	var P, Pout ExtendedGroupElement
 	s[31] &= 127
 	GeScalarMultBase(&P, &s)
 
@@ -228,7 +228,7 @@ func BenchmarkGeDoubleScalarMultVartime(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GeDoubleScalarMultVartime(&out, &s, &P, &[32]byte{})
-		// TODO: out.ToExtended(&P)
+		out.ToExtended(&Pout)
 	}
 }
 
