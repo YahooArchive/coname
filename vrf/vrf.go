@@ -18,7 +18,7 @@ const (
 	SecretKeySize    = ed25519.PrivateKeySize
 	Size             = 32
 	intermediateSize = ed25519.PublicKeySize
-	ProofSize        = SecretKeySize + 32 + intermediateSize
+	ProofSize        = 32 + 32 + intermediateSize
 )
 
 // note on hashing: the use of sha512 matches the ed25519 signature scheme. In
