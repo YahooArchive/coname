@@ -273,7 +273,7 @@ func (l *raftLog) send(msg *raftpb.Message) {
 		l.grpcClientCache[msg.To] = c
 	}
 	go func(msg raftpb.Message) {
-		_, err := c.Step(context.TODO(), &msg)
+		_, err := c.Step(context.Background(), &msg)
 		if err != nil {
 			log.Printf("raftlog send to %x: %s", msg.To, err)
 			l.node.ReportUnreachable(msg.To)

@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	tableReplicationLogPrefix     byte = 'l' // index uint64 -> proto.KeyserverStep // TODO: multiple steps per replication log entry
+	tableReplicationLogPrefix     byte = 'l' // index uint64 -> proto.KeyserverStep
 	tableVerifierLogPrefix        byte = 'v' // index uint64 -> proto.VerifierStep
 	tableRatificationsPrefix      byte = 'r' // epoch uint64, ratifier uint64 -> []byte (signature)
 	tableEpochHeadsPrefix         byte = 'e' // epoch uint64 -> proto.TimestampedEpochHead
