@@ -83,15 +83,12 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 	return 0, nil, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 }
 
-// Lookup implements proto.E2EKSLookupServer
-func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
+func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch uint64, ratifications []*proto.SignedEpochHead) (
+	*proto.LookupProof, error,
+) {
 	ret := &proto.LookupProof{UserId: req.UserId}
 	index := vrf.Compute([]byte(req.UserId), ks.vrfSecret)
 	ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
-	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
-	if err != nil {
-		return nil, err
-	}
 	ret.Ratifications = ratifications
 	tree, err := ks.merkletreeForEpoch(lookupEpoch)
 	if err != nil {
@@ -113,6 +110,15 @@ func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*pro
 		ret.Entry = urq.Update.NewEntry
 	}
 	return ret, nil
+}
+
+// Lookup implements proto.E2EKSLookupServer
+func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
+	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
+	if err != nil {
+		return nil, err
+	}
+	return ks.assembleLookupProof(req, lookupEpoch, ratifications)
 }
 
 func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, error) {
