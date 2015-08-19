@@ -70,6 +70,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 		// the requested entries are not in the db yet, so let's try to collect
 		// them from the vmb. ch=nil -> the desired log entry was sent after we
 		// did the db range scan but before we called Receive -> it's in db now.
+	vmbLoop:
 		for ch := ks.vmb.Receive(start, limit); ch != nil && start < limit; start++ {
 			select {
 			case <-stream.Context().Done():
@@ -80,7 +81,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 					// client was slow and vmb does not wait for laggards.
 					// This is okay though: if vmb does not have the step
 					// anymore, the db must: let's get it from there.
-					break
+					break vmbLoop
 				}
 				if err := stream.Send(vmbStep); err != nil {
 					return err
