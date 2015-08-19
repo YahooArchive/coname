@@ -21,12 +21,12 @@ type broadcastMessage struct {
 
 type subscription struct {
 	channelID uint64
-	channel   chan interface{}
+	channel   chan<- interface{}
 }
 
 type Broadcaster struct {
 	messages    chan broadcastMessage
-	subscribers map[uint64]map[chan interface{}]struct{}
+	subscribers map[uint64]map[chan<- interface{}]struct{}
 
 	subscribe   chan subscription
 	unsubscribe chan subscription
@@ -36,7 +36,7 @@ type Broadcaster struct {
 func NewBroadcaster() *Broadcaster {
 	b := &Broadcaster{
 		messages:    make(chan broadcastMessage),
-		subscribers: make(map[uint64]map[chan interface{}]struct{}),
+		subscribers: make(map[uint64]map[chan<- interface{}]struct{}),
 		subscribe:   make(chan subscription),
 		unsubscribe: make(chan subscription),
 		stop:        make(chan struct{}),
@@ -59,7 +59,7 @@ func (b *Broadcaster) run() {
 			}
 		case s := <-b.subscribe:
 			if _, ok := b.subscribers[s.channelID]; !ok {
-				b.subscribers[s.channelID] = make(map[chan interface{}]struct{})
+				b.subscribers[s.channelID] = make(map[chan<- interface{}]struct{})
 			}
 			b.subscribers[s.channelID][s.channel] = struct{}{}
 		case s := <-b.unsubscribe:
@@ -85,14 +85,14 @@ func (b *Broadcaster) Publish(channelID uint64, value interface{}) {
 
 // Starts listening with the channel, which is guaranteed to receive all values
 // published after the Subscribe() call.
-func (b *Broadcaster) Subscribe(channelID uint64, ch chan interface{}) {
+func (b *Broadcaster) Subscribe(channelID uint64, ch chan<- interface{}) {
 	b.subscribe <- subscription{channelID, ch}
 }
 
 // Stops listening with the channel. At some point after the Unsubscribe() call
 // begins, the channel will stop receiving values and be closed. Subscribers
 // are guaranteed to receive all values published before the Unsubscribe() call.
-func (b *Broadcaster) Unsubscribe(channelID uint64, ch chan interface{}) {
+func (b *Broadcaster) Unsubscribe(channelID uint64, ch chan<- interface{}) {
 	b.unsubscribe <- subscription{channelID, ch}
 }
 
