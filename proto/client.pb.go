@@ -10,10 +10,12 @@
 		config.proto
 		duration.proto
 		keyserverconfig.proto
-		local.proto
+		keyserverlocal.proto
 		replication.proto
 		timestamp.proto
 		tlsconfig.proto
+		verifierconfig.proto
+		verifierlocal.proto
 		verifier.proto
 
 	It has these top-level messages:

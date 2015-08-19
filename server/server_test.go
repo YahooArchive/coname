@@ -524,7 +524,7 @@ func TestKeyserverUpdate(t *testing.T) {
 
 // setupVerifier initializes a verifier, but does not start it and does not
 // wait for it to sign anything.
-func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *verifier.Config, db kv.DB, sv *proto.PublicKey, teardown func()) {
+func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keyserverAddr string, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey) (cfg *proto.VerifierConfig, getKey func(string) (crypto.PrivateKey, error), db kv.DB, sv *proto.PublicKey, teardown func()) {
 	dir, err := ioutil.TempDir("", "verifier")
 	if err != nil {
 		t.Fatal(err)
@@ -544,15 +544,22 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 	}
 	sv = &proto.PublicKey{Ed25519: pk[:]}
 
+	getKey = func(keyid string) (crypto.PrivateKey, error) {
+		switch keyid {
+		case "signing":
+			return sk, nil
+		default:
+			panic("unknown key requested in test")
+		}
+	}
 	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
-	cfg = &verifier.Config{
-		Realm:          testingRealm,
-		KeyserverAddr:  keyserverAddr,
-		KeyserverVerif: keyserverVerif,
+	cfg = &proto.VerifierConfig{
+		Realm:                testingRealm,
+		KeyserverAddr:        keyserverAddr,
+		InitialKeyserverAuth: *keyserverVerif,
 
-		ID:              proto.KeyID(sv),
-		RatificationKey: sk,
-		TLS:             &tls.Config{Certificates: []tls.Certificate{cert}, RootCAs: caPool},
+		ID:  proto.KeyID(sv),
+		TLS: &proto.TLSConfig{Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}},
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
@@ -592,7 +599,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 	for i := 0; i < nVerifiers; i++ {
 		vrBarrier := make(chan struct{})
 		var verifierTeardown func()
-		var vcfg *verifier.Config
+		var vcfg *proto.VerifierConfig
 		var doneOnce sync.Once
 		dbs[0] = tracekv.WithSimpleTracing(dbs[0], func(update tracekv.Update) {
 			// We are waiting for epoch 1 to be ratified by the verifier and
@@ -611,11 +618,12 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 		go func(i int) {
 			var vdb kv.DB
 			<-ksBarrier
-			vcfg, vdb, vpks[i], verifierTeardown = setupVerifier(t, clientConfig.Realms[0].VerificationPolicy,
+			var getKey func(string) (crypto.PrivateKey, error)
+			vcfg, getKey, vdb, vpks[i], verifierTeardown = setupVerifier(t, clientConfig.Realms[0].VerificationPolicy,
 				kss[i%nReplicas].verifierListen.Addr().String(), caCert, caPool, caKey)
 			close(vrBarrier)
 
-			_, err := verifier.Start(vcfg, vdb)
+			_, err := verifier.Start(vcfg, vdb, getKey)
 			if err != nil {
 				t.Fatal(err)
 			}

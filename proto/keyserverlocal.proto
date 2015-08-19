@@ -32,12 +32,3 @@ message ReplicaState {
 	uint64 latest_tree_snapshot = 7; // NOTE: this might be deterministic, but we definitely shouldn't rely on that
 	bool last_epoch_needs_ratification = 8;
 }
-
-// Verifier contains the persistent internal state of a verifier.
-// Additional on-disk state is descried in verifier/table.go.
-message VerifierState {
-	uint64 next_index = 1;
-	uint64 next_epoch = 2;
-	bytes previous_summary_hash = 3;
-	uint64 latest_tree_snapshot = 4;
-}

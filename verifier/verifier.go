@@ -16,8 +16,8 @@ package verifier
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/binary"
 	"log"
 	"math"
@@ -37,30 +37,15 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// Config encapsulates everything that needs to be specified about a verifer.
-// TODO: make this a protobuf like ReplicaConfig, Unmarshal from JSON
-type Config struct {
-	Realm          string
-	KeyserverVerif *proto.AuthorizationPolicy
-	KeyserverAddr  string
-
-	ID              uint64
-	RatificationKey *[ed25519.PrivateKeySize]byte // [32]byte: secret; [32]byte: public
-	TLS             *tls.Config                   // TODO: use proto.TLSConfig
-
-	TreeNonce []byte
-}
-
 // Verifier verifies that the Keyserver of the realm is not cheating.
 // The veirifier is not replicated because one can just run several.
 type Verifier struct {
-	realm          string
-	keyserverVerif *proto.AuthorizationPolicy
-	keyserverAddr  string
-	auth           credentials.TransportAuthenticator
+	realm         string
+	keyserverAddr string
+	auth          credentials.TransportAuthenticator
 
-	id              uint64
-	ratificationKey *[ed25519.PrivateKeySize]byte
+	id         uint64
+	signingKey *[ed25519.PrivateKeySize]byte
 
 	db kv.DB
 	vs proto.VerifierState
@@ -77,15 +62,23 @@ type Verifier struct {
 
 // Start initializes a new verifier based on config and db, or returns an error
 // if initialization fails. It then starts the worker goroutine(s).
-func Start(cfg *Config, db kv.DB) (*Verifier, error) {
-	vr := &Verifier{
-		realm:          cfg.Realm,
-		keyserverVerif: cfg.KeyserverVerif,
-		keyserverAddr:  cfg.KeyserverAddr,
-		auth:           credentials.NewTLS(cfg.TLS),
+func Start(cfg *proto.VerifierConfig, db kv.DB, getKey func(string) (crypto.PrivateKey, error)) (*Verifier, error) {
+	tls, err := cfg.TLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+	sk, err := getKey(cfg.SigningKeyID)
+	if err != nil {
+		return nil, err
+	}
 
-		id:              cfg.ID,
-		ratificationKey: cfg.RatificationKey,
+	vr := &Verifier{
+		id:    cfg.ID,
+		realm: cfg.Realm,
+
+		signingKey:    sk.(*[ed25519.PrivateKeySize]byte),
+		keyserverAddr: cfg.KeyserverAddr,
+		auth:          credentials.NewTLS(tls),
 
 		db: db,
 
@@ -94,6 +87,7 @@ func Start(cfg *Config, db kv.DB) (*Verifier, error) {
 
 	switch verifierStateBytes, err := db.Get(tableVerifierState); err {
 	case vr.db.ErrNotFound():
+		vr.vs.KeyserverAuth = &cfg.InitialKeyserverAuth
 		vr.vs.NextEpoch = 1
 	case nil:
 		if err := vr.vs.Unmarshal(verifierStateBytes); err != nil {
@@ -102,7 +96,6 @@ func Start(cfg *Config, db kv.DB) (*Verifier, error) {
 	default:
 		return nil, err
 	}
-	var err error
 	vr.merkletree, err = merkletree.AccessMerkleTree(vr.db, []byte{tableMerkleTreePrefix}, cfg.TreeNonce)
 	if err != nil {
 		return nil, err
@@ -196,10 +189,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.Encoding)
 
 	case step.Epoch != nil:
-		ok := coname.VerifyPolicy(
-			vr.keyserverVerif,
-			step.Epoch.Head.Encoding,
-			step.Epoch.Signatures)
+		ok := coname.VerifyPolicy(vr.vs.KeyserverAuth, step.Epoch.Head.Encoding, step.Epoch.Signatures)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
 			log.Fatalf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
@@ -233,7 +223,7 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		h := sha256.Sum256(seh.Head.Head.Encoding)
 		vs.PreviousSummaryHash = h[:]
 		seh.Head.UpdateEncoding()
-		seh.Signatures[vr.id] = ed25519.Sign(vr.ratificationKey, proto.MustMarshal(&seh.Head))[:]
+		seh.Signatures[vr.id] = ed25519.Sign(vr.signingKey, proto.MustMarshal(&seh.Head))[:]
 		wb.Put(tableRatifications(vs.NextEpoch, vr.id), proto.MustMarshal(seh))
 		vs.NextEpoch++
 		return func() {
