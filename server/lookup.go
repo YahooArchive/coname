@@ -29,6 +29,33 @@ import (
 
 const lookupMaxChainLength = 100
 
+func (ks *Keyserver) findRatificationsForEpoch(epoch uint64, desiredVerifiers map[uint64]struct{}) (
+	ratifications []*proto.SignedEpochHead, haveVerifiers map[uint64]struct{}, err error,
+) {
+	ratifications = []*proto.SignedEpochHead{}
+	haveVerifiers = make(map[uint64]struct{})
+	for verifier := range desiredVerifiers {
+		sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
+		switch err {
+		case nil:
+		case ks.db.ErrNotFound():
+			continue
+		default:
+			log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
+			return nil, nil, fmt.Errorf("internal error")
+		}
+		seh := new(proto.SignedEpochHead)
+		err = seh.Unmarshal(sehBytes)
+		if err != nil {
+			log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
+			return nil, nil, fmt.Errorf("internal error")
+		}
+		ratifications = append(ratifications, seh)
+		haveVerifiers[verifier] = struct{}{}
+	}
+	return
+}
+
 func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (uint64, []*proto.SignedEpochHead, error) {
 	verifiers := coname.ListQuorum(quorum, nil)
 	// find latest epoch, iterate backwards until quorum requirement is met
@@ -44,36 +71,9 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 	// TODO: optimize this for the case where verifiers sign everything
 	// consecutively
 	for epoch := newestEpoch; epoch >= oldestEpoch; epoch-- {
-		tehBytes, err := ks.db.Get(tableEpochHeads(epoch))
+		ratifications, haveVerifiers, err := ks.findRatificationsForEpoch(epoch, verifiers)
 		if err != nil {
-			log.Printf("ERROR: ks.db.Get(tableEpochHeads(%d)): %s", epoch, err)
-			return 0, nil, fmt.Errorf("internal error")
-		}
-		var teh proto.TimestampedEpochHead_PreserveEncoding
-		if err := teh.Unmarshal(tehBytes); err != nil {
-			log.Printf("ERROR: tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
-			return 0, nil, fmt.Errorf("internal error")
-		}
-		ratifications := []*proto.SignedEpochHead{}
-		haveVerifiers := make(map[uint64]struct{})
-		for verifier := range verifiers {
-			sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
-			switch err {
-			case nil:
-			case ks.db.ErrNotFound():
-				continue
-			default:
-				log.Printf("ERROR: ks.db.Get(tableRatifications(%d, %d): %s", epoch, verifier, err)
-				return 0, nil, fmt.Errorf("internal error")
-			}
-			seh := new(proto.SignedEpochHead)
-			err = seh.Unmarshal(sehBytes)
-			if err != nil {
-				log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
-				return 0, nil, fmt.Errorf("internal error")
-			}
-			ratifications = append(ratifications, seh)
-			haveVerifiers[verifier] = struct{}{}
+			return 0, nil, err
 		}
 		if coname.CheckQuorum(quorum, haveVerifiers) {
 			return epoch, ratifications, nil
