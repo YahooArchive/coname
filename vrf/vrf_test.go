@@ -1,8 +1,10 @@
 package vrf
 
 import (
-	"github.com/davecheney/profile"
+	"bytes"
 	"testing"
+
+	"github.com/davecheney/profile"
 )
 
 func TestHonestComplete(t *testing.T) {
@@ -12,9 +14,12 @@ func TestHonestComplete(t *testing.T) {
 	}
 	alice := []byte("alice")
 	aliceVRF := Compute(alice, sk)
-	aliceProof := Prove(alice, sk)
+	aliceVRFFromProof, aliceProof := Prove(alice, sk)
 	if !Verify(pk, alice, aliceVRF, aliceProof) {
-		t.Fatalf("Gen -> Compute -> Prove -> Verify -> FALSE")
+		t.Errorf("Gen -> Compute -> Prove -> Verify -> FALSE")
+	}
+	if !bytes.Equal(aliceVRF, aliceVRFFromProof) {
+		t.Errorf("Compute != Prove")
 	}
 }
 
@@ -35,7 +40,7 @@ func TestFlipBitForgery(t *testing.T) {
 		for j := uint(0); j < 8; j++ {
 			aliceVRF := Compute(alice, sk)
 			aliceVRF[i] ^= 1 << j
-			aliceProof := Prove(alice, sk)
+			_, aliceProof := Prove(alice, sk)
 			if Verify(pk, alice, aliceVRF, aliceProof) {
 				t.Fatalf("forged by using aliceVRF[%d]^=%d:\n (sk=%x)", i, j, sk)
 			}
@@ -75,7 +80,7 @@ func BenchmarkVerify(b *testing.B) {
 	}
 	alice := []byte("alice")
 	aliceVRF := Compute(alice, sk)
-	aliceProof := Prove(alice, sk)
+	_, aliceProof := Prove(alice, sk)
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		Verify(pk, alice, aliceVRF, aliceProof)

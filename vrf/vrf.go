@@ -70,8 +70,9 @@ func hashToCurve(m []byte) *edwards25519.ExtendedGroupElement {
 	return &hm
 }
 
-// Prove returns a proof that will pass Verify, len(proof)=ProofSize.
-func Prove(m []byte, sk *[SecretKeySize]byte) []byte {
+// Prove returns the vrf value and a proof such that Verify(pk, m, vrf, proof)
+// == true. The vrf value is the same as returned by Compute(m, sk).
+func Prove(m []byte, sk *[SecretKeySize]byte) (vrf, proof []byte) {
 	x, skhr := expandSecret(sk)
 	var cH, rH [64]byte
 	var r, c, minusC, t, grB, hrB, iiB [32]byte
@@ -103,11 +104,16 @@ func Prove(m []byte, sk *[SecretKeySize]byte) []byte {
 	edwards25519.ScNeg(&minusC, &c)
 	edwards25519.ScMulAdd(&t, &x, &minusC, &r)
 
-	var ret [ProofSize]byte
-	copy(ret[:32], c[:])
-	copy(ret[32:64], t[:])
-	copy(ret[64:96], iiB[:])
-	return ret[:]
+	proof = make([]byte, ProofSize)
+	copy(proof[:32], c[:])
+	copy(proof[32:64], t[:])
+	copy(proof[64:96], iiB[:])
+
+	hash.Reset()
+	hash.Write(iiB[:]) // const length: Size
+	hash.Write(m)
+	vrf = hash.Sum(nil)[:32]
+	return
 }
 
 // Verify returns true iff vrf=Compute(m, sk) for the sk that corresponds to pk.

@@ -86,8 +86,8 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 // Lookup implements proto.E2EKSLookupServer
 func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
 	ret := &proto.LookupProof{UserId: req.UserId}
-	index := vrf.Compute([]byte(req.UserId), ks.vrfSecret)
-	ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
+	var index []byte
+	index, ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
 	if err != nil {
 		return nil, err
