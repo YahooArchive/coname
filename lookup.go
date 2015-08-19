@@ -22,7 +22,10 @@ func GetRealmByDomain(cfg *proto.Config, domain string) (ret *proto.RealmConfig,
 			}
 		}
 	}
-	return nil, fmt.Errorf("GetRealm: unknown domain %q", domain)
+	if ret == nil {
+		err = fmt.Errorf("GetRealm: unknown domain %q", domain)
+	}
+	return
 }
 
 func GetRealmByUser(cfg *proto.Config, user string) (*proto.RealmConfig, error) {
