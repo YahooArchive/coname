@@ -114,9 +114,27 @@ func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch u
 
 // Lookup implements proto.E2EKSLookupServer
 func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
-	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
-	if err != nil {
-		return nil, err
+	var lookupEpoch uint64
+	var ratifications []*proto.SignedEpochHead
+	if req.Epoch == 0 {
+		// use the latest epoch possible
+		var err error
+		lookupEpoch, ratifications, err = ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		lookupEpoch = req.Epoch
+		var err error
+		var haveVerifiers map[uint64]struct{}
+		ratifications, haveVerifiers, err = ks.findRatificationsForEpoch(lookupEpoch, coname.ListQuorum(req.QuorumRequirement, nil))
+		if err != nil {
+			return nil, err
+		}
+		if !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
+			// TODO: return whatever ratification we could find
+			return nil, fmt.Errorf("could not find sufficient verification")
+		}
 	}
 	return ks.assembleLookupProof(req, lookupEpoch, ratifications)
 }
