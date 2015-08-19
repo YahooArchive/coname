@@ -354,17 +354,17 @@ func withServer(func(*testing.T, *Keyserver)) {
 func doUpdate(
 	t *testing.T, ks *Keyserver, clientConfig *proto.Config, caPool *x509.CertPool, now time.Time,
 	name string, profileContents proto.Profile,
-) *proto.Profile_PreserveEncoding {
+) *proto.EncodedProfile {
 	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := proto.Profile_PreserveEncoding{
+	profile := proto.EncodedProfile{
 		Profile: profileContents,
 	}
 	profile.UpdateEncoding()
-	h := sha256.Sum256(profile.PreservedEncoding)
-	entry := proto.Entry_PreserveEncoding{
+	h := sha256.Sum256(profile.Encoding)
+	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   vrf.Compute([]byte(name), ks.vrfSecret), // TODO remove this
 			Version: 0,
@@ -395,7 +395,7 @@ func doUpdate(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	_, err = coname.VerifyLookup(clientConfig, name, proof, now)
@@ -477,7 +477,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	_, err = coname.VerifyLookup(clientConfig, alice, proof, clks[0].Now())
@@ -703,7 +703,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := proof.Profile.PreservedEncoding, profile.PreservedEncoding; !bytes.Equal(got, want) {
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
 		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
 	}
 	if got, want := len(proof.Ratifications), majority(len(kss))+len(verifiers); got < want {

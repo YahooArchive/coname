@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type EpochHead_PreserveEncoding struct {
+type EncodedEpochHead struct {
 	EpochHead
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *EpochHead_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.EpochHead)
+func (m *EncodedEpochHead) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.EpochHead)
 }
 
-func (m *EpochHead_PreserveEncoding) Reset() {
-	*m = EpochHead_PreserveEncoding{}
+func (m *EncodedEpochHead) Reset() {
+	*m = EncodedEpochHead{}
 }
 
-func (m *EpochHead_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedEpochHead) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *EpochHead_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedEpochHead) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *EpochHead_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *EpochHead_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedEpochHead) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *EpochHead_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedEpochHead) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.EpochHead.Unmarshal(data)
 }
 
-func NewPopulatedEpochHead_PreserveEncoding(r randyClient, easy bool) *EpochHead_PreserveEncoding {
-	this := &EpochHead_PreserveEncoding{EpochHead: *NewPopulatedEpochHead(r, easy)}
+func NewPopulatedEncodedEpochHead(r randyClient, easy bool) *EncodedEpochHead {
+	this := &EncodedEpochHead{EpochHead: *NewPopulatedEpochHead(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *EpochHead_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*EpochHead_PreserveEncoding); ok {
+func (this *EncodedEpochHead) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedEpochHead); ok {
 		return this.EpochHead.VerboseEqual(&thatP.EpochHead)
 	}
-	if thatP, ok := that.(EpochHead_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedEpochHead); ok {
 		return this.EpochHead.VerboseEqual(&thatP.EpochHead)
 	}
-	return fmt.Errorf("types don't match: %T != EpochHead_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedEpochHead")
 }
 
-func (this *EpochHead_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*EpochHead_PreserveEncoding); ok {
+func (this *EncodedEpochHead) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedEpochHead); ok {
 		return this.EpochHead.Equal(&thatP.EpochHead)
 	}
-	if thatP, ok := that.(EpochHead_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedEpochHead); ok {
 		return this.EpochHead.Equal(&thatP.EpochHead)
 	}
 	return false
 }
 
-func (this *EpochHead_PreserveEncoding) GoString() string {
+func (this *EncodedEpochHead) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.EpochHead_PreserveEncoding{EpochHead: ` + this.EpochHead.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedEpochHead{EpochHead: ` + this.EpochHead.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *EpochHead_PreserveEncoding) String() string {
+func (this *EncodedEpochHead) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.EpochHead_PreserveEncoding{EpochHead: ` + this.EpochHead.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedEpochHead{EpochHead: ` + this.EpochHead.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *EpochHead_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedEpochHead) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *EpochHead_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedEpochHead) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *EpochHead_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*EpochHead_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*EpochHead_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedEpochHead)(nil)
+var _ json.Unmarshaler = (*EncodedEpochHead)(nil)

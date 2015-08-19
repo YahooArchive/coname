@@ -59,8 +59,6 @@ type LookupRequest struct {
 	Epoch uint64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// UserId will be mapped to an index by the server using VRF
 	UserId string `protobuf:"bytes,2,opt,name=user_id,proto3" json:"user_id,omitempty"`
-	// The client specifies it
-	Index []byte `protobuf:"bytes,3,opt,name=index,proto3" json:"index,omitempty"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
@@ -92,8 +90,8 @@ type UpdateRequest struct {
 	// profile other than enforcing a common-sense size limit. In particular, a
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
-	Profile          Profile_PreserveEncoding `protobuf:"bytes,2,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
-	LookupParameters *LookupRequest           `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
+	Profile          EncodedProfile `protobuf:"bytes,2,opt,name=profile,customtype=EncodedProfile" json:"profile"`
+	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
 	// UserID specifies the id for the new account to be registered.
 	UserID    string `protobuf:"bytes,1000,opt,name=user_id,proto3" json:"user_id,omitempty"`
 	DKIMProof []byte `protobuf:"bytes,1001,opt,name=dkim_proof,proto3" json:"dkim_proof,omitempty"`
@@ -145,8 +143,8 @@ type LookupProof struct {
 	// ratifications[0].ratification.summary.root_hash.
 	TreeProof *TreeProof `protobuf:"bytes,4,opt,name=tree_proof" json:"tree_proof,omitempty"`
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry   Entry_PreserveEncoding   `protobuf:"bytes,5,opt,name=entry,customtype=Entry_PreserveEncoding" json:"entry"`
-	Profile Profile_PreserveEncoding `protobuf:"bytes,6,opt,name=profile,customtype=Profile_PreserveEncoding" json:"profile"`
+	Entry   EncodedEntry   `protobuf:"bytes,5,opt,name=entry,customtype=EncodedEntry" json:"entry"`
+	Profile EncodedProfile `protobuf:"bytes,6,opt,name=profile,customtype=EncodedProfile" json:"profile"`
 }
 
 func (m *LookupProof) Reset()      { *m = LookupProof{} }
@@ -238,7 +236,7 @@ func (m *Entry) GetUpdatePolicy() *AuthorizationPolicy {
 // changing the value of an entry. In the state machine model of a namespace,
 // SignedEntryUpdate is the main input type.
 type SignedEntryUpdate struct {
-	NewEntry Entry_PreserveEncoding `protobuf:"bytes,1,opt,name=new_entry,customtype=Entry_PreserveEncoding" json:"new_entry"`
+	NewEntry EncodedEntry `protobuf:"bytes,1,opt,name=new_entry,customtype=EncodedEntry" json:"new_entry"`
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
 	// Both the keyserver and verifiers MUST check these signatures against the
@@ -290,7 +288,7 @@ func (m *Profile) GetKeys() map[string][]byte {
 // Profile for the specified epoch AND all prior epochs. A Ratification MUST
 // NOT be signed in any other circumstances.
 type SignedEpochHead struct {
-	Head TimestampedEpochHead_PreserveEncoding `protobuf:"bytes,1,opt,name=head,customtype=TimestampedEpochHead_PreserveEncoding" json:"head"`
+	Head EncodedTimestampedEpochHead `protobuf:"bytes,1,opt,name=head,customtype=EncodedTimestampedEpochHead" json:"head"`
 	// Signatures is used for authentication of ratification and MUST be
 	// verified before interpreting any contents of ratification.
 	// All signatures are tagged with ID of the public key that generated them.
@@ -310,7 +308,7 @@ func (m *SignedEpochHead) GetSignatures() map[uint64][]byte {
 type TimestampedEpochHead struct {
 	// EpochHead specifies the entire state and history of the
 	// realm.
-	Head EpochHead_PreserveEncoding `protobuf:"bytes,1,opt,name=head,customtype=EpochHead_PreserveEncoding" json:"head"`
+	Head EncodedEpochHead `protobuf:"bytes,1,opt,name=head,customtype=EncodedEpochHead" json:"head"`
 	// Timestamp specifies when the requirements for SignedEpochHead
 	// were checked. Clients will accept a SignedEpochHead timestamped
 	// with at most a fixed amount of time into the past, and MUST fail
@@ -625,9 +623,6 @@ func (this *LookupRequest) VerboseEqual(that interface{}) error {
 	if this.UserId != that1.UserId {
 		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
 	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
 	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
 		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
 	}
@@ -657,9 +652,6 @@ func (this *LookupRequest) Equal(that interface{}) bool {
 		return false
 	}
 	if this.UserId != that1.UserId {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
 		return false
 	}
 	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
@@ -1510,7 +1502,6 @@ func (this *LookupRequest) GoString() string {
 	s := strings.Join([]string{`&proto.LookupRequest{` +
 		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
 		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
 	return s
 }
@@ -1726,14 +1717,6 @@ func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
 		i += copy(data[i:], m.UserId)
-	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
 	}
 	if m.QuorumRequirement != nil {
 		data[i] = 0x22
@@ -2381,11 +2364,6 @@ func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
 	this := &LookupRequest{}
 	this.Epoch = uint64(uint64(r.Uint32()))
 	this.UserId = randStringClient(r)
-	v1 := r.Intn(100)
-	this.Index = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
 	if r.Intn(10) != 0 {
 		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
 	}
@@ -2399,15 +2377,15 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 	if r.Intn(10) != 0 {
 		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
 	}
-	v2 := NewPopulatedProfile_PreserveEncoding(r, easy)
-	this.Profile = *v2
+	v1 := NewPopulatedEncodedProfile(r, easy)
+	this.Profile = *v1
 	if r.Intn(10) != 0 {
 		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
 	}
 	this.UserID = randStringClient(r)
-	v3 := r.Intn(100)
-	this.DKIMProof = make([]byte, v3)
-	for i := 0; i < v3; i++ {
+	v2 := r.Intn(100)
+	this.DKIMProof = make([]byte, v2)
+	for i := 0; i < v2; i++ {
 		this.DKIMProof[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2418,25 +2396,25 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	this := &LookupProof{}
 	this.UserId = randStringClient(r)
-	v4 := r.Intn(100)
-	this.IndexProof = make([]byte, v4)
-	for i := 0; i < v4; i++ {
+	v3 := r.Intn(100)
+	this.IndexProof = make([]byte, v3)
+	for i := 0; i < v3; i++ {
 		this.IndexProof[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v5 := r.Intn(10)
-		this.Ratifications = make([]*SignedEpochHead, v5)
-		for i := 0; i < v5; i++ {
+		v4 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v4)
+		for i := 0; i < v4; i++ {
 			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
 		}
 	}
 	if r.Intn(10) != 0 {
 		this.TreeProof = NewPopulatedTreeProof(r, easy)
 	}
-	v6 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.Entry = *v6
-	v7 := NewPopulatedProfile_PreserveEncoding(r, easy)
-	this.Profile = *v7
+	v5 := NewPopulatedEncodedEntry(r, easy)
+	this.Entry = *v5
+	v6 := NewPopulatedEncodedProfile(r, easy)
+	this.Profile = *v6
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2444,23 +2422,23 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 
 func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
 	this := &TreeProof{}
-	v8 := r.Intn(100)
-	this.Neighbors = make([][]byte, v8)
-	for i := 0; i < v8; i++ {
-		v9 := r.Intn(100)
-		this.Neighbors[i] = make([]byte, v9)
-		for j := 0; j < v9; j++ {
+	v7 := r.Intn(100)
+	this.Neighbors = make([][]byte, v7)
+	for i := 0; i < v7; i++ {
+		v8 := r.Intn(100)
+		this.Neighbors[i] = make([]byte, v8)
+		for j := 0; j < v8; j++ {
 			this.Neighbors[i][j] = byte(r.Intn(256))
 		}
 	}
-	v10 := r.Intn(100)
-	this.ExistingIndex = make([]byte, v10)
-	for i := 0; i < v10; i++ {
+	v9 := r.Intn(100)
+	this.ExistingIndex = make([]byte, v9)
+	for i := 0; i < v9; i++ {
 		this.ExistingIndex[i] = byte(r.Intn(256))
 	}
-	v11 := r.Intn(100)
-	this.ExistingEntryHash = make([]byte, v11)
-	for i := 0; i < v11; i++ {
+	v10 := r.Intn(100)
+	this.ExistingEntryHash = make([]byte, v10)
+	for i := 0; i < v10; i++ {
 		this.ExistingEntryHash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2470,18 +2448,18 @@ func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
 
 func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 	this := &Entry{}
-	v12 := r.Intn(100)
-	this.Index = make([]byte, v12)
-	for i := 0; i < v12; i++ {
+	v11 := r.Intn(100)
+	this.Index = make([]byte, v11)
+	for i := 0; i < v11; i++ {
 		this.Index[i] = byte(r.Intn(256))
 	}
 	this.Version = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
 		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	v13 := r.Intn(100)
-	this.ProfileHash = make([]byte, v13)
-	for i := 0; i < v13; i++ {
+	v12 := r.Intn(100)
+	this.ProfileHash = make([]byte, v12)
+	for i := 0; i < v12; i++ {
 		this.ProfileHash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2491,17 +2469,17 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 
 func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
 	this := &SignedEntryUpdate{}
-	v14 := NewPopulatedEntry_PreserveEncoding(r, easy)
-	this.NewEntry = *v14
+	v13 := NewPopulatedEncodedEntry(r, easy)
+	this.NewEntry = *v13
 	if r.Intn(10) != 0 {
-		v15 := r.Intn(10)
+		v14 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v15; i++ {
-			v16 := r.Intn(100)
-			v17 := uint64(uint64(r.Uint32()))
-			this.Signatures[v17] = make([]byte, v16)
-			for i := 0; i < v16; i++ {
-				this.Signatures[v17][i] = byte(r.Intn(256))
+		for i := 0; i < v14; i++ {
+			v15 := r.Intn(100)
+			v16 := uint64(uint64(r.Uint32()))
+			this.Signatures[v16] = make([]byte, v15)
+			for i := 0; i < v15; i++ {
+				this.Signatures[v16][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2512,20 +2490,20 @@ func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate 
 
 func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 	this := &Profile{}
-	v18 := r.Intn(100)
-	this.Nonce = make([]byte, v18)
-	for i := 0; i < v18; i++ {
+	v17 := r.Intn(100)
+	this.Nonce = make([]byte, v17)
+	for i := 0; i < v17; i++ {
 		this.Nonce[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v19 := r.Intn(10)
+		v18 := r.Intn(10)
 		this.Keys = make(map[string][]byte)
-		for i := 0; i < v19; i++ {
-			v20 := r.Intn(100)
-			v21 := randStringClient(r)
-			this.Keys[v21] = make([]byte, v20)
-			for i := 0; i < v20; i++ {
-				this.Keys[v21][i] = byte(r.Intn(256))
+		for i := 0; i < v18; i++ {
+			v19 := r.Intn(100)
+			v20 := randStringClient(r)
+			this.Keys[v20] = make([]byte, v19)
+			for i := 0; i < v19; i++ {
+				this.Keys[v20][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2536,17 +2514,17 @@ func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 
 func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 	this := &SignedEpochHead{}
-	v22 := NewPopulatedTimestampedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v22
+	v21 := NewPopulatedEncodedTimestampedEpochHead(r, easy)
+	this.Head = *v21
 	if r.Intn(10) != 0 {
-		v23 := r.Intn(10)
+		v22 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v23; i++ {
-			v24 := r.Intn(100)
-			v25 := uint64(uint64(r.Uint32()))
-			this.Signatures[v25] = make([]byte, v24)
-			for i := 0; i < v24; i++ {
-				this.Signatures[v25][i] = byte(r.Intn(256))
+		for i := 0; i < v22; i++ {
+			v23 := r.Intn(100)
+			v24 := uint64(uint64(r.Uint32()))
+			this.Signatures[v24] = make([]byte, v23)
+			for i := 0; i < v23; i++ {
+				this.Signatures[v24][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2557,10 +2535,10 @@ func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 
 func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
 	this := &TimestampedEpochHead{}
-	v26 := NewPopulatedEpochHead_PreserveEncoding(r, easy)
-	this.Head = *v26
-	v27 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v27
+	v25 := NewPopulatedEncodedEpochHead(r, easy)
+	this.Head = *v25
+	v26 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v26
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2570,20 +2548,20 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	this := &EpochHead{}
 	this.Realm = randStringClient(r)
 	this.Epoch = uint64(uint64(r.Uint32()))
-	v28 := r.Intn(100)
-	this.RootHash = make([]byte, v28)
-	for i := 0; i < v28; i++ {
+	v27 := r.Intn(100)
+	this.RootHash = make([]byte, v27)
+	for i := 0; i < v27; i++ {
 		this.RootHash[i] = byte(r.Intn(256))
 	}
-	v29 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v29)
-	for i := 0; i < v29; i++ {
+	v28 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v28)
+	for i := 0; i < v28; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
-	v30 := NewPopulatedTimestamp(r, easy)
-	this.NextEpochTime = *v30
-	v31 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v31
+	v29 := NewPopulatedTimestamp(r, easy)
+	this.NextEpochTime = *v29
+	v30 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v30
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2592,9 +2570,9 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
 	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		v32 := r.Intn(10)
+		v31 := r.Intn(10)
 		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v32; i++ {
+		for i := 0; i < v31; i++ {
 			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -2608,9 +2586,9 @@ func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPol
 
 func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 	this := &PublicKey{}
-	v33 := r.Intn(100)
-	this.Ed25519 = make([]byte, v33)
-	for i := 0; i < v33; i++ {
+	v32 := r.Intn(100)
+	this.Ed25519 = make([]byte, v32)
+	for i := 0; i < v32; i++ {
 		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2621,15 +2599,15 @@ func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v34 := r.Intn(100)
-	this.Candidates = make([]uint64, v34)
-	for i := 0; i < v34; i++ {
+	v33 := r.Intn(100)
+	this.Candidates = make([]uint64, v33)
+	for i := 0; i < v33; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
-		v35 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v35)
-		for i := 0; i < v35; i++ {
+		v34 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v34)
+		for i := 0; i < v34; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
 		}
 	}
@@ -2657,9 +2635,9 @@ func randUTF8RuneClient(r randyClient) rune {
 	return rune(ru + 61)
 }
 func randStringClient(r randyClient) string {
-	v36 := r.Intn(100)
-	tmps := make([]rune, v36)
-	for i := 0; i < v36; i++ {
+	v35 := r.Intn(100)
+	tmps := make([]rune, v35)
+	for i := 0; i < v35; i++ {
 		tmps[i] = randUTF8RuneClient(r)
 	}
 	return string(tmps)
@@ -2681,11 +2659,11 @@ func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateClient(data, uint64(key))
-		v37 := r.Int63()
+		v36 := r.Int63()
 		if r.Intn(2) == 0 {
-			v37 *= -1
+			v36 *= -1
 		}
-		data = encodeVarintPopulateClient(data, uint64(v37))
+		data = encodeVarintPopulateClient(data, uint64(v36))
 	case 1:
 		data = encodeVarintPopulateClient(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -2719,12 +2697,6 @@ func (m *LookupRequest) Size() (n int) {
 	l = len(m.UserId)
 	if l > 0 {
 		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
 	}
 	if m.QuorumRequirement != nil {
 		l = m.QuorumRequirement.Size()
@@ -3001,7 +2973,6 @@ func (this *LookupRequest) String() string {
 	s := strings.Join([]string{`&LookupRequest{`,
 		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
 		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
 		`}`,
 	}, "")
@@ -3257,31 +3228,6 @@ func (m *LookupRequest) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.UserId = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Index", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthClient
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {

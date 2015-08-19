@@ -30,7 +30,7 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 		if current.UpdatePolicy == nil {
 			return fmt.Errorf("VerifyUpdate: current.UpdatePolicy is nil")
 		}
-		if !VerifyPolicy(current.UpdatePolicy, update.NewEntry.PreservedEncoding, update.Signatures) {
+		if !VerifyPolicy(current.UpdatePolicy, update.NewEntry.Encoding, update.Signatures) {
 			return fmt.Errorf("VerifyUpdate: replacing an entry requires authorization from the old key, but signature verification failed")
 		}
 		if next.Version < current.Version {
@@ -42,7 +42,7 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 	if next.UpdatePolicy == nil {
 		return fmt.Errorf("VerifyUpdate: next.UpdatePolicy is nil")
 	}
-	if !VerifyPolicy(next.UpdatePolicy, update.NewEntry.PreservedEncoding, update.Signatures) {
+	if !VerifyPolicy(next.UpdatePolicy, update.NewEntry.Encoding, update.Signatures) {
 		return fmt.Errorf("VerifyUpdate: update needs to be accepted by the new key, but signature verification failed")
 	}
 	return nil

@@ -22,14 +22,14 @@ import (
 	"time"
 )
 
-func TestEntry_PreserveEncodingProto(t *testing.T) {
+func TestEncodedEntryProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedEntry_PreserveEncoding(popr, false)
+	p := NewPopulatedEncodedEntry(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &Entry_PreserveEncoding{}
+	msg := &EncodedEntry{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -44,15 +44,15 @@ func TestEntry_PreserveEncodingProto(t *testing.T) {
 	}
 }
 
-func TestEntry_PreserveEncodingJSON(t *testing.T) {
+func TestEncodedEntryJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedEntry_PreserveEncoding(popr, true)
+	p := NewPopulatedEncodedEntry(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &Entry_PreserveEncoding{}
+	msg := &EncodedEntry{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)

@@ -49,7 +49,7 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 			log.Printf("ERROR: ks.db.Get(tableEpochHeads(%d)): %s", epoch, err)
 			return 0, nil, fmt.Errorf("internal error")
 		}
-		var teh proto.TimestampedEpochHead_PreserveEncoding
+		var teh proto.EncodedTimestampedEpochHead
 		if err := teh.Unmarshal(tehBytes); err != nil {
 			log.Printf("ERROR: tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 			return 0, nil, fmt.Errorf("internal error")

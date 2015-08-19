@@ -48,7 +48,7 @@ func (ks *Keyserver) verifyUpdate(req *proto.UpdateRequest) error {
 			if err != nil {
 				return fmt.Errorf("bad base64 in email proof: %q", payload)
 			}
-			entryHashProposed := sha256.Sum256(req.Update.NewEntry.PreservedEncoding)
+			entryHashProposed := sha256.Sum256(req.Update.NewEntry.Encoding)
 			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
 				return fmt.Errorf("email proof does not match requested entry")
 			}

@@ -22,14 +22,14 @@ import (
 	"time"
 )
 
-func TestEpochHead_PreserveEncodingProto(t *testing.T) {
+func TestEncodedEpochHeadProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedEpochHead_PreserveEncoding(popr, false)
+	p := NewPopulatedEncodedEpochHead(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &EpochHead_PreserveEncoding{}
+	msg := &EncodedEpochHead{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -44,15 +44,15 @@ func TestEpochHead_PreserveEncodingProto(t *testing.T) {
 	}
 }
 
-func TestEpochHead_PreserveEncodingJSON(t *testing.T) {
+func TestEncodedEpochHeadJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedEpochHead_PreserveEncoding(popr, true)
+	p := NewPopulatedEncodedEpochHead(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &EpochHead_PreserveEncoding{}
+	msg := &EncodedEpochHead{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)

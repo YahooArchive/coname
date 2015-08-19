@@ -22,8 +22,8 @@ cd "$DIR"
 protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/andres-erbsen/protobuf" -I "$GOPATH/src/github.com/andres-erbsen/protobuf/protobuf" *.proto
 
 function preserve {
-	sed "s/Thing/$1/g" < preserve.go.template > "$1.pr.go"
-	sed "s/Thing/$1/g" < preserve_test.go.template > "$1pr_test.go"
+	sed "s/Thing/$1/g" < encoded.go.template > "$1.pr.go"
+	sed "s/Thing/$1/g" < encoded_test.go.template > "$1pr_test.go"
 }
 
 preserve Profile
@@ -38,7 +38,7 @@ sed -i.bak -e 's:/gogo/:/andres-erbsen/:g' *pb*.go
 sed -i.bak -e 's:\bproto1\b:github_com_andres_erbsen_protobuf_proto:g' tlsconfig*pb*.go
 
 # preserve the encoding of repeated public keys
-sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&PublicKey_PreserveEncoding{})/' client.pb.go
+sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&EncodedPublicKey{})/' client.pb.go
 
 # skip the text format tests (we never use the text format)
 sed -i.bak -e '/Test.*Text.*testing/a\

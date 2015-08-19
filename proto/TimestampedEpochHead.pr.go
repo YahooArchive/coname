@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type TimestampedEpochHead_PreserveEncoding struct {
+type EncodedTimestampedEpochHead struct {
 	TimestampedEpochHead
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.TimestampedEpochHead)
+func (m *EncodedTimestampedEpochHead) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.TimestampedEpochHead)
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) Reset() {
-	*m = TimestampedEpochHead_PreserveEncoding{}
+func (m *EncodedTimestampedEpochHead) Reset() {
+	*m = EncodedTimestampedEpochHead{}
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedTimestampedEpochHead) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedTimestampedEpochHead) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *TimestampedEpochHead_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedTimestampedEpochHead) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedTimestampedEpochHead) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.TimestampedEpochHead.Unmarshal(data)
 }
 
-func NewPopulatedTimestampedEpochHead_PreserveEncoding(r randyClient, easy bool) *TimestampedEpochHead_PreserveEncoding {
-	this := &TimestampedEpochHead_PreserveEncoding{TimestampedEpochHead: *NewPopulatedTimestampedEpochHead(r, easy)}
+func NewPopulatedEncodedTimestampedEpochHead(r randyClient, easy bool) *EncodedTimestampedEpochHead {
+	this := &EncodedTimestampedEpochHead{TimestampedEpochHead: *NewPopulatedTimestampedEpochHead(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *TimestampedEpochHead_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*TimestampedEpochHead_PreserveEncoding); ok {
+func (this *EncodedTimestampedEpochHead) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedTimestampedEpochHead); ok {
 		return this.TimestampedEpochHead.VerboseEqual(&thatP.TimestampedEpochHead)
 	}
-	if thatP, ok := that.(TimestampedEpochHead_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedTimestampedEpochHead); ok {
 		return this.TimestampedEpochHead.VerboseEqual(&thatP.TimestampedEpochHead)
 	}
-	return fmt.Errorf("types don't match: %T != TimestampedEpochHead_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedTimestampedEpochHead")
 }
 
-func (this *TimestampedEpochHead_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*TimestampedEpochHead_PreserveEncoding); ok {
+func (this *EncodedTimestampedEpochHead) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedTimestampedEpochHead); ok {
 		return this.TimestampedEpochHead.Equal(&thatP.TimestampedEpochHead)
 	}
-	if thatP, ok := that.(TimestampedEpochHead_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedTimestampedEpochHead); ok {
 		return this.TimestampedEpochHead.Equal(&thatP.TimestampedEpochHead)
 	}
 	return false
 }
 
-func (this *TimestampedEpochHead_PreserveEncoding) GoString() string {
+func (this *EncodedTimestampedEpochHead) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.TimestampedEpochHead_PreserveEncoding{TimestampedEpochHead: ` + this.TimestampedEpochHead.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedTimestampedEpochHead{TimestampedEpochHead: ` + this.TimestampedEpochHead.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *TimestampedEpochHead_PreserveEncoding) String() string {
+func (this *EncodedTimestampedEpochHead) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.TimestampedEpochHead_PreserveEncoding{TimestampedEpochHead: ` + this.TimestampedEpochHead.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedTimestampedEpochHead{TimestampedEpochHead: ` + this.TimestampedEpochHead.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedTimestampedEpochHead) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *TimestampedEpochHead_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedTimestampedEpochHead) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *TimestampedEpochHead_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*TimestampedEpochHead_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*TimestampedEpochHead_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedTimestampedEpochHead)(nil)
+var _ json.Unmarshaler = (*EncodedTimestampedEpochHead)(nil)

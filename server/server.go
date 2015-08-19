@@ -332,7 +332,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			ks.wr.Notify(step.UID, err)
 			return
 		}
-		entryHash := sha256.Sum256(step.Update.Update.NewEntry.PreservedEncoding)
+		entryHash := sha256.Sum256(step.Update.Update.NewEntry.Encoding)
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -389,8 +389,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
 		}
-		teh := &proto.TimestampedEpochHead_PreserveEncoding{proto.TimestampedEpochHead{
-			Head: proto.EpochHead_PreserveEncoding{proto.EpochHead{
+		teh := &proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
+			Head: proto.EncodedEpochHead{proto.EpochHead{
 				RootHash:            rootHash,
 				PreviousSummaryHash: rs.PreviousSummaryHash,
 				Realm:               ks.realm,
@@ -399,7 +399,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Timestamp: step.EpochDelimiter.Timestamp,
 		}, nil}
 		teh.Head.UpdateEncoding()
-		h := sha256.Sum256(teh.Head.PreservedEncoding)
+		h := sha256.Sum256(teh.Head.Encoding)
 		rs.PreviousSummaryHash = h[:]
 		teh.UpdateEncoding()
 
@@ -414,7 +414,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			log.Panicf("get tableEpochHeads(%d): %s", epochNr, err)
 		}
 		// compare epoch head to signed epoch head
-		if got, want := tehBytes, newSEH.Head.PreservedEncoding; !bytes.Equal(got, want) {
+		if got, want := tehBytes, newSEH.Head.Encoding; !bytes.Equal(got, want) {
 			log.Panicf("replica signed different head: wanted %x, got %x", want, got)
 		}
 
@@ -460,7 +460,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				}
 				rs.LastEpochNeedsRatification = false
 				ks.updateEpochProposer()
-				var teh proto.TimestampedEpochHead_PreserveEncoding
+				var teh proto.EncodedTimestampedEpochHead
 				err = teh.Unmarshal(tehBytes)
 				if err != nil {
 					log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
@@ -587,7 +587,7 @@ func (ks *Keyserver) updateSignatureProposer() {
 		if err != nil {
 			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db", err)
 		}
-		var teh proto.TimestampedEpochHead_PreserveEncoding
+		var teh proto.EncodedTimestampedEpochHead
 		if err := teh.Unmarshal(tehBytes); err != nil {
 			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 		}

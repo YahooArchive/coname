@@ -53,7 +53,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return
 	}
 
-	entryHash := sha256.Sum256(pf.Entry.PreservedEncoding)
+	entryHash := sha256.Sum256(pf.Entry.Encoding)
 	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
@@ -62,7 +62,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
 	}
 
-	profileHash := sha256.Sum256(pf.Profile.PreservedEncoding)
+	profileHash := sha256.Sum256(pf.Profile.Encoding)
 	if !bytes.Equal(profileHash[:], pf.Entry.ProfileHash) {
 		return nil, fmt.Errorf("VerifyLookup: profile does not match the hash in the entry")
 	}
@@ -76,7 +76,7 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 	}
 	// check that all the SEHs have the same head
 	for i := 1; i < len(ratifications); i++ {
-		if want, got := ratifications[0].Head.Head.PreservedEncoding, ratifications[i].Head.Head.PreservedEncoding; !bytes.Equal(want, got) {
+		if want, got := ratifications[0].Head.Head.Encoding, ratifications[i].Head.Head.Encoding; !bytes.Equal(want, got) {
 			return nil, fmt.Errorf("VerifyConsensus: epoch heads don't match: %x vs %x", want, got)
 		}
 	}
@@ -96,7 +96,7 @@ next_verifier:
 		}
 		for _, seh := range ratifications {
 			if sig, ok := seh.Signatures[id]; ok &&
-				VerifySignature(pks[id], seh.Head.PreservedEncoding, sig) {
+				VerifySignature(pks[id], seh.Head.Encoding, sig) {
 				have[id] = struct{}{}
 				continue next_verifier
 			}

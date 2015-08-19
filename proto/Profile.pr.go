@@ -20,24 +20,24 @@ import (
 	"fmt"
 )
 
-type Profile_PreserveEncoding struct {
+type EncodedProfile struct {
 	Profile
-	PreservedEncoding []byte
+	Encoding []byte
 }
 
-func (m *Profile_PreserveEncoding) UpdateEncoding() {
-	m.PreservedEncoding = MustMarshal(&m.Profile)
+func (m *EncodedProfile) UpdateEncoding() {
+	m.Encoding = MustMarshal(&m.Profile)
 }
 
-func (m *Profile_PreserveEncoding) Reset() {
-	*m = Profile_PreserveEncoding{}
+func (m *EncodedProfile) Reset() {
+	*m = EncodedProfile{}
 }
 
-func (m *Profile_PreserveEncoding) Size() int {
-	return len(m.PreservedEncoding)
+func (m *EncodedProfile) Size() int {
+	return len(m.Encoding)
 }
 
-func (m *Profile_PreserveEncoding) Marshal() ([]byte, error) {
+func (m *EncodedProfile) Marshal() ([]byte, error) {
 	size := m.Size()
 	data := make([]byte, size)
 	n, err := m.MarshalTo(data)
@@ -47,64 +47,64 @@ func (m *Profile_PreserveEncoding) Marshal() ([]byte, error) {
 	return data[:n], nil
 }
 
-func (m *Profile_PreserveEncoding) MarshalTo(data []byte) (int, error) {
-	return copy(data, m.PreservedEncoding), nil
+func (m *EncodedProfile) MarshalTo(data []byte) (int, error) {
+	return copy(data, m.Encoding), nil
 }
 
-func (m *Profile_PreserveEncoding) Unmarshal(data []byte) error {
-	m.PreservedEncoding = append([]byte{}, data...)
+func (m *EncodedProfile) Unmarshal(data []byte) error {
+	m.Encoding = append([]byte{}, data...)
 	return m.Profile.Unmarshal(data)
 }
 
-func NewPopulatedProfile_PreserveEncoding(r randyClient, easy bool) *Profile_PreserveEncoding {
-	this := &Profile_PreserveEncoding{Profile: *NewPopulatedProfile(r, easy)}
+func NewPopulatedEncodedProfile(r randyClient, easy bool) *EncodedProfile {
+	this := &EncodedProfile{Profile: *NewPopulatedProfile(r, easy)}
 	this.UpdateEncoding()
 	return this
 }
 
-func (this *Profile_PreserveEncoding) VerboseEqual(that interface{}) error {
-	if thatP, ok := that.(*Profile_PreserveEncoding); ok {
+func (this *EncodedProfile) VerboseEqual(that interface{}) error {
+	if thatP, ok := that.(*EncodedProfile); ok {
 		return this.Profile.VerboseEqual(&thatP.Profile)
 	}
-	if thatP, ok := that.(Profile_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedProfile); ok {
 		return this.Profile.VerboseEqual(&thatP.Profile)
 	}
-	return fmt.Errorf("types don't match: %T != Profile_PreserveEncoding")
+	return fmt.Errorf("types don't match: %T != EncodedProfile")
 }
 
-func (this *Profile_PreserveEncoding) Equal(that interface{}) bool {
-	if thatP, ok := that.(*Profile_PreserveEncoding); ok {
+func (this *EncodedProfile) Equal(that interface{}) bool {
+	if thatP, ok := that.(*EncodedProfile); ok {
 		return this.Profile.Equal(&thatP.Profile)
 	}
-	if thatP, ok := that.(Profile_PreserveEncoding); ok {
+	if thatP, ok := that.(EncodedProfile); ok {
 		return this.Profile.Equal(&thatP.Profile)
 	}
 	return false
 }
 
-func (this *Profile_PreserveEncoding) GoString() string {
+func (this *EncodedProfile) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.Profile_PreserveEncoding{Profile: ` + this.Profile.GoString() + `, PreservedEncoding: ` + fmt.Sprintf("%#v", this.PreservedEncoding) + `}`
+	return `proto.EncodedProfile{Profile: ` + this.Profile.GoString() + `, Encoding: ` + fmt.Sprintf("%#v", this.Encoding) + `}`
 }
 
-func (this *Profile_PreserveEncoding) String() string {
+func (this *EncodedProfile) String() string {
 	if this == nil {
 		return "nil"
 	}
-	return `proto.Profile_PreserveEncoding{Profile: ` + this.Profile.String() + `, PreservedEncoding: ` + fmt.Sprintf("%v", this.PreservedEncoding) + `}`
+	return `proto.EncodedProfile{Profile: ` + this.Profile.String() + `, Encoding: ` + fmt.Sprintf("%v", this.Encoding) + `}`
 }
 
-func (m *Profile_PreserveEncoding) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.PreservedEncoding))+2)
+func (m *EncodedProfile) MarshalJSON() ([]byte, error) {
+	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
 	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.PreservedEncoding)
+	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
 	ret[len(ret)-1] = '"'
 	return ret, nil
 }
 
-func (m *Profile_PreserveEncoding) UnmarshalJSON(s []byte) error {
+func (m *EncodedProfile) UnmarshalJSON(s []byte) error {
 	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
 		return fmt.Errorf("not a JSON quoted string: %q", s)
 	}
@@ -116,5 +116,5 @@ func (m *Profile_PreserveEncoding) UnmarshalJSON(s []byte) error {
 	return m.Unmarshal(b[:n])
 }
 
-var _ json.Marshaler = (*Profile_PreserveEncoding)(nil)
-var _ json.Unmarshaler = (*Profile_PreserveEncoding)(nil)
+var _ json.Marshaler = (*EncodedProfile)(nil)
+var _ json.Unmarshaler = (*EncodedProfile)(nil)

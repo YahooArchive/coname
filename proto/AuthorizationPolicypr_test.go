@@ -22,14 +22,14 @@ import (
 	"time"
 )
 
-func TestAuthorizationPolicy_PreserveEncodingProto(t *testing.T) {
+func TestEncodedAuthorizationPolicyProto(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedAuthorizationPolicy_PreserveEncoding(popr, false)
+	p := NewPopulatedEncodedAuthorizationPolicy(popr, false)
 	data, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
-	msg := &AuthorizationPolicy_PreserveEncoding{}
+	msg := &EncodedAuthorizationPolicy{}
 	if err := github_com_gogo_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
@@ -44,15 +44,15 @@ func TestAuthorizationPolicy_PreserveEncodingProto(t *testing.T) {
 	}
 }
 
-func TestAuthorizationPolicy_PreserveEncodingJSON(t *testing.T) {
+func TestEncodedAuthorizationPolicyJSON(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedAuthorizationPolicy_PreserveEncoding(popr, true)
+	p := NewPopulatedEncodedAuthorizationPolicy(popr, true)
 	marshaler := github_com_gogo_protobuf_jsonpb.Marshaller{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	msg := &AuthorizationPolicy_PreserveEncoding{}
+	msg := &EncodedAuthorizationPolicy{}
 	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatal(err)
