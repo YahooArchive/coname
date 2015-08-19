@@ -536,7 +536,7 @@ func (p *Proposer) run() {
 	for {
 		select {
 		case <-timer.C:
-			p.log.Propose(context.TODO(), p.proposal)
+			p.log.Propose(context.Background(), p.proposal)
 			timer.Reset(p.delay)
 			p.delay = p.delay * 2
 		case <-p.stop:

@@ -381,7 +381,7 @@ func doUpdate(
 	}
 	entry.UpdateEncoding()
 	updateC := proto.NewE2EKSUpdateClient(conn)
-	proof, err := updateC.Update(context.TODO(), &proto.UpdateRequest{
+	proof, err := updateC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
 			Signatures: make(map[uint64][]byte),
@@ -470,7 +470,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 	}
 	c := proto.NewE2EKSLookupClient(conn)
 
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
 		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
 	})
@@ -693,7 +693,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := proto.NewE2EKSLookupClient(conn)
-	proof, err := c.Lookup(context.TODO(), &proto.LookupRequest{
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId: alice,
 		QuorumRequirement: &proto.QuorumExpr{
 			Threshold:  uint32(len(verifiers)),
