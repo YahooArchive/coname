@@ -427,57 +427,62 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			wb.Put(tableRatifications(epochNr, id), newSehBytes)
 		}
 
-		if epochNr == rs.LastEpochDelimiter.EpochNumber {
-			if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
-				rs.ThisReplicaNeedsToSignLastEpoch = false
-				ks.updateEpochProposer()
-				// updateSignatureProposer should in general be called after writes
-				// have been flushed to db, but given ThisReplicaNeedsToSignLast =
-				// false we know that updateSignatureProposer will not access the db.
-				ks.updateSignatureProposer()
-			}
-			// get all existing ratifications for this epoch
-			allSignatures := make(map[uint64][]byte)
-			existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
-			if err != nil {
-				log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
-			}
-			for _, seh := range existingRatifications {
-				for id, sig := range seh.Signatures {
-					allSignatures[id] = sig
-				}
-			}
-			// check whether the epoch was already ratified
-			wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
-			for id, sig := range newSEH.Signatures {
+		if epochNr != rs.LastEpochDelimiter.EpochNumber {
+			break
+		}
+		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
+			rs.ThisReplicaNeedsToSignLastEpoch = false
+			ks.updateEpochProposer()
+			// updateSignatureProposer should in general be called after writes
+			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
+			// false we know that updateSignatureProposer will not access the db.
+			ks.updateSignatureProposer()
+		}
+		// get all existing ratifications for this epoch
+		allSignatures := make(map[uint64][]byte)
+		existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
+		if err != nil {
+			log.Panicf("allRatificationsForEpoch(%d): %s", epochNr, err)
+		}
+		for _, seh := range existingRatifications {
+			for id, sig := range seh.Signatures {
 				allSignatures[id] = sig
 			}
-			// check whether the epoch has now become ratified
-			nowRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
-			if !wasRatified && nowRatified {
-				if !rs.LastEpochNeedsRatification {
-					log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
-				}
-				rs.LastEpochNeedsRatification = false
-				ks.updateEpochProposer()
-				var teh proto.EncodedTimestampedEpochHead
-				err = teh.Unmarshal(tehBytes)
-				if err != nil {
-					log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
-				}
-				allSignaturesSEH := &proto.SignedEpochHead{
-					Head:       teh,
-					Signatures: allSignatures,
-				}
-				nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
-				return func() {
-					nestedDeferredIO()
-					for _, uid := range ks.signaturePending {
-						ks.wr.Notify(uid, nil)
-					}
-					ks.signaturePending = nil
-				}
+		}
+		// check whether the epoch was already ratified
+		wasRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+		if wasRatified {
+			break
+		}
+		for id, sig := range newSEH.Signatures {
+			allSignatures[id] = sig
+		}
+		// check whether the epoch has now become ratified
+		nowRatified := coname.VerifyPolicy(ks.serverAuthorized, tehBytes, allSignatures)
+		if !nowRatified {
+			break
+		}
+		if !rs.LastEpochNeedsRatification {
+			log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
+		}
+		rs.LastEpochNeedsRatification = false
+		ks.updateEpochProposer()
+		var teh proto.EncodedTimestampedEpochHead
+		err = teh.Unmarshal(tehBytes)
+		if err != nil {
+			log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
+		}
+		allSignaturesSEH := &proto.SignedEpochHead{
+			Head:       teh,
+			Signatures: allSignatures,
+		}
+		nestedDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+		return func() {
+			nestedDeferredIO()
+			for _, uid := range ks.signaturePending {
+				ks.wr.Notify(uid, nil)
 			}
+			ks.signaturePending = nil
 		}
 
 	case step.VerifierSigned != nil:
