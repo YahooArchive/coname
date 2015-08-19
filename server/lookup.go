@@ -41,8 +41,8 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 	if newestEpoch-oldestEpoch > lookupMaxChainLength {
 		oldestEpoch = newestEpoch - lookupMaxChainLength
 	}
-	// TODO: optimize this for the case where verifiers sign everything
-	// consecutively
+	// TODO: (for lookup throughput and latency) optimize this for the case
+	// where verifiers sign everything consecutively
 	for epoch := newestEpoch; epoch >= oldestEpoch; epoch-- {
 		tehBytes, err := ks.db.Get(tableEpochHeads(epoch))
 		if err != nil {
@@ -79,7 +79,7 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 			return epoch, ratifications, nil
 		}
 	}
-	// TODO: return whatever ratification we could find
+	// TODO: (why? ~andreser) return whatever ratification we could find
 	return 0, nil, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
 }
 

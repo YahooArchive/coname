@@ -494,8 +494,9 @@ func compareImplementationsRandomly(implementations []Map, itCount, byteRange in
 	snapshots := []MapSnapshot{comparer.GetSnapshot(0)}
 	changingSnapshots := []NewMapSnapshot{}
 	existingKeys := [][]byte{}
-	// TODO: sometimes bias towards long snapshot chains, refresh snapshots, refresh the whole thing
-	// (and then all snapshots), check only new snapshots most of the time
+	// TODO: (for testing) sometimes bias towards long snapshot chains, refresh
+	// snapshots, refresh the whole thing (and then all snapshots), check only
+	// new snapshots most of the time
 	for i := 0; i < itCount; i++ {
 		switch op := rand.Intn(3); op {
 		case 0:

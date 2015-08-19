@@ -252,7 +252,6 @@ func (ks *Keyserver) Start() {
 }
 
 // Stop cleanly shuts down the keyserver and then returns.
-// TODO: figure out what will happen to connected clients?
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
 		// FIXME: where are the listeners closed?
