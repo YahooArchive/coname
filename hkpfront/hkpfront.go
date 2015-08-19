@@ -1,7 +1,6 @@
 package hkpfront
 
 import (
-	"html/template"
 	"net"
 	"net/http"
 	"sync"
@@ -13,18 +12,6 @@ import (
 	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/net/context"
 )
-
-var responseHeaderTemplate = template.Must(template.New("hkpfrontGetResponseHeader").Parse(
-	`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" >
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
-<title>Public Key Server -- Get "{{.}}"</title>
-</head>
-<body><h1>Public Key Server -- Get "{{.}}"</h1>
-<pre>
-`))
-var responseFooter = "\n</pre></body></html>"
 
 // HKPFront implements a unverified GnuPG-compatible HKP frontend for the
 // verified keyserver.
@@ -144,9 +131,9 @@ func (h *HKPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `No results found: No keys found: the email is known to the keyserver, but the profile does not include an OpenPGP key`, 404)
 		return
 	}
-	if err := responseHeaderTemplate.Execute(w, user); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+
+	if _, mr := q["mr"]; mr {
+		w.Header().Set("Content-Type", "application/pgp-keys")
 	}
 	aw, err := armor.Encode(w, "PGP PUBLIC KEY BLOCK", nil)
 	if err != nil {
@@ -159,11 +146,6 @@ func (h *HKPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := aw.Close(); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-	_, err = w.Write([]byte(responseFooter))
-	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
