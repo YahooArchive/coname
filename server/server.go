@@ -297,8 +297,8 @@ func (ks *Keyserver) run() {
 			if err := step.Unmarshal(stepBytes); err != nil {
 				log.Panicf("invalid step pb in replicated log: %s", err)
 			}
-			// TODO: allow multiple steps per log entry (pipelining). Maybe
-			// this would be better implemented at the log level?
+			// TODO: (for throughput) allow multiple steps per log entry
+			// (pipelining). Maybe this would be better implemented at the log level?
 			deferredIO := ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
 			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))

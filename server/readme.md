@@ -12,20 +12,18 @@ value would be ignored anyway.
 
 The lifecycle of an update is as follows:
 
-1. TODO: The client calls the update RPC
-2. TODO: Calls to update that are close together in time are combined into
-a batch for reducing the number of log entries.
-3. TODO: The update is `Propose`-d and appended to the log
-4. `run` gets the update from `WaitCommitted`, calls `step` with it. `step`
+1. The client calls the update RPC
+2. The update is `Propose`-d and appended to the log
+3. `run` gets the update from `WaitCommitted`, calls `step` with it. `step`
 prepares an atomic change (`kv.Batch`) to the local database, and world-visible
 actions to be taken after the state change has been persisted (`deferredIO`).
-5. `run` gets an epoch delimiter from the log (how it gets there will be
+4. `run` gets an epoch delimiter from the log (how it gets there will be
 described later) and calls `step` on it; `step` composes and signs a summary of
-the new keyserver state and pushes it into the log.
-6. `run` gets receives the ratifications from a majority of replicas and combines them.
-7. The updates and the ratified state summary are made available to verifiers.
-8. Verifiers push ratifications, the ratifications get proposed to the log.
-9. `run` receives verifier ratifications from `WaitCommitted`, stores them in the local database.
+the new keyserver state and pushes it into the log (the "epoch head").
+5. `run` gets receives the signatures on the new epoch head from a majority of replicas and combines them to form the keyserver signature.
+6. The updates and the ratified state summary are made available to verifiers.
+7. Verifiers push ratifications, the ratifications get proposed to the log.
+8. `run` receives verifier ratifications from `WaitCommitted`, stores them in the local database.
 
 Epoch delimiters are inserted equivalentlry to the following pseudocode:
 
