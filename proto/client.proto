@@ -28,12 +28,8 @@ service E2EKSUpdate {
 message LookupRequest {
 	// Epoch as of which to perform the lookup ("latest" if not specified)
 	uint64 epoch = 1;
-	oneof target { 
-		// UserId will be mapped to an index by the server using VRF
-		string user_id = 2;
-		// The client specifies it 
-		bytes index = 3;
-	}
+	// UserId will be mapped to an index by the server using VRF
+	string user_id = 2;
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
