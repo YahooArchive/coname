@@ -3,7 +3,7 @@
 The keyserver implementation is structured as a log-driven statemachine to
 support linearizable high-availability replication. The log in `replication`
 supports two main operations: Propose, which possibly appends an entry, and
-`Wait`, which returns new entries that are appended. All *guarantees* the server
+`WaitCommitted`, which returns new entries that are appended. All *guarantees* the server
 provides are provided through the log: for example, no new epoch is signed
 before all information about it has been committed. However, there are also
 *nice-to-haves*, for example reducing the load on the log, which are handled by
@@ -15,17 +15,17 @@ The lifecycle of an update is as follows:
 1. TODO: The client calls the update RPC
 2. TODO: Calls to update that are close together in time are combined into
 a batch for reducing the number of log entries.
-3. TODO: The update (batch) is
-`Propose`-d and appended to the log
-4. `run` gets the update from `Wait`, calls `step` with it. `step` prepares an
-atomic change (`kv.Batch`) to the local database.
+3. TODO: The update is `Propose`-d and appended to the log
+4. `run` gets the update from `WaitCommitted`, calls `step` with it. `step`
+prepares an atomic change (`kv.Batch`) to the local database, and world-visible
+actions to be taken after the state change has been persisted (`deferredIO`).
 5. `run` gets an epoch delimiter from the log (how it gets there will be
 described later) and calls `step` on it; `step` composes and signs a summary of
 the new keyserver state and pushes it into the log.
 6. `run` gets receives the ratifications from a majority of replicas and combines them.
-7. TODO: the updates and the ratified state summary are made available to verifiers.
-8. TODO: verifiers push ratifications, the ratifications get proposed to the log.
-9. `run` receives verifier ratifications from `Wait`, stores them in the local database.
+7. The updates and the ratified state summary are made available to verifiers.
+8. Verifiers push ratifications, the ratifications get proposed to the log.
+9. `run` receives verifier ratifications from `WaitCommitted`, stores them in the local database.
 
 Epoch delimiters are inserted equivalentlry to the following pseudocode:
 
@@ -42,14 +42,14 @@ Epoch delimiters are inserted equivalentlry to the following pseudocode:
 	}
 
 In the implementation, this busy-loop is turned into a non-blocking state
-machine by tracking changes to all inputs using channels. TODO: it would be nice
-if we could refactor this out from the rest of `run`.
+machine by tracking changes to all inputs using channels. This implementation
+pattern is known as "sensitivity list" (in Verilog, for example) and is used for
+all proposals that need to be retried (most do!).
 
 A key-value database is used for local storage, its key space is split into
 tables based on the first byte of the key as specified in `tables.go`.
 Big-endian unsigned integers are used to preserve sorting order for range
 traversals and cache locality.
 
-The database interface also serves as a testing output until the real output
-paths of the keyserver are implemented, and possibly after than (we really care
-that database writes happen before network requests, for example).
+The database interface also serves as a testing output  (we really care that
+database writes happen before network requests, for example).
