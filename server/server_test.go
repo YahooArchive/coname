@@ -25,6 +25,7 @@ import (
 	"encoding/binary"
 	"io/ioutil"
 	"log"
+	mathrand "math/rand"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -323,12 +324,9 @@ loop:
 		select {
 		case <-progressCh:
 			break loop
-		case <-time.After(poll):
-			// TODO: try advancing clocks a little out of sync?
-			for _, clk := range clks {
-				clk.Add(tick)
-			}
-			runtime.Gosched()
+		default:
+			i := mathrand.Intn(len(kss))
+			clks[i].Add(tick)
 		}
 	}
 
