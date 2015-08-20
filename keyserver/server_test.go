@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package server
+package keyserver
 
 import (
 	"bytes"
@@ -48,13 +48,13 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/kv/leveldbkv"
-	"github.com/yahoo/coname/server/kv/tracekv"
-	"github.com/yahoo/coname/server/replication"
-	"github.com/yahoo/coname/server/replication/raftlog"
-	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
-	raftproto "github.com/yahoo/coname/server/replication/raftlog/proto"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
+	"github.com/yahoo/coname/keyserver/kv/tracekv"
+	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/replication/raftlog"
+	"github.com/yahoo/coname/keyserver/replication/raftlog/nettestutil"
+	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )

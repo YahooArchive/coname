@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package server
+package keyserver
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ import (
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/dkim"
+	"github.com/yahoo/coname/keyserver/dkim"
 	"golang.org/x/net/context"
 )
 

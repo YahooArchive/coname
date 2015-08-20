@@ -28,9 +28,9 @@ import (
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/replication"
-	"github.com/yahoo/coname/server/replication/raftlog/proto"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"golang.org/x/net/context"
 )
 

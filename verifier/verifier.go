@@ -29,8 +29,8 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/merkletree"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"

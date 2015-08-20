@@ -27,8 +27,8 @@ import (
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/kv/leveldbkv"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
 )
 
 var treeNonce []byte = []byte("NONCE NONCE NONCE")

@@ -18,12 +18,12 @@ import (
 
 	"github.com/andres-erbsen/clock"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/kv/leveldbkv"
-	"github.com/yahoo/coname/server/replication"
-	"github.com/yahoo/coname/server/replication/raftlog/proto"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
+	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 
-	"github.com/yahoo/coname/server/replication/raftlog/nettestutil"
+	"github.com/yahoo/coname/keyserver/replication/raftlog/nettestutil"
 )
 
 const tick = time.Second

@@ -23,7 +23,7 @@ import (
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/keyserver/kv"
 )
 
 const (

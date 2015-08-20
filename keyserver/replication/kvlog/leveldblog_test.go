@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/kv/leveldbkv"
-	"github.com/yahoo/coname/server/replication"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
+	"github.com/yahoo/coname/keyserver/replication"
 )
 
 func setupLevelDB(t *testing.T) (*leveldb.DB, func()) {

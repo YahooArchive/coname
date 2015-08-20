@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package server
+package keyserver
 
 import (
 	"encoding/binary"
@@ -21,7 +21,7 @@ import (
 	"math"
 
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/keyserver/kv"
 	"golang.org/x/net/context"
 )
 

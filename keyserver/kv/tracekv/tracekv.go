@@ -18,7 +18,7 @@ package tracekv
 import (
 	"fmt"
 
-	"github.com/yahoo/coname/server/kv"
+	"github.com/yahoo/coname/keyserver/kv"
 )
 
 type tracekv struct {

@@ -20,8 +20,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/yahoo/coname/server/kv"
-	"github.com/yahoo/coname/server/kv/tracekv"
+	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/kv/tracekv"
 )
 
 type traceLogger log.Logger
