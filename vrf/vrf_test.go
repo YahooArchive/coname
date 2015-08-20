@@ -3,8 +3,6 @@ package vrf
 import (
 	"bytes"
 	"testing"
-
-	"github.com/davecheney/profile"
 )
 
 func TestHonestComplete(t *testing.T) {
@@ -21,13 +19,6 @@ func TestHonestComplete(t *testing.T) {
 	if !bytes.Equal(aliceVRF, aliceVRFFromProof) {
 		t.Errorf("Compute != Prove")
 	}
-}
-
-func TestHonestComplete100(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	TestHonestComplete(t)
 }
 
 func TestFlipBitForgery(t *testing.T) {
@@ -61,7 +52,6 @@ func BenchmarkCompute(b *testing.B) {
 }
 
 func BenchmarkProve(b *testing.B) {
-	defer profile.Start(profile.CPUProfile).Stop()
 	_, sk, err := GenerateKey(nil)
 	if err != nil {
 		b.Fatal(err)

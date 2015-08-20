@@ -1099,11 +1099,11 @@ func (p *ExtendedGroupElement) FromBytesBaseGroup(s *[32]byte) bool {
 		return false
 	}
 
-	// condition 2: ToBytes produces canonical encodings, check against that
+	// condition 3 is implied by successful point decompression
 	if !p.FromBytes(s) {
-		// condition 3 is implied by successful point decompression
 		return false
 	}
+	// condition 2: ToBytes produces canonical encodings, check against that
 	var sCheck [32]byte
 	p.ToBytes(&sCheck)
 	if sCheck != *s {
