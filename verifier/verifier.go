@@ -153,12 +153,12 @@ func (vr *Verifier) run() {
 		wb.Put(tableVerifierLog(vr.vs.NextIndex), proto.MustMarshal(step))
 		deferredIO := vr.step(step, &vr.vs, wb)
 		vr.vs.NextIndex++
+		wb.Put(tableVerifierState, proto.MustMarshal(&vr.vs))
+		if err := vr.db.Write(wb); err != nil {
+			log.Panicf("sync step to db: %s", err)
+		}
+		wb.Reset()
 		if deferredIO != nil {
-			wb.Put(tableVerifierState, proto.MustMarshal(&vr.vs))
-			if err := vr.db.Write(wb); err != nil {
-				log.Panicf("sync step to db: %s", err)
-			}
-			wb.Reset()
 			deferredIO()
 		}
 	}
