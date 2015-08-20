@@ -544,22 +544,25 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 	}
 	sv = &proto.PublicKey{Ed25519: pk[:]}
 
+	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	getKey = func(keyid string) (crypto.PrivateKey, error) {
 		switch keyid {
 		case "signing":
 			return sk, nil
+		case "tls":
+			return cert, nil
 		default:
-			panic("unknown key requested in test")
+			panic("unknown key requested in tests [" + keyid + "]")
 		}
 	}
-	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
 	cfg = &proto.VerifierConfig{
 		Realm:                testingRealm,
 		KeyserverAddr:        keyserverAddr,
 		InitialKeyserverAuth: *keyserverVerif,
+		SigningKeyID:         "signing",
 
 		ID:  proto.KeyID(sv),
-		TLS: &proto.TLSConfig{Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}},
+		TLS: &proto.TLSConfig{RootCAs: caPool.Subjects(), Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}},
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
