@@ -772,6 +772,5 @@ func TestKeyserverHKP(t *testing.T) {
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
 		t.Error("pgpKey: got %q but wanted %q", got, want)
 	}
-	println("\n\n\n\n\n\n\n" + url + "\n\n\n\n")
 	time.Sleep(time.Hour)
 }
