@@ -550,7 +550,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 		case "signing":
 			return sk, nil
 		case "tls":
-			return cert, nil
+			return cert.PrivateKey, nil
 		default:
 			panic("unknown key requested in tests [" + keyid + "]")
 		}
@@ -562,7 +562,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 		SigningKeyID:         "signing",
 
 		ID:  proto.KeyID(sv),
-		TLS: &proto.TLSConfig{RootCAs: caPool.Subjects(), Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}},
+		TLS: &proto.TLSConfig{RootCAs: [][]byte{caCert.Raw}, Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}},
 	}
 	db = leveldbkv.Wrap(ldb)
 	return
@@ -774,5 +774,4 @@ func TestKeyserverHKP(t *testing.T) {
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
 		t.Error("pgpKey: got %q but wanted %q", got, want)
 	}
-	time.Sleep(time.Hour)
 }
