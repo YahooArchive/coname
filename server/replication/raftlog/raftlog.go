@@ -246,11 +246,14 @@ func (l *raftLog) run() {
 				}
 			}
 
-			if leaderHint := rd.SoftState.RaftState == raft.StateLeader; l.leaderHint != leaderHint {
-				l.leaderHint = leaderHint
-				select {
-				case l.leaderHintSet <- leaderHint:
-				default:
+			if rd.SoftState != nil {
+				leaderHint := rd.SoftState.RaftState == raft.StateLeader
+				if l.leaderHint != leaderHint {
+					l.leaderHint = leaderHint
+					select {
+					case l.leaderHintSet <- leaderHint:
+					default:
+					}
 				}
 			}
 			l.node.Advance()
