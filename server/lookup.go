@@ -163,7 +163,6 @@ func (ks *Keyserver) blockingLookup(ctx context.Context, req *proto.LookupReques
 	}
 	timeout := ks.clk.After(blockingLookupTimeout)
 	timedOut := false
-	log.Printf("waiting to sat %v", req.QuorumRequirement)
 loop:
 	for !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
 		select {
@@ -172,7 +171,6 @@ loop:
 			break loop
 		case v := <-newSignatures:
 			newSig := v.(*proto.SignedEpochHead)
-			log.Printf("new sig %v; left = %v", newSig, verifiersLeft)
 			for id := range newSig.Signatures {
 				if _, ok := verifiersLeft[id]; ok {
 					ratifications = append(ratifications, newSig)
@@ -186,7 +184,6 @@ loop:
 		// TODO: return whatever ratification we could find
 		return nil, fmt.Errorf("timed out while waiting for ratification")
 	}
-	log.Printf("rats: %v", ratifications)
 	return ks.assembleLookupProof(req, epoch, ratifications)
 }
 

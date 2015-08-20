@@ -348,7 +348,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		rs.PendingUpdates = true
 		ks.updateEpochProposer()
 
-		return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+		if rs.LastEpochNeedsRatification {
+			// We need to wait for the last epoch to appear in the verifier log before
+			// inserting this update.
+			wb.Put(tableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.Update.Update))
+		} else {
+			// We can deliver the update to verifiers right away.
+			return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+		}
 
 	case step.EpochDelimiter != nil:
 		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
@@ -477,10 +484,27 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Signatures: allSignatures,
 		}
 		oldDeferredIO := deferredIO
-		newDeferredIO := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+		deferredSendUpdates := []func(){}
+		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableUpdatesPendingRatificationPrefix}))
+		defer iter.Release()
+		for iter.Next() {
+			update := &proto.SignedEntryUpdate{}
+			err := update.Unmarshal(iter.Value())
+			if err != nil {
+				log.Panicf("invalid pending update %x: %s", iter.Value(), err)
+			}
+			deferredSendUpdates = append(deferredSendUpdates, ks.verifierLogAppend(&proto.VerifierStep{Update: update}, rs, wb))
+			wb.Delete(iter.Key())
+		}
 		deferredIO = func() {
-			newDeferredIO()
 			oldDeferredIO()
+			// First, send the ratified epoch to verifiers
+			deferredSendEpoch()
+			// Then send updates that were waiting for that epoch to go out
+			for _, f := range deferredSendUpdates {
+				f()
+			}
 		}
 
 	case step.VerifierSigned != nil:

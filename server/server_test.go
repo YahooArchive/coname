@@ -691,8 +691,7 @@ func copyAuthorizationPolicy(pol *proto.AuthorizationPolicy) *proto.Authorizatio
 }
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
-	t.Skip() // currently fails sometimes because updates are sent to verifiers in the wrong epoch
-	pprof()
+	dieOnCtrlC()
 	kss, caPool, clks, verifiers, clientConfig, teardown := setupRealm(t, 3, 3)
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
