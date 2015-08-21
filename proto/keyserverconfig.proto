@@ -27,6 +27,9 @@ message ReplicaConfig {
 
 	// ReplicaID is a globally unique identifier. See Replica.ID.
 	uint64 replica_id = 2 [(gogoproto.customname) = "ReplicaID"];
+	// SigningKeyID specifies the signing key by reference. The mechanism of
+	// loading keys depends on the deployment scenario; by default, the key
+	// identifier is a path to a file containing the key.
 	string signing_key_id = 3 [(gogoproto.customname) = "SigningKeyID"];
 
 	// The following fields describe how this particular replica should accept
@@ -41,19 +44,71 @@ message ReplicaConfig {
 	string raft_addr = 10;
 	TLSConfig raft_tls = 11 [(gogoproto.customname) = "RaftTLS"];
 
-	string leveldb_path = 12 [(gogoproto.customname) = "LevelDBPath"];
-	Duration raft_heartbeat = 13;
+	// LevelDBPath specifies the directory in which the databse is stored.
+	// Nothing else should use this directory.
+	string leveldb_path = 14 [(gogoproto.customname) = "LevelDBPath"];
+
+	// RaftHeartbeat specifies the interval between successive heartbeat
+	// messages sent by the replicated state machine controller. Lowering the
+	// heartbeat interval generates more network traffic; increasing the
+	// interval increases the time it takes to detect a failed replica and
+	// perform an automated failover.
+	Duration raft_heartbeat = 15;
+
+	// LaggingVerifierScan specifies the maximum number of epochs by which a
+	// verifier can be lagging us for us to still serve its signature to
+	// clients. Finding the verifier signatures is currentl implemented using a
+	// linear scan backwards from the current epoch, so setting a very high
+	// value can open up cause significant amounts of database reads on the
+	// server. A fancy index-based scan would be possible, but there is no
+	// clear need for it -- the epochs far in the past will probably have
+	// expired anyway. The zero value means no limit, but it should be used for
+	// testing only. The recommended value is 1000.
+	uint64 lagging_verifier_scan = 16;
+
+	// ClientTimeout specifies the maximum amount of time the server is willing
+	// to allow from the start of a client request to until it is handled. The
+	// zero value means no limit.
+	Duration client_timout = 17;
 }
 
 // KeyserverConfig describes the keyserver-wide configuration. All replicas
 // MUST use the same KeyserverConfig.
 message KeyserverConfig {
+	// ServerID is deprecated and should not be used. TODO: remove.  Signatures
+	// should be tagged with ReplicaIDs, and the realm can be used to refer to
+	// the keyserver as a whole.
 	uint64 server_id = 1 [(gogoproto.customname) = "ServerID"];
+	// Realm specifies the general set of users whose keys this keyserver
+	// manages. If the user identifiers are email addresses, the realm should
+	// match the domain name in the email address.
 	string realm = 2;
+	// SigningKeyID specifies the key for the verifiable random function by
+	// reference. The mechanism of loading keys depends on the deployment
+	// scenario; by default, the key identifier is a path to a file containing
+	// the key.
 	string vrf_key_id = 3 [(gogoproto.customname) = "VRFKeyID"];
 
+	// MinEpochInterval specifies the time for which the keyserver stops
+	// proposing new epochs once an epoch has been committed. The zero value
+	// means no delay. After MinEpochInterval since the last epoch, the
+	// keyserver will propose a new epoch as soon as an update has been
+	// committed.
 	Duration min_epoch_interval = 4 [(gogoproto.nullable) = false];
+	// MaxEpochInterval specifies the time after which the keyserver will
+	// propose a new epoch even if there have been no updates since the last
+	// epoch. Vouching for the lack of updates is important to ensure the users
+	// that none of the served keys have been revoked. This value is a trigger,
+	// NOT a deadline; there is no guarantee that consecutive epochs will be at
+	// most MaxEpochInterval apart. The actual time between by epochs is
+	// MaxEpochInterval plus however long it takes to commit and sign a new
+	// epoch.
 	Duration max_epoch_interval = 5 [(gogoproto.nullable) = false];
+	// ProposalRetryInterval specifies the time after an unsuccessful proposal
+	// after which the proposal will be retried. A lower value will generate
+	// more redundant network traffic while a higher value will improve
+	// responsiveness in presence of network or node failures (bounded below by
+	// the raft failover time).
 	Duration proposal_retry_interval = 6 [(gogoproto.nullable) = false];
 
 	// InitialReplicas contains the cluster configuration at the beginning of
@@ -62,8 +117,22 @@ message KeyserverConfig {
 	// cluster configuration.
 	repeated Replica initial_replicas = 7;
 
+	// EmailProofToAddr specifies the additional allowed to address in email
+	// proofs. By default, only proofs sent to the user being registered all
+	// accepted. This option can be used to allow proofs emailed directly to
+	// the keyserver to be accepted (but the keyserver does NOT implement a
+	// SMTP interface right now).
 	string email_proof_to_addr = 8;
+	// EmailProofSubjectPrefix is used for DKIM-based email address
+	// registration.  The proof challenge is sent in the subject line, with an
+	// optional string preceding it. For example, if EmailProofSubjectPrefix =
+	// "account verification: ", then the proof email needs to have a subject
+	// line "account verification: abcd" for verify challenge abcd.
 	string email_proof_subject_prefix = 9;
+
+	// EmailProofAllowedDomains specifies the domains for which this keyserver
+	// accepts email address registrations.
+	repeated string email_proof_allowed_domains = 10;
 }
 
 message Replica {
