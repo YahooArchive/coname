@@ -33,10 +33,10 @@ import (
 	"github.com/andres-erbsen/clock"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/hkpfront"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"

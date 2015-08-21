@@ -47,7 +47,6 @@ import (
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
 	"github.com/yahoo/coname/keyserver/kv/tracekv"
@@ -55,6 +54,7 @@ import (
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
 	"github.com/yahoo/coname/keyserver/replication/raftlog/nettestutil"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )

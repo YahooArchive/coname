@@ -22,16 +22,20 @@ import io "io"
 type ReplicaConfig struct {
 	KeyserverConfig `protobuf:"bytes,1,opt,name=keyserver_config,embedded=keyserver_config" json:"keyserver_config"`
 	// ReplicaID is a globally unique identifier. See Replica.ID.
-	ReplicaID    uint64     `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
-	SigningKeyID string     `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
-	UpdateAddr   string     `protobuf:"bytes,4,opt,name=update_addr,proto3" json:"update_addr,omitempty"`
-	UpdateTLS    *TLSConfig `protobuf:"bytes,5,opt,name=update_tls" json:"update_tls,omitempty"`
-	LookupAddr   string     `protobuf:"bytes,6,opt,name=lookup_addr,proto3" json:"lookup_addr,omitempty"`
-	LookupTLS    *TLSConfig `protobuf:"bytes,7,opt,name=lookup_tls" json:"lookup_tls,omitempty"`
-	VerifierAddr string     `protobuf:"bytes,8,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
-	VerifierTLS  *TLSConfig `protobuf:"bytes,9,opt,name=verifier_tls" json:"verifier_tls,omitempty"`
-	HKPAddr      string     `protobuf:"bytes,10,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
-	HKPTLS       *TLSConfig `protobuf:"bytes,11,opt,name=hkp_tls" json:"hkp_tls,omitempty"`
+	ReplicaID     uint64     `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
+	SigningKeyID  string     `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
+	UpdateAddr    string     `protobuf:"bytes,4,opt,name=update_addr,proto3" json:"update_addr,omitempty"`
+	UpdateTLS     *TLSConfig `protobuf:"bytes,5,opt,name=update_tls" json:"update_tls,omitempty"`
+	LookupAddr    string     `protobuf:"bytes,6,opt,name=lookup_addr,proto3" json:"lookup_addr,omitempty"`
+	LookupTLS     *TLSConfig `protobuf:"bytes,7,opt,name=lookup_tls" json:"lookup_tls,omitempty"`
+	VerifierAddr  string     `protobuf:"bytes,8,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
+	VerifierTLS   *TLSConfig `protobuf:"bytes,9,opt,name=verifier_tls" json:"verifier_tls,omitempty"`
+	HKPAddr       string     `protobuf:"bytes,10,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
+	HKPTLS        *TLSConfig `protobuf:"bytes,11,opt,name=hkp_tls" json:"hkp_tls,omitempty"`
+	RaftAddr      string     `protobuf:"bytes,12,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
+	RaftTLS       *TLSConfig `protobuf:"bytes,13,opt,name=raft_tls" json:"raft_tls,omitempty"`
+	LevelDBPath   string     `protobuf:"bytes,14,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
+	RaftHeartbeat *Duration  `protobuf:"bytes,15,opt,name=raft_heartbeat" json:"raft_heartbeat,omitempty"`
 }
 
 func (m *ReplicaConfig) Reset()      { *m = ReplicaConfig{} }
@@ -61,6 +65,20 @@ func (m *ReplicaConfig) GetVerifierTLS() *TLSConfig {
 func (m *ReplicaConfig) GetHKPTLS() *TLSConfig {
 	if m != nil {
 		return m.HKPTLS
+	}
+	return nil
+}
+
+func (m *ReplicaConfig) GetRaftTLS() *TLSConfig {
+	if m != nil {
+		return m.RaftTLS
+	}
+	return nil
+}
+
+func (m *ReplicaConfig) GetRaftHeartbeat() *Duration {
+	if m != nil {
+		return m.RaftHeartbeat
 	}
 	return nil
 }
@@ -123,9 +141,10 @@ type Replica struct {
 	// PublicKeys lists the public keys of a node, to be joined using a
 	// 1-out-of-n policy. The order of this list is NOT preserved.
 	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys" json:"public_keys,omitempty"`
-	// Addr is the network address of the node, such that net.Dial("tcp", Addr)
-	// reaches the node. Supported formats include host.domain:port and ip:port.
-	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
+	// RaftAddr is the Raft network address of the node, such that
+	// net.Dial("tcp", Addr) reaches the node. Supported formats include
+	// host.domain:port and ip:port.
+	RaftAddr string `protobuf:"bytes,3,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
 }
 
 func (m *Replica) Reset()      { *m = Replica{} }
@@ -191,6 +210,18 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 	if !this.HKPTLS.Equal(that1.HKPTLS) {
 		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
 	}
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	}
+	if !this.RaftTLS.Equal(that1.RaftTLS) {
+		return fmt.Errorf("RaftTLS this(%v) Not Equal that(%v)", this.RaftTLS, that1.RaftTLS)
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return fmt.Errorf("LevelDBPath this(%v) Not Equal that(%v)", this.LevelDBPath, that1.LevelDBPath)
+	}
+	if !this.RaftHeartbeat.Equal(that1.RaftHeartbeat) {
+		return fmt.Errorf("RaftHeartbeat this(%v) Not Equal that(%v)", this.RaftHeartbeat, that1.RaftHeartbeat)
+	}
 	return nil
 }
 func (this *ReplicaConfig) Equal(that interface{}) bool {
@@ -244,6 +275,18 @@ func (this *ReplicaConfig) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.HKPTLS.Equal(that1.HKPTLS) {
+		return false
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return false
+	}
+	if !this.RaftTLS.Equal(that1.RaftTLS) {
+		return false
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return false
+	}
+	if !this.RaftHeartbeat.Equal(that1.RaftHeartbeat) {
 		return false
 	}
 	return true
@@ -387,8 +430,8 @@ func (this *Replica) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
 		}
 	}
-	if this.Addr != that1.Addr {
-		return fmt.Errorf("Addr this(%v) Not Equal that(%v)", this.Addr, that1.Addr)
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
 	}
 	return nil
 }
@@ -423,7 +466,7 @@ func (this *Replica) Equal(that interface{}) bool {
 			return false
 		}
 	}
-	if this.Addr != that1.Addr {
+	if this.RaftAddr != that1.RaftAddr {
 		return false
 	}
 	return true
@@ -443,7 +486,11 @@ func (this *ReplicaConfig) GoString() string {
 		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
 		`VerifierTLS:` + fmt.Sprintf("%#v", this.VerifierTLS),
 		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
-		`HKPTLS:` + fmt.Sprintf("%#v", this.HKPTLS) + `}`}, ", ")
+		`HKPTLS:` + fmt.Sprintf("%#v", this.HKPTLS),
+		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr),
+		`RaftTLS:` + fmt.Sprintf("%#v", this.RaftTLS),
+		`LevelDBPath:` + fmt.Sprintf("%#v", this.LevelDBPath),
+		`RaftHeartbeat:` + fmt.Sprintf("%#v", this.RaftHeartbeat) + `}`}, ", ")
 	return s
 }
 func (this *KeyserverConfig) GoString() string {
@@ -469,7 +516,7 @@ func (this *Replica) GoString() string {
 	s := strings.Join([]string{`&proto.Replica{` +
 		`ID:` + fmt.Sprintf("%#v", this.ID),
 		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
-		`Addr:` + fmt.Sprintf("%#v", this.Addr) + `}`}, ", ")
+		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr) + `}`}, ", ")
 	return s
 }
 func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
@@ -595,6 +642,38 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 		}
 		i += n5
 	}
+	if len(m.RaftAddr) > 0 {
+		data[i] = 0x62
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
+		i += copy(data[i:], m.RaftAddr)
+	}
+	if m.RaftTLS != nil {
+		data[i] = 0x6a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
+		n6, err := m.RaftTLS.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	if len(m.LevelDBPath) > 0 {
+		data[i] = 0x72
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LevelDBPath)))
+		i += copy(data[i:], m.LevelDBPath)
+	}
+	if m.RaftHeartbeat != nil {
+		data[i] = 0x7a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
+		n7, err := m.RaftHeartbeat.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
 	return i, nil
 }
 
@@ -633,27 +712,27 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n6, err := m.MinEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n6
-	data[i] = 0x2a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n7, err := m.MaxEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n7
-	data[i] = 0x32
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n8, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	n8, err := m.MinEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n8
+	data[i] = 0x2a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
+	n9, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	data[i] = 0x32
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
+	n10, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
 	if len(m.InitialReplicas) > 0 {
 		for _, msg := range m.InitialReplicas {
 			data[i] = 0x3a
@@ -713,11 +792,11 @@ func (m *Replica) MarshalTo(data []byte) (int, error) {
 			i += n
 		}
 	}
-	if len(m.Addr) > 0 {
+	if len(m.RaftAddr) > 0 {
 		data[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Addr)))
-		i += copy(data[i:], m.Addr)
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
+		i += copy(data[i:], m.RaftAddr)
 	}
 	return i, nil
 }
@@ -771,6 +850,14 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 	if r.Intn(10) != 0 {
 		this.HKPTLS = NewPopulatedTLSConfig(r, easy)
 	}
+	this.RaftAddr = randStringKeyserverconfig(r)
+	if r.Intn(10) != 0 {
+		this.RaftTLS = NewPopulatedTLSConfig(r, easy)
+	}
+	this.LevelDBPath = randStringKeyserverconfig(r)
+	if r.Intn(10) != 0 {
+		this.RaftHeartbeat = NewPopulatedDuration(r, easy)
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -811,7 +898,7 @@ func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
 			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
 		}
 	}
-	this.Addr = randStringKeyserverconfig(r)
+	this.RaftAddr = randStringKeyserverconfig(r)
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -933,6 +1020,22 @@ func (m *ReplicaConfig) Size() (n int) {
 		l = m.HKPTLS.Size()
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
+	l = len(m.RaftAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	if m.RaftTLS != nil {
+		l = m.RaftTLS.Size()
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.LevelDBPath)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	if m.RaftHeartbeat != nil {
+		l = m.RaftHeartbeat.Size()
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
 	return n
 }
 
@@ -985,7 +1088,7 @@ func (m *Replica) Size() (n int) {
 			n += 1 + l + sovKeyserverconfig(uint64(l))
 		}
 	}
-	l = len(m.Addr)
+	l = len(m.RaftAddr)
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
@@ -1021,6 +1124,10 @@ func (this *ReplicaConfig) String() string {
 		`VerifierTLS:` + strings.Replace(fmt.Sprintf("%v", this.VerifierTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
 		`HKPTLS:` + strings.Replace(fmt.Sprintf("%v", this.HKPTLS), "TLSConfig", "TLSConfig", 1) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
+		`RaftTLS:` + strings.Replace(fmt.Sprintf("%v", this.RaftTLS), "TLSConfig", "TLSConfig", 1) + `,`,
+		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
+		`RaftHeartbeat:` + strings.Replace(fmt.Sprintf("%v", this.RaftHeartbeat), "Duration", "Duration", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1050,7 +1157,7 @@ func (this *Replica) String() string {
 	s := strings.Join([]string{`&Replica{`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
-		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1352,6 +1459,110 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				m.HKPTLS = &TLSConfig{}
 			}
 			if err := m.HKPTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RaftAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 13:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RaftTLS == nil {
+				m.RaftTLS = &TLSConfig{}
+			}
+			if err := m.RaftTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LevelDBPath", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + int(stringLen)
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LevelDBPath = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftHeartbeat", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.RaftHeartbeat == nil {
+				m.RaftHeartbeat = &Duration{}
+			}
+			if err := m.RaftHeartbeat.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1704,7 +1915,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1722,7 +1933,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Addr = string(data[iNdEx:postIndex])
+			m.RaftAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int
