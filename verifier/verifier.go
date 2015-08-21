@@ -28,9 +28,9 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 
 	"google.golang.org/grpc"
@@ -52,8 +52,8 @@ type Verifier struct {
 
 	keyserver proto.E2EKSVerificationClient
 
-	stopOnce sync.Once
-	stop     chan struct{}
+	stop     context.CancelFunc
+	ctx      context.Context
 	waitStop sync.WaitGroup
 
 	merkletree *merkletree.MerkleTree
@@ -81,9 +81,8 @@ func Start(cfg *proto.VerifierConfig, db kv.DB, getKey func(string) (crypto.Priv
 		auth:          credentials.NewTLS(tls),
 
 		db: db,
-
-		stop: make(chan struct{}),
 	}
+	vr.ctx, vr.stop = context.WithCancel(context.Background())
 
 	switch verifierStateBytes, err := db.Get(tableVerifierState); err {
 	case vr.db.ErrNotFound():
@@ -108,15 +107,13 @@ func Start(cfg *proto.VerifierConfig, db kv.DB, getKey func(string) (crypto.Priv
 
 // Stop cleanly shuts down the verifier and then returns.
 func (vr *Verifier) Stop() {
-	vr.stopOnce.Do(func() {
-		close(vr.stop)
-		vr.waitStop.Wait()
-	})
+	vr.stop()
+	vr.waitStop.Wait()
 }
 
 func (vr *Verifier) shuttingDown() bool {
 	select {
-	case <-vr.stop:
+	case <-vr.ctx.Done():
 		return true
 	default:
 		return false
@@ -130,16 +127,16 @@ func (vr *Verifier) shuttingDown() bool {
 func (vr *Verifier) run() {
 	keyserverConnection, err := grpc.Dial(vr.keyserverAddr, grpc.WithTransportCredentials(vr.auth))
 	if err != nil {
-		log.Fatalf("dial %s: %s", vr.keyserverAddr, err)
+		log.Panicf("dial %s: %s", vr.keyserverAddr, err)
 	}
 	vr.keyserver = proto.NewE2EKSVerificationClient(keyserverConnection)
-	stream, err := vr.keyserver.VerifierStream(context.Background(), &proto.VerifierStreamRequest{
+	stream, err := vr.keyserver.VerifierStream(vr.ctx, &proto.VerifierStreamRequest{
 		Start:    vr.vs.NextIndex,
 		PageSize: math.MaxUint64,
 	})
 	if err != nil {
 		keyserverConnection.Close()
-		log.Fatalf("VerifierStream: %s", err)
+		log.Panicf("VerifierStream: %s", err)
 	}
 
 	wb := vr.db.NewBatch()
@@ -174,16 +171,16 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		prevEntry, err := vr.getEntry(index, vs.NextEpoch)
 		if err := coname.VerifyUpdate(prevEntry, step.Update); err != nil {
 			// the keyserver should filter all bad updates
-			log.Fatalf("%d: bad update %v: %s", vs.NextIndex, *step, err)
+			log.Panicf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
 		entryHash := sha256.Sum256(step.Update.NewEntry.Encoding)
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
-			log.Fatalf("%d: BeginModification(): %s", vs.NextIndex, err)
+			log.Panicf("%d: BeginModification(): %s", vs.NextIndex, err)
 		}
 		if err := newTree.Set(index, entryHash[:]); err != nil {
-			log.Fatalf("%d: Set(%x,%x): %s", vs.NextIndex, index, entryHash[:], err)
+			log.Panicf("%d: Set(%x,%x): %s", vs.NextIndex, index, entryHash[:], err)
 		}
 		vs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.Encoding)
@@ -192,26 +189,26 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		ok := coname.VerifyPolicy(vr.vs.KeyserverAuth, step.Epoch.Head.Encoding, step.Epoch.Signatures)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
-			log.Fatalf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
+			log.Panicf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
 		}
 		r := step.Epoch.Head
 		if r.Head.Realm != vr.realm {
-			log.Fatalf("%d: seh for realm %q, expected %q: %#v", vs.NextEpoch, r.Head.Realm, vr.realm, *step)
+			log.Panicf("%d: seh for realm %q, expected %q: %#v", vs.NextEpoch, r.Head.Realm, vr.realm, *step)
 		}
 		if r.Head.Epoch != vs.NextEpoch {
-			log.Fatalf("%d: got epoch %d instead: %#v", vs.NextEpoch, r.Head.Epoch, *step)
+			log.Panicf("%d: got epoch %d instead: %#v", vs.NextEpoch, r.Head.Epoch, *step)
 		}
 		s := r.Head
 		if !bytes.Equal(s.PreviousSummaryHash, vs.PreviousSummaryHash) {
-			log.Fatalf("%d: seh with previous summary hash %q, expected %q: %#v", vs.NextEpoch, s.PreviousSummaryHash, vs.PreviousSummaryHash, *step)
+			log.Panicf("%d: seh with previous summary hash %q, expected %q: %#v", vs.NextEpoch, s.PreviousSummaryHash, vs.PreviousSummaryHash, *step)
 		}
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		rootHash, err := latestTree.GetRootHash()
 		if err != nil {
-			log.Fatalf("GetRootHash() failed: %s", err)
+			log.Panicf("GetRootHash() failed: %s", err)
 		}
 		if !bytes.Equal(s.RootHash, rootHash) {
-			log.Fatalf("%d: seh with root hash %q, expected %q: %#v", vs.NextEpoch, s.RootHash, rootHash, *step)
+			log.Panicf("%d: seh with root hash %q, expected %q: %#v", vs.NextEpoch, s.RootHash, rootHash, *step)
 		}
 		seh := &proto.SignedEpochHead{
 			Head: proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
@@ -227,13 +224,13 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 		wb.Put(tableRatifications(vs.NextEpoch, vr.id), proto.MustMarshal(seh))
 		vs.NextEpoch++
 		return func() {
-			_, err := vr.keyserver.PushRatification(context.TODO(), seh)
+			_, err := vr.keyserver.PushRatification(vr.ctx, seh)
 			if err != nil {
 				log.Printf("PushRatification: %s", err)
 			}
 		}
 	default:
-		log.Fatalf("%d: unknown step: %#v", vs.NextIndex, *step)
+		log.Panicf("%d: unknown step: %#v", vs.NextIndex, *step)
 	}
 	return
 }

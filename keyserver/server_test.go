@@ -624,12 +624,13 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 			var getKey func(string) (crypto.PrivateKey, error)
 			vcfg, getKey, vdb, vpks[i], verifierTeardown = setupVerifier(t, clientConfig.Realms[0].VerificationPolicy,
 				kss[i%nReplicas].verifierListen.Addr().String(), caCert, caPool, caKey)
-			close(vrBarrier)
 
-			_, err := verifier.Start(vcfg, vdb, getKey)
+			vr, err := verifier.Start(vcfg, vdb, getKey)
 			if err != nil {
 				t.Fatal(err)
 			}
+			verifierTeardown = chain(vr.Stop, verifierTeardown)
+			close(vrBarrier)
 		}(i)
 	}
 	for i := range cfgs {
