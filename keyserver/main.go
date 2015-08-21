@@ -84,7 +84,7 @@ func majority(nReplicas int) int {
 	return nReplicas/2 + 1
 }
 
-func runWithConfig(cfg *proto.ReplicaConfig) {
+func RunWithConfig(cfg *proto.ReplicaConfig) {
 	// TODO: since we only want to support precisely this ratification policy,
 	// this should be moved into server.go
 	ratificationPolicy := &proto.AuthorizationPolicy{
