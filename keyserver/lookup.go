@@ -18,19 +18,17 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
+	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 	"golang.org/x/net/context"
 )
 
 const (
 	lookupMaxChainLength   = 100
-	blockingLookupTimeout  = 1 * time.Minute
 	newSignatureBufferSize = 10 // To avoid blocking the keyserver while we're finding signatures in the DB
 )
 
@@ -161,14 +159,10 @@ func (ks *Keyserver) blockingLookup(ctx context.Context, req *proto.LookupReques
 	for v := range haveVerifiers {
 		delete(verifiersLeft, v)
 	}
-	timeout := ks.clk.After(blockingLookupTimeout)
-	timedOut := false
-loop:
 	for !coname.CheckQuorum(req.QuorumRequirement, haveVerifiers) {
 		select {
-		case <-timeout:
-			timedOut = true
-			break loop
+		case <-ctx.Done():
+			return nil, fmt.Errorf("timed out while waiting for ratification")
 		case v := <-newSignatures:
 			newSig := v.(*proto.SignedEpochHead)
 			for id := range newSig.Signatures {
@@ -179,10 +173,6 @@ loop:
 				}
 			}
 		}
-	}
-	if timedOut {
-		// TODO: return whatever ratification we could find
-		return nil, fmt.Errorf("timed out while waiting for ratification")
 	}
 	return ks.assembleLookupProof(req, epoch, ratifications)
 }
