@@ -70,7 +70,7 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 	}
 	if strings.HasSuffix(keyid, ".ed25519secret") {
 		if got, want := len(fileContents), ed25519.PrivateKeySize; got != want {
-			return nil, fmt.Errorf("ed25519 private key has wrong size %d (want %d)", got, want)
+			return nil, fmt.Errorf("ed25519 private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
 		return fileContents, nil
 	} else {
@@ -118,7 +118,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 
 	leveldb, err := leveldb.OpenFile(cfg.LevelDBPath, nil)
 	if err != nil {
-		log.Fatalf("Couldn't open DB: %s", err)
+		log.Fatalf("Couldn't open DB in directory %s: %s", cfg.LevelDBPath, err)
 	}
 	db := leveldbkv.Wrap(leveldb)
 
