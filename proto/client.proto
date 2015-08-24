@@ -221,23 +221,18 @@ message EpochHead {
 	uint64 epoch = 2;
 	// RootHash specifies the authenticated data structure.
 	bytes root_hash = 3;
+	// IssueTime is the time when this epoch was released. All epochs for the
+	// same keyserver MUST have non-decreasing IssueTimes.
+	Timestamp issue_time = 4;
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
 	// epochs chained to that in addition to the one listed.
 	// Each PreviousSummaryHash depends on PreviousSummary, therefore
 	// (by induction on the hash-pointer structure) a
-	// PreviousSummaryHash for some epoch specifies the states of all
-	// previous epochs.
-	bytes previous_summary_hash = 4;
+	// PreviousSummeryHash for some epoch specifies the states of all
+	// previous epochs. This hash uses SHA3-SHAKE256 with 64 bytes of output.
+	bytes previous_summary_hash = 5;
 
-	// NextEpochTime MUST contain the time by which the server plans to sign
-	// and publish the next epoch after this one. The server SHOULD give a
-	// sufficiently pessimistic estimate that, for example, a replicated
-	// state-machine failover would not prevent it from being met. To maintain
-	// a monotonic view of the directory, a server MUST NOT issue an epoch i
-	// with a smaller next_epoch_time than was used for epoch i-1, and if it
-	// does, verifiers MUST NOT sign it.
-	Timestamp next_epoch_time = 5 [(gogoproto.nullable) = false];
 	// NextEpochPolicy allows for automated server key rollover: the new key(s)
 	// are signed by the current one as a part of the epoch. This field is nil
 	// if no key change is requested. If the server key is distributed with the
