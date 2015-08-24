@@ -19,13 +19,12 @@ import "client.proto";
 
 service E2EKSVerification {
 	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
+	// The returned stream is given a limited view of the log which the keyserver
+	// being verified uses to replicate its state internally.  However, private
+	// user data, such as usernames and profile details, is not included (the
+	// relevant fields are set to nil).  note: the keyserver implementation also
+	// uses the same log to persist verifier ratifications, but as they do not
+	// affect any username:profile mappings, they are excluded as well.
 	rpc VerifierStream(VerifierStreamRequest) returns (stream VerifierStep);
 	// PushRatification is called each time a verifier who has been
 	// successfully replaying the log returned by VerifierStream interprets a

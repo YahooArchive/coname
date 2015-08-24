@@ -33,7 +33,7 @@ message LookupRequest {
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
-	// the quourm requirement.
+	// the quorum requirement.
 	QuorumExpr quorum_requirement = 4;
 }
 
@@ -68,7 +68,7 @@ message UpdateRequest {
 // used for any other purpose than debugging.
 message LookupProof {
 	string user_id = 1;
-	// index proof that index is a result of applying a globally fixed
+	// index_proof proves that index is a result of applying a globally fixed
 	// bijection VRF to user_id: idx = VRF(user_ID). If this proof checks out,
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
@@ -98,7 +98,7 @@ message LookupProof {
 // A Proof provides an authentication path through the Merkle Tree that
 // proves that an item is or is not present in the tree.
 message TreeProof {
-  // Neighbors is a list of all the adacent nodes along the path from the
+  // Neighbors is a list of all the adjacent nodes along the path from the
   // bottommost node to the root. To save space, hashes for empty subtrees are
   // nil, and the number of hashes is equal to the length of the longest common
   // prefix with another entry in the tree (since a leaf node is moved up to
@@ -106,13 +106,14 @@ message TreeProof {
   // node).
   repeated bytes neighbors = 1;
   // This is the index for the binding that does exist; it will share a prefix
-  // with vuf, but in case the leaf contains the wrong contents, it will be
-  // different. It will be nil if the requested VRF falls under an empty branch.
+	// with the requested index, but in case the leaf contains the wrong
+	// contents, it will be different. It will be nil if the requested VRF falls
+	// under an empty branch.
   bytes existing_index = 2;
   // This is the hash of the entry for the binding that does exist. If the leaf
-  // contains the wrong contents, the client can use this to verify that it in
-  // fact is at that position in the tree.
-  bytes existing_entry_hash = 3;
+	// contains the wrong contents, the client can use this to verify that the
+	// incorrect leaf takes up the entire branch.
+	bytes existing_entry_hash = 3;
 }
 
 // Entry is the value type in the authenticated mapping data structure.  The
@@ -171,10 +172,10 @@ message SignedEntryUpdate {
 message Profile {
 	// Nonce containst at least 16 bytes (and counts towards the total profile
 	// size limit). Having a nonce in each profile ensures that an attacker
-	// curious guess-and-check somebody's profile contents using
-	// Entry.profile_hash. It is the client's responsibility to generate a
-	// random nonce to protect the privacy of its profile, thus the presence of
-	// this field is not checked by the server.
+	// can't guess-and-check somebody's profile contents using Entry.profile_hash.
+	// It is the client's responsibility to generate a random nonce to protect the
+	// privacy of its profile, thus the presence of this field is not checked by
+	// the server.
 	bytes nonce = 1;
 	// Application-specific public keys. The map is keyed by application ID.
 	map<string,bytes> keys = 2;
@@ -201,15 +202,14 @@ message TimestampedEpochHead {
 	EpochHead head = 1 // hashed field, do not re-encode
 		[(gogoproto.customtype) = "EncodedEpochHead", (gogoproto.nullable) = false];
 	// Timestamp specifies when the requirements for SignedEpochHead
-	// were checked. Clients will accept a SignedEpochHead timestamped
-	// with at most a fixed amount of time into the past, and MUST fail
-	// secure if the timestamp is not fresh because the directory state may
-	// have changed. The signature expiration tolerance plus the maximum
-	// clock skew between a pair of clients is the maximum propogation time
-	// of a change from one to another after which even a malicious
-	// keyserve will not be able to convince a client to a accept the
-	// previous state (assuming that all quorums it considers sufficient
-	// containt a correct and honest server).
+	// were checked. Clients will accept a SignedEpochHead timestamped at most a
+	// fixed amount of time into the past, and MUST fail secure if the timestamp
+	// is not fresh because the directory state may have changed. The signature
+	// expiration tolerance plus the maximum clock skew between a pair of clients
+	// is the maximum propogation time of a change from one to another after which
+	// even a malicious keyserver will not be able to convince a client to a
+	// accept the previous state (assuming that all quorums the client considers
+	// sufficient contain a correct and honest server).
 	Timestamp timestamp = 2 [(gogoproto.nullable) = false];
 }
 
@@ -226,7 +226,7 @@ message EpochHead {
 	// epochs chained to that in addition to the one listed.
 	// Each PreviousSummaryHash depends on PreviousSummary, therefore
 	// (by induction on the hash-pointer structure) a
-	// PreviousSummeryHash for some epoch specifies the states of all
+	// PreviousSummaryHash for some epoch specifies the states of all
 	// previous epochs.
 	bytes previous_summary_hash = 4;
 

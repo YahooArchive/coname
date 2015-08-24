@@ -64,7 +64,7 @@ type LookupRequest struct {
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
-	// the quourm requirement.
+	// the quorum requirement.
 	QuorumRequirement *QuorumExpr `protobuf:"bytes,4,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
 }
 
@@ -124,7 +124,7 @@ func (m *UpdateRequest) GetLookupParameters() *LookupRequest {
 // used for any other purpose than debugging.
 type LookupProof struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
-	// index proof that index is a result of applying a globally fixed
+	// index_proof proves that index is a result of applying a globally fixed
 	// bijection VRF to user_id: idx = VRF(user_ID). If this proof checks out,
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
@@ -169,7 +169,7 @@ func (m *LookupProof) GetTreeProof() *TreeProof {
 // A Proof provides an authentication path through the Merkle Tree that
 // proves that an item is or is not present in the tree.
 type TreeProof struct {
-	// Neighbors is a list of all the adacent nodes along the path from the
+	// Neighbors is a list of all the adjacent nodes along the path from the
 	// bottommost node to the root. To save space, hashes for empty subtrees are
 	// nil, and the number of hashes is equal to the length of the longest common
 	// prefix with another entry in the tree (since a leaf node is moved up to
@@ -177,12 +177,13 @@ type TreeProof struct {
 	// node).
 	Neighbors [][]byte `protobuf:"bytes,1,rep,name=neighbors" json:"neighbors,omitempty"`
 	// This is the index for the binding that does exist; it will share a prefix
-	// with vuf, but in case the leaf contains the wrong contents, it will be
-	// different. It will be nil if the requested VRF falls under an empty branch.
+	// with the requested index, but in case the leaf contains the wrong
+	// contents, it will be different. It will be nil if the requested VRF falls
+	// under an empty branch.
 	ExistingIndex []byte `protobuf:"bytes,2,opt,name=existing_index,proto3" json:"existing_index,omitempty"`
 	// This is the hash of the entry for the binding that does exist. If the leaf
-	// contains the wrong contents, the client can use this to verify that it in
-	// fact is at that position in the tree.
+	// contains the wrong contents, the client can use this to verify that the
+	// incorrect leaf takes up the entire branch.
 	ExistingEntryHash []byte `protobuf:"bytes,3,opt,name=existing_entry_hash,proto3" json:"existing_entry_hash,omitempty"`
 }
 
@@ -264,10 +265,10 @@ func (m *SignedEntryUpdate) GetSignatures() map[uint64][]byte {
 type Profile struct {
 	// Nonce containst at least 16 bytes (and counts towards the total profile
 	// size limit). Having a nonce in each profile ensures that an attacker
-	// curious guess-and-check somebody's profile contents using
-	// Entry.profile_hash. It is the client's responsibility to generate a
-	// random nonce to protect the privacy of its profile, thus the presence of
-	// this field is not checked by the server.
+	// can't guess-and-check somebody's profile contents using Entry.profile_hash.
+	// It is the client's responsibility to generate a random nonce to protect the
+	// privacy of its profile, thus the presence of this field is not checked by
+	// the server.
 	Nonce []byte `protobuf:"bytes,1,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	// Application-specific public keys. The map is keyed by application ID.
 	Keys map[string][]byte `protobuf:"bytes,2,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
@@ -312,15 +313,14 @@ type TimestampedEpochHead struct {
 	// realm.
 	Head EncodedEpochHead `protobuf:"bytes,1,opt,name=head,customtype=EncodedEpochHead" json:"head"`
 	// Timestamp specifies when the requirements for SignedEpochHead
-	// were checked. Clients will accept a SignedEpochHead timestamped
-	// with at most a fixed amount of time into the past, and MUST fail
-	// secure if the timestamp is not fresh because the directory state may
-	// have changed. The signature expiration tolerance plus the maximum
-	// clock skew between a pair of clients is the maximum propogation time
-	// of a change from one to another after which even a malicious
-	// keyserve will not be able to convince a client to a accept the
-	// previous state (assuming that all quorums it considers sufficient
-	// containt a correct and honest server).
+	// were checked. Clients will accept a SignedEpochHead timestamped at most a
+	// fixed amount of time into the past, and MUST fail secure if the timestamp
+	// is not fresh because the directory state may have changed. The signature
+	// expiration tolerance plus the maximum clock skew between a pair of clients
+	// is the maximum propogation time of a change from one to another after which
+	// even a malicious keyserver will not be able to convince a client to a
+	// accept the previous state (assuming that all quorums the client considers
+	// sufficient contain a correct and honest server).
 	Timestamp Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
 }
 
@@ -347,7 +347,7 @@ type EpochHead struct {
 	// epochs chained to that in addition to the one listed.
 	// Each PreviousSummaryHash depends on PreviousSummary, therefore
 	// (by induction on the hash-pointer structure) a
-	// PreviousSummeryHash for some epoch specifies the states of all
+	// PreviousSummaryHash for some epoch specifies the states of all
 	// previous epochs.
 	PreviousSummaryHash []byte `protobuf:"bytes,4,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
 	// NextEpochTime MUST contain the time by which the server plans to sign

@@ -150,7 +150,6 @@ type TLSConfig struct {
 	// Certificates contains one or more certificate chains
 	// to present to the other side of the connection.
 	// Server configurations must include at least one certificate.
-	// The
 	Certificates []*CertificateAndKeyID `protobuf:"bytes,1,rep,name=certificates" json:"certificates,omitempty"`
 	// RootCAs defines the set of root certificate authorities
 	// that clients use when verifying server certificates.

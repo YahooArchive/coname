@@ -7,7 +7,6 @@ message TLSConfig {
     // Certificates contains one or more certificate chains
     // to present to the other side of the connection.
     // Server configurations must include at least one certificate.
-	// The 
     repeated CertificateAndKeyID certificates = 1;
 
     // NameToCertificate maps from a certificate name to an element of

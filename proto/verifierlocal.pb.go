@@ -18,7 +18,7 @@ import reflect "reflect"
 import io "io"
 
 // Verifier contains the persistent internal state of a verifier.
-// Additional on-disk state is descried in verifier/table.go.
+// Additional on-disk state is described in verifier/table.go.
 type VerifierState struct {
 	NextIndex           uint64               `protobuf:"varint,1,opt,name=next_index,proto3" json:"next_index,omitempty"`
 	NextEpoch           uint64               `protobuf:"varint,2,opt,name=next_epoch,proto3" json:"next_epoch,omitempty"`

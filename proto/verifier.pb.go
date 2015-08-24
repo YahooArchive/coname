@@ -69,13 +69,12 @@ func (*Nothing) ProtoMessage() {}
 
 type E2EKSVerificationClient interface {
 	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
+	// The returned stream is given a limited view of the log which the keyserver
+	// being verified uses to replicate its state internally.  However, private
+	// user data, such as usernames and profile details, is not included (the
+	// relevant fields are set to nil).  note: the keyserver implementation also
+	// uses the same log to persist verifier ratifications, but as they do not
+	// affect any username:profile mappings, they are excluded as well.
 	VerifierStream(ctx context.Context, in *VerifierStreamRequest, opts ...grpc.CallOption) (E2EKSVerification_VerifierStreamClient, error)
 	// PushRatification is called each time a verifier who has been
 	// successfully replaying the log returned by VerifierStream interprets a
@@ -139,13 +138,12 @@ func (c *e2EKSVerificationClient) PushRatification(ctx context.Context, in *Sign
 
 type E2EKSVerificationServer interface {
 	// VerifierStream accesses the public inputs to a keyserver state machine.
-	// The returned stream is gives a limited view of the log the keyserver
-	// that is being verified uses to replicate its state internally.
-	// However, private user data such as usernames and profile details
-	// is not included (the relevant fields are set to nil).
-	// note: the keyserver implementation also uses the same log to presist
-	// verifier ratifications, but as they do not affect any username:profile
-	// mappings, they are excluded as well.
+	// The returned stream is given a limited view of the log which the keyserver
+	// being verified uses to replicate its state internally.  However, private
+	// user data, such as usernames and profile details, is not included (the
+	// relevant fields are set to nil).  note: the keyserver implementation also
+	// uses the same log to persist verifier ratifications, but as they do not
+	// affect any username:profile mappings, they are excluded as well.
 	VerifierStream(*VerifierStreamRequest, E2EKSVerification_VerifierStreamServer) error
 	// PushRatification is called each time a verifier who has been
 	// successfully replaying the log returned by VerifierStream interprets a

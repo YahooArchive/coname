@@ -18,7 +18,7 @@ import io "io"
 
 // ReplicaConfig contains the local configuration of a single replica of a
 // keyserver. It is valid to have just one replica, but a larger odd number is
-// desireable for availability.
+// desirable for availability.
 type ReplicaConfig struct {
 	KeyserverConfig `protobuf:"bytes,1,opt,name=keyserver_config,embedded=keyserver_config" json:"keyserver_config"`
 	// ReplicaID is a globally unique identifier. See Replica.ID.

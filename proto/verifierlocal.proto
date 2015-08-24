@@ -18,7 +18,7 @@ import "gogoproto/gogo.proto";
 import "client.proto";
 
 // Verifier contains the persistent internal state of a verifier.
-// Additional on-disk state is descried in verifier/table.go.
+// Additional on-disk state is described in verifier/table.go.
 message VerifierState {
 	uint64 next_index = 1;
 	uint64 next_epoch = 2;
