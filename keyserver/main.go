@@ -31,6 +31,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/syndtr/goleveldb/leveldb"
 
@@ -63,21 +64,29 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 // This getKey interprets key IDs as paths, and loads private keys from the
 // specified file
 func getKey(keyid string) (crypto.PrivateKey, error) {
-	keyPEM, err := ioutil.ReadFile(keyid)
+	fileContents, err := ioutil.ReadFile(keyid)
 	if err != nil {
 		return nil, err
 	}
-	var keyDER *pem.Block
-	for {
-		keyDER, keyPEM = pem.Decode(keyPEM)
-		if keyDER == nil {
-			return nil, fmt.Errorf("failed to parse key PEM in %s", keyid)
+	if strings.HasSuffix(keyid, ".ed25519secret") {
+		if got, want := len(fileContents), ed25519.PrivateKeySize; got != want {
+			return nil, fmt.Errorf("ed25519 private key has wrong size %d (want %d)", got, want)
 		}
-		if keyDER.Type == "PRIVATE KEY" || strings.HasSuffix(keyDER.Type, " PRIVATE KEY") {
-			break
+		return fileContents, nil
+	} else {
+		keyPEM := fileContents
+		var keyDER *pem.Block
+		for {
+			keyDER, keyPEM = pem.Decode(keyPEM)
+			if keyDER == nil {
+				return nil, fmt.Errorf("failed to parse key PEM in %s", keyid)
+			}
+			if keyDER.Type == "PRIVATE KEY" || strings.HasSuffix(keyDER.Type, " PRIVATE KEY") {
+				break
+			}
 		}
+		return parsePrivateKey(keyDER.Bytes)
 	}
-	return parsePrivateKey(keyDER.Bytes)
 }
 
 func majority(nReplicas int) int {
@@ -124,7 +133,8 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 	if err != nil {
 		log.Fatalf("Bad Raft TLS configuration: %s", err)
 	}
-	raftServer := grpc.NewServer(grpc.Creds(credentials.NewTLS(raftTLS)))
+	raftCreds := credentials.NewTLS(raftTLS)
+	raftServer := grpc.NewServer(grpc.Creds(raftCreds))
 	go raftServer.Serve(raftListener)
 	defer raftServer.Stop()
 
@@ -132,8 +142,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 		// TODO use current, not initial, config
 		for _, replica := range cfg.KeyserverConfig.InitialReplicas {
 			if replica.ID == id {
-				// TODO client cert
-				conn, err := grpc.Dial(replica.RaftAddr)
+				conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(raftCreds))
 				if err != nil {
 					log.Panicf("Raft GRPC dial failed: %s", err)
 				}
@@ -150,9 +159,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 	)
 	defer raft.Stop()
 
-	var lookupTXT func(string) ([]string, error) // TODO implement DNS lookup
-
-	server, err := Open(cfg, db, raft, ratificationPolicy, clk, getKey, lookupTXT)
+	server, err := Open(cfg, db, raft, ratificationPolicy, clk, getKey, net.LookupTXT)
 	if err != nil {
 		log.Fatalf("Failed to initialize keyserver: %s", err)
 	}
