@@ -146,9 +146,10 @@ message Entry {
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
 	AuthorizationPolicy update_policy = 3;
-	// The entry uniquely specifies the profile using a collision-resistant
-	// hash function.
-	bytes profile_hash = 4;
+	// ProfileCommitment uniquely specifies the profile without revealing its
+	// contents. The commitment is computed as commitment =
+	// sha3shake256(profile); the contents contain a nonce.
+	bytes profile_commitment = 4;
 }
 
 // SignedEntryUpdate is the minimal self-contained structure to justify

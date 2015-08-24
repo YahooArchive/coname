@@ -72,7 +72,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
 	}
 
-	if !CheckCommitment(pf.Entry.ProfileHash, &pf.Profile) {
+	if !CheckCommitment(pf.Entry.ProfileCommitment, &pf.Profile) {
 		return nil, fmt.Errorf("VerifyLookup: profile does not match the hash in the entry")
 	}
 

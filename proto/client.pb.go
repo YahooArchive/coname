@@ -220,9 +220,10 @@ type Entry struct {
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
 	UpdatePolicy *AuthorizationPolicy `protobuf:"bytes,3,opt,name=update_policy" json:"update_policy,omitempty"`
-	// The entry uniquely specifies the profile using a collision-resistant
-	// hash function.
-	ProfileHash []byte `protobuf:"bytes,4,opt,name=profile_hash,proto3" json:"profile_hash,omitempty"`
+	// ProfileCommitment uniquely specifies the profile without revealing its
+	// contents. The commitment is computed as commitment =
+	// sha3shake256(profile); the contents contain a nonce.
+	ProfileCommitment []byte `protobuf:"bytes,4,opt,name=profile_commitment,proto3" json:"profile_commitment,omitempty"`
 }
 
 func (m *Entry) Reset()      { *m = Entry{} }
@@ -921,8 +922,8 @@ func (this *Entry) VerboseEqual(that interface{}) error {
 	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
 		return fmt.Errorf("UpdatePolicy this(%v) Not Equal that(%v)", this.UpdatePolicy, that1.UpdatePolicy)
 	}
-	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
-		return fmt.Errorf("ProfileHash this(%v) Not Equal that(%v)", this.ProfileHash, that1.ProfileHash)
+	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
+		return fmt.Errorf("ProfileCommitment this(%v) Not Equal that(%v)", this.ProfileCommitment, that1.ProfileCommitment)
 	}
 	return nil
 }
@@ -955,7 +956,7 @@ func (this *Entry) Equal(that interface{}) bool {
 	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
 		return false
 	}
-	if !bytes.Equal(this.ProfileHash, that1.ProfileHash) {
+	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
 		return false
 	}
 	return true
@@ -1545,7 +1546,7 @@ func (this *Entry) GoString() string {
 		`Index:` + fmt.Sprintf("%#v", this.Index),
 		`Version:` + fmt.Sprintf("%#v", this.Version),
 		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
-		`ProfileHash:` + fmt.Sprintf("%#v", this.ProfileHash) + `}`}, ", ")
+		`ProfileCommitment:` + fmt.Sprintf("%#v", this.ProfileCommitment) + `}`}, ", ")
 	return s
 }
 func (this *SignedEntryUpdate) GoString() string {
@@ -1942,12 +1943,12 @@ func (m *Entry) MarshalTo(data []byte) (int, error) {
 		}
 		i += n8
 	}
-	if m.ProfileHash != nil {
-		if len(m.ProfileHash) > 0 {
+	if m.ProfileCommitment != nil {
+		if len(m.ProfileCommitment) > 0 {
 			data[i] = 0x22
 			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ProfileHash)))
-			i += copy(data[i:], m.ProfileHash)
+			i = encodeVarintClient(data, i, uint64(len(m.ProfileCommitment)))
+			i += copy(data[i:], m.ProfileCommitment)
 		}
 	}
 	return i, nil
@@ -2455,9 +2456,9 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
 	v12 := r.Intn(100)
-	this.ProfileHash = make([]byte, v12)
+	this.ProfileCommitment = make([]byte, v12)
 	for i := 0; i < v12; i++ {
-		this.ProfileHash[i] = byte(r.Intn(256))
+		this.ProfileCommitment[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -2798,8 +2799,8 @@ func (m *Entry) Size() (n int) {
 		l = m.UpdatePolicy.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.ProfileHash != nil {
-		l = len(m.ProfileHash)
+	if m.ProfileCommitment != nil {
+		l = len(m.ProfileCommitment)
 		if l > 0 {
 			n += 1 + l + sovClient(uint64(l))
 		}
@@ -3024,7 +3025,7 @@ func (this *Entry) String() string {
 		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
 		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
 		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
-		`ProfileHash:` + fmt.Sprintf("%v", this.ProfileHash) + `,`,
+		`ProfileCommitment:` + fmt.Sprintf("%v", this.ProfileCommitment) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3878,7 +3879,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProfileHash", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ProfileCommitment", wireType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -3899,7 +3900,7 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ProfileHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.ProfileCommitment = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int

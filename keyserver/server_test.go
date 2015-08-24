@@ -381,7 +381,7 @@ func doUpdate(
 					Subexpressions: []*proto.QuorumExpr{},
 				},
 			},
-			ProfileHash: commitment[:],
+			ProfileCommitment: commitment[:],
 		},
 	}
 	entry.UpdateEncoding()
