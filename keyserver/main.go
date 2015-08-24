@@ -39,6 +39,7 @@ import (
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/vrf"
 )
 
 func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
@@ -71,6 +72,11 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 	if strings.HasSuffix(keyid, ".ed25519secret") {
 		if got, want := len(fileContents), ed25519.PrivateKeySize; got != want {
 			return nil, fmt.Errorf("ed25519 private key %s has wrong size %d (want %d)", keyid, got, want)
+		}
+		return fileContents, nil
+	} else if strings.HasSuffix(keyid, ".vrfsecret") {
+		if got, want := len(fileContents), vrf.SecretKeySize; got != want {
+			return nil, fmt.Errorf("VRF private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
 		return fileContents, nil
 	} else {
