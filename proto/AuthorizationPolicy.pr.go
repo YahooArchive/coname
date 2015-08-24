@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/andres-erbsen/protobuf/proto"
 )
 
 type EncodedAuthorizationPolicy struct {
@@ -53,7 +54,7 @@ func (m *EncodedAuthorizationPolicy) MarshalTo(data []byte) (int, error) {
 
 func (m *EncodedAuthorizationPolicy) Unmarshal(data []byte) error {
 	m.Encoding = append([]byte{}, data...)
-	return m.AuthorizationPolicy.Unmarshal(data)
+	return proto.Unmarshal(data, &m.AuthorizationPolicy)
 }
 
 func NewPopulatedEncodedAuthorizationPolicy(r randyClient, easy bool) *EncodedAuthorizationPolicy {

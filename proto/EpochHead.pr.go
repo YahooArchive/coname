@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/andres-erbsen/protobuf/proto"
 )
 
 type EncodedEpochHead struct {
@@ -53,7 +54,7 @@ func (m *EncodedEpochHead) MarshalTo(data []byte) (int, error) {
 
 func (m *EncodedEpochHead) Unmarshal(data []byte) error {
 	m.Encoding = append([]byte{}, data...)
-	return m.EpochHead.Unmarshal(data)
+	return proto.Unmarshal(data, &m.EpochHead)
 }
 
 func NewPopulatedEncodedEpochHead(r randyClient, easy bool) *EncodedEpochHead {

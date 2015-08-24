@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/andres-erbsen/protobuf/proto"
 )
 
 type EncodedSignedEntryUpdate struct {
@@ -53,7 +54,7 @@ func (m *EncodedSignedEntryUpdate) MarshalTo(data []byte) (int, error) {
 
 func (m *EncodedSignedEntryUpdate) Unmarshal(data []byte) error {
 	m.Encoding = append([]byte{}, data...)
-	return m.SignedEntryUpdate.Unmarshal(data)
+	return proto.Unmarshal(data, &m.SignedEntryUpdate)
 }
 
 func NewPopulatedEncodedSignedEntryUpdate(r randyClient, easy bool) *EncodedSignedEntryUpdate {
