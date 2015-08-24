@@ -223,7 +223,7 @@ message EpochHead {
 	bytes root_hash = 3;
 	// IssueTime is the time when this epoch was released. All epochs for the
 	// same keyserver MUST have non-decreasing IssueTimes.
-	Timestamp issue_time = 4;
+	Timestamp issue_time = 4 [(gogoproto.nullable) = false];
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
 	// epochs chained to that in addition to the one listed.

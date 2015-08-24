@@ -197,6 +197,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		Domains:            []string{realmDomain},
 		VRFPublic:          vrfPublic,
 		VerificationPolicy: pol,
+		EpochTimeToLive:    proto.DurationStamp(time.Hour),
 	}
 	clientConfig = &proto.Config{
 		Realms: []*proto.RealmConfig{realmConfig},

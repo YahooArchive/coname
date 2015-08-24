@@ -344,7 +344,7 @@ type EpochHead struct {
 	RootHash []byte `protobuf:"bytes,3,opt,name=root_hash,proto3" json:"root_hash,omitempty"`
 	// IssueTime is the time when this epoch was released. All epochs for the
 	// same keyserver MUST have non-decreasing IssueTimes.
-	IssueTime *Timestamp `protobuf:"bytes,4,opt,name=issue_time" json:"issue_time,omitempty"`
+	IssueTime Timestamp `protobuf:"bytes,4,opt,name=issue_time" json:"issue_time"`
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
 	// epochs chained to that in addition to the one listed.
@@ -364,11 +364,11 @@ type EpochHead struct {
 func (m *EpochHead) Reset()      { *m = EpochHead{} }
 func (*EpochHead) ProtoMessage() {}
 
-func (m *EpochHead) GetIssueTime() *Timestamp {
+func (m *EpochHead) GetIssueTime() Timestamp {
 	if m != nil {
 		return m.IssueTime
 	}
-	return nil
+	return Timestamp{}
 }
 
 func (m *EpochHead) GetNextEpochPolicy() AuthorizationPolicy {
@@ -1243,7 +1243,7 @@ func (this *EpochHead) VerboseEqual(that interface{}) error {
 	if !bytes.Equal(this.RootHash, that1.RootHash) {
 		return fmt.Errorf("RootHash this(%v) Not Equal that(%v)", this.RootHash, that1.RootHash)
 	}
-	if !this.IssueTime.Equal(that1.IssueTime) {
+	if !this.IssueTime.Equal(&that1.IssueTime) {
 		return fmt.Errorf("IssueTime this(%v) Not Equal that(%v)", this.IssueTime, that1.IssueTime)
 	}
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
@@ -1283,7 +1283,7 @@ func (this *EpochHead) Equal(that interface{}) bool {
 	if !bytes.Equal(this.RootHash, that1.RootHash) {
 		return false
 	}
-	if !this.IssueTime.Equal(that1.IssueTime) {
+	if !this.IssueTime.Equal(&that1.IssueTime) {
 		return false
 	}
 	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
@@ -1622,7 +1622,7 @@ func (this *EpochHead) GoString() string {
 		`Realm:` + fmt.Sprintf("%#v", this.Realm),
 		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
 		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
-		`IssueTime:` + fmt.Sprintf("%#v", this.IssueTime),
+		`IssueTime:` + strings.Replace(this.IssueTime.GoString(), `&`, ``, 1),
 		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
 		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
 	return s
@@ -2163,16 +2163,14 @@ func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], m.RootHash)
 		}
 	}
-	if m.IssueTime != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintClient(data, i, uint64(m.IssueTime.Size()))
-		n13, err := m.IssueTime.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n13
+	data[i] = 0x22
+	i++
+	i = encodeVarintClient(data, i, uint64(m.IssueTime.Size()))
+	n13, err := m.IssueTime.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
 	}
+	i += n13
 	if m.PreviousSummaryHash != nil {
 		if len(m.PreviousSummaryHash) > 0 {
 			data[i] = 0x2a
@@ -2552,16 +2550,15 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	for i := 0; i < v27; i++ {
 		this.RootHash[i] = byte(r.Intn(256))
 	}
-	if r.Intn(10) != 0 {
-		this.IssueTime = NewPopulatedTimestamp(r, easy)
-	}
-	v28 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v28)
-	for i := 0; i < v28; i++ {
+	v28 := NewPopulatedTimestamp(r, easy)
+	this.IssueTime = *v28
+	v29 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v29)
+	for i := 0; i < v29; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
-	v29 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v29
+	v30 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v30
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2570,9 +2567,9 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
 	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		v30 := r.Intn(10)
+		v31 := r.Intn(10)
 		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v30; i++ {
+		for i := 0; i < v31; i++ {
 			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -2586,9 +2583,9 @@ func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPol
 
 func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 	this := &PublicKey{}
-	v31 := r.Intn(100)
-	this.Ed25519 = make([]byte, v31)
-	for i := 0; i < v31; i++ {
+	v32 := r.Intn(100)
+	this.Ed25519 = make([]byte, v32)
+	for i := 0; i < v32; i++ {
 		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2599,15 +2596,15 @@ func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v32 := r.Intn(100)
-	this.Candidates = make([]uint64, v32)
-	for i := 0; i < v32; i++ {
+	v33 := r.Intn(100)
+	this.Candidates = make([]uint64, v33)
+	for i := 0; i < v33; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
-		v33 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v33)
-		for i := 0; i < v33; i++ {
+		v34 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v34)
+		for i := 0; i < v34; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
 		}
 	}
@@ -2635,9 +2632,9 @@ func randUTF8RuneClient(r randyClient) rune {
 	return rune(ru + 61)
 }
 func randStringClient(r randyClient) string {
-	v34 := r.Intn(100)
-	tmps := make([]rune, v34)
-	for i := 0; i < v34; i++ {
+	v35 := r.Intn(100)
+	tmps := make([]rune, v35)
+	for i := 0; i < v35; i++ {
 		tmps[i] = randUTF8RuneClient(r)
 	}
 	return string(tmps)
@@ -2659,11 +2656,11 @@ func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateClient(data, uint64(key))
-		v35 := r.Int63()
+		v36 := r.Int63()
 		if r.Intn(2) == 0 {
-			v35 *= -1
+			v36 *= -1
 		}
-		data = encodeVarintPopulateClient(data, uint64(v35))
+		data = encodeVarintPopulateClient(data, uint64(v36))
 	case 1:
 		data = encodeVarintPopulateClient(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -2888,10 +2885,8 @@ func (m *EpochHead) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
-	if m.IssueTime != nil {
-		l = m.IssueTime.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
+	l = m.IssueTime.Size()
+	n += 1 + l + sovClient(uint64(l))
 	if m.PreviousSummaryHash != nil {
 		l = len(m.PreviousSummaryHash)
 		if l > 0 {
@@ -3116,7 +3111,7 @@ func (this *EpochHead) String() string {
 		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
 		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
 		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
-		`IssueTime:` + strings.Replace(fmt.Sprintf("%v", this.IssueTime), "Timestamp", "Timestamp", 1) + `,`,
+		`IssueTime:` + strings.Replace(strings.Replace(this.IssueTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
 		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
 		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
 		`}`,
@@ -4606,9 +4601,6 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 			}
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
-			}
-			if m.IssueTime == nil {
-				m.IssueTime = &Timestamp{}
 			}
 			if err := m.IssueTime.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err

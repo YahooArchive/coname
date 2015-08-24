@@ -43,7 +43,10 @@ message RealmConfig {
 	// have a NoOlderThan entry.
 	AuthorizationPolicy verification_policy = 5;
 
-	// TODO: specify clock skew tolerance parameters
+	// EpochTimeToLive specifies the duration for which an epoch is valid after
+	// it has been issued. A client that has access to a clock MUST NOT accept
+	// epoch heads with IssueTime more than EpochTimeToLive in the past.
+	Duration epoch_time_to_live = 6 [(gogoproto.nullable) = false];
 
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
 	bytes tree_nonce = 7;

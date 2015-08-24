@@ -81,8 +81,8 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 		}
 	}
 	// check that the seh is not expired
-	if ratifications[0].Head.Head.NextEpochTime.Time().After(now) {
-		return nil, fmt.Errorf("VerifyConsensus: epoch expired at %v < %v", ratifications[0].Head.Head.NextEpochTime.Time(), now)
+	if t := ratifications[0].Head.Head.IssueTime.Time().Add(rcg.EpochTimeToLive.Duration()); now.After(t) {
+		return nil, fmt.Errorf("VerifyConsensus: epoch expired at %v < %v", t, now)
 	}
 	// check that there are sufficiently many fresh signatures.
 	pks := rcg.VerificationPolicy.PublicKeys

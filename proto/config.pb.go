@@ -51,6 +51,10 @@ type RealmConfig struct {
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
 	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,5,opt,name=verification_policy" json:"verification_policy,omitempty"`
+	// EpochTimeToLive specifies the duration for which an epoch is valid after
+	// it has been issued. A client that has access to a clock MUST NOT accept
+	// epoch heads with IssueTime more than EpochTimeToLive in the past.
+	EpochTimeToLive Duration `protobuf:"bytes,6,opt,name=epoch_time_to_live" json:"epoch_time_to_live"`
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
 	TreeNonce []byte `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
 }
@@ -63,6 +67,13 @@ func (m *RealmConfig) GetVerificationPolicy() *AuthorizationPolicy {
 		return m.VerificationPolicy
 	}
 	return nil
+}
+
+func (m *RealmConfig) GetEpochTimeToLive() Duration {
+	if m != nil {
+		return m.EpochTimeToLive
+	}
+	return Duration{}
 }
 
 func (this *Config) VerboseEqual(that interface{}) error {
@@ -165,6 +176,9 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return fmt.Errorf("VerificationPolicy this(%v) Not Equal that(%v)", this.VerificationPolicy, that1.VerificationPolicy)
 	}
+	if !this.EpochTimeToLive.Equal(&that1.EpochTimeToLive) {
+		return fmt.Errorf("EpochTimeToLive this(%v) Not Equal that(%v)", this.EpochTimeToLive, that1.EpochTimeToLive)
+	}
 	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
 		return fmt.Errorf("TreeNonce this(%v) Not Equal that(%v)", this.TreeNonce, that1.TreeNonce)
 	}
@@ -210,6 +224,9 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 	if !this.VerificationPolicy.Equal(that1.VerificationPolicy) {
 		return false
 	}
+	if !this.EpochTimeToLive.Equal(&that1.EpochTimeToLive) {
+		return false
+	}
 	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
 		return false
 	}
@@ -233,6 +250,7 @@ func (this *RealmConfig) GoString() string {
 		`URL:` + fmt.Sprintf("%#v", this.URL),
 		`VRFPublic:` + fmt.Sprintf("%#v", this.VRFPublic),
 		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy),
+		`EpochTimeToLive:` + strings.Replace(this.EpochTimeToLive.GoString(), `&`, ``, 1),
 		`TreeNonce:` + fmt.Sprintf("%#v", this.TreeNonce) + `}`}, ", ")
 	return s
 }
@@ -351,6 +369,14 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
+	data[i] = 0x32
+	i++
+	i = encodeVarintConfig(data, i, uint64(m.EpochTimeToLive.Size()))
+	n2, err := m.EpochTimeToLive.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n2
 	if m.TreeNonce != nil {
 		if len(m.TreeNonce) > 0 {
 			data[i] = 0x3a
@@ -420,9 +446,11 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	if r.Intn(10) != 0 {
 		this.VerificationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	v4 := r.Intn(100)
-	this.TreeNonce = make([]byte, v4)
-	for i := 0; i < v4; i++ {
+	v4 := NewPopulatedDuration(r, easy)
+	this.EpochTimeToLive = *v4
+	v5 := r.Intn(100)
+	this.TreeNonce = make([]byte, v5)
+	for i := 0; i < v5; i++ {
 		this.TreeNonce[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -449,9 +477,9 @@ func randUTF8RuneConfig(r randyConfig) rune {
 	return rune(ru + 61)
 }
 func randStringConfig(r randyConfig) string {
-	v5 := r.Intn(100)
-	tmps := make([]rune, v5)
-	for i := 0; i < v5; i++ {
+	v6 := r.Intn(100)
+	tmps := make([]rune, v6)
+	for i := 0; i < v6; i++ {
 		tmps[i] = randUTF8RuneConfig(r)
 	}
 	return string(tmps)
@@ -473,11 +501,11 @@ func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateConfig(data, uint64(key))
-		v6 := r.Int63()
+		v7 := r.Int63()
 		if r.Intn(2) == 0 {
-			v6 *= -1
+			v7 *= -1
 		}
-		data = encodeVarintPopulateConfig(data, uint64(v6))
+		data = encodeVarintPopulateConfig(data, uint64(v7))
 	case 1:
 		data = encodeVarintPopulateConfig(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -541,6 +569,8 @@ func (m *RealmConfig) Size() (n int) {
 		l = m.VerificationPolicy.Size()
 		n += 1 + l + sovConfig(uint64(l))
 	}
+	l = m.EpochTimeToLive.Size()
+	n += 1 + l + sovConfig(uint64(l))
 	if m.TreeNonce != nil {
 		l = len(m.TreeNonce)
 		if l > 0 {
@@ -583,6 +613,7 @@ func (this *RealmConfig) String() string {
 		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
 		`VRFPublic:` + fmt.Sprintf("%v", this.VRFPublic) + `,`,
 		`VerificationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.VerificationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
+		`EpochTimeToLive:` + strings.Replace(strings.Replace(this.EpochTimeToLive.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
 		`TreeNonce:` + fmt.Sprintf("%v", this.TreeNonce) + `,`,
 		`}`,
 	}, "")
@@ -806,6 +837,33 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				m.VerificationPolicy = &AuthorizationPolicy{}
 			}
 			if err := m.VerificationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EpochTimeToLive", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.EpochTimeToLive.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
