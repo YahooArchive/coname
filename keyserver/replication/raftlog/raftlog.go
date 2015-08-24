@@ -56,6 +56,7 @@ type raftLog struct {
 	grpcServer      *grpc.Server
 	dial            func(uint64) proto.RaftClient
 	grpcClientCache map[uint64]proto.RaftClient
+	grpcDropClient  chan uint64
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -132,6 +133,7 @@ func (l *raftLog) Start(lo uint64) error {
 	l.waitCommitted = make(chan []byte, COMMITTED_BUFFER)
 	l.stop = make(chan struct{})
 	l.stopped = make(chan struct{})
+	l.grpcDropClient = make(chan uint64)
 	l.stopOnce = sync.Once{}
 	l.grpcClientCache = make(map[uint64]proto.RaftClient)
 
@@ -169,6 +171,7 @@ func (l *raftLog) DropReplica(nodeID uint64) {
 		Type:   raftpb.ConfChangeRemoveNode,
 		NodeID: nodeID,
 	})
+	l.grpcDropClient <- nodeID
 }
 
 // WaitCommitted implements replication.LogReplicator
@@ -230,6 +233,8 @@ func (l *raftLog) run() {
 			return
 		case <-ticker.C:
 			l.node.Tick()
+		case r := <-l.grpcDropClient:
+			delete(l.grpcClientCache, r)
 		case rd := <-l.node.Ready():
 			if !raft.IsEmptySnap(rd.Snapshot) {
 				log.Panicf("snapshots not supported")
@@ -270,7 +275,8 @@ func (l *raftLog) send(msg *raftpb.Message) {
 		l.grpcClientCache[msg.To] = c
 	}
 	go func(msg raftpb.Message) {
-		_, err := c.Step(context.Background(), &msg)
+		ctx, _ := context.WithTimeout(context.Background(), 10*l.tickInterval)
+		_, err := c.Step(ctx, &msg)
 		if err != nil {
 			log.Printf("raftlog send to %x: %s", msg.To, err)
 			l.node.ReportUnreachable(msg.To)

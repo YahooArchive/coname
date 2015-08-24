@@ -154,7 +154,7 @@ func openAppendMachine(db kv.DB, log replication.LogReplicator) *appendMachine {
 
 func (am *appendMachine) Start() {
 	am.waitStop.Add(1)
-	go func() { am.run(); am.waitStop.Done() }()
+	go am.run()
 }
 
 func (am *appendMachine) Stop() {
@@ -171,6 +171,7 @@ func (am *appendMachine) Get() []byte {
 }
 
 func (am *appendMachine) run() {
+	defer am.waitStop.Done()
 	for {
 		select {
 		case ch := <-am.get:
@@ -262,6 +263,31 @@ func checkReplicasConsistent(t *testing.T, states map[int][]byte) {
 	}
 }
 
+func checkMachinesConsistent(t *testing.T, ms []*appendMachine) {
+	for i, mi := range ms {
+		for j, mj := range ms {
+			if a, b := mi.Get(), mj.Get(); !isConsistentPrefix(a, b) {
+				t.Errorf("logs of replicas %d and %d diverged: %s <> %s", 1+i, 1+j, a, b)
+			}
+		}
+	}
+}
+
+func syncTryPropose(am *appendMachine, clk *clock.Mock, prop []byte) {
+	s := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { am.log.Propose(ctx, prop); close(s) }()
+	for i := 0; i < 30; i++ {
+		select {
+		case <-s:
+			return
+		default:
+			clk.Add(tick)
+		}
+	}
+	cancel()
+}
+
 func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine, clks []*clock.Mock, batchid, nProposeEach, laggards int) {
 	remaining := make(map[int]map[string]struct{})
 	for i := 0; i < len(replicas); i++ {
@@ -307,9 +333,8 @@ func testAppendMachineEachProposeAndWait(t *testing.T, replicas []*appendMachine
 
 		// retry propose for everything that has not passed yet.
 		// just one entry at a time, though -- this loop will run again.
-		am := replicas[i]
 		for s := range remaining[i] {
-			go am.log.Propose(context.Background(), []byte(s))
+			syncTryPropose(replicas[i], clks[i], []byte(s))
 			break
 		}
 	}
@@ -584,4 +609,26 @@ func TestConfigurationChange4Drop1Manually(t *testing.T) {
 		states[i] = replicas[i].Get()
 	}
 	checkReplicasConsistent(t, states)
+}
+
+func TestConfigurationChange4Drop1Add1Manually(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 4, 1)
+	defer teardown()
+
+	testAppendMachineEachProposeAndWait(t, replicas[:4], clks[:4], 0, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	for i := 0; i < 4; i++ {
+		replicas[i].log.DropReplica(1)
+	}
+
+	testAppendMachineEachProposeAndWait(t, replicas[1:4], clks[1:4], 1, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	for i := 1; i < 5; i++ {
+		replicas[i].log.AddReplica(5)
+	}
+
+	testAppendMachineEachProposeAndWait(t, replicas[1:], clks, 2, 1, 0)
+	checkMachinesConsistent(t, replicas)
 }
