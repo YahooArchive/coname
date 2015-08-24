@@ -454,142 +454,85 @@ func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 	return nil
 }
 
-// Client API for E2EKSLookup service
+// Client API for E2EKSPublic service
 
-type E2EKSLookupClient interface {
-	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
-}
-
-type e2EKSLookupClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSLookupClient(cc *grpc.ClientConn) E2EKSLookupClient {
-	return &e2EKSLookupClient{cc}
-}
-
-func (c *e2EKSLookupClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSLookup/Lookup", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSLookup service
-
-type E2EKSLookupServer interface {
-	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSLookupServer(s *grpc.Server, srv E2EKSLookupServer) {
-	s.RegisterService(&_E2EKSLookup_serviceDesc, srv)
-}
-
-func _E2EKSLookup_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSLookupServer).Lookup(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSLookup_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSLookup",
-	HandlerType: (*E2EKSLookupServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Lookup",
-			Handler:    _E2EKSLookup_Lookup_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
-}
-
-// Client API for E2EKSUpdate service
-
-type E2EKSUpdateClient interface {
+type E2EKSPublicClient interface {
 	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
 }
 
-type e2EKSUpdateClient struct {
+type e2EKSPublicClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewE2EKSUpdateClient(cc *grpc.ClientConn) E2EKSUpdateClient {
-	return &e2EKSUpdateClient{cc}
+func NewE2EKSPublicClient(cc *grpc.ClientConn) E2EKSPublicClient {
+	return &e2EKSPublicClient{cc}
 }
 
-func (c *e2EKSUpdateClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSPublicClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Lookup", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Lookup", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *e2EKSUpdateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+func (c *e2EKSPublicClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
 	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSUpdate/Update", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Update", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for E2EKSUpdate service
+// Server API for E2EKSPublic service
 
-type E2EKSUpdateServer interface {
+type E2EKSPublicServer interface {
 	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
 	Update(context.Context, *UpdateRequest) (*LookupProof, error)
 }
 
-func RegisterE2EKSUpdateServer(s *grpc.Server, srv E2EKSUpdateServer) {
-	s.RegisterService(&_E2EKSUpdate_serviceDesc, srv)
+func RegisterE2EKSPublicServer(s *grpc.Server, srv E2EKSPublicServer) {
+	s.RegisterService(&_E2EKSPublic_serviceDesc, srv)
 }
 
-func _E2EKSUpdate_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _E2EKSPublic_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(LookupRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSUpdateServer).Lookup(ctx, in)
+	out, err := srv.(E2EKSPublicServer).Lookup(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func _E2EKSUpdate_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
+func _E2EKSPublic_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
 	in := new(UpdateRequest)
 	if err := codec.Unmarshal(buf, in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSUpdateServer).Update(ctx, in)
+	out, err := srv.(E2EKSPublicServer).Update(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-var _E2EKSUpdate_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSUpdate",
-	HandlerType: (*E2EKSUpdateServer)(nil),
+var _E2EKSPublic_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSPublic",
+	HandlerType: (*E2EKSPublicServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Lookup",
-			Handler:    _E2EKSUpdate_Lookup_Handler,
+			Handler:    _E2EKSPublic_Lookup_Handler,
 		},
 		{
 			MethodName: "Update",
-			Handler:    _E2EKSUpdate_Update_Handler,
+			Handler:    _E2EKSPublic_Update_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{},

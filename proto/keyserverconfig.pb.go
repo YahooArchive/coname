@@ -24,33 +24,24 @@ type ReplicaConfig struct {
 	// ReplicaID is a globally unique identifier. See Replica.ID.
 	ReplicaID     uint64     `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
 	SigningKeyID  string     `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
-	UpdateAddr    string     `protobuf:"bytes,4,opt,name=update_addr,proto3" json:"update_addr,omitempty"`
-	UpdateTLS     *TLSConfig `protobuf:"bytes,5,opt,name=update_tls" json:"update_tls,omitempty"`
-	LookupAddr    string     `protobuf:"bytes,6,opt,name=lookup_addr,proto3" json:"lookup_addr,omitempty"`
-	LookupTLS     *TLSConfig `protobuf:"bytes,7,opt,name=lookup_tls" json:"lookup_tls,omitempty"`
-	VerifierAddr  string     `protobuf:"bytes,8,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
-	VerifierTLS   *TLSConfig `protobuf:"bytes,9,opt,name=verifier_tls" json:"verifier_tls,omitempty"`
-	HKPAddr       string     `protobuf:"bytes,10,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
-	HKPTLS        *TLSConfig `protobuf:"bytes,11,opt,name=hkp_tls" json:"hkp_tls,omitempty"`
-	RaftAddr      string     `protobuf:"bytes,12,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
-	RaftTLS       *TLSConfig `protobuf:"bytes,13,opt,name=raft_tls" json:"raft_tls,omitempty"`
-	LevelDBPath   string     `protobuf:"bytes,14,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
-	RaftHeartbeat *Duration  `protobuf:"bytes,15,opt,name=raft_heartbeat" json:"raft_heartbeat,omitempty"`
+	PublicAddr    string     `protobuf:"bytes,4,opt,name=public_addr,proto3" json:"public_addr,omitempty"`
+	PublicTLS     *TLSConfig `protobuf:"bytes,5,opt,name=public_tls" json:"public_tls,omitempty"`
+	VerifierAddr  string     `protobuf:"bytes,6,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
+	VerifierTLS   *TLSConfig `protobuf:"bytes,7,opt,name=verifier_tls" json:"verifier_tls,omitempty"`
+	HKPAddr       string     `protobuf:"bytes,8,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
+	HKPTLS        *TLSConfig `protobuf:"bytes,9,opt,name=hkp_tls" json:"hkp_tls,omitempty"`
+	RaftAddr      string     `protobuf:"bytes,10,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
+	RaftTLS       *TLSConfig `protobuf:"bytes,11,opt,name=raft_tls" json:"raft_tls,omitempty"`
+	LevelDBPath   string     `protobuf:"bytes,12,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
+	RaftHeartbeat *Duration  `protobuf:"bytes,13,opt,name=raft_heartbeat" json:"raft_heartbeat,omitempty"`
 }
 
 func (m *ReplicaConfig) Reset()      { *m = ReplicaConfig{} }
 func (*ReplicaConfig) ProtoMessage() {}
 
-func (m *ReplicaConfig) GetUpdateTLS() *TLSConfig {
+func (m *ReplicaConfig) GetPublicTLS() *TLSConfig {
 	if m != nil {
-		return m.UpdateTLS
-	}
-	return nil
-}
-
-func (m *ReplicaConfig) GetLookupTLS() *TLSConfig {
-	if m != nil {
-		return m.LookupTLS
+		return m.PublicTLS
 	}
 	return nil
 }
@@ -186,17 +177,11 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 	if this.SigningKeyID != that1.SigningKeyID {
 		return fmt.Errorf("SigningKeyID this(%v) Not Equal that(%v)", this.SigningKeyID, that1.SigningKeyID)
 	}
-	if this.UpdateAddr != that1.UpdateAddr {
-		return fmt.Errorf("UpdateAddr this(%v) Not Equal that(%v)", this.UpdateAddr, that1.UpdateAddr)
+	if this.PublicAddr != that1.PublicAddr {
+		return fmt.Errorf("PublicAddr this(%v) Not Equal that(%v)", this.PublicAddr, that1.PublicAddr)
 	}
-	if !this.UpdateTLS.Equal(that1.UpdateTLS) {
-		return fmt.Errorf("UpdateTLS this(%v) Not Equal that(%v)", this.UpdateTLS, that1.UpdateTLS)
-	}
-	if this.LookupAddr != that1.LookupAddr {
-		return fmt.Errorf("LookupAddr this(%v) Not Equal that(%v)", this.LookupAddr, that1.LookupAddr)
-	}
-	if !this.LookupTLS.Equal(that1.LookupTLS) {
-		return fmt.Errorf("LookupTLS this(%v) Not Equal that(%v)", this.LookupTLS, that1.LookupTLS)
+	if !this.PublicTLS.Equal(that1.PublicTLS) {
+		return fmt.Errorf("PublicTLS this(%v) Not Equal that(%v)", this.PublicTLS, that1.PublicTLS)
 	}
 	if this.VerifierAddr != that1.VerifierAddr {
 		return fmt.Errorf("VerifierAddr this(%v) Not Equal that(%v)", this.VerifierAddr, that1.VerifierAddr)
@@ -253,16 +238,10 @@ func (this *ReplicaConfig) Equal(that interface{}) bool {
 	if this.SigningKeyID != that1.SigningKeyID {
 		return false
 	}
-	if this.UpdateAddr != that1.UpdateAddr {
+	if this.PublicAddr != that1.PublicAddr {
 		return false
 	}
-	if !this.UpdateTLS.Equal(that1.UpdateTLS) {
-		return false
-	}
-	if this.LookupAddr != that1.LookupAddr {
-		return false
-	}
-	if !this.LookupTLS.Equal(that1.LookupTLS) {
+	if !this.PublicTLS.Equal(that1.PublicTLS) {
 		return false
 	}
 	if this.VerifierAddr != that1.VerifierAddr {
@@ -479,10 +458,8 @@ func (this *ReplicaConfig) GoString() string {
 		`KeyserverConfig:` + strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1),
 		`ReplicaID:` + fmt.Sprintf("%#v", this.ReplicaID),
 		`SigningKeyID:` + fmt.Sprintf("%#v", this.SigningKeyID),
-		`UpdateAddr:` + fmt.Sprintf("%#v", this.UpdateAddr),
-		`UpdateTLS:` + fmt.Sprintf("%#v", this.UpdateTLS),
-		`LookupAddr:` + fmt.Sprintf("%#v", this.LookupAddr),
-		`LookupTLS:` + fmt.Sprintf("%#v", this.LookupTLS),
+		`PublicAddr:` + fmt.Sprintf("%#v", this.PublicAddr),
+		`PublicTLS:` + fmt.Sprintf("%#v", this.PublicTLS),
 		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
 		`VerifierTLS:` + fmt.Sprintf("%#v", this.VerifierTLS),
 		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
@@ -578,101 +555,85 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.SigningKeyID)))
 		i += copy(data[i:], m.SigningKeyID)
 	}
-	if len(m.UpdateAddr) > 0 {
+	if len(m.PublicAddr) > 0 {
 		data[i] = 0x22
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.UpdateAddr)))
-		i += copy(data[i:], m.UpdateAddr)
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.PublicAddr)))
+		i += copy(data[i:], m.PublicAddr)
 	}
-	if m.UpdateTLS != nil {
+	if m.PublicTLS != nil {
 		data[i] = 0x2a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.UpdateTLS.Size()))
-		n2, err := m.UpdateTLS.MarshalTo(data[i:])
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.PublicTLS.Size()))
+		n2, err := m.PublicTLS.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n2
 	}
-	if len(m.LookupAddr) > 0 {
-		data[i] = 0x32
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LookupAddr)))
-		i += copy(data[i:], m.LookupAddr)
-	}
-	if m.LookupTLS != nil {
-		data[i] = 0x3a
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.LookupTLS.Size()))
-		n3, err := m.LookupTLS.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n3
-	}
 	if len(m.VerifierAddr) > 0 {
-		data[i] = 0x42
+		data[i] = 0x32
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VerifierAddr)))
 		i += copy(data[i:], m.VerifierAddr)
 	}
 	if m.VerifierTLS != nil {
-		data[i] = 0x4a
+		data[i] = 0x3a
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(m.VerifierTLS.Size()))
-		n4, err := m.VerifierTLS.MarshalTo(data[i:])
+		n3, err := m.VerifierTLS.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n4
+		i += n3
 	}
 	if len(m.HKPAddr) > 0 {
-		data[i] = 0x52
+		data[i] = 0x42
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HKPAddr)))
 		i += copy(data[i:], m.HKPAddr)
 	}
 	if m.HKPTLS != nil {
-		data[i] = 0x5a
+		data[i] = 0x4a
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(m.HKPTLS.Size()))
-		n5, err := m.HKPTLS.MarshalTo(data[i:])
+		n4, err := m.HKPTLS.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n5
+		i += n4
 	}
 	if len(m.RaftAddr) > 0 {
-		data[i] = 0x62
+		data[i] = 0x52
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
 		i += copy(data[i:], m.RaftAddr)
 	}
 	if m.RaftTLS != nil {
-		data[i] = 0x6a
+		data[i] = 0x5a
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
-		n6, err := m.RaftTLS.MarshalTo(data[i:])
+		n5, err := m.RaftTLS.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n6
+		i += n5
 	}
 	if len(m.LevelDBPath) > 0 {
-		data[i] = 0x72
+		data[i] = 0x62
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LevelDBPath)))
 		i += copy(data[i:], m.LevelDBPath)
 	}
 	if m.RaftHeartbeat != nil {
-		data[i] = 0x7a
+		data[i] = 0x6a
 		i++
 		i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
-		n7, err := m.RaftHeartbeat.MarshalTo(data[i:])
+		n6, err := m.RaftHeartbeat.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n7
+		i += n6
 	}
 	return i, nil
 }
@@ -712,27 +673,27 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n8, err := m.MinEpochInterval.MarshalTo(data[i:])
+	n7, err := m.MinEpochInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	data[i] = 0x2a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
+	n8, err := m.MaxEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n8
-	data[i] = 0x2a
+	data[i] = 0x32
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n9, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
+	n9, err := m.ProposalRetryInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n9
-	data[i] = 0x32
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n10, err := m.ProposalRetryInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
 	if len(m.InitialReplicas) > 0 {
 		for _, msg := range m.InitialReplicas {
 			data[i] = 0x3a
@@ -834,13 +795,9 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 	this.KeyserverConfig = *v1
 	this.ReplicaID = uint64(uint64(r.Uint32()))
 	this.SigningKeyID = randStringKeyserverconfig(r)
-	this.UpdateAddr = randStringKeyserverconfig(r)
+	this.PublicAddr = randStringKeyserverconfig(r)
 	if r.Intn(10) != 0 {
-		this.UpdateTLS = NewPopulatedTLSConfig(r, easy)
-	}
-	this.LookupAddr = randStringKeyserverconfig(r)
-	if r.Intn(10) != 0 {
-		this.LookupTLS = NewPopulatedTLSConfig(r, easy)
+		this.PublicTLS = NewPopulatedTLSConfig(r, easy)
 	}
 	this.VerifierAddr = randStringKeyserverconfig(r)
 	if r.Intn(10) != 0 {
@@ -988,20 +945,12 @@ func (m *ReplicaConfig) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
-	l = len(m.UpdateAddr)
+	l = len(m.PublicAddr)
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
-	if m.UpdateTLS != nil {
-		l = m.UpdateTLS.Size()
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.LookupAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	if m.LookupTLS != nil {
-		l = m.LookupTLS.Size()
+	if m.PublicTLS != nil {
+		l = m.PublicTLS.Size()
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
 	l = len(m.VerifierAddr)
@@ -1116,10 +1065,8 @@ func (this *ReplicaConfig) String() string {
 		`KeyserverConfig:` + strings.Replace(strings.Replace(this.KeyserverConfig.String(), "KeyserverConfig", "KeyserverConfig", 1), `&`, ``, 1) + `,`,
 		`ReplicaID:` + fmt.Sprintf("%v", this.ReplicaID) + `,`,
 		`SigningKeyID:` + fmt.Sprintf("%v", this.SigningKeyID) + `,`,
-		`UpdateAddr:` + fmt.Sprintf("%v", this.UpdateAddr) + `,`,
-		`UpdateTLS:` + strings.Replace(fmt.Sprintf("%v", this.UpdateTLS), "TLSConfig", "TLSConfig", 1) + `,`,
-		`LookupAddr:` + fmt.Sprintf("%v", this.LookupAddr) + `,`,
-		`LookupTLS:` + strings.Replace(fmt.Sprintf("%v", this.LookupTLS), "TLSConfig", "TLSConfig", 1) + `,`,
+		`PublicAddr:` + fmt.Sprintf("%v", this.PublicAddr) + `,`,
+		`PublicTLS:` + strings.Replace(fmt.Sprintf("%v", this.PublicTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
 		`VerifierTLS:` + strings.Replace(fmt.Sprintf("%v", this.VerifierTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
@@ -1256,7 +1203,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateAddr", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicAddr", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1274,11 +1221,11 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.UpdateAddr = string(data[iNdEx:postIndex])
+			m.PublicAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UpdateTLS", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicTLS", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1299,66 +1246,14 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.UpdateTLS == nil {
-				m.UpdateTLS = &TLSConfig{}
+			if m.PublicTLS == nil {
+				m.PublicTLS = &TLSConfig{}
 			}
-			if err := m.UpdateTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.PublicTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LookupAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.LookupAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LookupTLS", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.LookupTLS == nil {
-				m.LookupTLS = &TLSConfig{}
-			}
-			if err := m.LookupTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field VerifierAddr", wireType)
 			}
@@ -1380,7 +1275,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			}
 			m.VerifierAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 9:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field VerifierTLS", wireType)
 			}
@@ -1410,7 +1305,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 10:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field HKPAddr", wireType)
 			}
@@ -1432,7 +1327,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			}
 			m.HKPAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 11:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field HKPTLS", wireType)
 			}
@@ -1462,7 +1357,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 12:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
 			}
@@ -1484,7 +1379,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			}
 			m.RaftAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 13:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftTLS", wireType)
 			}
@@ -1514,7 +1409,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 14:
+		case 12:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LevelDBPath", wireType)
 			}
@@ -1536,7 +1431,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			}
 			m.LevelDBPath = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 15:
+		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftHeartbeat", wireType)
 			}

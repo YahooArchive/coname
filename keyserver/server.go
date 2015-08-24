@@ -59,9 +59,9 @@ type Keyserver struct {
 	log replication.LogReplicator
 	rs  proto.ReplicaState
 
-	updateServer, lookupServer, verifierServer            *grpc.Server
-	hkpFront                                              *hkpfront.HKPFront
-	updateListen, lookupListen, verifierListen, hkpListen net.Listener
+	publicServer, verifierServer            *grpc.Server
+	hkpFront                                *hkpfront.HKPFront
+	publicListen, verifierListen, hkpListen net.Listener
 
 	clk       clock.Clock
 	lookupTXT func(string) ([]string, error)
@@ -108,11 +108,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	if err != nil {
 		return nil, err
 	}
-	lookupTLS, err := cfg.LookupTLS.Config(getKey)
-	if err != nil {
-		return nil, err
-	}
-	updateTLS, err := cfg.UpdateTLS.Config(getKey)
+	publicTLS, err := cfg.PublicTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
@@ -169,29 +165,16 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
 
 	ok := false
-	if cfg.UpdateAddr != "" {
-		ks.updateServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(updateTLS)))
-		proto.RegisterE2EKSUpdateServer(ks.updateServer, ks)
-		ks.updateListen, err = net.Listen("tcp", cfg.UpdateAddr)
+	if cfg.PublicAddr != "" {
+		ks.publicServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(publicTLS)))
+		proto.RegisterE2EKSPublicServer(ks.publicServer, ks)
+		ks.publicListen, err = net.Listen("tcp", cfg.PublicAddr)
 		if err != nil {
 			return nil, err
 		}
 		defer func() {
 			if !ok {
-				ks.updateListen.Close()
-			}
-		}()
-	}
-	if cfg.LookupAddr != "" {
-		ks.lookupServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(lookupTLS)))
-		proto.RegisterE2EKSLookupServer(ks.lookupServer, ks)
-		ks.lookupListen, err = net.Listen("tcp", cfg.LookupAddr)
-		if err != nil {
-			return nil, err
-		}
-		defer func() {
-			if !ok {
-				ks.lookupListen.Close()
+				ks.publicListen.Close()
 			}
 		}()
 	}
@@ -232,11 +215,8 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 // Start makes the keyserver start handling requests (forks goroutines).
 func (ks *Keyserver) Start() {
 	ks.log.Start(ks.rs.NextIndexLog)
-	if ks.updateServer != nil {
-		go ks.updateServer.Serve(ks.updateListen)
-	}
-	if ks.lookupServer != nil {
-		go ks.lookupServer.Serve(ks.lookupListen)
+	if ks.publicServer != nil {
+		go ks.publicServer.Serve(ks.publicListen)
 	}
 	if ks.verifierServer != nil {
 		go ks.verifierServer.Serve(ks.verifierListen)
@@ -251,11 +231,8 @@ func (ks *Keyserver) Start() {
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
 		// FIXME: where are the listeners closed?
-		if ks.updateServer != nil {
-			ks.updateServer.Stop()
-		}
-		if ks.lookupServer != nil {
-			ks.lookupServer.Stop()
+		if ks.publicServer != nil {
+			ks.publicServer.Stop()
 		}
 		if ks.verifierServer != nil {
 			ks.verifierServer.Stop()

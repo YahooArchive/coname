@@ -224,12 +224,10 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 
 			SigningKeyID: "signing",
 			ReplicaID:    replicaID,
-			UpdateAddr:   "localhost:0",
-			LookupAddr:   "localhost:0",
+			PublicAddr:   "localhost:0",
 			VerifierAddr: "localhost:0",
 			HKPAddr:      "localhost:0",
-			UpdateTLS:    &proto.TLSConfig{Certificates: pcerts},
-			LookupTLS:    &proto.TLSConfig{Certificates: pcerts},
+			PublicTLS:    &proto.TLSConfig{Certificates: pcerts},
 			VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:       &proto.TLSConfig{Certificates: pcerts},
 		})
@@ -355,7 +353,7 @@ func doUpdate(
 	t *testing.T, ks *Keyserver, clientConfig *proto.Config, caPool *x509.CertPool, now time.Time,
 	name string, profileContents proto.Profile,
 ) *proto.EncodedProfile {
-	conn, err := grpc.Dial(ks.updateListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(ks.publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +379,7 @@ func doUpdate(
 		},
 	}
 	entry.UpdateEncoding()
-	updateC := proto.NewE2EKSUpdateClient(conn)
+	updateC := proto.NewE2EKSPublicClient(conn)
 	proof, err := updateC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
@@ -465,11 +463,11 @@ func TestKeyserverRoundtrip(t *testing.T) {
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := proto.NewE2EKSLookupClient(conn)
+	c := proto.NewE2EKSPublicClient(conn)
 
 	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
@@ -704,11 +702,11 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	conn, err := grpc.Dial(kss[0].lookupListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := proto.NewE2EKSLookupClient(conn)
+	c := proto.NewE2EKSPublicClient(conn)
 	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
 		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,

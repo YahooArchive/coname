@@ -32,19 +32,17 @@ message ReplicaConfig {
 	// The following fields describe how this particular replica should accept
 	// requests from the network.
 
-	string update_addr = 4;
-	TLSConfig update_tls = 5 [(gogoproto.customname) = "UpdateTLS"];
-	string lookup_addr = 6;
-	TLSConfig lookup_tls = 7 [(gogoproto.customname) = "LookupTLS"];
-	string verifier_addr = 8;
-	TLSConfig verifier_tls = 9 [(gogoproto.customname) = "VerifierTLS"];
-	string hkp_addr = 10 [(gogoproto.customname) = "HKPAddr"];
-	TLSConfig hkp_tls = 11 [(gogoproto.customname) = "HKPTLS"];
-	string raft_addr = 12;
-	TLSConfig raft_tls = 13 [(gogoproto.customname) = "RaftTLS"];
+	string public_addr = 4;
+	TLSConfig public_tls = 5 [(gogoproto.customname) = "PublicTLS"];
+	string verifier_addr = 6;
+	TLSConfig verifier_tls = 7 [(gogoproto.customname) = "VerifierTLS"];
+	string hkp_addr = 8 [(gogoproto.customname) = "HKPAddr"];
+	TLSConfig hkp_tls = 9 [(gogoproto.customname) = "HKPTLS"];
+	string raft_addr = 10;
+	TLSConfig raft_tls = 11 [(gogoproto.customname) = "RaftTLS"];
 
-	string leveldb_path = 14 [(gogoproto.customname) = "LevelDBPath"];
-	Duration raft_heartbeat = 15;
+	string leveldb_path = 12 [(gogoproto.customname) = "LevelDBPath"];
+	Duration raft_heartbeat = 13;
 }
 
 // KeyserverConfig describes the keyserver-wide configuration. All replicas

@@ -17,11 +17,8 @@ package proto;
 import "gogoproto/gogo.proto";
 import "timestamp.proto";
 
-service E2EKSLookup {
+service E2EKSPublic {
 	rpc Lookup(LookupRequest) returns (LookupProof);
-}
-service E2EKSUpdate {
-	rpc Lookup(LookupRequest) returns (LookupProof); // TODO: do grpc interfaces support embedding/composition/inheritance?
 	rpc Update(UpdateRequest) returns (LookupProof);
 }
 
