@@ -16,15 +16,15 @@ package keyserver
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"log"
 	"math"
 
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/dkim"
+	"github.com/yahoo/coname/proto"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 )
 
@@ -64,7 +64,8 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			if err != nil {
 				return fmt.Errorf("bad base64 in email proof: %q", payload)
 			}
-			entryHashProposed := sha256.Sum256(req.Update.NewEntry.Encoding)
+			var entryHashProposed [32]byte
+			sha3.ShakeSum256(entryHashProposed[:], req.Update.NewEntry.Encoding)
 			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
 				return fmt.Errorf("email proof does not match requested entry")
 			}

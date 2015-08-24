@@ -17,13 +17,13 @@ package verifier
 import (
 	"bytes"
 	"crypto"
-	"crypto/sha256"
 	"encoding/binary"
 	"log"
 	"math"
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
@@ -173,7 +173,8 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			// the keyserver should filter all bad updates
 			log.Panicf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
-		entryHash := sha256.Sum256(step.Update.NewEntry.Encoding)
+		var entryHash [32]byte
+		sha3.ShakeSum256(entryHash[:], step.Update.NewEntry.Encoding)
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -217,8 +218,10 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			}, nil},
 			Signatures: make(map[uint64][]byte, 1),
 		}
-		h := sha256.Sum256(seh.Head.Head.Encoding)
-		vs.PreviousSummaryHash = h[:]
+		if vs.PreviousSummaryHash == nil {
+			vs.PreviousSummaryHash = make([]byte, 64)
+		}
+		sha3.ShakeSum256(vs.PreviousSummaryHash[:], seh.Head.Head.Encoding)
 		seh.Head.UpdateEncoding()
 		seh.Signatures[vr.id] = ed25519.Sign(vr.signingKey, proto.MustMarshal(&seh.Head))[:]
 		wb.Put(tableRatifications(vs.NextEpoch, vr.id), proto.MustMarshal(seh))

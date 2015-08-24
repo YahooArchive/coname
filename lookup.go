@@ -2,14 +2,23 @@ package coname
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/sha3"
+
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 )
+
+func CheckCommitment(commitment []byte, profile *proto.EncodedProfile) bool {
+	// The hash used here is modeled as a random oracle. This means that SHA3
+	// is fine but SHA2 is not (consider HMAC-SHA2 instead).
+	var commitmentCheck [64]byte
+	sha3.ShakeSum256(commitmentCheck[:], profile.Encoding) // the profile includes a nonce
+	return bytes.Equal(commitment[:], commitmentCheck[:])
+}
 
 func GetRealmByDomain(cfg *proto.Config, domain string) (ret *proto.RealmConfig, err error) {
 	for _, realm := range cfg.Realms {
@@ -53,7 +62,8 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return
 	}
 
-	entryHash := sha256.Sum256(pf.Entry.Encoding)
+	var entryHash [32]byte
+	sha3.ShakeSum256(entryHash[:], pf.Entry.Encoding)
 	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
@@ -62,8 +72,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
 	}
 
-	profileHash := sha256.Sum256(pf.Profile.Encoding)
-	if !bytes.Equal(profileHash[:], pf.Entry.ProfileHash) {
+	if !CheckCommitment(pf.Entry.ProfileHash, &pf.Profile) {
 		return nil, fmt.Errorf("VerifyLookup: profile does not match the hash in the entry")
 	}
 

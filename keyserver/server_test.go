@@ -19,7 +19,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
@@ -37,6 +36,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/openpgp/armor"
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc"
@@ -367,7 +367,8 @@ func doUpdate(
 		Profile: profileContents,
 	}
 	profile.UpdateEncoding()
-	h := sha256.Sum256(profile.Encoding)
+	var commitment [64]byte
+	sha3.ShakeSum256(commitment[:], profile.Encoding)
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   vrf.Compute([]byte(name), ks.vrfSecret), // TODO remove this
@@ -380,7 +381,7 @@ func doUpdate(
 					Subexpressions: []*proto.QuorumExpr{},
 				},
 			},
-			ProfileHash: h[:],
+			ProfileHash: commitment[:],
 		},
 	}
 	entry.UpdateEncoding()

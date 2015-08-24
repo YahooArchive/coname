@@ -15,12 +15,14 @@
 package proto
 
 import (
-	"crypto/sha256"
 	"encoding/binary"
+
+	"golang.org/x/crypto/sha3"
 )
 
 // KeyID computes the ID of public key.
 func KeyID(sv *PublicKey) uint64 {
-	h := sha256.Sum256(MustMarshal(sv))
+	var h [8]byte
+	sha3.ShakeSum256(h[:], MustMarshal(sv))
 	return binary.LittleEndian.Uint64(h[:8])
 }

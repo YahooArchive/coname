@@ -16,14 +16,15 @@ package coname
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+
+	"golang.org/x/crypto/sha3"
 )
 
 const (
-	HashBytes  = sha256.Size
-	IndexBytes = sha256.Size
+	HashBytes  = 32
+	IndexBytes = 32
 	IndexBits  = IndexBytes * 8
 )
 
@@ -87,7 +88,7 @@ const (
 // * Add the prefix of the index, to protect against limited hash collisions or bugs.
 // This gives H(k_internal || h_child0 || h_child1 || prefix || depth)
 func HashInternalNode(prefixBits []bool, childHashes *[2][HashBytes]byte) []byte {
-	h := sha256.New()
+	h := sha3.NewShake256()
 	h.Write([]byte{InternalNodeIdentifier})
 	h.Write(childHashes[0][:])
 	h.Write(childHashes[1][:])
@@ -95,25 +96,29 @@ func HashInternalNode(prefixBits []bool, childHashes *[2][HashBytes]byte) []byte
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, uint32(len(prefixBits)))
 	h.Write(buf)
-	return h.Sum(nil)
+	var ret [HashBytes]byte
+	h.Read(ret[:])
+	return ret[:]
 }
 
 // This is the same as in the CONIKS paper.
 // H(k_empty || nonce || prefix || depth)
 func HashEmptyBranch(treeNonce []byte, prefixBits []bool) []byte {
-	h := sha256.New()
+	h := sha3.NewShake256()
 	h.Write([]byte{EmptyBranchIdentifier})
 	h.Write(treeNonce)
 	h.Write(ToBytes(prefixBits))
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, uint32(len(prefixBits)))
 	h.Write(buf)
-	return h.Sum(nil)
+	var ret [HashBytes]byte
+	h.Read(ret[:])
+	return ret[:]
 }
 
 // This is the same as in the CONIKS paper: H(k_leaf || nonce || index || depth || value)
 func HashLeaf(treeNonce []byte, indexBytes []byte, depth int, value []byte) []byte {
-	h := sha256.New()
+	h := sha3.NewShake256()
 	h.Write([]byte{LeafIdentifier})
 	h.Write(treeNonce)
 	h.Write(indexBytes)
@@ -121,7 +126,9 @@ func HashLeaf(treeNonce []byte, indexBytes []byte, depth int, value []byte) []by
 	binary.LittleEndian.PutUint32(buf, uint32(depth))
 	h.Write(buf)
 	h.Write(value)
-	return h.Sum(nil)
+	var ret [HashBytes]byte
+	h.Read(ret[:])
+	return ret[:]
 }
 
 func BitToIndex(b bool) int {

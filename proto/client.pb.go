@@ -417,9 +417,9 @@ func (m *AuthorizationPolicy) GetQuorum() *QuorumExpr {
 // PublicKey wraps a public key of a cryptographically secure signature
 // scheme and verification metadata. Each verifier can have its own signature
 // format and needs to implement serialization and deserialization of its own
-// signatures. The ID of a public key is defined as the first 64 bits of the
-// protobuf-encoded public key (and interpreted as little-endian when a numeric
-// representation is required).
+// signatures. The ID of a public key is defined as the 64-bit SHAKE256 hash of
+// the protobuf-encoded public key (and interpreted as little-endian when a
+// numeric representation is required).
 type PublicKey struct {
 	Ed25519 []byte `protobuf:"bytes,1,opt,name=ed25519,proto3" json:"ed25519,omitempty"`
 }

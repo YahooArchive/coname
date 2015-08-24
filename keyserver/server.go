@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
@@ -27,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
@@ -329,7 +329,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			ks.wr.Notify(step.UID, updateOutput{Error: err})
 			return
 		}
-		entryHash := sha256.Sum256(step.Update.Update.NewEntry.Encoding)
+		var entryHash [32]byte
+		sha3.ShakeSum256(entryHash[:], step.Update.Update.NewEntry.Encoding)
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -398,9 +399,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Timestamp: step.EpochDelimiter.Timestamp,
 		}, nil}
 		teh.Head.UpdateEncoding()
-		h := sha256.Sum256(teh.Head.Encoding)
-		rs.PreviousSummaryHash = h[:]
 		teh.UpdateEncoding()
+		if rs.PreviousSummaryHash == nil {
+			rs.PreviousSummaryHash = make([]byte, 64)
+		}
+		sha3.ShakeSum256(rs.PreviousSummaryHash[:], teh.Head.Encoding)
 
 		wb.Put(tableEpochHeads(step.EpochDelimiter.EpochNumber), proto.MustMarshal(teh))
 
