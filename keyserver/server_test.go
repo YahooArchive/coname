@@ -167,10 +167,6 @@ func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replicat
 	return ret, dbs, clks, nw, teardown
 }
 
-func majority(nReplicas int) int {
-	return nReplicas/2 + 1
-}
-
 func majorityQuorum(candidates []uint64) *proto.QuorumExpr {
 	return &proto.QuorumExpr{Threshold: uint32(majority(len(candidates))), Candidates: candidates}
 }
