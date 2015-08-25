@@ -26,6 +26,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -69,12 +70,12 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	if strings.HasSuffix(keyid, ".ed25519secret") {
+	if path.Ext(keyid) == ".ed25519secret" {
 		if got, want := len(fileContents), ed25519.PrivateKeySize; got != want {
 			return nil, fmt.Errorf("ed25519 private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
 		return fileContents, nil
-	} else if strings.HasSuffix(keyid, ".vrfsecret") {
+	} else if path.Ext(keyid) == "vrfsecret" {
 		if got, want := len(fileContents), vrf.SecretKeySize; got != want {
 			return nil, fmt.Errorf("VRF private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
