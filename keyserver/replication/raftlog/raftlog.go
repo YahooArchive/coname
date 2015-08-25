@@ -145,9 +145,15 @@ func (l *raftLog) Start(lo uint64) error {
 func (l *raftLog) Stop() error {
 	l.stopOnce.Do(func() {
 		l.grpcServer.Stop()
-		close(l.stop)
-		<-l.stopped
-		l.node.Stop()
+		if l.stop != nil {
+			close(l.stop)
+		}
+		if l.stopped != nil {
+			<-l.stopped
+		}
+		if l.node != nil {
+			l.node.Stop()
+		}
 	})
 	return nil
 }
