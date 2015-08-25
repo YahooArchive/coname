@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/dkim"
@@ -60,6 +61,13 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			if email != req.UserID {
 				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", req.UserID, email)
 			}
+			lastAtIndex := strings.LastIndex(req.UserID, "@")
+			if lastAtIndex == -1 {
+				return fmt.Errorf("requested user id is not a valid email address: %q", req.UserID)
+			}
+			if _, ok := ks.emailProofAllowedDomains[req.UserID[:lastAtIndex]]; !ok {
+				return fmt.Errorf("domain not in registration whitelist: %q", req.UserID[:lastAtIndex])
+			}
 			entryHash, err := base64.StdEncoding.DecodeString(payload)
 			if err != nil {
 				return fmt.Errorf("bad base64 in email proof: %q", payload)
@@ -87,6 +95,7 @@ type updateOutput struct {
 
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
+	ctx, _ = context.WithTimeout(ctx, ks.clientTimeout)
 	if err := ks.verifyUpdateEdge(req); err != nil {
 		return nil, err
 	}

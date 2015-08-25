@@ -30,7 +30,7 @@ func CheckEmailProof(dkimMail []byte, toAddr, subjectPrefix string, LookupTXT fu
 		}
 	}
 	if !toHeaderSigned {
-		return "", "", fmt.Errorf("the From header is not signed")
+		return "", "", fmt.Errorf("the To header is not signed")
 	}
 	if !fromHeaderSigned {
 		return "", "", fmt.Errorf("the From header is not signed")

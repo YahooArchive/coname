@@ -102,19 +102,21 @@ func main() {
 		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls.pem", nil}}
 		heartbeat := proto.DurationStamp(1 * time.Second)
 		cfg := &proto.ReplicaConfig{
-			KeyserverConfig: ksConfig,
-			SigningKeyID:    "signing.ed25519secret",
-			ReplicaID:       replicaID,
-			PublicAddr:      fmt.Sprintf("%s:%d", host, publicPort),
-			VerifierAddr:    fmt.Sprintf("%s:%d", host, verifierPort),
-			HKPAddr:         fmt.Sprintf("%s:%d", host, hkpPort),
-			RaftAddr:        fmt.Sprintf("%s:%d", host, raftPort),
-			PublicTLS:       &proto.TLSConfig{Certificates: pcerts},
-			VerifierTLS:     &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HKPTLS:          &proto.TLSConfig{Certificates: pcerts},
-			RaftTLS:         &proto.TLSConfig{Certificates: pcerts},
-			LevelDBPath:     "db", // TODO
-			RaftHeartbeat:   &heartbeat,
+			KeyserverConfig:     ksConfig,
+			SigningKeyID:        "signing.ed25519secret",
+			ReplicaID:           replicaID,
+			PublicAddr:          fmt.Sprintf("%s:%d", host, publicPort),
+			VerifierAddr:        fmt.Sprintf("%s:%d", host, verifierPort),
+			HKPAddr:             fmt.Sprintf("%s:%d", host, hkpPort),
+			RaftAddr:            fmt.Sprintf("%s:%d", host, raftPort),
+			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
+			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
+			RaftTLS:             &proto.TLSConfig{Certificates: pcerts},
+			LevelDBPath:         "db", // TODO
+			RaftHeartbeat:       heartbeat,
+			ClientTimeout:       proto.DurationStamp(1 * time.Minute),
+			LaggingVerifierScan: 1000,
 		}
 
 		if _, err := os.Stat(host + "/"); os.IsNotExist(err) {

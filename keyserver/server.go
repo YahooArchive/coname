@@ -49,11 +49,12 @@ type Keyserver struct {
 	serverID, replicaID uint64
 	serverAuthorized    *proto.AuthorizationPolicy
 
-	sehKey                  *[ed25519.PrivateKeySize]byte
-	vrfSecret               *[vrf.SecretKeySize]byte
-	emailProofToAddr        string
-	emailProofSubjectPrefix string
-	insecureSkipEmailProof  bool
+	sehKey                   *[ed25519.PrivateKeySize]byte
+	vrfSecret                *[vrf.SecretKeySize]byte
+	emailProofToAddr         string
+	emailProofSubjectPrefix  string
+	emailProofAllowedDomains map[string]struct{}
+	insecureSkipEmailProof   bool
 
 	db  kv.DB
 	log replication.LogReplicator
@@ -122,17 +123,21 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	}
 
 	ks = &Keyserver{
-		realm:                   cfg.Realm,
-		serverID:                cfg.ServerID,
-		replicaID:               cfg.ReplicaID,
-		serverAuthorized:        initialAuthorizationPolicy,
-		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
-		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
-		emailProofToAddr:        cfg.EmailProofToAddr,
-		emailProofSubjectPrefix: cfg.EmailProofToAddr,
-		minEpochInterval:        cfg.MinEpochInterval.Duration(),
-		maxEpochInterval:        cfg.MaxEpochInterval.Duration(),
-		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
+		realm:                    cfg.Realm,
+		serverID:                 cfg.ServerID,
+		replicaID:                cfg.ReplicaID,
+		serverAuthorized:         initialAuthorizationPolicy,
+		sehKey:                   signingKey.(*[ed25519.PrivateKeySize]byte),
+		vrfSecret:                vrfKey.(*[vrf.SecretKeySize]byte),
+		emailProofToAddr:         cfg.EmailProofToAddr,
+		emailProofSubjectPrefix:  cfg.EmailProofSubjectPrefix,
+		emailProofAllowedDomains: make(map[string]struct{}),
+		laggingVerifierScan:      cfg.LaggingVerifierScan,
+		clientTimeout:            cfg.ClientTimeout.Duration(),
+		minEpochInterval:         cfg.MinEpochInterval.Duration(),
+		maxEpochInterval:         cfg.MaxEpochInterval.Duration(),
+		retryProposalInterval:    cfg.ProposalRetryInterval.Duration(),
+
 		db:                 db,
 		log:                log,
 		stop:               make(chan struct{}),
@@ -146,6 +151,9 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		lookupTXT:             LookupTXT,
 		minEpochIntervalTimer: clk.Timer(0),
 		maxEpochIntervalTimer: clk.Timer(0),
+	}
+	for _, d := range cfg.EmailProofAllowedDomains {
+		ks.emailProofAllowedDomains[d] = struct{}{}
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {

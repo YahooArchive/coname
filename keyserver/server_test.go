@@ -222,14 +222,16 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 				ProposalRetryInterval: proto.DurationStamp(poll),
 			},
 
-			SigningKeyID: "signing",
-			ReplicaID:    replicaID,
-			PublicAddr:   "localhost:0",
-			VerifierAddr: "localhost:0",
-			HKPAddr:      "localhost:0",
-			PublicTLS:    &proto.TLSConfig{Certificates: pcerts},
-			VerifierTLS:  &proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HKPTLS:       &proto.TLSConfig{Certificates: pcerts},
+			SigningKeyID:        "signing",
+			ReplicaID:           replicaID,
+			PublicAddr:          "localhost:0",
+			VerifierAddr:        "localhost:0",
+			HKPAddr:             "localhost:0",
+			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
+			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
+			ClientTimeout:       proto.DurationStamp(time.Hour),
+			LaggingVerifierScan: 1000 * 1000 * 1000,
 		})
 		keyGetters = append(keyGetters, func(keyid string) (crypto.PrivateKey, error) {
 			switch keyid {

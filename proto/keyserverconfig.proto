@@ -36,13 +36,13 @@ message ReplicaConfig {
 	// requests from the network.
 
 	string public_addr = 4;
-	TLSConfig public_tls = 5 [(gogoproto.customname) = "PublicTLS"];
+	TLSConfig public_tls = 5 [(gogoproto.customname) = "PublicTLS", (gogoproto.nullable) = false];
 	string verifier_addr = 6;
-	TLSConfig verifier_tls = 7 [(gogoproto.customname) = "VerifierTLS"];
+	TLSConfig verifier_tls = 7 [(gogoproto.customname) = "VerifierTLS", (gogoproto.nullable) = false];
 	string hkp_addr = 8 [(gogoproto.customname) = "HKPAddr"];
-	TLSConfig hkp_tls = 9 [(gogoproto.customname) = "HKPTLS"];
+	TLSConfig hkp_tls = 9 [(gogoproto.customname) = "HKPTLS", (gogoproto.nullable) = false];
 	string raft_addr = 10;
-	TLSConfig raft_tls = 11 [(gogoproto.customname) = "RaftTLS"];
+	TLSConfig raft_tls = 11 [(gogoproto.customname) = "RaftTLS", (gogoproto.nullable) = false];
 
 	// LevelDBPath specifies the directory in which the databse is stored.
 	// Nothing else should use this directory.
@@ -53,11 +53,11 @@ message ReplicaConfig {
 	// heartbeat interval generates more network traffic; increasing the
 	// interval increases the time it takes to detect a failed replica and
 	// perform an automated failover.
-	Duration raft_heartbeat = 15;
+	Duration raft_heartbeat = 15 [(gogoproto.nullable) = false];
 
 	// LaggingVerifierScan specifies the maximum number of epochs by which a
 	// verifier can be lagging us for us to still serve its signature to
-	// clients. Finding the verifier signatures is currentl implemented using a
+	// clients. Finding the verifier signatures is currently implemented using a
 	// linear scan backwards from the current epoch, so setting a very high
 	// value can open up cause significant amounts of database reads on the
 	// server. A fancy index-based scan would be possible, but there is no
@@ -69,7 +69,7 @@ message ReplicaConfig {
 	// ClientTimeout specifies the maximum amount of time the server is willing
 	// to allow from the start of a client request to until it is handled. The
 	// zero value means no limit.
-	Duration client_timout = 17;
+	Duration client_timeout = 17 [(gogoproto.nullable) = false];
 }
 
 // KeyserverConfig describes the keyserver-wide configuration. All replicas

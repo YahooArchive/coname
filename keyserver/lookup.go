@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	lookupMaxChainLength   = 100
 	newSignatureBufferSize = 10 // To avoid blocking the keyserver while we're finding signatures in the DB
 )
 
@@ -68,8 +67,8 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 		log.Printf("ERROR: no epochs created yet, so lookup failed")
 		return 0, nil, fmt.Errorf("internal error")
 	}
-	if newestEpoch-oldestEpoch > lookupMaxChainLength {
-		oldestEpoch = newestEpoch - lookupMaxChainLength
+	if newestEpoch-oldestEpoch > ks.laggingVerifierScan { // careful with overflows!
+		oldestEpoch = newestEpoch - ks.laggingVerifierScan
 	}
 	// TODO: (for lookup throughput and latency) optimize this for the case
 	// where verifiers sign everything consecutively
@@ -83,7 +82,7 @@ func (ks *Keyserver) findLatestEpochSignedByQuorum(quorum *proto.QuorumExpr) (ui
 		}
 	}
 	// TODO: (why? ~andreser) return whatever ratification we could find
-	return 0, nil, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", lookupMaxChainLength)
+	return 0, nil, fmt.Errorf("could not find sufficient verification in the last %d epochs (and not bothering to look further into the past)", ks.laggingVerifierScan)
 }
 
 func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch uint64, ratifications []*proto.SignedEpochHead) (
@@ -121,6 +120,7 @@ func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch u
 
 // Lookup implements proto.E2EKSLookupServer
 func (ks *Keyserver) Lookup(ctx context.Context, req *proto.LookupRequest) (*proto.LookupProof, error) {
+	ctx, _ = context.WithTimeout(ctx, ks.clientTimeout)
 	var lookupEpoch uint64
 	var ratifications []*proto.SignedEpochHead
 	if req.Epoch == 0 {
