@@ -1,4 +1,4 @@
-DIRS = config
+DIRS = ../config
 INITDIRS = $(DIRS:%=init-%)
 BUILDDIRS = $(DIRS:%=build-%)
 CLEANDIRS = $(DIRS:%=clean-%)
