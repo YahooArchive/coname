@@ -112,7 +112,7 @@ func main() {
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
-			RaftTLS:             &proto.TLSConfig{Certificates: pcerts},
+			RaftTLS:             proto.TLSConfig{Certificates: pcerts},
 			LevelDBPath:         "db", // TODO
 			RaftHeartbeat:       heartbeat,
 			ClientTimeout:       proto.DurationStamp(1 * time.Minute),

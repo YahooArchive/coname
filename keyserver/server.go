@@ -67,6 +67,9 @@ type Keyserver struct {
 	clk       clock.Clock
 	lookupTXT func(string) ([]string, error)
 
+	clientTimeout       time.Duration
+	laggingVerifierScan uint64
+
 	minEpochInterval, maxEpochInterval, retryProposalInterval time.Duration
 
 	// epochProposer makes sure we try to advance epochs.
