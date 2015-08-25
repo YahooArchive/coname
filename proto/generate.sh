@@ -19,7 +19,7 @@ cd "$DIR"
 
 # go install ./protoc-gen-coname
 
-protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/andres-erbsen/protobuf" -I "$GOPATH/src/github.com/andres-erbsen/protobuf/protobuf" *.proto
+protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/andres-erbsen/protobuf" -I "$GOPATH/src/github.com/andres-erbsen/protobuf/protobuf" -I "$GOPATH/src/github.com/google/protobuf/src/" *.proto
 
 function preserve {
 	sed "s/Thing/$1/g" < encoded.go.template > "$1.pr.go"

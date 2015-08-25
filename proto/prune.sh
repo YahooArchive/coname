@@ -14,6 +14,10 @@
 # the License.
 
 cpp -P -fpreprocessed |
+	grep -v 'next_epoch_policy' |
 	grep -v 'import "gogoproto/gogo.proto";' |
-	sed -r 's:^(\s*)(\S+)(\s+\S+\s*=\s*\S+).*customtype.*:\1bytes\3; // encoded \2:g' |
+	sed -r '/\sEpochHead\s*head\s*=/! s:^(\s*)(\S+)(\s+\S+\s*=\s*\S+).*customtype.*:\1bytes\3;:g' |
+	sed -r 's:^\s+:\t:' |
 	sed 's: \[.*(gogoproto.*\]::g'
+
+#sed -r 's:^(\s*)(\S+)(\s+\S+\s*=\s*\S+).*customtype.*:\1bytes\3; // encoded \2:g' |
