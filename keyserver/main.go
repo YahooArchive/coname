@@ -75,7 +75,7 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 			return nil, fmt.Errorf("ed25519 private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
 		return fileContents, nil
-	} else if path.Ext(keyid) == "vrfsecret" {
+	} else if path.Ext(keyid) == ".vrfsecret" {
 		if got, want := len(fileContents), vrf.SecretKeySize; got != want {
 			return nil, fmt.Errorf("VRF private key %s has wrong size %d (want %d)", keyid, got, want)
 		}
