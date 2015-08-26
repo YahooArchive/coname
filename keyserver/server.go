@@ -32,6 +32,7 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/yahoo/coname"
+	"github.com/yahoo/coname/concurrent"
 	"github.com/yahoo/coname/hkpfront"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
@@ -92,9 +93,9 @@ type Keyserver struct {
 
 	merkletree *merkletree.MerkleTree
 
-	vmb                *VerifierBroadcast
-	wr                 *WaitingRoom
-	signatureBroadcast *Broadcaster
+	sb                 *concurrent.SequenceBroadcast
+	wr                 *concurrent.OneShotPubSub
+	signatureBroadcast *concurrent.PublishSubscribe
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -145,8 +146,8 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		log:                log,
 		stop:               make(chan struct{}),
 		stopped:            make(chan struct{}),
-		wr:                 NewWaitingRoom(),
-		signatureBroadcast: NewBroadcaster(),
+		wr:                 concurrent.NewOneShotPubSub(),
+		signatureBroadcast: concurrent.NewPublishSubscribe(),
 
 		leaderHint: true,
 
@@ -173,7 +174,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
 	ks.updateEpochProposer()
 
-	ks.vmb = NewVerifierBroadcast(ks.rs.NextIndexVerifier)
+	ks.sb = concurrent.NewSequenceBroadcast(ks.rs.NextIndexVerifier)
 
 	ok := false
 	if cfg.PublicAddr != "" {

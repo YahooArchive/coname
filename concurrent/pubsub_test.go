@@ -12,20 +12,20 @@
 // License for the specific language governing permissions and limitations under
 // the License.
 
-package keyserver
+package concurrent
 
 import (
 	"testing"
 )
 
 func TestPublishWithoutSubscribers(t *testing.T) {
-	b := NewBroadcaster()
+	b := NewPublishSubscribe()
 	defer b.Stop()
 	b.Publish(0, "hello")
 }
 
 func TestPublishOnDifferentChannel(t *testing.T) {
-	b := NewBroadcaster()
+	b := NewPublishSubscribe()
 	ch := make(chan interface{})
 	b.Subscribe(1, ch)
 	b.Publish(2, "hi")
@@ -36,7 +36,7 @@ func TestPublishOnDifferentChannel(t *testing.T) {
 }
 
 func TestPublishOnSameChannel(t *testing.T) {
-	b := NewBroadcaster()
+	b := NewPublishSubscribe()
 	ch := make(chan interface{})
 	b.Subscribe(1, ch)
 	values := []interface{}{"hey", 3, "sup"}
@@ -63,7 +63,7 @@ func TestPublishOnSameChannel(t *testing.T) {
 
 func TestPublishToMultipleSubscribers(t *testing.T) {
 	const nSubs = 3
-	b := NewBroadcaster()
+	b := NewPublishSubscribe()
 	chs := []chan interface{}{}
 	values := []interface{}{"hey", 3, "sup"}
 	for i := 0; i < nSubs; i++ {
