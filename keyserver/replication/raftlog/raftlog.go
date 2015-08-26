@@ -423,11 +423,13 @@ func (s *raftStorage) Snapshot() (raftpb.Snapshot, error) {
 // Don't call this multiple times concurrently
 func (s *raftStorage) save(state raftpb.HardState, entries []raftpb.Entry) error {
 	wb := s.db.NewBatch()
-	stateBytes, err := state.Marshal()
-	if err != nil {
-		return err
+	if !raft.IsEmptyHardState(state) {
+		stateBytes, err := state.Marshal()
+		if err != nil {
+			return err
+		}
+		wb.Put(s.hardStateKey, stateBytes)
 	}
-	wb.Put(s.hardStateKey, stateBytes)
 	if len(entries) > 0 {
 		lastIndex, err := s.LastIndex()
 		if err != nil {
@@ -449,6 +451,6 @@ func (s *raftStorage) save(state raftpb.HardState, entries []raftpb.Entry) error
 			wb.Put(s.getEntryKey(entry.Index), entryBytes)
 		}
 	}
-	err = s.db.Write(wb)
+	err := s.db.Write(wb)
 	return err
 }
