@@ -550,7 +550,7 @@ func TestAppendMachineEachPropose1AndWait3Standby1(t *testing.T) {
 	testAppendMachineEachProposeAndWait(t, replicas, clks, 0, 1, 1)
 }
 
-func TestConfigurationChange3Add1Manually(t *testing.T) {
+func TestConfigurationChange3Add1Detailed(t *testing.T) {
 	replicas, clks, _, teardown := setupAppendMachineCluster(t, 3, 1)
 	defer teardown()
 
@@ -630,5 +630,107 @@ func TestConfigurationChange4Drop1Add1Manually(t *testing.T) {
 	}
 
 	testAppendMachineEachProposeAndWait(t, replicas[1:], clks, 2, 1, 0)
+	checkMachinesConsistent(t, replicas)
+}
+
+func TestConfigurationChange1Add1Push(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 1, 1)
+	defer teardown()
+
+	replicas[0].log.AddReplica(2)
+	testAppendMachineEachProposeAndWait(t, replicas[:1], clks, 0, 1, 0)
+
+	for len(replicas[1].Get()) == 0 {
+		clks[0].Add(tick)
+		clks[1].Add(tick)
+	}
+
+	checkMachinesConsistent(t, replicas)
+
+	replicas[1].log.AddReplica(2)
+
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 1, 0)
+	checkMachinesConsistent(t, replicas)
+}
+
+func TestConfigurationChange2Add1Push(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 2, 1)
+	defer teardown()
+
+	replicas[0].log.AddReplica(3)
+	replicas[1].log.AddReplica(3)
+	testAppendMachineEachProposeAndWait(t, replicas[:2], clks, 0, 1, 0)
+
+	for len(replicas[2].Get()) == 0 {
+		clks[0].Add(tick)
+		clks[1].Add(tick)
+		clks[2].Add(tick)
+	}
+
+	checkMachinesConsistent(t, replicas)
+
+	replicas[2].log.AddReplica(3)
+
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 1, 1, 0)
+	checkMachinesConsistent(t, replicas)
+}
+
+func TestConfigurationChange1Add1Add1Push(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 1, 2)
+	defer teardown()
+
+	replicas[0].log.AddReplica(2)
+	testAppendMachineEachProposeAndWait(t, replicas[:1], clks[:1], 0, 1, 0)
+
+	for len(replicas[1].Get()) == 0 {
+		clks[0].Add(tick)
+		clks[1].Add(tick)
+	}
+
+	checkMachinesConsistent(t, replicas)
+	replicas[1].log.AddReplica(2)
+	testAppendMachineEachProposeAndWait(t, replicas[:2], clks[:2], 1, 1, 0)
+
+	replicas[0].log.AddReplica(3)
+	replicas[1].log.AddReplica(3)
+
+	testAppendMachineEachProposeAndWait(t, replicas[:2], clks[:2], 2, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	replicas[2].log.AddReplica(2)
+	replicas[2].log.AddReplica(3)
+	testAppendMachineEachProposeAndWait(t, replicas[:2], clks[:2], 3, 1, 0)
+	testAppendMachineEachProposeAndWait(t, replicas, clks, 4, 1, 0)
+	checkMachinesConsistent(t, replicas)
+}
+
+func TestConfigurationChange1Chain2(t *testing.T) {
+	replicas, clks, _, teardown := setupAppendMachineCluster(t, 1, 2)
+	defer teardown()
+
+	replicas[0].log.AddReplica(2) // 1:1,2
+	testAppendMachineEachProposeAndWait(t, replicas[:1], clks[:1], 0, 1, 0)
+	checkMachinesConsistent(t, replicas)
+	replicas[1].log.AddReplica(2) // 2:1,2
+	testAppendMachineEachProposeAndWait(t, replicas[:2], clks[:2], 1, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	replicas[0].log.DropReplica(1) // 1:2
+	replicas[1].log.DropReplica(1) // 2:2
+	testAppendMachineEachProposeAndWait(t, replicas[1:2], clks[1:2], 2, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	replicas[1].log.AddReplica(3) // 2:2,3
+	testAppendMachineEachProposeAndWait(t, replicas[1:2], clks[1:2], 3, 1, 0)
+	checkMachinesConsistent(t, replicas)
+	replicas[2].log.AddReplica(2)  // 3:1,2
+	replicas[2].log.DropReplica(1) // 3:2
+	replicas[2].log.AddReplica(3)  // 3:2,3
+	testAppendMachineEachProposeAndWait(t, replicas[1:], clks[1:], 4, 1, 0)
+	checkMachinesConsistent(t, replicas)
+
+	replicas[1].log.DropReplica(2) // 2:3
+	replicas[2].log.DropReplica(2) // 3:3
+	testAppendMachineEachProposeAndWait(t, replicas[2:], clks[2:], 5, 1, 0)
 	checkMachinesConsistent(t, replicas)
 }
