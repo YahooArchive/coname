@@ -18,6 +18,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -153,7 +154,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 		// TODO use current, not initial, config
 		for _, replica := range cfg.KeyserverConfig.InitialReplicas {
 			if replica.ID == id {
-				conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(raftCreds))
+				conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs})))
 				if err != nil {
 					log.Panicf("Raft GRPC dial failed: %s", err)
 				}
