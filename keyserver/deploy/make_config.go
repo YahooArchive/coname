@@ -44,9 +44,7 @@ const (
 )
 
 func main() {
-	hosts := []string{
-		"localhost",
-	}
+	hosts := os.Args[1:]
 	realm := "yahoo"
 
 	caCert, _, caKey := tlstestutil.CA(nil, nil)
@@ -112,7 +110,7 @@ func main() {
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
-			RaftTLS:             proto.TLSConfig{Certificates: pcerts},
+			RaftTLS:             proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}},
 			LevelDBPath:         "db", // TODO
 			RaftHeartbeat:       heartbeat,
 			ClientTimeout:       proto.DurationStamp(1 * time.Minute),
