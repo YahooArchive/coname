@@ -30,16 +30,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (ks *Keyserver) verifyUpdateDeterministic(req *proto.UpdateRequest) error {
-	prevUpdate, err := ks.getUpdate(req.Update.NewEntry.Index, math.MaxUint64)
-	if err != nil {
-		log.Print(err)
-		return fmt.Errorf("internal error")
+func (ks *Keyserver) verifyUpdateDeterministic(prevUpdate *proto.UpdateRequest, req *proto.UpdateRequest) error {
+	var prevEntry *proto.Entry
+	if prevUpdate != nil {
+		prevEntry = &prevUpdate.Update.NewEntry.Entry
 	}
-	if prevUpdate == nil {
-		return nil
-	}
-	prevEntry := &prevUpdate.Update.NewEntry.Entry
 	if err := coname.VerifyUpdate(prevEntry, req.Update); err != nil {
 		return err
 	}
@@ -79,14 +74,9 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 				return fmt.Errorf("email proof does not match requested entry")
 			}
 		}
-		return nil
 	}
 
-	prevEntry := &prevUpdate.Update.NewEntry.Entry
-	if err := coname.VerifyUpdate(prevEntry, req.Update); err != nil {
-		return err
-	}
-	return nil
+	return ks.verifyUpdateDeterministic(prevUpdate, req)
 }
 
 type updateOutput struct {

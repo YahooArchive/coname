@@ -245,6 +245,9 @@ func (vr *Verifier) getEntry(idx []byte, epoch uint64) (*proto.Entry, error) {
 	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
 	prefixIdxEpoch[0] = tableEntriesPrefix
 	copy(prefixIdxEpoch[1:], idx)
+	if epoch == math.MaxUint64 {
+		log.Panicf("epoch number too big, would overflow")
+	}
 	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch+1)
 	iter := vr.db.NewIterator(&kv.Range{
 		Start: prefixIdxEpoch[:1+len(idx)],

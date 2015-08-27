@@ -208,17 +208,38 @@ func (ks *Keyserver) lastSignedEpoch() uint64 {
 	return ret
 }
 
+// incrementKey returns the lexicographically first DB key which is greater than
+// all keys prefixed by "key". Following the kv.Range.Limit convention,
+// incrementKey may return nil, a sentinel value that is to be interpreted as
+// greater than all real keys.
+func incrementKey(key []byte) []byte {
+	ret := make([]byte, len(key))
+	copy(ret, key)
+	for i := len(key) - 1; i >= 0; i-- {
+		if ret[i] < 0xff {
+			ret[i]++
+			return ret
+		}
+		ret[i] = 0
+	}
+	return nil
+}
+
 // getUpdate returns the last update to profile of idx during or before epoch.
 // If there is no such update, (nil, nil) is returned.
 func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, error) {
 	// idx: []&const
+	if len(idx) != vrf.Size {
+		log.Fatalf("getUpdate: index %x has bad length", idx)
+	}
 	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
 	prefixIdxEpoch[0] = tableUpdateRequestsPrefix
 	copy(prefixIdxEpoch[1:], idx)
-	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch+1)
+	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch)
+	limit := incrementKey(prefixIdxEpoch)
 	iter := ks.db.NewIterator(&kv.Range{
 		Start: prefixIdxEpoch[:1+len(idx)],
-		Limit: prefixIdxEpoch,
+		Limit: limit,
 	})
 	defer iter.Release()
 	if !iter.Last() {

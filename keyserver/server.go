@@ -22,6 +22,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"sync"
 	"time"
@@ -314,13 +315,35 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	switch {
 	case step.Update != nil:
 		index := step.Update.Update.NewEntry.Index
-		if err := ks.verifyUpdateDeterministic(step.Update); err != nil {
+		prevUpdate, err := ks.getUpdate(index, math.MaxUint64)
+		if err != nil {
+			log.Printf("getUpdate: %s", err)
+			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			return
+		}
+		if err := ks.verifyUpdateDeterministic(prevUpdate, step.Update); err != nil {
 			ks.wr.Notify(step.UID, updateOutput{Error: err})
 			return
 		}
+		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
+
+		// sanity check: compare previous version in Merkle tree vs in updates table
+		prevEntryHashTree, _, err := latestTree.Lookup(index)
+		if err != nil {
+			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			return
+		}
+		var prevEntryHash []byte
+		if prevUpdate != nil {
+			prevEntryHash = make([]byte, 32)
+			sha3.ShakeSum256(prevEntryHash, prevUpdate.Update.NewEntry.Encoding)
+		}
+		if !bytes.Equal(prevEntryHashTree, prevEntryHash) {
+			log.Fatalf("ERROR: merkle tree and DB inconsistent for index %x: %x vs %x", index, prevEntryHashTree, prevEntryHash)
+		}
+
 		var entryHash [32]byte
 		sha3.ShakeSum256(entryHash[:], step.Update.Update.NewEntry.Encoding)
-		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
 			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
