@@ -367,7 +367,6 @@ func doUpdate(
 	sha3.ShakeSum256(commitment[:], profile.Encoding)
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
-			Index:   vrf.Compute([]byte(name), ks.vrfSecret), // TODO remove this
 			Version: 0,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
@@ -397,7 +396,7 @@ func doUpdate(
 		t.Fatal(err)
 	}
 	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
-		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+		t.Errorf("updated profile didn't roundtrip: %x != %x", got, want)
 	}
 	_, err = coname.VerifyLookup(clientConfig, name, proof, now)
 	if err != nil {

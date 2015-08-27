@@ -33,8 +33,8 @@ func VerifyUpdate(current *proto.Entry, update *proto.SignedEntryUpdate) error {
 		if !VerifyPolicy(current.UpdatePolicy, update.NewEntry.Encoding, update.Signatures) {
 			return fmt.Errorf("VerifyUpdate: replacing an entry requires authorization from the old key, but signature verification failed")
 		}
-		if next.Version < current.Version {
-			return fmt.Errorf("VerifyUpdate: entry version must not decrease (got %d < %d)", next.Version, current.Version)
+		if next.Version <= current.Version {
+			return fmt.Errorf("VerifyUpdate: entry version must increase (got %d <= %d)", next.Version, current.Version)
 		}
 	} else if next.Version != 0 {
 		return fmt.Errorf("VerifyUpdate: registering a new entry must use version number 0 (got %d)", next.Version)

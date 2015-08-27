@@ -25,6 +25,7 @@ import (
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/dkim"
 	"github.com/yahoo/coname/proto"
+	"github.com/yahoo/coname/vrf"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 )
@@ -58,15 +59,15 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			if err != nil {
 				return err
 			}
-			if email != req.UserID {
-				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", req.UserID, email)
+			if got, want := email, req.LookupParameters.UserId; got != want {
+				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
 			}
-			lastAtIndex := strings.LastIndex(req.UserID, "@")
+			lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
 			if lastAtIndex == -1 {
-				return fmt.Errorf("requested user id is not a valid email address: %q", req.UserID)
+				return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
 			}
-			if _, ok := ks.emailProofAllowedDomains[req.UserID[:lastAtIndex]]; !ok {
-				return fmt.Errorf("domain not in registration whitelist: %q", req.UserID[:lastAtIndex])
+			if _, ok := ks.emailProofAllowedDomains[req.LookupParameters.UserId[:lastAtIndex]]; !ok {
+				return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[:lastAtIndex])
 			}
 			entryHash, err := base64.StdEncoding.DecodeString(payload)
 			if err != nil {
@@ -96,6 +97,8 @@ type updateOutput struct {
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
 	ctx, _ = context.WithTimeout(ctx, ks.clientTimeout)
+	req.Update.NewEntry.Index = vrf.Compute([]byte(req.LookupParameters.UserId), ks.vrfSecret)
+	req.Update.NewEntry.UpdateEncoding()
 	if err := ks.verifyUpdateEdge(req); err != nil {
 		return nil, err
 	}

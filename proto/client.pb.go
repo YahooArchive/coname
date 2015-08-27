@@ -94,9 +94,7 @@ type UpdateRequest struct {
 	// values it considers invalid MUST be accepted.
 	Profile          EncodedProfile `protobuf:"bytes,2,opt,name=profile,customtype=EncodedProfile" json:"profile"`
 	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
-	// UserID specifies the id for the new account to be registered.
-	UserID    string `protobuf:"bytes,1000,opt,name=user_id,proto3" json:"user_id,omitempty"`
-	DKIMProof []byte `protobuf:"bytes,1001,opt,name=dkim_proof,proto3" json:"dkim_proof,omitempty"`
+	DKIMProof        []byte         `protobuf:"bytes,1000,opt,name=dkim_proof,proto3" json:"dkim_proof,omitempty"`
 }
 
 func (m *UpdateRequest) Reset()      { *m = UpdateRequest{} }
@@ -629,9 +627,6 @@ func (this *UpdateRequest) VerboseEqual(that interface{}) error {
 	if !this.LookupParameters.Equal(that1.LookupParameters) {
 		return fmt.Errorf("LookupParameters this(%v) Not Equal that(%v)", this.LookupParameters, that1.LookupParameters)
 	}
-	if this.UserID != that1.UserID {
-		return fmt.Errorf("UserID this(%v) Not Equal that(%v)", this.UserID, that1.UserID)
-	}
 	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
 		return fmt.Errorf("DKIMProof this(%v) Not Equal that(%v)", this.DKIMProof, that1.DKIMProof)
 	}
@@ -664,9 +659,6 @@ func (this *UpdateRequest) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.LookupParameters.Equal(that1.LookupParameters) {
-		return false
-	}
-	if this.UserID != that1.UserID {
 		return false
 	}
 	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
@@ -1454,7 +1446,6 @@ func (this *UpdateRequest) GoString() string {
 		`Update:` + fmt.Sprintf("%#v", this.Update),
 		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
 		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters),
-		`UserID:` + fmt.Sprintf("%#v", this.UserID),
 		`DKIMProof:` + fmt.Sprintf("%#v", this.DKIMProof) + `}`}, ", ")
 	return s
 }
@@ -1715,17 +1706,9 @@ func (m *UpdateRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n4
 	}
-	if len(m.UserID) > 0 {
-		data[i] = 0xc2
-		i++
-		data[i] = 0x3e
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserID)))
-		i += copy(data[i:], m.UserID)
-	}
 	if m.DKIMProof != nil {
 		if len(m.DKIMProof) > 0 {
-			data[i] = 0xca
+			data[i] = 0xc2
 			i++
 			data[i] = 0x3e
 			i++
@@ -2323,7 +2306,6 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 	if r.Intn(10) != 0 {
 		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
 	}
-	this.UserID = randStringClient(r)
 	v2 := r.Intn(100)
 	this.DKIMProof = make([]byte, v2)
 	for i := 0; i < v2; i++ {
@@ -2659,10 +2641,6 @@ func (m *UpdateRequest) Size() (n int) {
 		l = m.LookupParameters.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	l = len(m.UserID)
-	if l > 0 {
-		n += 2 + l + sovClient(uint64(l))
-	}
 	if m.DKIMProof != nil {
 		l = len(m.DKIMProof)
 		if l > 0 {
@@ -2927,7 +2905,6 @@ func (this *UpdateRequest) String() string {
 		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
 		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
 		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
-		`UserID:` + fmt.Sprintf("%v", this.UserID) + `,`,
 		`DKIMProof:` + fmt.Sprintf("%v", this.DKIMProof) + `,`,
 		`}`,
 	}, "")
@@ -3333,28 +3310,6 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 1000:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field UserID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.UserID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 1001:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DKIMProof", wireType)
 			}

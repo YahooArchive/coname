@@ -327,6 +327,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return
 		}
 		if err := newTree.Set(index, entryHash[:]); err != nil {
+			log.Printf("setting index '%x' gave error: %s", index, err)
 			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
