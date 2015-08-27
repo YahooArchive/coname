@@ -91,6 +91,7 @@ func main() {
 		EmailProofSubjectPrefix: "_YAHOO_E2E_KEYSERVER_PROOF_",
 	}
 
+	var cfgs []*proto.ReplicaConfig
 	for i, host := range hosts {
 		pk, sk := pks[i], sks[i]
 		pked := &proto.PublicKey{Ed25519: pk[:]}
@@ -116,6 +117,7 @@ func main() {
 			ClientTimeout:       proto.DurationStamp(1 * time.Minute),
 			LaggingVerifierScan: 1000,
 		}
+		cfgs = append(cfgs, cfg)
 
 		if _, err := os.Stat(host + "/"); os.IsNotExist(err) {
 			os.Mkdir(host, 0700)
@@ -177,4 +179,48 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	verificationPolicy := &proto.AuthorizationPolicy{
+		PublicKeys: make(map[uint64]*proto.PublicKey),
+		Quorum: &proto.QuorumExpr{
+			Threshold: uint32(majority(len(hosts))),
+		},
+	}
+	replicaIDs := []uint64{}
+	for i, cfg := range cfgs {
+		replicaIDs = append(replicaIDs, cfg.ReplicaID)
+		pk := &proto.PublicKey{Ed25519: pks[i][:]}
+		pkid := proto.KeyID(pk)
+		verificationPolicy.PublicKeys[pkid] = pk
+		replicaExpr := &proto.QuorumExpr{
+			Threshold:  1,
+			Candidates: []uint64{pkid},
+		}
+		verificationPolicy.Quorum.Subexpressions = append(verificationPolicy.Quorum.Subexpressions, replicaExpr)
+	}
+	clientConfig := &proto.Config{
+		Realms: []*proto.RealmConfig{
+			&proto.RealmConfig{
+				Domains:            []string{"example.com"},
+				Addr:               cfgs[0].PublicAddr,
+				VRFPublic:          vrfPublic[:],
+				VerificationPolicy: verificationPolicy,
+				EpochTimeToLive:    proto.DurationStamp(3 * time.Minute),
+				TreeNonce:          nil,
+			},
+		},
+	}
+	clientConfigF, err := os.OpenFile("clientconfig.json", os.O_WRONLY|os.O_CREATE, 0600)
+	defer clientConfigF.Close()
+	if err != nil {
+		log.Panic(err)
+	}
+	err = new(jsonpb.Marshaller).Marshal(clientConfigF, clientConfig)
+	if err != nil {
+		log.Panic(err)
+	}
+}
+
+func majority(nReplicas int) int {
+	return nReplicas/2 + 1
 }
