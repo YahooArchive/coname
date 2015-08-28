@@ -53,7 +53,7 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			email, payload, err := dkim.CheckEmailProof(req.DKIMProof, ks.emailProofToAddr,
 				ks.emailProofSubjectPrefix, ks.lookupTXT, ks.clk.Now)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to verify DKIM proof: %s", err)
 			}
 			if got, want := email, req.LookupParameters.UserId; got != want {
 				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
