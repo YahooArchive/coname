@@ -122,7 +122,7 @@ func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replicat
 	nw = nettestutil.New(n)
 	lookupDialerFrom := func(src int) func(uint64) raftproto.RaftClient {
 		return func(dstPlus1 uint64) raftproto.RaftClient {
-			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithDialer(
+			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithInsecure(), grpc.WithDialer(
 				func(addr string, timeout time.Duration) (net.Conn, error) {
 					nc, err := net.DialTimeout("tcp", addr, timeout)
 					return nw.Wrap(nc, src, int(dstPlus1-1)), err
