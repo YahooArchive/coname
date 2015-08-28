@@ -21,6 +21,7 @@ import (
 	"math"
 
 	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/proto"
 	"golang.org/x/net/context"
 )
@@ -97,10 +98,10 @@ func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedEpochH
 	// FIXME: verify the ratifier signature (tricky: where do we keep verifier pk-s?)
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
-	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{
+	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
 		UID:            uid,
 		VerifierSigned: r,
-	}))
+	})})
 	select {
 	case <-ctx.Done():
 		ks.wr.Notify(uid, nil)

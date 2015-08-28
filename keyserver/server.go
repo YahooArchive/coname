@@ -276,7 +276,11 @@ func (ks *Keyserver) run() {
 		select {
 		case <-ks.stop:
 			return
-		case stepBytes := <-ks.log.WaitCommitted():
+		case stepEntry := <-ks.log.WaitCommitted():
+			if stepEntry.ConfChange != nil {
+				ks.log.ApplyConfChange(stepEntry.ConfChange)
+			}
+			stepBytes := stepEntry.Data
 			if stepBytes == nil {
 				continue // allow logs to skip slots for indexing purposes
 			}
@@ -548,14 +552,14 @@ type Proposer struct {
 	log      replication.LogReplicator
 	clk      clock.Clock
 	delay    time.Duration
-	proposal []byte
+	proposal replication.LogEntry
 
 	stop     chan struct{}
 	stopped  chan struct{}
 	stopOnce sync.Once
 }
 
-func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal []byte) *Proposer {
+func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal replication.LogEntry) *Proposer {
 	p := &Proposer{
 		log:      log,
 		clk:      clk,
@@ -611,10 +615,15 @@ func (ks *Keyserver) updateEpochProposer() {
 	switch want {
 	case true:
 		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
-			proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
-				EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
-				Timestamp:   proto.Time(ks.clk.Now()),
-			}}))
+			replication.LogEntry{
+				Data: proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
+					EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
+					Timestamp:   proto.Time(ks.clk.Now()),
+				}}),
+				ConfChange: &replication.ConfChange{
+					Operation: replication.ConfChangeNOP,
+				},
+			})
 	case false:
 		ks.epochProposer.Stop()
 		ks.epochProposer = nil
@@ -644,7 +653,7 @@ func (ks *Keyserver) updateSignatureProposer() {
 			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, tehBytes)[:]},
 		}
 		ks.signatureProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
-			proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh}))
+			replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh})})
 	case false:
 		ks.signatureProposer.Stop()
 		ks.signatureProposer = nil

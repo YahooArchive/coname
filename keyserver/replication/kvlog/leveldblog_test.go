@@ -59,7 +59,7 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, kv.DB, fu
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
 		binary.BigEndian.PutUint64(prop, i)
-		l.Propose(nil, prop)
+		l.Propose(nil, replication.LogEntry{Data: prop})
 		<-l.WaitCommitted()
 	}
 	return l, db, func() {
@@ -84,13 +84,13 @@ func TestLeveldbLogProposeWait(t *testing.T) {
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
 		binary.BigEndian.PutUint64(prop, i)
-		l.Propose(nil, prop)
+		l.Propose(nil, replication.LogEntry{Data: prop})
 	}
 
 	state := uint64(0)
 	for i := 1; i < 16; i++ {
 		entry := <-l.WaitCommitted()
-		e := binary.BigEndian.Uint64(entry)
+		e := binary.BigEndian.Uint64(entry.Data)
 		if e > 15 {
 			t.Errorf("%d (which is > 15) received from WaitCommitted", e)
 		}
@@ -123,7 +123,7 @@ func TestLeveldbLogStartHistoric(t *testing.T) {
 	state := uint64(0)
 	for i := 0; i < 12; i++ {
 		entry := <-l.WaitCommitted()
-		e := binary.BigEndian.Uint64(entry)
+		e := binary.BigEndian.Uint64(entry.Data)
 		if e > 15 {
 			t.Errorf("%d (which is > 15) received from WaitCommitted", e)
 		}
@@ -155,7 +155,7 @@ func TestLeveldbLogGetCommittedRestart(t *testing.T) {
 		for i := uint64(0); i < 15; i++ {
 			ref := make([]byte, 8)
 			binary.BigEndian.PutUint64(ref, 1+i)
-			if !bytes.Equal(entries[i], ref) {
+			if !bytes.Equal(entries[i].Data, ref) {
 				t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
 			}
 		}
@@ -187,7 +187,7 @@ func TestLeveldbLogGetCommittedRange(t *testing.T) {
 	for i := uint64(0); i < 13; i++ {
 		ref := make([]byte, 8)
 		binary.BigEndian.PutUint64(ref, i+2)
-		if !bytes.Equal(entries[i], ref) {
+		if !bytes.Equal(entries[i].Data, ref) {
 			t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
 		}
 	}
@@ -204,7 +204,7 @@ func TestLeveldbLogGetCommittedSize(t *testing.T) {
 	if len(entriesLimited) != 2 {
 		s := 0
 		for _, e := range entriesLimited {
-			s += len(e)
+			s += len(e.Data)
 		}
 		t.Errorf("CommittedEntries asked for 16 bytes, got %d", s)
 	}

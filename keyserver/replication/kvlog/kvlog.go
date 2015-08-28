@@ -32,8 +32,8 @@ type kvLog struct {
 	skipBefore uint64
 
 	leaderHintSet chan bool
-	propose       chan []byte
-	waitCommitted chan []byte
+	propose       chan replication.LogEntry
+	waitCommitted chan replication.LogEntry
 
 	stopOnce sync.Once
 	stop     chan struct{}
@@ -60,9 +60,9 @@ func New(db kv.DB, prefix []byte) (replication.LogReplicator, error) {
 		db:            db,
 		prefix:        prefix,
 		nextIndex:     nextIndex,
-		propose:       make(chan []byte, 100),
+		propose:       make(chan replication.LogEntry, 100),
 		leaderHintSet: leaderHintSet,
-		waitCommitted: make(chan []byte),
+		waitCommitted: make(chan replication.LogEntry),
 		stop:          make(chan struct{}),
 		stopped:       make(chan struct{}),
 	}, nil
@@ -84,23 +84,27 @@ func (l *kvLog) Stop() error {
 	return nil
 }
 
-// ProposeConfChange implements replication.LogReplicator
-func (l *kvLog) AddReplica(uint64)  {}
-func (l *kvLog) DropReplica(uint64) {}
+// ApplyConfChange implements replication.LogReplicator
+func (l *kvLog) ApplyConfChange(*replication.ConfChange) {
+	panic("ApplyConfChange: cannot reconfigure kvlog")
+}
 
 // Propose implements replication.LogReplicator
 // The following is true for kvLog.Propose but not necessarilty for other
 // implementations of replication.LogReplicator: If Propose(x) returns, then
 // after some amount of time without crashes, WaitCommitted returns x.
-func (l *kvLog) Propose(ctx context.Context, data []byte) {
+func (l *kvLog) Propose(ctx context.Context, en replication.LogEntry) {
+	if en.ConfChange != nil && en.ConfChange.Operation != replication.ConfChangeNOP {
+		panic("Propose: cannot reconfigure kvlog")
+	}
 	select {
-	case l.propose <- data:
+	case l.propose <- replication.LogEntry{Data: en.Data}:
 	case <-l.stop:
 	}
 }
 
 // WaitCommitted implements replication.LogReplicator
-func (l *kvLog) WaitCommitted() <-chan []byte {
+func (l *kvLog) WaitCommitted() <-chan replication.LogEntry {
 	return l.waitCommitted
 }
 
@@ -110,10 +114,10 @@ func (l *kvLog) LeaderHintSet() <-chan bool {
 }
 
 // GetCommitted implements replication.LogReplicator
-func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
+func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
 	size := uint64(0)
 	for i := lo; i < hi; i++ {
-		var v []byte
+		var v replication.LogEntry
 		v, err = l.get(i)
 		if err != nil {
 			if err == l.db.ErrNotFound() {
@@ -121,11 +125,11 @@ func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
 			}
 			return nil, err
 		}
-		if len(ret) != 0 && size+uint64(len(v)) > maxSize {
+		if len(ret) != 0 && size+uint64(len(v.Data)) > maxSize {
 			return
 		}
 		ret = append(ret, v)
-		size += uint64(len(v))
+		size += uint64(len(v.Data))
 		if size >= maxSize {
 			return
 		}
@@ -134,7 +138,7 @@ func (l *kvLog) GetCommitted(lo, hi, maxSize uint64) (ret [][]byte, err error) {
 }
 
 // get returns entry number i from l.db
-func (l *kvLog) get(i uint64) (le []byte, err error) {
+func (l *kvLog) get(i uint64) (le replication.LogEntry, err error) {
 	dbkey := make([]byte, len(l.prefix)+8)
 	copy(dbkey, l.prefix)
 	binary.BigEndian.PutUint64(dbkey[len(l.prefix):], i)
@@ -142,7 +146,7 @@ func (l *kvLog) get(i uint64) (le []byte, err error) {
 	if err != nil {
 		return le, err
 	}
-	return entryBytes, nil
+	return replication.LogEntry{Data: entryBytes}, nil
 }
 
 // run is the CSP-style main of kvLog, all local struct fields (except
@@ -171,7 +175,7 @@ func (l *kvLog) run() {
 		case prop := <-l.propose:
 			binary.BigEndian.PutUint64(dbkey[len(l.prefix):], l.nextIndex)
 			l.nextIndex++
-			l.db.Put(dbkey[:], prop)
+			l.db.Put(dbkey[:], prop.Data)
 			select {
 			case <-l.stop:
 				return
