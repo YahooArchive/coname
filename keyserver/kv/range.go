@@ -42,24 +42,31 @@ package kv
 
 // Range is a key range.
 type Range struct {
-	// Start of the key range, include in the range.
+	// Start of the key range, included in the range.
 	Start []byte
 
-	// Limit of the key range, not include in the range.
+	// Limit of the key range, not included in the range. nil indicates no limit.
 	Limit []byte
+}
+
+// IncrementKey returns the lexicographically first DB key which is greater
+// than all keys prefixed by "prefix". Following the Range.Limit convention,
+// IncrementKey may return nil, a sentinel value that is to be interpreted as
+// greater than all keys.
+func IncrementKey(prefix []byte) []byte {
+	for i := len(prefix) - 1; i >= 0; i-- {
+		c := prefix[i]
+		if c < 0xff {
+			limit := make([]byte, i+1)
+			copy(limit, prefix)
+			limit[i] = c + 1
+			return limit
+		}
+	}
+	return nil
 }
 
 // BytesPrefix returns key range that satisfy the given prefix.
 func BytesPrefix(prefix []byte) *Range {
-	var limit []byte
-	for i := len(prefix) - 1; i >= 0; i-- {
-		c := prefix[i]
-		if c < 0xff {
-			limit = make([]byte, i+1)
-			copy(limit, prefix)
-			limit[i] = c + 1
-			break
-		}
-	}
-	return &Range{prefix, limit}
+	return &Range{prefix, IncrementKey(prefix)}
 }
