@@ -32,6 +32,7 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
+	pb "github.com/andres-erbsen/protobuf/proto"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/concurrent"
 	"github.com/yahoo/coname/hkpfront"
@@ -165,7 +166,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	case ks.db.ErrNotFound():
 		// ReplicaState zero value is valid initialization
 	case nil:
-		if err := ks.rs.Unmarshal(replicaStateBytes); err != nil {
+		if err := pb.Unmarshal(replicaStateBytes, &ks.rs); err != nil {
 			return nil, err
 		}
 	default:
@@ -284,7 +285,7 @@ func (ks *Keyserver) run() {
 			if stepBytes == nil {
 				continue // allow logs to skip slots for indexing purposes
 			}
-			if err := step.Unmarshal(stepBytes); err != nil {
+			if err := pb.Unmarshal(stepBytes, &step); err != nil {
 				log.Panicf("invalid step pb in replicated log: %s", err)
 			}
 			// TODO: (for throughput) allow multiple steps per log entry
@@ -511,7 +512,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		defer iter.Release()
 		for iter.Next() {
 			update := &proto.SignedEntryUpdate{}
-			err := update.Unmarshal(iter.Value())
+			err := pb.Unmarshal(iter.Value(), update)
 			if err != nil {
 				log.Panicf("invalid pending update %x: %s", iter.Value(), err)
 			}
@@ -677,7 +678,7 @@ func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64]*proto.S
 	for iter.Next() {
 		id := binary.BigEndian.Uint64(iter.Key()[1+8 : 1+8+8])
 		seh := new(proto.SignedEpochHead)
-		err := seh.Unmarshal(iter.Value())
+		err := pb.Unmarshal(iter.Value(), seh)
 		if err != nil {
 			log.Panicf("tableRatifications(%d, %d) invalid: %s", epoch, id, err)
 		}

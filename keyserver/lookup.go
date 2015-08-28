@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 
+	pb "github.com/andres-erbsen/protobuf/proto"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
@@ -47,7 +48,7 @@ func (ks *Keyserver) findRatificationsForEpoch(epoch uint64, desiredVerifiers ma
 			return nil, nil, fmt.Errorf("internal error")
 		}
 		seh := new(proto.SignedEpochHead)
-		err = seh.Unmarshal(sehBytes)
+		err = pb.Unmarshal(sehBytes, seh)
 		if err != nil {
 			log.Printf("ERROR: tableRatifications(%d, %d) = %x is invalid: %s", epoch, verifier, sehBytes, err)
 			return nil, nil, fmt.Errorf("internal error")
@@ -249,7 +250,7 @@ func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, 
 		return nil, nil
 	}
 	ret := new(proto.UpdateRequest)
-	if err := ret.Unmarshal(iter.Value()); err != nil {
+	if err := pb.Unmarshal(iter.Value(), ret); err != nil {
 		return nil, iter.Error()
 	}
 	return ret, nil

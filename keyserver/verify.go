@@ -20,6 +20,7 @@ import (
 	"log"
 	"math"
 
+	pb "github.com/andres-erbsen/protobuf/proto"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/proto"
@@ -51,7 +52,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 				iter.Release()
 				return fmt.Errorf("internal error")
 			}
-			if err := step.Unmarshal(iter.Value()); err != nil {
+			if err := pb.Unmarshal(iter.Value(), &step); err != nil {
 				log.Printf("ERROR: invalid protobuf entry in verifier log (index %d)", start)
 				iter.Release()
 				return fmt.Errorf("internal error")

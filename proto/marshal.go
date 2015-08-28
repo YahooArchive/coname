@@ -14,13 +14,13 @@
 
 package proto
 
+import pb "github.com/andres-erbsen/protobuf/proto"
+
 // MustMarshal takes a marshalable and returns the []byte representation.  This
 // function must be used exclusively when a marshaling error is fatal AND
 // indicative of a programming bug.
-func MustMarshal(m interface {
-	Marshal() ([]byte, error)
-}) []byte {
-	ret, err := m.Marshal()
+func MustMarshal(m pb.Message) []byte {
+	ret, err := pb.Marshal(m)
 	if err != nil {
 		panic(err)
 	}

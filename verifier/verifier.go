@@ -27,6 +27,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/agl/ed25519"
+	pb "github.com/andres-erbsen/protobuf/proto"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
@@ -89,7 +90,7 @@ func Start(cfg *proto.VerifierConfig, db kv.DB, getKey func(string) (crypto.Priv
 		vr.vs.KeyserverAuth = &cfg.InitialKeyserverAuth
 		vr.vs.NextEpoch = 1
 	case nil:
-		if err := vr.vs.Unmarshal(verifierStateBytes); err != nil {
+		if err := pb.Unmarshal(verifierStateBytes, &vr.vs); err != nil {
 			return nil, err
 		}
 	default:
@@ -260,7 +261,7 @@ func (vr *Verifier) getEntry(idx []byte, epoch uint64) (*proto.Entry, error) {
 		return nil, nil
 	}
 	ret := new(proto.Entry)
-	if err := ret.Unmarshal(iter.Value()); err != nil {
+	if err := pb.Unmarshal(iter.Value(), ret); err != nil {
 		return nil, iter.Error()
 	}
 	iter.Release()
