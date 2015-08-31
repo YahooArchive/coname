@@ -44,10 +44,41 @@ const (
 )
 
 func main() {
-	hosts := os.Args[1:]
-	realm := "yahoo"
+	if len(os.Args) < 4 {
+		fmt.Printf("usage: %s cacert cakey host0 host1 host2...", os.Args[0])
+		return
+	}
 
-	caCert, _, caKey := tlstestutil.CA(nil, nil)
+	caCertFile := os.Args[1]
+	caKeyFile := os.Args[2]
+	caCertPem, err := ioutil.ReadFile(caCertFile)
+	if err != nil {
+		log.Fatalf("Failed to read from %v: %v", caCertFile, err)
+	}
+	caCertBlock, _ := pem.Decode(caCertPem)
+	if caCertBlock == nil {
+		log.Fatalf("Failed to parse PEM: %v", string(caCertPem))
+	}
+	caCert, err := x509.ParseCertificate(caCertBlock.Bytes)
+	if err != nil {
+		log.Fatalf("Failed to parse X.509 cert: %v", err)
+	}
+
+	caKeyPem, err := ioutil.ReadFile(caKeyFile)
+	if err != nil {
+		log.Fatalf("Failed to read from %v: %v", caKeyFile, err)
+	}
+	caKeyBlock, _ := pem.Decode(caKeyPem)
+	if caKeyBlock == nil {
+		log.Fatalf("Failed to parse PEM: %v", string(caKeyPem))
+	}
+	caKey, err := x509.ParseECPrivateKey(caKeyBlock.Bytes)
+	if err != nil {
+		log.Fatalf("Failed to parse EC private key: %v", err)
+	}
+
+	hosts := os.Args[3:]
+	realm := "yahoo"
 
 	vrfPublic, vrfSecret, err := vrf.GenerateKey(rand.Reader)
 	if err != nil {
@@ -86,9 +117,10 @@ func main() {
 		MaxEpochInterval:      proto.DurationStamp(1 * time.Minute),
 		ProposalRetryInterval: proto.DurationStamp(1 * time.Second),
 
-		InitialReplicas:         replicas,
-		EmailProofToAddr:        "TODO@example.com",
-		EmailProofSubjectPrefix: "_YAHOO_E2E_KEYSERVER_PROOF_",
+		InitialReplicas:          replicas,
+		EmailProofToAddr:         "TODO@example.com",
+		EmailProofSubjectPrefix:  "_YAHOO_E2E_KEYSERVER_PROOF_",
+		EmailProofAllowedDomains: []string{"yahoo-inc.com"},
 	}
 
 	var cfgs []*proto.ReplicaConfig
