@@ -90,10 +90,6 @@ func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch u
 ) {
 	ret := &proto.LookupProof{UserId: req.UserId}
 	ret.Index, ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
-	lookupEpoch, ratifications, err := ks.findLatestEpochSignedByQuorum(req.QuorumRequirement)
-	if err != nil {
-		return nil, err
-	}
 	ret.Ratifications = ratifications
 	tree, err := ks.merkletreeForEpoch(lookupEpoch)
 	if err != nil {
