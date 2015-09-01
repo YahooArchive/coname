@@ -32,6 +32,9 @@ import (
 )
 
 func (ks *Keyserver) verifyUpdateDeterministic(prevUpdate *proto.UpdateRequest, req *proto.UpdateRequest) error {
+	if got, want := vrf.Compute([]byte(req.LookupParameters.UserId), ks.vrfSecret), req.Update.NewEntry.Index; !bytes.Equal(got, want) {
+		return fmt.Errorf("incorrect index for user %s: got %x, expected %x", req.LookupParameters.UserId, got, want)
+	}
 	var prevEntry *proto.Entry
 	if prevUpdate != nil {
 		prevEntry = &prevUpdate.Update.NewEntry.Entry
@@ -43,6 +46,9 @@ func (ks *Keyserver) verifyUpdateDeterministic(prevUpdate *proto.UpdateRequest, 
 }
 
 func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
+	if len(req.Update.NewEntry.Index) != vrf.Size {
+		return fmt.Errorf("index '%x' has wrong length (expected %d)", req.Update.NewEntry.Index, vrf.Size)
+	}
 	prevUpdate, err := ks.getUpdate(req.Update.NewEntry.Index, math.MaxUint64)
 	if err != nil {
 		log.Print(err)
@@ -88,8 +94,6 @@ type updateOutput struct {
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
 	ctx, _ = context.WithTimeout(ctx, ks.clientTimeout)
-	req.Update.NewEntry.Index = vrf.Compute([]byte(req.LookupParameters.UserId), ks.vrfSecret)
-	req.Update.NewEntry.UpdateEncoding()
 	if err := ks.verifyUpdateEdge(req); err != nil {
 		return nil, err
 	}
