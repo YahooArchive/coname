@@ -62,11 +62,12 @@ message UpdateRequest {
 // used for any other purpose than debugging.
 message LookupProof {
 	string user_id = 1;
+	bytes index = 2;
 	// index_proof proves that index is a result of applying a globally fixed
 	// bijection VRF to user_id: idx = VRF(user_ID). If this proof checks out,
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
-	bytes index_proof = 2;
+	bytes index_proof = 3;
 	// ratifications contains signed directory state summaries for the epoch under
 	// which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
@@ -77,14 +78,14 @@ message LookupProof {
 	// Each ratification must contain the same epoch head. A client MUST ignore a
 	// proof if the ratifications do not satisfy its quorum requirement and MUST
 	// require the keyserver itself to be in the quorum.
-	repeated SignedEpochHead ratifications = 3;
+	repeated SignedEpochHead ratifications = 4;
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
-	TreeProof tree_proof = 4;
+	TreeProof tree_proof = 5;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry entry = 5	[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = false];
-	Profile profile = 6 [(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
+	Entry entry = 6	[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = false];
+	Profile profile = 7 [(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
 }
 
 // A Proof provides an authentication path through the Merkle Tree that
