@@ -62,21 +62,31 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return
 	}
 
-	var entryHash [32]byte
-	sha3.ShakeSum256(entryHash[:], pf.Entry.Encoding)
 	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
 	}
-	if !bytes.Equal(entryHash[:], verifiedEntryHash) {
-		return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
-	}
+	if verifiedEntryHash == nil {
+		if !pf.Entry.Equal(proto.EncodedEntry{}) {
+			return nil, fmt.Errorf("VerifyLookup: non-empty entry %x did not match verified lookup result <nil>", pf.Entry)
+		}
+		if !pf.Profile.Equal(proto.EncodedProfile{}) {
+			return nil, fmt.Errorf("VerifyLookup: non-empty profile %x did not match verified lookup result <nil>", pf.Profile)
+		}
+		return nil, nil
+	} else {
+		var entryHash [32]byte
+		sha3.ShakeSum256(entryHash[:], pf.Entry.Encoding)
+		if !bytes.Equal(entryHash[:], verifiedEntryHash) {
+			return nil, fmt.Errorf("VerifyLookup: entry hash %x did not match verified lookup result %x", entryHash, verifiedEntryHash)
+		}
 
-	if !CheckCommitment(pf.Entry.ProfileCommitment, &pf.Profile) {
-		return nil, fmt.Errorf("VerifyLookup: profile does not match the hash in the entry")
-	}
+		if !CheckCommitment(pf.Entry.ProfileCommitment, &pf.Profile) {
+			return nil, fmt.Errorf("VerifyLookup: profile does not match the hash in the entry")
+		}
 
-	return pf.Profile.Keys, nil
+		return pf.Profile.Keys, nil
+	}
 }
 
 func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochHead, now time.Time) (root []byte, err error) {
