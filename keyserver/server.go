@@ -588,7 +588,17 @@ func (p *Proposer) run() {
 	for {
 		select {
 		case <-timer.C:
-			p.log.Propose(context.Background(), p.proposal)
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan struct{})
+			go func() {
+				select {
+				case <-done:
+				case <-p.stop:
+					cancel()
+				}
+			}()
+			p.log.Propose(ctx, p.proposal)
+			close(done)
 			timer.Reset(p.delay)
 			p.delay = p.delay * 2
 		case <-p.stop:
