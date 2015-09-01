@@ -437,6 +437,51 @@ func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
 	return done
 }
 
+func TestKeyserverAbsentLookup(t *testing.T) {
+	dieOnCtrlC()
+	pprof()
+	nReplicas := 3
+	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	defer teardown()
+	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
+	defer teardown2()
+
+	kss := []*Keyserver{}
+	for i := range cfgs {
+		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ks.Start()
+		defer ks.Stop()
+		kss = append(kss, ks)
+	}
+
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := proto.NewE2EKSPublicClient(conn)
+
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := coname.VerifyLookup(clientConfig, alice, proof, clks[0].Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keys != nil {
+		t.Fatalf("Got back keys for a nonexistent profile")
+	}
+}
+
 func TestKeyserverRoundtrip(t *testing.T) {
 	nReplicas := 3
 	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
