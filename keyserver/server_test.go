@@ -348,9 +348,6 @@ loop:
 	}
 }
 
-func withServer(func(*testing.T, *Keyserver)) {
-}
-
 func doUpdate(
 	t *testing.T, ks *Keyserver, clientConfig *proto.Config, caPool *x509.CertPool, now time.Time,
 	name string, version uint64, profileContents proto.Profile,
@@ -403,21 +400,6 @@ func doUpdate(
 		t.Fatal(err)
 	}
 	return &profile
-}
-
-func stoppableClock(clk *clock.Mock) chan<- struct{} {
-	done := make(chan struct{})
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			default:
-				clk.Add(tick)
-			}
-		}
-	}()
-	return done
 }
 
 func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
