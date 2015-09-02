@@ -54,7 +54,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 	if err != nil {
 		return nil, err
 	}
-	if !vrf.Verify(realm.VRFPublic, []byte(user), pf.Entry.Index, pf.IndexProof) {
+	if !vrf.Verify(realm.VRFPublic, []byte(user), pf.Index, pf.IndexProof) {
 		return nil, fmt.Errorf("VerifyLookup: VRF verification failed")
 	}
 	root, err := VerifyConsensus(realm, pf.Ratifications, now)
@@ -62,7 +62,7 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		return
 	}
 
-	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Entry.Index, pf.TreeProof)
+	verifiedEntryHash, err := reconstructTreeAndLookup(realm.TreeNonce, root, pf.Index, pf.TreeProof)
 	if err != nil {
 		return nil, fmt.Errorf("VerifyLookup: failed to verify the lookup: %v", err)
 	}
