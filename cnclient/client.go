@@ -69,6 +69,29 @@ func main() {
 	realm := cfg.Realms[0]
 
 	name := "dmz@yahoo-inc.com"
+
+	conn, err := grpc.Dial(realm.Addr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	if err != nil {
+		log.Fatal(err)
+	}
+	publicC := proto.NewE2EKSPublicClient(conn)
+
+	// First, do a lookup to retrieve the index
+	lookup, err := publicC.Lookup(context.Background(), &proto.LookupRequest{
+		UserId: name,
+		// We don't care about any signatures here; the server just needs to tell us the index.
+		QuorumRequirement: &proto.QuorumExpr{
+			Threshold:      0,
+			Candidates:     []uint64{},
+			Subexpressions: []*proto.QuorumExpr{},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	index := lookup.Index
+
+	// Then, do the actual update
 	/*nonce := make([]byte, 16)
 	 _, err = rand.Read(nonce)
 	if err != nil {
@@ -86,6 +109,7 @@ func main() {
 	sha3.ShakeSum256(commitment[:], profile.Encoding)
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
+			Index:   index,
 			Version: 0,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
@@ -103,12 +127,7 @@ func main() {
 	sha3.ShakeSum256(entryHash[:], entry.Encoding)
 	log.Printf("entry: %x", entry.Encoding)
 
-	conn, err := grpc.Dial(realm.Addr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
-	if err != nil {
-		log.Fatal(err)
-	}
-	updateC := proto.NewE2EKSPublicClient(conn)
-	proof, err := updateC.Update(context.Background(), &proto.UpdateRequest{
+	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
 			Signatures: make(map[uint64][]byte),
