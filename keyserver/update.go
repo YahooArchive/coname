@@ -68,8 +68,8 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			if lastAtIndex == -1 {
 				return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
 			}
-			if _, ok := ks.emailProofAllowedDomains[req.LookupParameters.UserId[:lastAtIndex]]; !ok {
-				return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[:lastAtIndex])
+			if _, ok := ks.emailProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
+				return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 			}
 			entryHash, err := base64.StdEncoding.DecodeString(payload)
 			if err != nil {
@@ -78,7 +78,7 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			var entryHashProposed [32]byte
 			sha3.ShakeSum256(entryHashProposed[:], req.Update.NewEntry.Encoding)
 			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
-				return fmt.Errorf("email proof does not match requested entry")
+				return fmt.Errorf("email proof does not match requested entry: %s vs %s (%x)", base64.StdEncoding.EncodeToString(entryHashProposed[:]), payload, req.Update.NewEntry.Encoding)
 			}
 		}
 	}
