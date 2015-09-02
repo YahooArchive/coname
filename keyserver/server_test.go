@@ -356,6 +356,24 @@ func doUpdate(
 	if err != nil {
 		t.Fatal(err)
 	}
+	publicC := proto.NewE2EKSPublicClient(conn)
+
+	// First, do a lookup to retrieve the index
+	lookup, err := publicC.Lookup(context.Background(), &proto.LookupRequest{
+		UserId: name,
+		// We don't care about any signatures here; the server just needs to tell us the index.
+		QuorumRequirement: &proto.QuorumExpr{
+			Threshold:      0,
+			Candidates:     []uint64{},
+			Subexpressions: []*proto.QuorumExpr{},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := lookup.Index
+
+	// Do the update
 	profile := proto.EncodedProfile{
 		Profile: profileContents,
 	}
@@ -364,6 +382,7 @@ func doUpdate(
 	sha3.ShakeSum256(commitment[:], profile.Encoding)
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
+			Index:   index,
 			Version: version,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
@@ -377,8 +396,7 @@ func doUpdate(
 		},
 	}
 	entry.UpdateEncoding()
-	updateC := proto.NewE2EKSPublicClient(conn)
-	proof, err := updateC.Update(context.Background(), &proto.UpdateRequest{
+	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
 			Signatures: make(map[uint64][]byte),
@@ -400,6 +418,13 @@ func doUpdate(
 		t.Fatal(err)
 	}
 	return &profile
+}
+
+func waitForFirstEpoch(ks *Keyserver, quorum *proto.QuorumExpr) {
+	ks.blockingLookup(context.Background(), &proto.LookupRequest{
+		UserId:            alice,
+		QuorumRequirement: quorum,
+	}, 1)
 }
 
 func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
@@ -441,6 +466,8 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
 	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
 	if err != nil {
@@ -485,6 +512,8 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
 	profile := doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
@@ -534,6 +563,8 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
 	doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
@@ -606,6 +637,8 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
 	doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
@@ -797,6 +830,8 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+
 	profile := doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
@@ -832,6 +867,7 @@ func TestKeyserverHKP(t *testing.T) {
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
 	pgpKeyRef := []byte("this-is-alices-pgp-key")
 	doUpdate(t, ks, clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
