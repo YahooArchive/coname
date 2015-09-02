@@ -16,13 +16,19 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/binary"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"math/big"
+	"net"
 	"os"
 	"path"
 	"time"
@@ -31,7 +37,6 @@ import (
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/protobuf/jsonpb"
-	"github.com/andres-erbsen/tlstestutil"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 )
@@ -43,9 +48,46 @@ const (
 	raftPort     = 9807
 )
 
+func newSerial(rnd io.Reader) (*big.Int, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	return rand.Int(rnd, serialNumberLimit)
+}
+
+func make_cert(caCert *x509.Certificate, caPrivKey *ecdsa.PrivateKey, hostname string) (tls.Certificate, error) {
+	privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	serial, err := newSerial(rand.Reader)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	certTemplate := &x509.Certificate{
+		Subject:      pkix.Name{CommonName: hostname},
+		SerialNumber: serial,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(2 /* years */, 0, 0),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
+	if ip := net.ParseIP(hostname); ip != nil {
+		certTemplate.IPAddresses = []net.IP{ip}
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, certTemplate, caCert, &privKey.PublicKey, caPrivKey)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	cert, err := x509.ParseCertificate(certDER)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+	return tls.Certificate{Certificate: [][]byte{certDER}, PrivateKey: privKey, Leaf: cert}, nil
+}
+
 func main() {
 	if len(os.Args) < 4 {
-		fmt.Printf("usage: %s cacert cakey host0 host1 host2...", os.Args[0])
+		fmt.Printf("usage: %s cacert cakey host0 host1 host2...\n", os.Args[0])
 		return
 	}
 
@@ -129,7 +171,10 @@ func main() {
 		pked := &proto.PublicKey{Ed25519: pk[:]}
 		replicaID := proto.KeyID(pked)
 
-		cert := tlstestutil.Cert(nil, caCert, caKey, host, nil)
+		cert, err := make_cert(caCert, caKey, host)
+		if err != nil {
+			log.Fatal(err)
+		}
 		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls.pem", nil}}
 		heartbeat := proto.DurationStamp(1 * time.Second)
 		cfg := &proto.ReplicaConfig{
@@ -233,7 +278,7 @@ func main() {
 	clientConfig := &proto.Config{
 		Realms: []*proto.RealmConfig{
 			&proto.RealmConfig{
-				Domains:            []string{"example.com"},
+				Domains:            []string{"yahoo-inc.com"},
 				Addr:               cfgs[0].PublicAddr,
 				VRFPublic:          vrfPublic[:],
 				VerificationPolicy: verificationPolicy,
