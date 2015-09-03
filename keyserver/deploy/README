@@ -1,0 +1,27 @@
+Steps to set up a running (test) keyserver instance:
+0. Get the certificate and private key for the CA that will be signing the
+	keyserver's certificates. For testing purposes, it's easy to generate a CA
+	using github.com/andres-erbsen/dename/utils/mkauthority (just "go get" it):
+	mkauthority > ca.crt.pem 2> ca.key.pem
+1. go run make_config.go ca.crt.pem ca.key.pem host0 host1 host2...
+	where host0 and so on are the hostnames of the keyserver replicas. The
+	hostnames are what
+	a) the replicas bind to to listen for clients, verifiers, and other replicas,
+		on the ports specified in the top of make_config.go
+	b) the replicas dial to reach other replicas (on the Raft port)
+	c) the clients try to reach (on the client port)
+	Using different hostnames/IPs for different purposes is supported by the
+	configuration files and server code; make_config.go just has to be changed.
+	make_config.go outputs the following files:
+	- vrf.vrfpublic: The raw 32-byte VRF public key
+	- clientconfig.json: A JSON-serialized proto.Config which clients can use as
+	  their configuration file. The test client (cnclient/client.go) uses this.
+	- For each hostname, in a folder named after the host:
+		- tls.key.pem: The PEM-encoded ECDSA TLS private key for the replica
+		- vrf.vrfsecret: The raw 64-byte VRF secret key (shared across replicas)
+		- signing.ed25519secret: The raw 64-byte ed25519 signing key for the replica
+		- config.json: A JSON-serialized proto.ReplicaConfig configuration file for
+		  the server, which references the three secret key files above.
+2. Upload the files in each hosts's directory to the host
+3. Build keyserver/main and deploy it to each host
+4. Start keyserver/main on each host

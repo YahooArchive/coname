@@ -42,10 +42,13 @@ import (
 )
 
 const (
-	publicPort   = 4625
-	verifierPort = 4626
-	hkpPort      = 11371
-	raftPort     = 9807
+	publicPort      = 4625
+	verifierPort    = 4626
+	hkpPort         = 11371
+	raftPort        = 9807
+	realm           = "yahoo"
+	dkimProofPrefix = "_YAHOO_E2E_KEYSERVER_PROOF_"
+	dkimProofDomain = "yahoo-inc.com"
 )
 
 func newSerial(rnd io.Reader) (*big.Int, error) {
@@ -120,7 +123,6 @@ func main() {
 	}
 
 	hosts := os.Args[3:]
-	realm := "yahoo"
 
 	vrfPublic, vrfSecret, err := vrf.GenerateKey(rand.Reader)
 	if err != nil {
@@ -161,8 +163,8 @@ func main() {
 
 		InitialReplicas:          replicas,
 		EmailProofToAddr:         "TODO@example.com",
-		EmailProofSubjectPrefix:  "_YAHOO_E2E_KEYSERVER_PROOF_",
-		EmailProofAllowedDomains: []string{"yahoo-inc.com"},
+		EmailProofSubjectPrefix:  dkimProofPrefix,
+		EmailProofAllowedDomains: []string{dkimProofDomain},
 	}
 
 	var cfgs []*proto.ReplicaConfig
@@ -175,7 +177,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls.pem", nil}}
+		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls.key.pem", nil}}
 		heartbeat := proto.DurationStamp(1 * time.Second)
 		cfg := &proto.ReplicaConfig{
 			KeyserverConfig:     ksConfig,
@@ -199,7 +201,7 @@ func main() {
 		if _, err := os.Stat(host + "/"); os.IsNotExist(err) {
 			os.Mkdir(host, 0700)
 		}
-		tlsKeyF, err := os.OpenFile(path.Join(host, "tls.pem"), os.O_WRONLY|os.O_CREATE, 0600)
+		tlsKeyF, err := os.OpenFile(path.Join(host, "tls.key.pem"), os.O_WRONLY|os.O_CREATE, 0600)
 		defer tlsKeyF.Close()
 		if err != nil {
 			log.Panic(err)
@@ -239,20 +241,6 @@ func main() {
 	}
 
 	err = ioutil.WriteFile("vrf.vrfpublic", vrfPublic[:], 0644)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	tlsCertF, err := os.OpenFile("ca_cert.pem", os.O_WRONLY|os.O_CREATE, 0644)
-	defer tlsCertF.Close()
-	if err != nil {
-		log.Panic(err)
-	}
-	err = pem.Encode(tlsCertF, &pem.Block{
-		Type:    "PUBLIC KEY", // TODO: "EC PUBLIC KEY" ?
-		Headers: make(map[string]string),
-		Bytes:   caCert.Raw,
-	})
 	if err != nil {
 		log.Panic(err)
 	}
