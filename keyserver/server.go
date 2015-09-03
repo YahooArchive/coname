@@ -161,6 +161,11 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		ks.emailProofAllowedDomains[d] = struct{}{}
 	}
 
+	// TODO remove this before production
+	if cfg.KeyserverConfig.InsecureSkipEmailProof {
+		ks.insecureSkipEmailProof = true
+	}
+
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
 	case ks.db.ErrNotFound():
 		// ReplicaState zero value is valid initialization

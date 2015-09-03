@@ -162,6 +162,7 @@ type KeyserverConfig struct {
 	// EmailProofAllowedDomains specifies the domains for which this keyserver
 	// accepts email address registrations.
 	EmailProofAllowedDomains []string `protobuf:"bytes,10,rep,name=email_proof_allowed_domains" json:"email_proof_allowed_domains,omitempty"`
+	InsecureSkipEmailProof   bool     `protobuf:"varint,11,opt,name=insecure_skip_email_proof,proto3" json:"insecure_skip_email_proof,omitempty"`
 }
 
 func (m *KeyserverConfig) Reset()      { *m = KeyserverConfig{} }
@@ -414,6 +415,9 @@ func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("EmailProofAllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.EmailProofAllowedDomains[i], i, that1.EmailProofAllowedDomains[i])
 		}
 	}
+	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
+		return fmt.Errorf("InsecureSkipEmailProof this(%v) Not Equal that(%v)", this.InsecureSkipEmailProof, that1.InsecureSkipEmailProof)
+	}
 	return nil
 }
 func (this *KeyserverConfig) Equal(that interface{}) bool {
@@ -475,6 +479,9 @@ func (this *KeyserverConfig) Equal(that interface{}) bool {
 		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
 			return false
 		}
+	}
+	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
+		return false
 	}
 	return true
 }
@@ -586,7 +593,8 @@ func (this *KeyserverConfig) GoString() string {
 		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
 		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
 		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix),
-		`EmailProofAllowedDomains:` + fmt.Sprintf("%#v", this.EmailProofAllowedDomains) + `}`}, ", ")
+		`EmailProofAllowedDomains:` + fmt.Sprintf("%#v", this.EmailProofAllowedDomains),
+		`InsecureSkipEmailProof:` + fmt.Sprintf("%#v", this.InsecureSkipEmailProof) + `}`}, ", ")
 	return s
 }
 func (this *Replica) GoString() string {
@@ -843,6 +851,16 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
+	if m.InsecureSkipEmailProof {
+		data[i] = 0x58
+		i++
+		if m.InsecureSkipEmailProof {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
 	return i, nil
 }
 
@@ -968,6 +986,7 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 	for i := 0; i < v12; i++ {
 		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
 	}
+	this.InsecureSkipEmailProof = bool(bool(r.Intn(2) == 0))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -1151,6 +1170,9 @@ func (m *KeyserverConfig) Size() (n int) {
 			n += 1 + l + sovKeyserverconfig(uint64(l))
 		}
 	}
+	if m.InsecureSkipEmailProof {
+		n += 2
+	}
 	return n
 }
 
@@ -1225,6 +1247,7 @@ func (this *KeyserverConfig) String() string {
 		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
 		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
 		`EmailProofAllowedDomains:` + fmt.Sprintf("%v", this.EmailProofAllowedDomains) + `,`,
+		`InsecureSkipEmailProof:` + fmt.Sprintf("%v", this.InsecureSkipEmailProof) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1901,6 +1924,23 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			}
 			m.EmailProofAllowedDomains = append(m.EmailProofAllowedDomains, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InsecureSkipEmailProof", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.InsecureSkipEmailProof = bool(v != 0)
 		default:
 			var sizeOfWire int
 			for {

@@ -165,6 +165,9 @@ func main() {
 		EmailProofToAddr:         "TODO@example.com",
 		EmailProofSubjectPrefix:  dkimProofPrefix,
 		EmailProofAllowedDomains: []string{dkimProofDomain},
+
+		// TODO get rid of this
+		InsecureSkipEmailProof: true,
 	}
 
 	var cfgs []*proto.ReplicaConfig

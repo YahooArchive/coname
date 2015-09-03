@@ -133,6 +133,8 @@ message KeyserverConfig {
 	// EmailProofAllowedDomains specifies the domains for which this keyserver
 	// accepts email address registrations.
 	repeated string email_proof_allowed_domains = 10;
+
+	bool insecure_skip_email_proof = 11;
 }
 
 message Replica {

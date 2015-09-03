@@ -16,9 +16,9 @@ package main
 
 import (
 	"bytes"
-	//"crypto/rand"
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -141,13 +141,11 @@ func main() {
 	index := lookup.Index
 
 	// Then, do the actual update
-	/*nonce := make([]byte, 16)
-	 _, err = rand.Read(nonce)
+	nonce := make([]byte, 16)
+	_, err = rand.Read(nonce)
 	if err != nil {
 		log.Fatal(err)
-	} */
-	// use a hardcoded nonce for testing purposes
-	nonce := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
+	}
 	profile := proto.EncodedProfile{
 		Profile: proto.Profile{
 			Nonce: nonce,
@@ -175,7 +173,6 @@ func main() {
 	entry.UpdateEncoding()
 	var entryHash [32]byte
 	sha3.ShakeSum256(entryHash[:], entry.Encoding)
-	log.Printf("entry: %x", entry.Encoding)
 
 	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
