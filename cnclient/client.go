@@ -37,7 +37,7 @@ import (
 )
 
 func main() {
-	configPathPtr := flag.String("config", "config.json", "path to config file")
+	configPathPtr := flag.String("config", "clientconfig.json", "path to config file")
 	flag.Parse()
 
 	configReader, err := os.Open(*configPathPtr)
@@ -50,7 +50,7 @@ func main() {
 		log.Fatalf("Failed to parse configuration file: %s", err)
 	}
 
-	certFile := "ca_cert.pem"
+	certFile := "ca.crt.pem"
 	caCertPEM, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		log.Fatalf("couldn't read certs from %s", certFile)
