@@ -245,7 +245,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 			HKPAddr:             "localhost:0",
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
+			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			ClientTimeout:       proto.DurationStamp(time.Hour),
 			LaggingVerifierScan: 1000 * 1000 * 1000,
 		})
@@ -917,7 +917,7 @@ func TestKeyserverHKP(t *testing.T) {
 	})
 
 	c := &http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{RootCAs: caPool},
+		TLSClientConfig: clientTLS,
 	}}
 	url := "https://" + ks.hkpListen.Addr().String() + "/pks/lookup?op=get&search=" + alice
 	resp, err := c.Get(url)
