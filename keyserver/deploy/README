@@ -16,6 +16,10 @@ Steps to set up a running (test) keyserver instance:
 	- vrf.vrfpublic: The raw 32-byte VRF public key
 	- clientconfig.json: A JSON-serialized proto.Config which clients can use as
 	  their configuration file. The test client (cnclient/client.go) uses this.
+	- client.key.pem: The PEM-encoded ECDSA TLS private key for a single client
+	  certificate generated and inserted into clientconfig.json for accessing the
+		server. This is only to restrict access for testing purposes; one we reach
+		actual production, we will only require client certificates for verifiers.
 	- For each hostname, in a folder named after the host:
 		- tls.key.pem: The PEM-encoded ECDSA TLS private key for the replica
 		- vrf.vrfsecret: The raw 64-byte VRF secret key (shared across replicas)

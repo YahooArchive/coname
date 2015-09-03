@@ -187,9 +187,9 @@ func main() {
 			VerifierAddr:        fmt.Sprintf("%s:%d", host, verifierPort),
 			HKPAddr:             fmt.Sprintf("%s:%d", host, hkpPort),
 			RaftAddr:            fmt.Sprintf("%s:%d", host, raftPort),
-			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
+			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
+			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			RaftTLS:             proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}},
 			LevelDBPath:         "db", // TODO
 			RaftHeartbeat:       heartbeat,
@@ -245,6 +245,11 @@ func main() {
 		log.Panic(err)
 	}
 
+	clientCert, err := make_cert(caCert, caKey, "client")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	verificationPolicy := &proto.AuthorizationPolicy{
 		PublicKeys: make(map[uint64]*proto.PublicKey),
 		Quorum: &proto.QuorumExpr{
@@ -272,15 +277,37 @@ func main() {
 				VerificationPolicy: verificationPolicy,
 				EpochTimeToLive:    proto.DurationStamp(3 * time.Minute),
 				TreeNonce:          nil,
+				ClientTLS: &proto.TLSConfig{
+					RootCAs:      [][]byte{caCert.Raw},
+					Certificates: []*proto.CertificateAndKeyID{{clientCert.Certificate, "client.key.pem", nil}},
+				},
 			},
 		},
 	}
-	clientConfigF, err := os.OpenFile("clientconfig.json", os.O_WRONLY|os.O_CREATE, 0600)
+	clientConfigF, err := os.OpenFile("clientconfig.json", os.O_WRONLY|os.O_CREATE, 0644)
 	defer clientConfigF.Close()
 	if err != nil {
 		log.Panic(err)
 	}
 	err = new(jsonpb.Marshaller).Marshal(clientConfigF, clientConfig)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	clientKeyF, err := os.OpenFile("client.key.pem", os.O_WRONLY|os.O_CREATE, 0644)
+	defer clientKeyF.Close()
+	if err != nil {
+		log.Panic(err)
+	}
+	skDer, err := x509.MarshalECPrivateKey(clientCert.PrivateKey.(*ecdsa.PrivateKey))
+	if err != nil {
+		log.Panic(err)
+	}
+	err = pem.Encode(clientKeyF, &pem.Block{
+		Type:    "EC PRIVATE KEY",
+		Headers: make(map[string]string),
+		Bytes:   skDer,
+	})
 	if err != nil {
 		log.Panic(err)
 	}
