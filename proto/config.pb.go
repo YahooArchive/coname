@@ -56,7 +56,8 @@ type RealmConfig struct {
 	// epoch heads with IssueTime more than EpochTimeToLive in the past.
 	EpochTimeToLive Duration `protobuf:"bytes,6,opt,name=epoch_time_to_live" json:"epoch_time_to_live"`
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
-	TreeNonce []byte `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
+	TreeNonce []byte     `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
+	ClientTLS *TLSConfig `protobuf:"bytes,8,opt,name=client_tls" json:"client_tls,omitempty"`
 }
 
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
@@ -74,6 +75,13 @@ func (m *RealmConfig) GetEpochTimeToLive() Duration {
 		return m.EpochTimeToLive
 	}
 	return Duration{}
+}
+
+func (m *RealmConfig) GetClientTLS() *TLSConfig {
+	if m != nil {
+		return m.ClientTLS
+	}
+	return nil
 }
 
 func (this *Config) VerboseEqual(that interface{}) error {
@@ -182,6 +190,9 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
 		return fmt.Errorf("TreeNonce this(%v) Not Equal that(%v)", this.TreeNonce, that1.TreeNonce)
 	}
+	if !this.ClientTLS.Equal(that1.ClientTLS) {
+		return fmt.Errorf("ClientTLS this(%v) Not Equal that(%v)", this.ClientTLS, that1.ClientTLS)
+	}
 	return nil
 }
 func (this *RealmConfig) Equal(that interface{}) bool {
@@ -230,6 +241,9 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 	if !bytes.Equal(this.TreeNonce, that1.TreeNonce) {
 		return false
 	}
+	if !this.ClientTLS.Equal(that1.ClientTLS) {
+		return false
+	}
 	return true
 }
 func (this *Config) GoString() string {
@@ -251,7 +265,8 @@ func (this *RealmConfig) GoString() string {
 		`VRFPublic:` + fmt.Sprintf("%#v", this.VRFPublic),
 		`VerificationPolicy:` + fmt.Sprintf("%#v", this.VerificationPolicy),
 		`EpochTimeToLive:` + strings.Replace(this.EpochTimeToLive.GoString(), `&`, ``, 1),
-		`TreeNonce:` + fmt.Sprintf("%#v", this.TreeNonce) + `}`}, ", ")
+		`TreeNonce:` + fmt.Sprintf("%#v", this.TreeNonce),
+		`ClientTLS:` + fmt.Sprintf("%#v", this.ClientTLS) + `}`}, ", ")
 	return s
 }
 func valueToGoStringConfig(v interface{}, typ string) string {
@@ -385,6 +400,16 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], m.TreeNonce)
 		}
 	}
+	if m.ClientTLS != nil {
+		data[i] = 0x42
+		i++
+		i = encodeVarintConfig(data, i, uint64(m.ClientTLS.Size()))
+		n3, err := m.ClientTLS.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
 	return i, nil
 }
 
@@ -452,6 +477,9 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	this.TreeNonce = make([]byte, v5)
 	for i := 0; i < v5; i++ {
 		this.TreeNonce[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		this.ClientTLS = NewPopulatedTLSConfig(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -577,6 +605,10 @@ func (m *RealmConfig) Size() (n int) {
 			n += 1 + l + sovConfig(uint64(l))
 		}
 	}
+	if m.ClientTLS != nil {
+		l = m.ClientTLS.Size()
+		n += 1 + l + sovConfig(uint64(l))
+	}
 	return n
 }
 
@@ -615,6 +647,7 @@ func (this *RealmConfig) String() string {
 		`VerificationPolicy:` + strings.Replace(fmt.Sprintf("%v", this.VerificationPolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
 		`EpochTimeToLive:` + strings.Replace(strings.Replace(this.EpochTimeToLive.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
 		`TreeNonce:` + fmt.Sprintf("%v", this.TreeNonce) + `,`,
+		`ClientTLS:` + strings.Replace(fmt.Sprintf("%v", this.ClientTLS), "TLSConfig", "TLSConfig", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -891,6 +924,36 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.TreeNonce = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			postIndex := iNdEx + msglen
+			if msglen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ClientTLS == nil {
+				m.ClientTLS = &TLSConfig{}
+			}
+			if err := m.ClientTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			var sizeOfWire int

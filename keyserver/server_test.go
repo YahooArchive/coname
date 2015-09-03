@@ -174,7 +174,8 @@ func majorityQuorum(candidates []uint64) *proto.QuorumExpr {
 // setupKeyservers initializes everything needed to start a set of keyserver
 // replicas, but does not actually start them yet
 func setupKeyservers(t *testing.T, nReplicas int) (
-	cfgs []*proto.ReplicaConfig, keyGetters []func(string) (crypto.PrivateKey, error),
+	cfgs []*proto.ReplicaConfig, serverKeyGetters []func(string) (crypto.PrivateKey, error),
+	clientKeyGetter func(string) (crypto.PrivateKey, error),
 	clientConfig *proto.Config, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func(),
 ) {
 	caCert, caPool, caKey = tlstestutil.CA(t, nil)
@@ -186,6 +187,17 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 
 	teardown = func() {}
 
+	clientCert := tlstestutil.Cert(t, caCert, caKey, "client", nil)
+	clientKeyGetter = func(id string) (crypto.PrivateKey, error) {
+		switch id {
+		case "client":
+			return clientCert.PrivateKey, nil
+		default:
+			t.Fatalf("unknown key %s", id)
+			return nil, nil
+		}
+	}
+
 	pks := make(map[uint64]*proto.PublicKey)
 	replicaIDs := []uint64{}
 	pol := &proto.AuthorizationPolicy{}
@@ -194,6 +206,10 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		VRFPublic:          vrfPublic,
 		VerificationPolicy: pol,
 		EpochTimeToLive:    proto.DurationStamp(time.Hour),
+		ClientTLS: &proto.TLSConfig{
+			RootCAs:      [][]byte{caCert.Raw},
+			Certificates: []*proto.CertificateAndKeyID{{clientCert.Certificate, "client", nil}},
+		},
 	}
 	clientConfig = &proto.Config{
 		Realms: []*proto.RealmConfig{realmConfig},
@@ -227,13 +243,13 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 			PublicAddr:          "localhost:0",
 			VerifierAddr:        "localhost:0",
 			HKPAddr:             "localhost:0",
-			PublicTLS:           proto.TLSConfig{Certificates: pcerts},
+			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts},
 			ClientTimeout:       proto.DurationStamp(time.Hour),
 			LaggingVerifierScan: 1000 * 1000 * 1000,
 		})
-		keyGetters = append(keyGetters, func(keyid string) (crypto.PrivateKey, error) {
+		serverKeyGetters = append(serverKeyGetters, func(keyid string) (crypto.PrivateKey, error) {
 			switch keyid {
 			case "vrf":
 				return vrfSecret, nil
@@ -260,7 +276,7 @@ func TestThreeKeyserversStartStop(t *testing.T) {
 }
 
 func testKeyserverStartStop(t *testing.T, nReplicas int) {
-	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, _, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -282,7 +298,7 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 func TestKeyserverStartProgressStop(t *testing.T) {
 	pprof()
 	nReplicas := 3
-	cfgs, gks, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, _, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -349,10 +365,10 @@ loop:
 }
 
 func doUpdate(
-	t *testing.T, ks *Keyserver, clientConfig *proto.Config, caPool *x509.CertPool, now time.Time,
+	t *testing.T, ks *Keyserver, clientConfig *proto.Config, clientTLS *tls.Config, caPool *x509.CertPool, now time.Time,
 	name string, version uint64, profileContents proto.Profile,
 ) *proto.EncodedProfile {
-	conn, err := grpc.Dial(ks.publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(ks.publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +464,7 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 	dieOnCtrlC()
 	pprof()
 	nReplicas := 3
-	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ck, clientConfig, _, _, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -469,7 +485,11 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
-	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -493,7 +513,7 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 
 func TestKeyserverRoundtrip(t *testing.T) {
 	nReplicas := 3
-	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ck, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -515,12 +535,16 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
-	profile := doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,7 +568,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 	nReplicas := 3
-	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ck, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -566,12 +590,16 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
-	doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	conn, err := grpc.Dial(kss[1].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(kss[1].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,7 +646,7 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 
 func TestKeyserverUpdate(t *testing.T) {
 	nReplicas := 3
-	cfgs, gks, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ck, clientConfig, _, caPool, _, teardown := setupKeyservers(t, nReplicas)
 	defer teardown()
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	defer teardown2()
@@ -640,12 +668,16 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
-	doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	doUpdate(t, kss[2], clientConfig, caPool, clks[0].Now(), alice, 1, proto.Profile{
+	doUpdate(t, kss[2], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 1, proto.Profile{
 		Nonce: []byte("XYZNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
 	})
@@ -700,10 +732,10 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 // setupRealm initializes nReplicas keyserver replicas and nVerifiers
 // verifiers, and then waits until each one of them has signed an epoch.
 func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
-	kss []*Keyserver, caPool *x509.CertPool, clks []*clock.Mock,
-	verifiers []uint64, clientConfig *proto.Config, teardown func(),
+	kss []*Keyserver, caPool *x509.CertPool, clks []*clock.Mock, verifiers []uint64,
+	clientKeyGetter func(string) (crypto.PrivateKey, error), clientConfig *proto.Config, teardown func(),
 ) {
-	cfgs, gks, clientConfig, caCert, caPool, caKey, teardown := setupKeyservers(t, nReplicas)
+	cfgs, gks, ck, clientConfig, caCert, caPool, caKey, teardown := setupKeyservers(t, nReplicas)
 	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
 	teardown = chain(teardown2, teardown)
 
@@ -806,7 +838,7 @@ loop:
 		pol.PublicKeys[proto.KeyID(vpks[i])] = vpks[i]
 	}
 	clientConfig.Realms[0].VerificationPolicy = pol
-	return kss, caPool, clks, verifiers, clientConfig, teardown
+	return kss, caPool, clks, verifiers, ck, clientConfig, teardown
 }
 
 func copyAuthorizationPolicy(pol *proto.AuthorizationPolicy) *proto.AuthorizationPolicy {
@@ -825,19 +857,23 @@ func copyAuthorizationPolicy(pol *proto.AuthorizationPolicy) *proto.Authorizatio
 
 func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	dieOnCtrlC()
-	kss, caPool, clks, verifiers, clientConfig, teardown := setupRealm(t, 3, 3)
+	kss, caPool, clks, verifiers, ck, clientConfig, teardown := setupRealm(t, 3, 3)
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
-	profile := doUpdate(t, kss[0], clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile := doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: caPool})))
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -862,15 +898,20 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 }
 
 func TestKeyserverHKP(t *testing.T) {
-	kss, caPool, clks, _, clientConfig, teardown := setupRealm(t, 1, 0)
+	kss, caPool, clks, _, ck, clientConfig, teardown := setupRealm(t, 1, 0)
 	ks := kss[0]
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
 
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	pgpKeyRef := []byte("this-is-alices-pgp-key")
-	doUpdate(t, ks, clientConfig, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	doUpdate(t, ks, clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("definitely used only once"),
 		Keys:  map[string][]byte{"pgp": pgpKeyRef},
 	})

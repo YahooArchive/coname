@@ -17,6 +17,7 @@ package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
 import "duration.proto";
+import "tlsconfig.proto";
 
 message Config {
 	repeated RealmConfig realms = 1;
@@ -50,4 +51,6 @@ message RealmConfig {
 
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
 	bytes tree_nonce = 7;
+
+	TLSConfig client_tls = 8 [(gogoproto.customname) = "ClientTLS"];
 }
