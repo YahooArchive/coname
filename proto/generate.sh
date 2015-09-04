@@ -40,6 +40,10 @@ sed -i.bak -e 's:\bproto1\b:github_com_andres_erbsen_protobuf_proto:g' tlsconfig
 # preserve the encoding of repeated public keys
 sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&EncodedPublicKey{})/' client.pb.go
 
+# enable LookupProof.Entry and LookupProof.Profile to be nullable despite using a custom type
+sed -i.bak -e 's/m.Entry = &Entry{}/m.Entry = \&EncodedEntry{}/' client.pb.go
+sed -i.bak -e 's/m.Profile = &Profile{}/m.Profile = \&EncodedProfile{}/' client.pb.go
+
 # skip the text format tests (we never use the text format)
 sed -i.bak -e '/Test.*Text.*testing/a\
 	t.Skip()' *_test.go

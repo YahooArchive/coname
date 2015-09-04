@@ -164,9 +164,9 @@ func main() {
 	var commitment [64]byte
 	sha3.ShakeSum256(commitment[:], profile.Encoding)
 	var version uint64
-	// if lookup.Entry != nil {
-	version = lookup.Entry.Version + 1
-	// }
+	if lookup.Entry != nil {
+		version = lookup.Entry.Version + 1
+	}
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   index,

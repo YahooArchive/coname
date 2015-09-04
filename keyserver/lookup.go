@@ -107,8 +107,8 @@ func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch u
 		return nil, fmt.Errorf("internal error")
 	}
 	if urq != nil {
-		ret.Profile = urq.Profile
-		ret.Entry = urq.Update.NewEntry
+		ret.Profile = &urq.Profile
+		ret.Entry = &urq.Update.NewEntry
 	}
 	return ret, nil
 }

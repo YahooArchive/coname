@@ -84,8 +84,8 @@ message LookupProof {
 	// ratifications[0].ratification.summary.root_hash.
 	TreeProof tree_proof = 5;
 	// Entry specifies profile by hash(profile) = entry.profile_hash
-	Entry entry = 6	[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = false];
-	Profile profile = 7 [(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
+	Entry entry = 6	[(gogoproto.customtype) = "EncodedEntry", (gogoproto.nullable) = true];
+	Profile profile = 7 [(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = true];
 }
 
 // A Proof provides an authentication path through the Merkle Tree that
