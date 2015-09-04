@@ -385,6 +385,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return // a duplicate of this step has already been handled
 		}
 		rs.LastEpochDelimiter = *step.EpochDelimiter
+		log.Printf("epoch %d", step.EpochDelimiter.EpochNumber)
 
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
@@ -676,10 +677,8 @@ func (ks *Keyserver) updateSignatureProposer() {
 }
 
 func (ks *Keyserver) resetEpochTimers(t time.Time) {
-	t2 := t.Add(ks.minEpochInterval)
-	d := t2.Sub(ks.clk.Now())
-	ks.minEpochIntervalTimer.Reset(d)
-	ks.maxEpochIntervalTimer.Reset(d)
+	ks.minEpochIntervalTimer.Reset(t.Add(ks.minEpochInterval).Sub(ks.clk.Now()))
+	ks.maxEpochIntervalTimer.Reset(t.Add(ks.maxEpochInterval).Sub(ks.clk.Now()))
 	ks.minEpochIntervalPassed = false
 	ks.maxEpochIntervalPassed = false
 	// caller MUST call updateEpochProposer
