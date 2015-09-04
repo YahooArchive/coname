@@ -20,6 +20,8 @@ import (
 	"github.com/yahoo/coname/vrf"
 )
 
+// NOTE: All uint64 keys are big-endian encoded to make lexicographical order
+// correspond to numeric order.
 var (
 	tableReplicationLogPrefix             byte = 'l' // index uint64 -> proto.KeyserverStep
 	tableVerifierLogPrefix                byte = 'v' // index uint64 -> proto.VerifierStep
