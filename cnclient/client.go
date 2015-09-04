@@ -129,14 +129,22 @@ func main() {
 	lookup, err := publicC.Lookup(context.Background(), &proto.LookupRequest{
 		UserId: name,
 		// We don't care about any signatures here; the server just needs to tell us the index.
-		QuorumRequirement: &proto.QuorumExpr{
-			Threshold:      0,
-			Candidates:     []uint64{},
-			Subexpressions: []*proto.QuorumExpr{},
-		},
+		// We could just give an empty quorum requirement if we wanted (although I guess the
+		// spec actually disallows that).
+		QuorumRequirement: realm.VerificationPolicy.Quorum,
 	})
 	if err != nil {
 		log.Fatal(err)
+	}
+	fmt.Printf("looking up %s:\n", name)
+	keys, err := coname.VerifyLookup(cfg, name, lookup, time.Now())
+	if err != nil {
+		log.Fatal(err)
+	}
+	if keys == nil {
+		fmt.Printf("not present\n")
+	} else {
+		fmt.Printf("keys: %s\n", keys)
 	}
 	index := lookup.Index
 
@@ -149,16 +157,20 @@ func main() {
 	profile := proto.EncodedProfile{
 		Profile: proto.Profile{
 			Nonce: nonce,
-			Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+			Keys:  map[string][]byte{"abc": []byte("foo bar"), "xyz": []byte("TEST 456")},
 		},
 	}
 	profile.UpdateEncoding()
 	var commitment [64]byte
 	sha3.ShakeSum256(commitment[:], profile.Encoding)
+	var version uint64
+	// if lookup.Entry != nil {
+	version = lookup.Entry.Version + 1
+	// }
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   index,
-			Version: 0,
+			Version: version,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
 				Quorum: &proto.QuorumExpr{
@@ -174,6 +186,7 @@ func main() {
 	var entryHash [32]byte
 	sha3.ShakeSum256(entryHash[:], entry.Encoding)
 
+	fmt.Printf("updating profile:\n")
 	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
@@ -196,4 +209,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("success\n")
 }
