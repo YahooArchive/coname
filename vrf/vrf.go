@@ -168,8 +168,12 @@ func Verify(pkBytes, m, vrfBytes, proof []byte) bool {
 
 	var P, B, ii, iic edwards25519.ExtendedGroupElement
 	var A, hmtP, iicP edwards25519.ProjectiveGroupElement
-	P.FromBytesBaseGroup(&pk)
-	ii.FromBytesBaseGroup(&iiB)
+	if !P.FromBytesBaseGroup(&pk) {
+		return false
+	}
+	if !ii.FromBytesBaseGroup(&iiB) {
+		return false
+	}
 	edwards25519.GeDoubleScalarMultVartime(&A, &c, &P, &t)
 	A.ToBytes(&ABytes)
 
