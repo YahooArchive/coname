@@ -314,12 +314,12 @@ func chi(out, z *edwards25519.FieldElement) {
 func RepresentativeToPublicKey(publicKey, representative *[32]byte) {
 	var rr2, v edwards25519.FieldElement
 	edwards25519.FeFromBytes(&rr2, representative)
-	representativeToMongomeryX(&v, &rr2)
+	representativeToMontgomeryX(&v, &rr2)
 	edwards25519.FeToBytes(publicKey, &v)
 }
 
-// representativeToMongomeryX consumes the rr2 input
-func representativeToMongomeryX(v, rr2 *edwards25519.FieldElement) {
+// representativeToMontgomeryX consumes the rr2 input
+func representativeToMontgomeryX(v, rr2 *edwards25519.FieldElement) {
 	var e edwards25519.FieldElement
 	edwards25519.FeSquare2(rr2, rr2)
 	rr2[0]++
@@ -368,7 +368,7 @@ func HashToEdwards(out *edwards25519.ExtendedGroupElement, h *[32]byte) {
 	bit := hh[31] >> 7
 	hh[31] &= 127
 	edwards25519.FeFromBytes(&out.Y, &hh)
-	representativeToMongomeryX(&out.X, &out.Y)
+	representativeToMontgomeryX(&out.X, &out.Y)
 	montgomeryXToEdwardsY(&out.Y, &out.X)
 	if ok := out.FromParityAndY(bit, &out.Y); !ok {
 		panic("HashToEdwards: point not on curve")
