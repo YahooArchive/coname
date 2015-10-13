@@ -37,24 +37,25 @@ package proto
 
 // discarding unused import gogoproto "gogoproto"
 
-import (
-	context "golang.org/x/net/context"
-	grpc "google.golang.org/grpc"
-)
-
+import io "io"
 import fmt "fmt"
-import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 import github_com_andres_erbsen_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
 
 import errors "errors"
 
-import io "io"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import sort "sort"
+import strconv "strconv"
+
+import bytes "bytes"
+
+import (
+	context "golang.org/x/net/context"
+	grpc "google.golang.org/grpc"
+)
 
 type LookupRequest struct {
 	// Epoch as of which to perform the lookup ("latest" if not specified)
@@ -453,2697 +454,6 @@ func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 	return nil
 }
 
-// Client API for E2EKSPublic service
-
-type E2EKSPublicClient interface {
-	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
-	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
-}
-
-type e2EKSPublicClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewE2EKSPublicClient(cc *grpc.ClientConn) E2EKSPublicClient {
-	return &e2EKSPublicClient{cc}
-}
-
-func (c *e2EKSPublicClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Lookup", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *e2EKSPublicClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
-	out := new(LookupProof)
-	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Update", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for E2EKSPublic service
-
-type E2EKSPublicServer interface {
-	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
-	Update(context.Context, *UpdateRequest) (*LookupProof, error)
-}
-
-func RegisterE2EKSPublicServer(s *grpc.Server, srv E2EKSPublicServer) {
-	s.RegisterService(&_E2EKSPublic_serviceDesc, srv)
-}
-
-func _E2EKSPublic_Lookup_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(LookupRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSPublicServer).Lookup(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func _E2EKSPublic_Update_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(UpdateRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(E2EKSPublicServer).Update(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _E2EKSPublic_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.E2EKSPublic",
-	HandlerType: (*E2EKSPublicServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Lookup",
-			Handler:    _E2EKSPublic_Lookup_Handler,
-		},
-		{
-			MethodName: "Update",
-			Handler:    _E2EKSPublic_Update_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
-}
-
-func (this *LookupRequest) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*LookupRequest)
-	if !ok {
-		return fmt.Errorf("that is not of type *LookupRequest")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *LookupRequest but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *LookupRequestbut is not nil && this == nil")
-	}
-	if this.Epoch != that1.Epoch {
-		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
-	}
-	if this.UserId != that1.UserId {
-		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
-	}
-	return nil
-}
-func (this *LookupRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*LookupRequest)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Epoch != that1.Epoch {
-		return false
-	}
-	if this.UserId != that1.UserId {
-		return false
-	}
-	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
-		return false
-	}
-	return true
-}
-func (this *UpdateRequest) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*UpdateRequest)
-	if !ok {
-		return fmt.Errorf("that is not of type *UpdateRequest")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *UpdateRequest but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *UpdateRequestbut is not nil && this == nil")
-	}
-	if !this.Update.Equal(that1.Update) {
-		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
-	}
-	if !this.LookupParameters.Equal(that1.LookupParameters) {
-		return fmt.Errorf("LookupParameters this(%v) Not Equal that(%v)", this.LookupParameters, that1.LookupParameters)
-	}
-	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
-		return fmt.Errorf("DKIMProof this(%v) Not Equal that(%v)", this.DKIMProof, that1.DKIMProof)
-	}
-	return nil
-}
-func (this *UpdateRequest) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*UpdateRequest)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Update.Equal(that1.Update) {
-		return false
-	}
-	if !this.Profile.Equal(that1.Profile) {
-		return false
-	}
-	if !this.LookupParameters.Equal(that1.LookupParameters) {
-		return false
-	}
-	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
-		return false
-	}
-	return true
-}
-func (this *LookupProof) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*LookupProof)
-	if !ok {
-		return fmt.Errorf("that is not of type *LookupProof")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *LookupProof but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *LookupProofbut is not nil && this == nil")
-	}
-	if this.UserId != that1.UserId {
-		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
-	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
-		return fmt.Errorf("IndexProof this(%v) Not Equal that(%v)", this.IndexProof, that1.IndexProof)
-	}
-	if len(this.Ratifications) != len(that1.Ratifications) {
-		return fmt.Errorf("Ratifications this(%v) Not Equal that(%v)", len(this.Ratifications), len(that1.Ratifications))
-	}
-	for i := range this.Ratifications {
-		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
-			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
-		}
-	}
-	if !this.TreeProof.Equal(that1.TreeProof) {
-		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
-	}
-	if that1.Entry == nil {
-		if this.Entry != nil {
-			return fmt.Errorf("this.Entry != nil && that1.Entry == nil")
-		}
-	} else if !this.Entry.Equal(*that1.Entry) {
-		return fmt.Errorf("Entry this(%v) Not Equal that(%v)", this.Entry, that1.Entry)
-	}
-	if that1.Profile == nil {
-		if this.Profile != nil {
-			return fmt.Errorf("this.Profile != nil && that1.Profile == nil")
-		}
-	} else if !this.Profile.Equal(*that1.Profile) {
-		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
-	}
-	return nil
-}
-func (this *LookupProof) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*LookupProof)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.UserId != that1.UserId {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return false
-	}
-	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
-		return false
-	}
-	if len(this.Ratifications) != len(that1.Ratifications) {
-		return false
-	}
-	for i := range this.Ratifications {
-		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
-			return false
-		}
-	}
-	if !this.TreeProof.Equal(that1.TreeProof) {
-		return false
-	}
-	if that1.Entry == nil {
-		if this.Entry != nil {
-			return false
-		}
-	} else if !this.Entry.Equal(*that1.Entry) {
-		return false
-	}
-	if that1.Profile == nil {
-		if this.Profile != nil {
-			return false
-		}
-	} else if !this.Profile.Equal(*that1.Profile) {
-		return false
-	}
-	return true
-}
-func (this *TreeProof) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*TreeProof)
-	if !ok {
-		return fmt.Errorf("that is not of type *TreeProof")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *TreeProof but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *TreeProofbut is not nil && this == nil")
-	}
-	if len(this.Neighbors) != len(that1.Neighbors) {
-		return fmt.Errorf("Neighbors this(%v) Not Equal that(%v)", len(this.Neighbors), len(that1.Neighbors))
-	}
-	for i := range this.Neighbors {
-		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
-			return fmt.Errorf("Neighbors this[%v](%v) Not Equal that[%v](%v)", i, this.Neighbors[i], i, that1.Neighbors[i])
-		}
-	}
-	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
-		return fmt.Errorf("ExistingIndex this(%v) Not Equal that(%v)", this.ExistingIndex, that1.ExistingIndex)
-	}
-	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
-		return fmt.Errorf("ExistingEntryHash this(%v) Not Equal that(%v)", this.ExistingEntryHash, that1.ExistingEntryHash)
-	}
-	return nil
-}
-func (this *TreeProof) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*TreeProof)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if len(this.Neighbors) != len(that1.Neighbors) {
-		return false
-	}
-	for i := range this.Neighbors {
-		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
-			return false
-		}
-	}
-	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
-		return false
-	}
-	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
-		return false
-	}
-	return true
-}
-func (this *Entry) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Entry)
-	if !ok {
-		return fmt.Errorf("that is not of type *Entry")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Entry but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Entrybut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
-	}
-	if this.Version != that1.Version {
-		return fmt.Errorf("Version this(%v) Not Equal that(%v)", this.Version, that1.Version)
-	}
-	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
-		return fmt.Errorf("UpdatePolicy this(%v) Not Equal that(%v)", this.UpdatePolicy, that1.UpdatePolicy)
-	}
-	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
-		return fmt.Errorf("ProfileCommitment this(%v) Not Equal that(%v)", this.ProfileCommitment, that1.ProfileCommitment)
-	}
-	return nil
-}
-func (this *Entry) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Entry)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Index, that1.Index) {
-		return false
-	}
-	if this.Version != that1.Version {
-		return false
-	}
-	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
-		return false
-	}
-	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
-		return false
-	}
-	return true
-}
-func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedEntryUpdate)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedEntryUpdate")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedEntryUpdate but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEntryUpdatebut is not nil && this == nil")
-	}
-	if !this.NewEntry.Equal(that1.NewEntry) {
-		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
-	}
-	if len(this.Signatures) != len(that1.Signatures) {
-		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
-	}
-	for i := range this.Signatures {
-		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
-			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
-		}
-	}
-	return nil
-}
-func (this *SignedEntryUpdate) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedEntryUpdate)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.NewEntry.Equal(that1.NewEntry) {
-		return false
-	}
-	if len(this.Signatures) != len(that1.Signatures) {
-		return false
-	}
-	for i := range this.Signatures {
-		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *Profile) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Profile)
-	if !ok {
-		return fmt.Errorf("that is not of type *Profile")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Profile but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Profilebut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Nonce, that1.Nonce) {
-		return fmt.Errorf("Nonce this(%v) Not Equal that(%v)", this.Nonce, that1.Nonce)
-	}
-	if len(this.Keys) != len(that1.Keys) {
-		return fmt.Errorf("Keys this(%v) Not Equal that(%v)", len(this.Keys), len(that1.Keys))
-	}
-	for i := range this.Keys {
-		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
-			return fmt.Errorf("Keys this[%v](%v) Not Equal that[%v](%v)", i, this.Keys[i], i, that1.Keys[i])
-		}
-	}
-	return nil
-}
-func (this *Profile) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Profile)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Nonce, that1.Nonce) {
-		return false
-	}
-	if len(this.Keys) != len(that1.Keys) {
-		return false
-	}
-	for i := range this.Keys {
-		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*SignedEpochHead)
-	if !ok {
-		return fmt.Errorf("that is not of type *SignedEpochHead")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *SignedEpochHead but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEpochHeadbut is not nil && this == nil")
-	}
-	if !this.Head.Equal(that1.Head) {
-		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
-	}
-	if len(this.Signatures) != len(that1.Signatures) {
-		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
-	}
-	for i := range this.Signatures {
-		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
-			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
-		}
-	}
-	return nil
-}
-func (this *SignedEpochHead) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*SignedEpochHead)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Head.Equal(that1.Head) {
-		return false
-	}
-	if len(this.Signatures) != len(that1.Signatures) {
-		return false
-	}
-	for i := range this.Signatures {
-		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *TimestampedEpochHead) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*TimestampedEpochHead)
-	if !ok {
-		return fmt.Errorf("that is not of type *TimestampedEpochHead")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *TimestampedEpochHead but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *TimestampedEpochHeadbut is not nil && this == nil")
-	}
-	if !this.Head.Equal(that1.Head) {
-		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
-	}
-	return nil
-}
-func (this *TimestampedEpochHead) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*TimestampedEpochHead)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.Head.Equal(that1.Head) {
-		return false
-	}
-	if !this.Timestamp.Equal(&that1.Timestamp) {
-		return false
-	}
-	return true
-}
-func (this *EpochHead) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*EpochHead)
-	if !ok {
-		return fmt.Errorf("that is not of type *EpochHead")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *EpochHead but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *EpochHeadbut is not nil && this == nil")
-	}
-	if this.Realm != that1.Realm {
-		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
-	}
-	if this.Epoch != that1.Epoch {
-		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
-	}
-	if !bytes.Equal(this.RootHash, that1.RootHash) {
-		return fmt.Errorf("RootHash this(%v) Not Equal that(%v)", this.RootHash, that1.RootHash)
-	}
-	if !this.IssueTime.Equal(&that1.IssueTime) {
-		return fmt.Errorf("IssueTime this(%v) Not Equal that(%v)", this.IssueTime, that1.IssueTime)
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
-	}
-	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
-		return fmt.Errorf("NextEpochPolicy this(%v) Not Equal that(%v)", this.NextEpochPolicy, that1.NextEpochPolicy)
-	}
-	return nil
-}
-func (this *EpochHead) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*EpochHead)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Realm != that1.Realm {
-		return false
-	}
-	if this.Epoch != that1.Epoch {
-		return false
-	}
-	if !bytes.Equal(this.RootHash, that1.RootHash) {
-		return false
-	}
-	if !this.IssueTime.Equal(&that1.IssueTime) {
-		return false
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return false
-	}
-	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
-		return false
-	}
-	return true
-}
-func (this *AuthorizationPolicy) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*AuthorizationPolicy)
-	if !ok {
-		return fmt.Errorf("that is not of type *AuthorizationPolicy")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *AuthorizationPolicy but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *AuthorizationPolicybut is not nil && this == nil")
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
-	}
-	return nil
-}
-func (this *AuthorizationPolicy) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*AuthorizationPolicy)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
-	}
-	if !this.Quorum.Equal(that1.Quorum) {
-		return false
-	}
-	return true
-}
-func (this *PublicKey) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*PublicKey)
-	if !ok {
-		return fmt.Errorf("that is not of type *PublicKey")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *PublicKey but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *PublicKeybut is not nil && this == nil")
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
-	}
-	return nil
-}
-func (this *PublicKey) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*PublicKey)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
-		return false
-	}
-	return true
-}
-func (this *QuorumExpr) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*QuorumExpr)
-	if !ok {
-		return fmt.Errorf("that is not of type *QuorumExpr")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *QuorumExpr but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *QuorumExprbut is not nil && this == nil")
-	}
-	if this.Threshold != that1.Threshold {
-		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
-	}
-	if len(this.Candidates) != len(that1.Candidates) {
-		return fmt.Errorf("Candidates this(%v) Not Equal that(%v)", len(this.Candidates), len(that1.Candidates))
-	}
-	for i := range this.Candidates {
-		if this.Candidates[i] != that1.Candidates[i] {
-			return fmt.Errorf("Candidates this[%v](%v) Not Equal that[%v](%v)", i, this.Candidates[i], i, that1.Candidates[i])
-		}
-	}
-	if len(this.Subexpressions) != len(that1.Subexpressions) {
-		return fmt.Errorf("Subexpressions this(%v) Not Equal that(%v)", len(this.Subexpressions), len(that1.Subexpressions))
-	}
-	for i := range this.Subexpressions {
-		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
-			return fmt.Errorf("Subexpressions this[%v](%v) Not Equal that[%v](%v)", i, this.Subexpressions[i], i, that1.Subexpressions[i])
-		}
-	}
-	return nil
-}
-func (this *QuorumExpr) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*QuorumExpr)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.Threshold != that1.Threshold {
-		return false
-	}
-	if len(this.Candidates) != len(that1.Candidates) {
-		return false
-	}
-	for i := range this.Candidates {
-		if this.Candidates[i] != that1.Candidates[i] {
-			return false
-		}
-	}
-	if len(this.Subexpressions) != len(that1.Subexpressions) {
-		return false
-	}
-	for i := range this.Subexpressions {
-		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
-			return false
-		}
-	}
-	return true
-}
-func (this *LookupRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupRequest{` +
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
-	return s
-}
-func (this *UpdateRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.UpdateRequest{` +
-		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
-		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters),
-		`DKIMProof:` + fmt.Sprintf("%#v", this.DKIMProof) + `}`}, ", ")
-	return s
-}
-func (this *LookupProof) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.LookupProof{` +
-		`UserId:` + fmt.Sprintf("%#v", this.UserId),
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
-		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
-		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
-		`Entry:` + fmt.Sprintf("%#v", this.Entry),
-		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
-	return s
-}
-func (this *TreeProof) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.TreeProof{` +
-		`Neighbors:` + fmt.Sprintf("%#v", this.Neighbors),
-		`ExistingIndex:` + fmt.Sprintf("%#v", this.ExistingIndex),
-		`ExistingEntryHash:` + fmt.Sprintf("%#v", this.ExistingEntryHash) + `}`}, ", ")
-	return s
-}
-func (this *Entry) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Entry{` +
-		`Index:` + fmt.Sprintf("%#v", this.Index),
-		`Version:` + fmt.Sprintf("%#v", this.Version),
-		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
-		`ProfileCommitment:` + fmt.Sprintf("%#v", this.ProfileCommitment) + `}`}, ", ")
-	return s
-}
-func (this *SignedEntryUpdate) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
-		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
-		`Signatures:` + mapStringForSignatures + `}`}, ", ")
-	return s
-}
-func (this *Profile) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForKeys := make([]string, 0, len(this.Keys))
-	for k, _ := range this.Keys {
-		keysForKeys = append(keysForKeys, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
-	mapStringForKeys := "map[string][]byte{"
-	for _, k := range keysForKeys {
-		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
-	}
-	mapStringForKeys += "}"
-	s := strings.Join([]string{`&proto.Profile{` +
-		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
-		`Keys:` + mapStringForKeys + `}`}, ", ")
-	return s
-}
-func (this *SignedEpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&proto.SignedEpochHead{` +
-		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
-		`Signatures:` + mapStringForSignatures + `}`}, ", ")
-	return s
-}
-func (this *TimestampedEpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.TimestampedEpochHead{` +
-		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
-		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *EpochHead) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.EpochHead{` +
-		`Realm:` + fmt.Sprintf("%#v", this.Realm),
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
-		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
-		`IssueTime:` + strings.Replace(this.IssueTime.GoString(), `&`, ``, 1),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
-		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *AuthorizationPolicy) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
-	s := strings.Join([]string{`&proto.AuthorizationPolicy{` +
-		`PublicKeys:` + mapStringForPublicKeys,
-		`Quorum:` + fmt.Sprintf("%#v", this.Quorum) + `}`}, ", ")
-	return s
-}
-func (this *PublicKey) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.PublicKey{` +
-		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
-	return s
-}
-func (this *QuorumExpr) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.QuorumExpr{` +
-		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
-		`Candidates:` + fmt.Sprintf("%#v", this.Candidates),
-		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
-	return s
-}
-func valueToGoStringClient(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringClient(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *LookupRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Epoch != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Epoch))
-	}
-	if len(m.UserId) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
-	}
-	if m.QuorumRequirement != nil {
-		data[i] = 0x22
-		i++
-		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
-		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	return i, nil
-}
-
-func (m *UpdateRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *UpdateRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Update != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
-		n2, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-	n3, err := m.Profile.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n3
-	if m.LookupParameters != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.LookupParameters.Size()))
-		n4, err := m.LookupParameters.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n4
-	}
-	if m.DKIMProof != nil {
-		if len(m.DKIMProof) > 0 {
-			data[i] = 0xc2
-			i++
-			data[i] = 0x3e
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.DKIMProof)))
-			i += copy(data[i:], m.DKIMProof)
-		}
-	}
-	return i, nil
-}
-
-func (m *LookupProof) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *LookupProof) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.UserId) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
-		i += copy(data[i:], m.UserId)
-	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if m.IndexProof != nil {
-		if len(m.IndexProof) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
-			i += copy(data[i:], m.IndexProof)
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, msg := range m.Ratifications {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if m.TreeProof != nil {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.TreeProof.Size()))
-		n5, err := m.TreeProof.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	if m.Entry != nil {
-		data[i] = 0x32
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
-		n6, err := m.Entry.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n6
-	}
-	if m.Profile != nil {
-		data[i] = 0x3a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n7, err := m.Profile.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n7
-	}
-	return i, nil
-}
-
-func (m *TreeProof) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *TreeProof) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Neighbors) > 0 {
-		for _, b := range m.Neighbors {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	if m.ExistingIndex != nil {
-		if len(m.ExistingIndex) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
-			i += copy(data[i:], m.ExistingIndex)
-		}
-	}
-	if m.ExistingEntryHash != nil {
-		if len(m.ExistingEntryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
-			i += copy(data[i:], m.ExistingEntryHash)
-		}
-	}
-	return i, nil
-}
-
-func (m *Entry) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Entry) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
-	}
-	if m.Version != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Version))
-	}
-	if m.UpdatePolicy != nil {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
-		n8, err := m.UpdatePolicy.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n8
-	}
-	if m.ProfileCommitment != nil {
-		if len(m.ProfileCommitment) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ProfileCommitment)))
-			i += copy(data[i:], m.ProfileCommitment)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n9, err := m.NewEntry.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n9
-	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
-		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
-			data[i] = 0x12
-			i++
-			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *Profile) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Profile) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		if len(m.Nonce) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
-			i += copy(data[i:], m.Nonce)
-		}
-	}
-	if len(m.Keys) > 0 {
-		keysForKeys := make([]string, 0, len(m.Keys))
-		for k, _ := range m.Keys {
-			keysForKeys = append(keysForKeys, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
-		for _, k := range keysForKeys {
-			data[i] = 0x12
-			i++
-			v := m.Keys[k]
-			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(k)))
-			i += copy(data[i:], k)
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *SignedEpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n10, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
-	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
-		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
-			data[i] = 0x12
-			i++
-			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
-		}
-	}
-	return i, nil
-}
-
-func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *TimestampedEpochHead) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n11, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n11
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n12, err := m.Timestamp.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n12
-	return i, nil
-}
-
-func (m *EpochHead) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *EpochHead) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Realm) > 0 {
-		data[i] = 0xa
-		i++
-		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
-		i += copy(data[i:], m.Realm)
-	}
-	if m.Epoch != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Epoch))
-	}
-	if m.RootHash != nil {
-		if len(m.RootHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
-			i += copy(data[i:], m.RootHash)
-		}
-	}
-	data[i] = 0x22
-	i++
-	i = encodeVarintClient(data, i, uint64(m.IssueTime.Size()))
-	n13, err := m.IssueTime.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n13
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
-	}
-	data[i] = 0x32
-	i++
-	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
-	n14, err := m.NextEpochPolicy.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n14
-	return i, nil
-}
-
-func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.PublicKeys) > 0 {
-		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
-		for k, _ := range m.PublicKeys {
-			keysForPublicKeys = append(keysForPublicKeys, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-		for _, k := range keysForPublicKeys {
-			data[i] = 0xa
-			i++
-			v := m.PublicKeys[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
-			}
-			msgSize := v.Size()
-			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
-			i = encodeVarintClient(data, i, uint64(mapSize))
-			data[i] = 0x9
-			i++
-			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n15, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n15
-		}
-	}
-	if m.Quorum != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n16, err := m.Quorum.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n16
-	}
-	return i, nil
-}
-
-func (m *PublicKey) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *PublicKey) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		if len(m.Ed25519) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
-			i += copy(data[i:], m.Ed25519)
-		}
-	}
-	return i, nil
-}
-
-func (m *QuorumExpr) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *QuorumExpr) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Threshold))
-	}
-	if len(m.Candidates) > 0 {
-		for _, num := range m.Candidates {
-			data[i] = 0x11
-			i++
-			data[i] = uint8(num)
-			i++
-			data[i] = uint8(num >> 8)
-			i++
-			data[i] = uint8(num >> 16)
-			i++
-			data[i] = uint8(num >> 24)
-			i++
-			data[i] = uint8(num >> 32)
-			i++
-			data[i] = uint8(num >> 40)
-			i++
-			data[i] = uint8(num >> 48)
-			i++
-			data[i] = uint8(num >> 56)
-			i++
-		}
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, msg := range m.Subexpressions {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	return i, nil
-}
-
-func encodeFixed64Client(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Client(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintClient(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
-	this := &LookupRequest{}
-	this.Epoch = uint64(uint64(r.Uint32()))
-	this.UserId = randStringClient(r)
-	if r.Intn(10) != 0 {
-		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
-	this := &UpdateRequest{}
-	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	v1 := NewPopulatedEncodedProfile(r, easy)
-	this.Profile = *v1
-	if r.Intn(10) != 0 {
-		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
-	}
-	v2 := r.Intn(100)
-	this.DKIMProof = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.DKIMProof[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
-	this := &LookupProof{}
-	this.UserId = randStringClient(r)
-	v3 := r.Intn(100)
-	this.Index = make([]byte, v3)
-	for i := 0; i < v3; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	v4 := r.Intn(100)
-	this.IndexProof = make([]byte, v4)
-	for i := 0; i < v4; i++ {
-		this.IndexProof[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		v5 := r.Intn(10)
-		this.Ratifications = make([]*SignedEpochHead, v5)
-		for i := 0; i < v5; i++ {
-			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
-		}
-	}
-	if r.Intn(10) != 0 {
-		this.TreeProof = NewPopulatedTreeProof(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.Entry = NewPopulatedEncodedEntry(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.Profile = NewPopulatedEncodedProfile(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
-	this := &TreeProof{}
-	v6 := r.Intn(100)
-	this.Neighbors = make([][]byte, v6)
-	for i := 0; i < v6; i++ {
-		v7 := r.Intn(100)
-		this.Neighbors[i] = make([]byte, v7)
-		for j := 0; j < v7; j++ {
-			this.Neighbors[i][j] = byte(r.Intn(256))
-		}
-	}
-	v8 := r.Intn(100)
-	this.ExistingIndex = make([]byte, v8)
-	for i := 0; i < v8; i++ {
-		this.ExistingIndex[i] = byte(r.Intn(256))
-	}
-	v9 := r.Intn(100)
-	this.ExistingEntryHash = make([]byte, v9)
-	for i := 0; i < v9; i++ {
-		this.ExistingEntryHash[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEntry(r randyClient, easy bool) *Entry {
-	this := &Entry{}
-	v10 := r.Intn(100)
-	this.Index = make([]byte, v10)
-	for i := 0; i < v10; i++ {
-		this.Index[i] = byte(r.Intn(256))
-	}
-	this.Version = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
-	}
-	v11 := r.Intn(100)
-	this.ProfileCommitment = make([]byte, v11)
-	for i := 0; i < v11; i++ {
-		this.ProfileCommitment[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
-	this := &SignedEntryUpdate{}
-	v12 := NewPopulatedEncodedEntry(r, easy)
-	this.NewEntry = *v12
-	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
-		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v13; i++ {
-			v14 := r.Intn(100)
-			v15 := uint64(uint64(r.Uint32()))
-			this.Signatures[v15] = make([]byte, v14)
-			for i := 0; i < v14; i++ {
-				this.Signatures[v15][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedProfile(r randyClient, easy bool) *Profile {
-	this := &Profile{}
-	v16 := r.Intn(100)
-	this.Nonce = make([]byte, v16)
-	for i := 0; i < v16; i++ {
-		this.Nonce[i] = byte(r.Intn(256))
-	}
-	if r.Intn(10) != 0 {
-		v17 := r.Intn(10)
-		this.Keys = make(map[string][]byte)
-		for i := 0; i < v17; i++ {
-			v18 := r.Intn(100)
-			v19 := randStringClient(r)
-			this.Keys[v19] = make([]byte, v18)
-			for i := 0; i < v18; i++ {
-				this.Keys[v19][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
-	this := &SignedEpochHead{}
-	v20 := NewPopulatedEncodedTimestampedEpochHead(r, easy)
-	this.Head = *v20
-	if r.Intn(10) != 0 {
-		v21 := r.Intn(10)
-		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v21; i++ {
-			v22 := r.Intn(100)
-			v23 := uint64(uint64(r.Uint32()))
-			this.Signatures[v23] = make([]byte, v22)
-			for i := 0; i < v22; i++ {
-				this.Signatures[v23][i] = byte(r.Intn(256))
-			}
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
-	this := &TimestampedEpochHead{}
-	v24 := NewPopulatedEncodedEpochHead(r, easy)
-	this.Head = *v24
-	v25 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v25
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
-	this := &EpochHead{}
-	this.Realm = randStringClient(r)
-	this.Epoch = uint64(uint64(r.Uint32()))
-	v26 := r.Intn(100)
-	this.RootHash = make([]byte, v26)
-	for i := 0; i < v26; i++ {
-		this.RootHash[i] = byte(r.Intn(256))
-	}
-	v27 := NewPopulatedTimestamp(r, easy)
-	this.IssueTime = *v27
-	v28 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v28)
-	for i := 0; i < v28; i++ {
-		this.PreviousSummaryHash[i] = byte(r.Intn(256))
-	}
-	v29 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v29
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
-	this := &AuthorizationPolicy{}
-	if r.Intn(10) != 0 {
-		v30 := r.Intn(10)
-		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v30; i++ {
-			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	if r.Intn(10) != 0 {
-		this.Quorum = NewPopulatedQuorumExpr(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
-	this := &PublicKey{}
-	v31 := r.Intn(100)
-	this.Ed25519 = make([]byte, v31)
-	for i := 0; i < v31; i++ {
-		this.Ed25519[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
-	this := &QuorumExpr{}
-	this.Threshold = uint32(r.Uint32())
-	v32 := r.Intn(100)
-	this.Candidates = make([]uint64, v32)
-	for i := 0; i < v32; i++ {
-		this.Candidates[i] = uint64(uint64(r.Uint32()))
-	}
-	if r.Intn(10) != 0 {
-		v33 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v33)
-		for i := 0; i < v33; i++ {
-			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
-		}
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyClient interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneClient(r randyClient) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringClient(r randyClient) string {
-	v34 := r.Intn(100)
-	tmps := make([]rune, v34)
-	for i := 0; i < v34; i++ {
-		tmps[i] = randUTF8RuneClient(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldClient(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		v35 := r.Int63()
-		if r.Intn(2) == 0 {
-			v35 *= -1
-		}
-		data = encodeVarintPopulateClient(data, uint64(v35))
-	case 1:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateClient(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateClient(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateClient(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *LookupRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Epoch != 0 {
-		n += 1 + sovClient(uint64(m.Epoch))
-	}
-	l = len(m.UserId)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.QuorumRequirement != nil {
-		l = m.QuorumRequirement.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *UpdateRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	l = m.Profile.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if m.LookupParameters != nil {
-		l = m.LookupParameters.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.DKIMProof != nil {
-		l = len(m.DKIMProof)
-		if l > 0 {
-			n += 2 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *LookupProof) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.UserId)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.IndexProof != nil {
-		l = len(m.IndexProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.Ratifications) > 0 {
-		for _, e := range m.Ratifications {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.TreeProof != nil {
-		l = m.TreeProof.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Entry != nil {
-		l = m.Entry.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Profile != nil {
-		l = m.Profile.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *TreeProof) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Neighbors) > 0 {
-		for _, b := range m.Neighbors {
-			l = len(b)
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.ExistingIndex != nil {
-		l = len(m.ExistingIndex)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.ExistingEntryHash != nil {
-		l = len(m.ExistingEntryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *Entry) Size() (n int) {
-	var l int
-	_ = l
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if m.Version != 0 {
-		n += 1 + sovClient(uint64(m.Version))
-	}
-	if m.UpdatePolicy != nil {
-		l = m.UpdatePolicy.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.ProfileCommitment != nil {
-		l = len(m.ProfileCommitment)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *SignedEntryUpdate) Size() (n int) {
-	var l int
-	_ = l
-	l = m.NewEntry.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if len(m.Signatures) > 0 {
-		for k, v := range m.Signatures {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *Profile) Size() (n int) {
-	var l int
-	_ = l
-	if m.Nonce != nil {
-		l = len(m.Nonce)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	if len(m.Keys) > 0 {
-		for k, v := range m.Keys {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *SignedEpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Head.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if len(m.Signatures) > 0 {
-		for k, v := range m.Signatures {
-			_ = k
-			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	return n
-}
-
-func (m *TimestampedEpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = m.Head.Size()
-	n += 1 + l + sovClient(uint64(l))
-	l = m.Timestamp.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *EpochHead) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Realm)
-	if l > 0 {
-		n += 1 + l + sovClient(uint64(l))
-	}
-	if m.Epoch != 0 {
-		n += 1 + sovClient(uint64(m.Epoch))
-	}
-	if m.RootHash != nil {
-		l = len(m.RootHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	l = m.IssueTime.Size()
-	n += 1 + l + sovClient(uint64(l))
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	l = m.NextEpochPolicy.Size()
-	n += 1 + l + sovClient(uint64(l))
-	return n
-}
-
-func (m *AuthorizationPolicy) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.PublicKeys) > 0 {
-		for k, v := range m.PublicKeys {
-			_ = k
-			_ = v
-			l = 0
-			if v != nil {
-				l = v.Size()
-			}
-			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
-			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
-		}
-	}
-	if m.Quorum != nil {
-		l = m.Quorum.Size()
-		n += 1 + l + sovClient(uint64(l))
-	}
-	return n
-}
-
-func (m *PublicKey) Size() (n int) {
-	var l int
-	_ = l
-	if m.Ed25519 != nil {
-		l = len(m.Ed25519)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *QuorumExpr) Size() (n int) {
-	var l int
-	_ = l
-	if m.Threshold != 0 {
-		n += 1 + sovClient(uint64(m.Threshold))
-	}
-	if len(m.Candidates) > 0 {
-		n += 9 * len(m.Candidates)
-	}
-	if len(m.Subexpressions) > 0 {
-		for _, e := range m.Subexpressions {
-			l = e.Size()
-			n += 1 + l + sovClient(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovClient(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozClient(x uint64) (n int) {
-	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *LookupRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupRequest{`,
-		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *UpdateRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&UpdateRequest{`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
-		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
-		`DKIMProof:` + fmt.Sprintf("%v", this.DKIMProof) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *LookupProof) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&LookupProof{`,
-		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
-		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
-		`TreeProof:` + strings.Replace(fmt.Sprintf("%v", this.TreeProof), "TreeProof", "TreeProof", 1) + `,`,
-		`Entry:` + strings.Replace(fmt.Sprintf("%v", this.Entry), "Entry", "Entry", 1) + `,`,
-		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *TreeProof) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&TreeProof{`,
-		`Neighbors:` + fmt.Sprintf("%v", this.Neighbors) + `,`,
-		`ExistingIndex:` + fmt.Sprintf("%v", this.ExistingIndex) + `,`,
-		`ExistingEntryHash:` + fmt.Sprintf("%v", this.ExistingEntryHash) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Entry) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Entry{`,
-		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
-		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
-		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
-		`ProfileCommitment:` + fmt.Sprintf("%v", this.ProfileCommitment) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEntryUpdate) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&SignedEntryUpdate{`,
-		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
-		`Signatures:` + mapStringForSignatures + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Profile) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForKeys := make([]string, 0, len(this.Keys))
-	for k, _ := range this.Keys {
-		keysForKeys = append(keysForKeys, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
-	mapStringForKeys := "map[string][]byte{"
-	for _, k := range keysForKeys {
-		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
-	}
-	mapStringForKeys += "}"
-	s := strings.Join([]string{`&Profile{`,
-		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
-		`Keys:` + mapStringForKeys + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *SignedEpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForSignatures := make([]uint64, 0, len(this.Signatures))
-	for k, _ := range this.Signatures {
-		keysForSignatures = append(keysForSignatures, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-	mapStringForSignatures := "map[uint64][]byte{"
-	for _, k := range keysForSignatures {
-		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
-	}
-	mapStringForSignatures += "}"
-	s := strings.Join([]string{`&SignedEpochHead{`,
-		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
-		`Signatures:` + mapStringForSignatures + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *TimestampedEpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&TimestampedEpochHead{`,
-		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "EpochHead", "EpochHead", 1), `&`, ``, 1) + `,`,
-		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *EpochHead) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&EpochHead{`,
-		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
-		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
-		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
-		`IssueTime:` + strings.Replace(strings.Replace(this.IssueTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
-		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
-		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *AuthorizationPolicy) String() string {
-	if this == nil {
-		return "nil"
-	}
-	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
-	for k, _ := range this.PublicKeys {
-		keysForPublicKeys = append(keysForPublicKeys, k)
-	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-	mapStringForPublicKeys := "map[uint64]*PublicKey{"
-	for _, k := range keysForPublicKeys {
-		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
-	}
-	mapStringForPublicKeys += "}"
-	s := strings.Join([]string{`&AuthorizationPolicy{`,
-		`PublicKeys:` + mapStringForPublicKeys + `,`,
-		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *PublicKey) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&PublicKey{`,
-		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *QuorumExpr) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&QuorumExpr{`,
-		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
-		`Candidates:` + fmt.Sprintf("%v", this.Candidates) + `,`,
-		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringClient(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
 func (m *LookupRequest) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -5100,3 +2410,2695 @@ func skipClient(data []byte) (n int, err error) {
 var (
 	ErrInvalidLengthClient = fmt.Errorf("proto: negative length found during unmarshaling")
 )
+
+func (this *LookupRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupRequest{`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`QuorumRequirement:` + strings.Replace(fmt.Sprintf("%v", this.QuorumRequirement), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
+		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
+		`DKIMProof:` + fmt.Sprintf("%v", this.DKIMProof) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *LookupProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&LookupProof{`,
+		`UserId:` + fmt.Sprintf("%v", this.UserId) + `,`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`IndexProof:` + fmt.Sprintf("%v", this.IndexProof) + `,`,
+		`Ratifications:` + strings.Replace(fmt.Sprintf("%v", this.Ratifications), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`TreeProof:` + strings.Replace(fmt.Sprintf("%v", this.TreeProof), "TreeProof", "TreeProof", 1) + `,`,
+		`Entry:` + strings.Replace(fmt.Sprintf("%v", this.Entry), "Entry", "Entry", 1) + `,`,
+		`Profile:` + strings.Replace(fmt.Sprintf("%v", this.Profile), "Profile", "Profile", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TreeProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TreeProof{`,
+		`Neighbors:` + fmt.Sprintf("%v", this.Neighbors) + `,`,
+		`ExistingIndex:` + fmt.Sprintf("%v", this.ExistingIndex) + `,`,
+		`ExistingEntryHash:` + fmt.Sprintf("%v", this.ExistingEntryHash) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Entry) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Entry{`,
+		`Index:` + fmt.Sprintf("%v", this.Index) + `,`,
+		`Version:` + fmt.Sprintf("%v", this.Version) + `,`,
+		`UpdatePolicy:` + strings.Replace(fmt.Sprintf("%v", this.UpdatePolicy), "AuthorizationPolicy", "AuthorizationPolicy", 1) + `,`,
+		`ProfileCommitment:` + fmt.Sprintf("%v", this.ProfileCommitment) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEntryUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&SignedEntryUpdate{`,
+		`NewEntry:` + strings.Replace(strings.Replace(this.NewEntry.String(), "Entry", "Entry", 1), `&`, ``, 1) + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Profile) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&Profile{`,
+		`Nonce:` + fmt.Sprintf("%v", this.Nonce) + `,`,
+		`Keys:` + mapStringForKeys + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *SignedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&SignedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "TimestampedEpochHead", "TimestampedEpochHead", 1), `&`, ``, 1) + `,`,
+		`Signatures:` + mapStringForSignatures + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *TimestampedEpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TimestampedEpochHead{`,
+		`Head:` + strings.Replace(strings.Replace(this.Head.String(), "EpochHead", "EpochHead", 1), `&`, ``, 1) + `,`,
+		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EpochHead) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EpochHead{`,
+		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
+		`Epoch:` + fmt.Sprintf("%v", this.Epoch) + `,`,
+		`RootHash:` + fmt.Sprintf("%v", this.RootHash) + `,`,
+		`IssueTime:` + strings.Replace(strings.Replace(this.IssueTime.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`NextEpochPolicy:` + strings.Replace(strings.Replace(this.NextEpochPolicy.String(), "AuthorizationPolicy", "AuthorizationPolicy", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *AuthorizationPolicy) String() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&AuthorizationPolicy{`,
+		`PublicKeys:` + mapStringForPublicKeys + `,`,
+		`Quorum:` + strings.Replace(fmt.Sprintf("%v", this.Quorum), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *PublicKey) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&PublicKey{`,
+		`Ed25519:` + fmt.Sprintf("%v", this.Ed25519) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *QuorumExpr) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&QuorumExpr{`,
+		`Threshold:` + fmt.Sprintf("%v", this.Threshold) + `,`,
+		`Candidates:` + fmt.Sprintf("%v", this.Candidates) + `,`,
+		`Subexpressions:` + strings.Replace(fmt.Sprintf("%v", this.Subexpressions), "QuorumExpr", "QuorumExpr", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringClient(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *LookupRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.QuorumRequirement != nil {
+		l = m.QuorumRequirement.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *UpdateRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	l = m.Profile.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if m.LookupParameters != nil {
+		l = m.LookupParameters.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.DKIMProof != nil {
+		l = len(m.DKIMProof)
+		if l > 0 {
+			n += 2 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *LookupProof) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.UserId)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.IndexProof != nil {
+		l = len(m.IndexProof)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, e := range m.Ratifications {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.TreeProof != nil {
+		l = m.TreeProof.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Entry != nil {
+		l = m.Entry.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Profile != nil {
+		l = m.Profile.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *TreeProof) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			l = len(b)
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingIndex != nil {
+		l = len(m.ExistingIndex)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		l = len(m.ExistingEntryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Entry) Size() (n int) {
+	var l int
+	_ = l
+	if m.Index != nil {
+		l = len(m.Index)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if m.Version != 0 {
+		n += 1 + sovClient(uint64(m.Version))
+	}
+	if m.UpdatePolicy != nil {
+		l = m.UpdatePolicy.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.ProfileCommitment != nil {
+		l = len(m.ProfileCommitment)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *SignedEntryUpdate) Size() (n int) {
+	var l int
+	_ = l
+	l = m.NewEntry.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *Profile) Size() (n int) {
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		l = len(m.Nonce)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	if len(m.Keys) > 0 {
+		for k, v := range m.Keys {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *SignedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if len(m.Signatures) > 0 {
+		for k, v := range m.Signatures {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	return n
+}
+
+func (m *TimestampedEpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = m.Head.Size()
+	n += 1 + l + sovClient(uint64(l))
+	l = m.Timestamp.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *EpochHead) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
+	}
+	if m.Epoch != 0 {
+		n += 1 + sovClient(uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		l = len(m.RootHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	l = m.IssueTime.Size()
+	n += 1 + l + sovClient(uint64(l))
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	l = m.NextEpochPolicy.Size()
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
+
+func (m *AuthorizationPolicy) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.PublicKeys) > 0 {
+		for k, v := range m.PublicKeys {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+			}
+			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
+			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
+		}
+	}
+	if m.Quorum != nil {
+		l = m.Quorum.Size()
+		n += 1 + l + sovClient(uint64(l))
+	}
+	return n
+}
+
+func (m *PublicKey) Size() (n int) {
+	var l int
+	_ = l
+	if m.Ed25519 != nil {
+		l = len(m.Ed25519)
+		if l > 0 {
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QuorumExpr) Size() (n int) {
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		n += 1 + sovClient(uint64(m.Threshold))
+	}
+	if len(m.Candidates) > 0 {
+		n += 9 * len(m.Candidates)
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, e := range m.Subexpressions {
+			l = e.Size()
+			n += 1 + l + sovClient(uint64(l))
+		}
+	}
+	return n
+}
+
+func sovClient(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozClient(x uint64) (n int) {
+	return sovClient(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
+	this := &LookupRequest{}
+	this.Epoch = uint64(uint64(r.Uint32()))
+	this.UserId = randStringClient(r)
+	if r.Intn(10) != 0 {
+		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
+	this := &UpdateRequest{}
+	if r.Intn(10) != 0 {
+		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	}
+	v1 := NewPopulatedEncodedProfile(r, easy)
+	this.Profile = *v1
+	if r.Intn(10) != 0 {
+		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
+	}
+	v2 := r.Intn(100)
+	this.DKIMProof = make([]byte, v2)
+	for i := 0; i < v2; i++ {
+		this.DKIMProof[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
+	this := &LookupProof{}
+	this.UserId = randStringClient(r)
+	v3 := r.Intn(100)
+	this.Index = make([]byte, v3)
+	for i := 0; i < v3; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	v4 := r.Intn(100)
+	this.IndexProof = make([]byte, v4)
+	for i := 0; i < v4; i++ {
+		this.IndexProof[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v5 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v5)
+		for i := 0; i < v5; i++ {
+			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.TreeProof = NewPopulatedTreeProof(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.Entry = NewPopulatedEncodedEntry(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.Profile = NewPopulatedEncodedProfile(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
+	this := &TreeProof{}
+	v6 := r.Intn(100)
+	this.Neighbors = make([][]byte, v6)
+	for i := 0; i < v6; i++ {
+		v7 := r.Intn(100)
+		this.Neighbors[i] = make([]byte, v7)
+		for j := 0; j < v7; j++ {
+			this.Neighbors[i][j] = byte(r.Intn(256))
+		}
+	}
+	v8 := r.Intn(100)
+	this.ExistingIndex = make([]byte, v8)
+	for i := 0; i < v8; i++ {
+		this.ExistingIndex[i] = byte(r.Intn(256))
+	}
+	v9 := r.Intn(100)
+	this.ExistingEntryHash = make([]byte, v9)
+	for i := 0; i < v9; i++ {
+		this.ExistingEntryHash[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEntry(r randyClient, easy bool) *Entry {
+	this := &Entry{}
+	v10 := r.Intn(100)
+	this.Index = make([]byte, v10)
+	for i := 0; i < v10; i++ {
+		this.Index[i] = byte(r.Intn(256))
+	}
+	this.Version = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
+	}
+	v11 := r.Intn(100)
+	this.ProfileCommitment = make([]byte, v11)
+	for i := 0; i < v11; i++ {
+		this.ProfileCommitment[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
+	this := &SignedEntryUpdate{}
+	v12 := NewPopulatedEncodedEntry(r, easy)
+	this.NewEntry = *v12
+	if r.Intn(10) != 0 {
+		v13 := r.Intn(10)
+		this.Signatures = make(map[uint64][]byte)
+		for i := 0; i < v13; i++ {
+			v14 := r.Intn(100)
+			v15 := uint64(uint64(r.Uint32()))
+			this.Signatures[v15] = make([]byte, v14)
+			for i := 0; i < v14; i++ {
+				this.Signatures[v15][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedProfile(r randyClient, easy bool) *Profile {
+	this := &Profile{}
+	v16 := r.Intn(100)
+	this.Nonce = make([]byte, v16)
+	for i := 0; i < v16; i++ {
+		this.Nonce[i] = byte(r.Intn(256))
+	}
+	if r.Intn(10) != 0 {
+		v17 := r.Intn(10)
+		this.Keys = make(map[string][]byte)
+		for i := 0; i < v17; i++ {
+			v18 := r.Intn(100)
+			v19 := randStringClient(r)
+			this.Keys[v19] = make([]byte, v18)
+			for i := 0; i < v18; i++ {
+				this.Keys[v19][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
+	this := &SignedEpochHead{}
+	v20 := NewPopulatedEncodedTimestampedEpochHead(r, easy)
+	this.Head = *v20
+	if r.Intn(10) != 0 {
+		v21 := r.Intn(10)
+		this.Signatures = make(map[uint64][]byte)
+		for i := 0; i < v21; i++ {
+			v22 := r.Intn(100)
+			v23 := uint64(uint64(r.Uint32()))
+			this.Signatures[v23] = make([]byte, v22)
+			for i := 0; i < v22; i++ {
+				this.Signatures[v23][i] = byte(r.Intn(256))
+			}
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
+	this := &TimestampedEpochHead{}
+	v24 := NewPopulatedEncodedEpochHead(r, easy)
+	this.Head = *v24
+	v25 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v25
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
+	this := &EpochHead{}
+	this.Realm = randStringClient(r)
+	this.Epoch = uint64(uint64(r.Uint32()))
+	v26 := r.Intn(100)
+	this.RootHash = make([]byte, v26)
+	for i := 0; i < v26; i++ {
+		this.RootHash[i] = byte(r.Intn(256))
+	}
+	v27 := NewPopulatedTimestamp(r, easy)
+	this.IssueTime = *v27
+	v28 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v28)
+	for i := 0; i < v28; i++ {
+		this.PreviousSummaryHash[i] = byte(r.Intn(256))
+	}
+	v29 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v29
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
+	this := &AuthorizationPolicy{}
+	if r.Intn(10) != 0 {
+		v30 := r.Intn(10)
+		this.PublicKeys = make(map[uint64]*PublicKey)
+		for i := 0; i < v30; i++ {
+			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		this.Quorum = NewPopulatedQuorumExpr(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
+	this := &PublicKey{}
+	v31 := r.Intn(100)
+	this.Ed25519 = make([]byte, v31)
+	for i := 0; i < v31; i++ {
+		this.Ed25519[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
+	this := &QuorumExpr{}
+	this.Threshold = uint32(r.Uint32())
+	v32 := r.Intn(100)
+	this.Candidates = make([]uint64, v32)
+	for i := 0; i < v32; i++ {
+		this.Candidates[i] = uint64(uint64(r.Uint32()))
+	}
+	if r.Intn(10) != 0 {
+		v33 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v33)
+		for i := 0; i < v33; i++ {
+			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyClient interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneClient(r randyClient) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringClient(r randyClient) string {
+	v34 := r.Intn(100)
+	tmps := make([]rune, v34)
+	for i := 0; i < v34; i++ {
+		tmps[i] = randUTF8RuneClient(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedClient(r randyClient, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldClient(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		v35 := r.Int63()
+		if r.Intn(2) == 0 {
+			v35 *= -1
+		}
+		data = encodeVarintPopulateClient(data, uint64(v35))
+	case 1:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateClient(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateClient(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateClient(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *LookupRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Epoch != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
+	}
+	if len(m.UserId) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.QuorumRequirement != nil {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(m.QuorumRequirement.Size()))
+		n1, err := m.QuorumRequirement.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
+	}
+	return i, nil
+}
+
+func (m *UpdateRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *UpdateRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Update.Size()))
+		n2, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+	n3, err := m.Profile.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n3
+	if m.LookupParameters != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.LookupParameters.Size()))
+		n4, err := m.LookupParameters.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n4
+	}
+	if m.DKIMProof != nil {
+		if len(m.DKIMProof) > 0 {
+			data[i] = 0xc2
+			i++
+			data[i] = 0x3e
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.DKIMProof)))
+			i += copy(data[i:], m.DKIMProof)
+		}
+	}
+	return i, nil
+}
+
+func (m *LookupProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *LookupProof) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.UserId) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
+		i += copy(data[i:], m.UserId)
+	}
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if m.IndexProof != nil {
+		if len(m.IndexProof) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
+			i += copy(data[i:], m.IndexProof)
+		}
+	}
+	if len(m.Ratifications) > 0 {
+		for _, msg := range m.Ratifications {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.TreeProof != nil {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.TreeProof.Size()))
+		n5, err := m.TreeProof.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n5
+	}
+	if m.Entry != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
+		n6, err := m.Entry.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	if m.Profile != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n7, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n7
+	}
+	return i, nil
+}
+
+func (m *TreeProof) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TreeProof) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Neighbors) > 0 {
+		for _, b := range m.Neighbors {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	if m.ExistingIndex != nil {
+		if len(m.ExistingIndex) > 0 {
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
+			i += copy(data[i:], m.ExistingIndex)
+		}
+	}
+	if m.ExistingEntryHash != nil {
+		if len(m.ExistingEntryHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
+			i += copy(data[i:], m.ExistingEntryHash)
+		}
+	}
+	return i, nil
+}
+
+func (m *Entry) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Entry) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Index != nil {
+		if len(m.Index) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Index)))
+			i += copy(data[i:], m.Index)
+		}
+	}
+	if m.Version != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Version))
+	}
+	if m.UpdatePolicy != nil {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
+		n8, err := m.UpdatePolicy.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.ProfileCommitment != nil {
+		if len(m.ProfileCommitment) > 0 {
+			data[i] = 0x22
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.ProfileCommitment)))
+			i += copy(data[i:], m.ProfileCommitment)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEntryUpdate) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
+	n9, err := m.NewEntry.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
+		}
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
+			data[i] = 0x12
+			i++
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *Profile) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Profile) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Nonce != nil {
+		if len(m.Nonce) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
+			i += copy(data[i:], m.Nonce)
+		}
+	}
+	if len(m.Keys) > 0 {
+		keysForKeys := make([]string, 0, len(m.Keys))
+		for k, _ := range m.Keys {
+			keysForKeys = append(keysForKeys, k)
+		}
+		github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
+		for _, k := range keysForKeys {
+			data[i] = 0x12
+			i++
+			v := m.Keys[k]
+			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(k)))
+			i += copy(data[i:], k)
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *SignedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n10, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
+	if len(m.Signatures) > 0 {
+		keysForSignatures := make([]uint64, 0, len(m.Signatures))
+		for k, _ := range m.Signatures {
+			keysForSignatures = append(keysForSignatures, k)
+		}
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+		for _, k := range keysForSignatures {
+			data[i] = 0x12
+			i++
+			v := m.Signatures[k]
+			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(len(v)))
+			i += copy(data[i:], v)
+		}
+	}
+	return i, nil
+}
+
+func (m *TimestampedEpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TimestampedEpochHead) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
+	n11, err := m.Head.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n11
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n12, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n12
+	return i, nil
+}
+
+func (m *EpochHead) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *EpochHead) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Realm) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Realm)))
+		i += copy(data[i:], m.Realm)
+	}
+	if m.Epoch != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Epoch))
+	}
+	if m.RootHash != nil {
+		if len(m.RootHash) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
+			i += copy(data[i:], m.RootHash)
+		}
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintClient(data, i, uint64(m.IssueTime.Size()))
+	n13, err := m.IssueTime.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n13
+	if m.PreviousSummaryHash != nil {
+		if len(m.PreviousSummaryHash) > 0 {
+			data[i] = 0x2a
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
+			i += copy(data[i:], m.PreviousSummaryHash)
+		}
+	}
+	data[i] = 0x32
+	i++
+	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
+	n14, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n14
+	return i, nil
+}
+
+func (m *AuthorizationPolicy) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.PublicKeys) > 0 {
+		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
+		for k, _ := range m.PublicKeys {
+			keysForPublicKeys = append(keysForPublicKeys, k)
+		}
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+		for _, k := range keysForPublicKeys {
+			data[i] = 0xa
+			i++
+			v := m.PublicKeys[k]
+			if v == nil {
+				return 0, errors.New("proto: map has nil element")
+			}
+			msgSize := v.Size()
+			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
+			i = encodeVarintClient(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Client(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintClient(data, i, uint64(v.Size()))
+			n15, err := v.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n15
+		}
+	}
+	if m.Quorum != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
+		n16, err := m.Quorum.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n16
+	}
+	return i, nil
+}
+
+func (m *PublicKey) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *PublicKey) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Ed25519 != nil {
+		if len(m.Ed25519) > 0 {
+			data[i] = 0xa
+			i++
+			i = encodeVarintClient(data, i, uint64(len(m.Ed25519)))
+			i += copy(data[i:], m.Ed25519)
+		}
+	}
+	return i, nil
+}
+
+func (m *QuorumExpr) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *QuorumExpr) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Threshold != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Threshold))
+	}
+	if len(m.Candidates) > 0 {
+		for _, num := range m.Candidates {
+			data[i] = 0x11
+			i++
+			data[i] = uint8(num)
+			i++
+			data[i] = uint8(num >> 8)
+			i++
+			data[i] = uint8(num >> 16)
+			i++
+			data[i] = uint8(num >> 24)
+			i++
+			data[i] = uint8(num >> 32)
+			i++
+			data[i] = uint8(num >> 40)
+			i++
+			data[i] = uint8(num >> 48)
+			i++
+			data[i] = uint8(num >> 56)
+			i++
+		}
+	}
+	if len(m.Subexpressions) > 0 {
+		for _, msg := range m.Subexpressions {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintClient(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
+func encodeFixed64Client(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Client(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintClient(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (this *LookupRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupRequest{` +
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`QuorumRequirement:` + fmt.Sprintf("%#v", this.QuorumRequirement) + `}`}, ", ")
+	return s
+}
+func (this *UpdateRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update),
+		`Profile:` + strings.Replace(this.Profile.GoString(), `&`, ``, 1),
+		`LookupParameters:` + fmt.Sprintf("%#v", this.LookupParameters),
+		`DKIMProof:` + fmt.Sprintf("%#v", this.DKIMProof) + `}`}, ", ")
+	return s
+}
+func (this *LookupProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.LookupProof{` +
+		`UserId:` + fmt.Sprintf("%#v", this.UserId),
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`IndexProof:` + fmt.Sprintf("%#v", this.IndexProof),
+		`Ratifications:` + fmt.Sprintf("%#v", this.Ratifications),
+		`TreeProof:` + fmt.Sprintf("%#v", this.TreeProof),
+		`Entry:` + fmt.Sprintf("%#v", this.Entry),
+		`Profile:` + fmt.Sprintf("%#v", this.Profile) + `}`}, ", ")
+	return s
+}
+func (this *TreeProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TreeProof{` +
+		`Neighbors:` + fmt.Sprintf("%#v", this.Neighbors),
+		`ExistingIndex:` + fmt.Sprintf("%#v", this.ExistingIndex),
+		`ExistingEntryHash:` + fmt.Sprintf("%#v", this.ExistingEntryHash) + `}`}, ", ")
+	return s
+}
+func (this *Entry) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.Entry{` +
+		`Index:` + fmt.Sprintf("%#v", this.Index),
+		`Version:` + fmt.Sprintf("%#v", this.Version),
+		`UpdatePolicy:` + fmt.Sprintf("%#v", this.UpdatePolicy),
+		`ProfileCommitment:` + fmt.Sprintf("%#v", this.ProfileCommitment) + `}`}, ", ")
+	return s
+}
+func (this *SignedEntryUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&proto.SignedEntryUpdate{` +
+		`NewEntry:` + strings.Replace(this.NewEntry.GoString(), `&`, ``, 1),
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
+	return s
+}
+func (this *Profile) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForKeys := make([]string, 0, len(this.Keys))
+	for k, _ := range this.Keys {
+		keysForKeys = append(keysForKeys, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
+	mapStringForKeys := "map[string][]byte{"
+	for _, k := range keysForKeys {
+		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
+	}
+	mapStringForKeys += "}"
+	s := strings.Join([]string{`&proto.Profile{` +
+		`Nonce:` + fmt.Sprintf("%#v", this.Nonce),
+		`Keys:` + mapStringForKeys + `}`}, ", ")
+	return s
+}
+func (this *SignedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForSignatures := make([]uint64, 0, len(this.Signatures))
+	for k, _ := range this.Signatures {
+		keysForSignatures = append(keysForSignatures, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	mapStringForSignatures := "map[uint64][]byte{"
+	for _, k := range keysForSignatures {
+		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
+	}
+	mapStringForSignatures += "}"
+	s := strings.Join([]string{`&proto.SignedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Signatures:` + mapStringForSignatures + `}`}, ", ")
+	return s
+}
+func (this *TimestampedEpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.TimestampedEpochHead{` +
+		`Head:` + strings.Replace(this.Head.GoString(), `&`, ``, 1),
+		`Timestamp:` + strings.Replace(this.Timestamp.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *EpochHead) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.EpochHead{` +
+		`Realm:` + fmt.Sprintf("%#v", this.Realm),
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch),
+		`RootHash:` + fmt.Sprintf("%#v", this.RootHash),
+		`IssueTime:` + strings.Replace(this.IssueTime.GoString(), `&`, ``, 1),
+		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
+		`NextEpochPolicy:` + strings.Replace(this.NextEpochPolicy.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *AuthorizationPolicy) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	keysForPublicKeys := make([]uint64, 0, len(this.PublicKeys))
+	for k, _ := range this.PublicKeys {
+		keysForPublicKeys = append(keysForPublicKeys, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	mapStringForPublicKeys := "map[uint64]*PublicKey{"
+	for _, k := range keysForPublicKeys {
+		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
+	}
+	mapStringForPublicKeys += "}"
+	s := strings.Join([]string{`&proto.AuthorizationPolicy{` +
+		`PublicKeys:` + mapStringForPublicKeys,
+		`Quorum:` + fmt.Sprintf("%#v", this.Quorum) + `}`}, ", ")
+	return s
+}
+func (this *PublicKey) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.PublicKey{` +
+		`Ed25519:` + fmt.Sprintf("%#v", this.Ed25519) + `}`}, ", ")
+	return s
+}
+func (this *QuorumExpr) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.QuorumExpr{` +
+		`Threshold:` + fmt.Sprintf("%#v", this.Threshold),
+		`Candidates:` + fmt.Sprintf("%#v", this.Candidates),
+		`Subexpressions:` + fmt.Sprintf("%#v", this.Subexpressions) + `}`}, ", ")
+	return s
+}
+func valueToGoStringClient(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringClient(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (this *LookupRequest) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*LookupRequest)
+	if !ok {
+		return fmt.Errorf("that is not of type *LookupRequest")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *LookupRequest but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *LookupRequestbut is not nil && this == nil")
+	}
+	if this.Epoch != that1.Epoch {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
+	}
+	if this.UserId != that1.UserId {
+		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return fmt.Errorf("QuorumRequirement this(%v) Not Equal that(%v)", this.QuorumRequirement, that1.QuorumRequirement)
+	}
+	return nil
+}
+func (this *LookupRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*LookupRequest)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Epoch != that1.Epoch {
+		return false
+	}
+	if this.UserId != that1.UserId {
+		return false
+	}
+	if !this.QuorumRequirement.Equal(that1.QuorumRequirement) {
+		return false
+	}
+	return true
+}
+func (this *UpdateRequest) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*UpdateRequest)
+	if !ok {
+		return fmt.Errorf("that is not of type *UpdateRequest")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *UpdateRequest but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *UpdateRequestbut is not nil && this == nil")
+	}
+	if !this.Update.Equal(that1.Update) {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
+	}
+	if !this.LookupParameters.Equal(that1.LookupParameters) {
+		return fmt.Errorf("LookupParameters this(%v) Not Equal that(%v)", this.LookupParameters, that1.LookupParameters)
+	}
+	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
+		return fmt.Errorf("DKIMProof this(%v) Not Equal that(%v)", this.DKIMProof, that1.DKIMProof)
+	}
+	return nil
+}
+func (this *UpdateRequest) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*UpdateRequest)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Update.Equal(that1.Update) {
+		return false
+	}
+	if !this.Profile.Equal(that1.Profile) {
+		return false
+	}
+	if !this.LookupParameters.Equal(that1.LookupParameters) {
+		return false
+	}
+	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
+		return false
+	}
+	return true
+}
+func (this *LookupProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*LookupProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *LookupProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *LookupProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *LookupProofbut is not nil && this == nil")
+	}
+	if this.UserId != that1.UserId {
+		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+	}
+	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
+		return fmt.Errorf("IndexProof this(%v) Not Equal that(%v)", this.IndexProof, that1.IndexProof)
+	}
+	if len(this.Ratifications) != len(that1.Ratifications) {
+		return fmt.Errorf("Ratifications this(%v) Not Equal that(%v)", len(this.Ratifications), len(that1.Ratifications))
+	}
+	for i := range this.Ratifications {
+		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
+			return fmt.Errorf("Ratifications this[%v](%v) Not Equal that[%v](%v)", i, this.Ratifications[i], i, that1.Ratifications[i])
+		}
+	}
+	if !this.TreeProof.Equal(that1.TreeProof) {
+		return fmt.Errorf("TreeProof this(%v) Not Equal that(%v)", this.TreeProof, that1.TreeProof)
+	}
+	if that1.Entry == nil {
+		if this.Entry != nil {
+			return fmt.Errorf("this.Entry != nil && that1.Entry == nil")
+		}
+	} else if !this.Entry.Equal(*that1.Entry) {
+		return fmt.Errorf("Entry this(%v) Not Equal that(%v)", this.Entry, that1.Entry)
+	}
+	if that1.Profile == nil {
+		if this.Profile != nil {
+			return fmt.Errorf("this.Profile != nil && that1.Profile == nil")
+		}
+	} else if !this.Profile.Equal(*that1.Profile) {
+		return fmt.Errorf("Profile this(%v) Not Equal that(%v)", this.Profile, that1.Profile)
+	}
+	return nil
+}
+func (this *LookupProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*LookupProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.UserId != that1.UserId {
+		return false
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return false
+	}
+	if !bytes.Equal(this.IndexProof, that1.IndexProof) {
+		return false
+	}
+	if len(this.Ratifications) != len(that1.Ratifications) {
+		return false
+	}
+	for i := range this.Ratifications {
+		if !this.Ratifications[i].Equal(that1.Ratifications[i]) {
+			return false
+		}
+	}
+	if !this.TreeProof.Equal(that1.TreeProof) {
+		return false
+	}
+	if that1.Entry == nil {
+		if this.Entry != nil {
+			return false
+		}
+	} else if !this.Entry.Equal(*that1.Entry) {
+		return false
+	}
+	if that1.Profile == nil {
+		if this.Profile != nil {
+			return false
+		}
+	} else if !this.Profile.Equal(*that1.Profile) {
+		return false
+	}
+	return true
+}
+func (this *TreeProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *TreeProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *TreeProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *TreeProofbut is not nil && this == nil")
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return fmt.Errorf("Neighbors this(%v) Not Equal that(%v)", len(this.Neighbors), len(that1.Neighbors))
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return fmt.Errorf("Neighbors this[%v](%v) Not Equal that[%v](%v)", i, this.Neighbors[i], i, that1.Neighbors[i])
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return fmt.Errorf("ExistingIndex this(%v) Not Equal that(%v)", this.ExistingIndex, that1.ExistingIndex)
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
+		return fmt.Errorf("ExistingEntryHash this(%v) Not Equal that(%v)", this.ExistingEntryHash, that1.ExistingEntryHash)
+	}
+	return nil
+}
+func (this *TreeProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*TreeProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.Neighbors) != len(that1.Neighbors) {
+		return false
+	}
+	for i := range this.Neighbors {
+		if !bytes.Equal(this.Neighbors[i], that1.Neighbors[i]) {
+			return false
+		}
+	}
+	if !bytes.Equal(this.ExistingIndex, that1.ExistingIndex) {
+		return false
+	}
+	if !bytes.Equal(this.ExistingEntryHash, that1.ExistingEntryHash) {
+		return false
+	}
+	return true
+}
+func (this *Entry) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Entry)
+	if !ok {
+		return fmt.Errorf("that is not of type *Entry")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Entry but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Entrybut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
+	}
+	if this.Version != that1.Version {
+		return fmt.Errorf("Version this(%v) Not Equal that(%v)", this.Version, that1.Version)
+	}
+	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
+		return fmt.Errorf("UpdatePolicy this(%v) Not Equal that(%v)", this.UpdatePolicy, that1.UpdatePolicy)
+	}
+	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
+		return fmt.Errorf("ProfileCommitment this(%v) Not Equal that(%v)", this.ProfileCommitment, that1.ProfileCommitment)
+	}
+	return nil
+}
+func (this *Entry) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Entry)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Index, that1.Index) {
+		return false
+	}
+	if this.Version != that1.Version {
+		return false
+	}
+	if !this.UpdatePolicy.Equal(that1.UpdatePolicy) {
+		return false
+	}
+	if !bytes.Equal(this.ProfileCommitment, that1.ProfileCommitment) {
+		return false
+	}
+	return true
+}
+func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*SignedEntryUpdate)
+	if !ok {
+		return fmt.Errorf("that is not of type *SignedEntryUpdate")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *SignedEntryUpdate but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *SignedEntryUpdatebut is not nil && this == nil")
+	}
+	if !this.NewEntry.Equal(that1.NewEntry) {
+		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
+		}
+	}
+	return nil
+}
+func (this *SignedEntryUpdate) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*SignedEntryUpdate)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.NewEntry.Equal(that1.NewEntry) {
+		return false
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return false
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *Profile) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Profile)
+	if !ok {
+		return fmt.Errorf("that is not of type *Profile")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Profile but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Profilebut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.Nonce, that1.Nonce) {
+		return fmt.Errorf("Nonce this(%v) Not Equal that(%v)", this.Nonce, that1.Nonce)
+	}
+	if len(this.Keys) != len(that1.Keys) {
+		return fmt.Errorf("Keys this(%v) Not Equal that(%v)", len(this.Keys), len(that1.Keys))
+	}
+	for i := range this.Keys {
+		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
+			return fmt.Errorf("Keys this[%v](%v) Not Equal that[%v](%v)", i, this.Keys[i], i, that1.Keys[i])
+		}
+	}
+	return nil
+}
+func (this *Profile) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Profile)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Nonce, that1.Nonce) {
+		return false
+	}
+	if len(this.Keys) != len(that1.Keys) {
+		return false
+	}
+	for i := range this.Keys {
+		if !bytes.Equal(this.Keys[i], that1.Keys[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*SignedEpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *SignedEpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *SignedEpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *SignedEpochHeadbut is not nil && this == nil")
+	}
+	if !this.Head.Equal(that1.Head) {
+		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return fmt.Errorf("Signatures this(%v) Not Equal that(%v)", len(this.Signatures), len(that1.Signatures))
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return fmt.Errorf("Signatures this[%v](%v) Not Equal that[%v](%v)", i, this.Signatures[i], i, that1.Signatures[i])
+		}
+	}
+	return nil
+}
+func (this *SignedEpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*SignedEpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Head.Equal(that1.Head) {
+		return false
+	}
+	if len(this.Signatures) != len(that1.Signatures) {
+		return false
+	}
+	for i := range this.Signatures {
+		if !bytes.Equal(this.Signatures[i], that1.Signatures[i]) {
+			return false
+		}
+	}
+	return true
+}
+func (this *TimestampedEpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*TimestampedEpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *TimestampedEpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *TimestampedEpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *TimestampedEpochHeadbut is not nil && this == nil")
+	}
+	if !this.Head.Equal(that1.Head) {
+		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
+	}
+	return nil
+}
+func (this *TimestampedEpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*TimestampedEpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Head.Equal(that1.Head) {
+		return false
+	}
+	if !this.Timestamp.Equal(&that1.Timestamp) {
+		return false
+	}
+	return true
+}
+func (this *EpochHead) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*EpochHead)
+	if !ok {
+		return fmt.Errorf("that is not of type *EpochHead")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *EpochHead but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *EpochHeadbut is not nil && this == nil")
+	}
+	if this.Realm != that1.Realm {
+		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
+	}
+	if this.Epoch != that1.Epoch {
+		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
+	}
+	if !bytes.Equal(this.RootHash, that1.RootHash) {
+		return fmt.Errorf("RootHash this(%v) Not Equal that(%v)", this.RootHash, that1.RootHash)
+	}
+	if !this.IssueTime.Equal(&that1.IssueTime) {
+		return fmt.Errorf("IssueTime this(%v) Not Equal that(%v)", this.IssueTime, that1.IssueTime)
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
+	}
+	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
+		return fmt.Errorf("NextEpochPolicy this(%v) Not Equal that(%v)", this.NextEpochPolicy, that1.NextEpochPolicy)
+	}
+	return nil
+}
+func (this *EpochHead) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*EpochHead)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Realm != that1.Realm {
+		return false
+	}
+	if this.Epoch != that1.Epoch {
+		return false
+	}
+	if !bytes.Equal(this.RootHash, that1.RootHash) {
+		return false
+	}
+	if !this.IssueTime.Equal(&that1.IssueTime) {
+		return false
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return false
+	}
+	if !this.NextEpochPolicy.Equal(&that1.NextEpochPolicy) {
+		return false
+	}
+	return true
+}
+func (this *AuthorizationPolicy) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*AuthorizationPolicy)
+	if !ok {
+		return fmt.Errorf("that is not of type *AuthorizationPolicy")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *AuthorizationPolicy but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *AuthorizationPolicybut is not nil && this == nil")
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
+		}
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
+	}
+	return nil
+}
+func (this *AuthorizationPolicy) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*AuthorizationPolicy)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return false
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return false
+		}
+	}
+	if !this.Quorum.Equal(that1.Quorum) {
+		return false
+	}
+	return true
+}
+func (this *PublicKey) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*PublicKey)
+	if !ok {
+		return fmt.Errorf("that is not of type *PublicKey")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *PublicKey but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *PublicKeybut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
+		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
+	}
+	return nil
+}
+func (this *PublicKey) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*PublicKey)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
+		return false
+	}
+	return true
+}
+func (this *QuorumExpr) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*QuorumExpr)
+	if !ok {
+		return fmt.Errorf("that is not of type *QuorumExpr")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *QuorumExpr but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *QuorumExprbut is not nil && this == nil")
+	}
+	if this.Threshold != that1.Threshold {
+		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
+	}
+	if len(this.Candidates) != len(that1.Candidates) {
+		return fmt.Errorf("Candidates this(%v) Not Equal that(%v)", len(this.Candidates), len(that1.Candidates))
+	}
+	for i := range this.Candidates {
+		if this.Candidates[i] != that1.Candidates[i] {
+			return fmt.Errorf("Candidates this[%v](%v) Not Equal that[%v](%v)", i, this.Candidates[i], i, that1.Candidates[i])
+		}
+	}
+	if len(this.Subexpressions) != len(that1.Subexpressions) {
+		return fmt.Errorf("Subexpressions this(%v) Not Equal that(%v)", len(this.Subexpressions), len(that1.Subexpressions))
+	}
+	for i := range this.Subexpressions {
+		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
+			return fmt.Errorf("Subexpressions this[%v](%v) Not Equal that[%v](%v)", i, this.Subexpressions[i], i, that1.Subexpressions[i])
+		}
+	}
+	return nil
+}
+func (this *QuorumExpr) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*QuorumExpr)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Threshold != that1.Threshold {
+		return false
+	}
+	if len(this.Candidates) != len(that1.Candidates) {
+		return false
+	}
+	for i := range this.Candidates {
+		if this.Candidates[i] != that1.Candidates[i] {
+			return false
+		}
+	}
+	if len(this.Subexpressions) != len(that1.Subexpressions) {
+		return false
+	}
+	for i := range this.Subexpressions {
+		if !this.Subexpressions[i].Equal(that1.Subexpressions[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+// Client API for E2EKSPublic service
+
+type E2EKSPublicClient interface {
+	Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error)
+}
+
+type e2EKSPublicClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewE2EKSPublicClient(cc *grpc.ClientConn) E2EKSPublicClient {
+	return &e2EKSPublicClient{cc}
+}
+
+func (c *e2EKSPublicClient) Lookup(ctx context.Context, in *LookupRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Lookup", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *e2EKSPublicClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*LookupProof, error) {
+	out := new(LookupProof)
+	err := grpc.Invoke(ctx, "/proto.E2EKSPublic/Update", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for E2EKSPublic service
+
+type E2EKSPublicServer interface {
+	Lookup(context.Context, *LookupRequest) (*LookupProof, error)
+	Update(context.Context, *UpdateRequest) (*LookupProof, error)
+}
+
+func RegisterE2EKSPublicServer(s *grpc.Server, srv E2EKSPublicServer) {
+	s.RegisterService(&_E2EKSPublic_serviceDesc, srv)
+}
+
+func _E2EKSPublic_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(LookupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSPublicServer).Lookup(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func _E2EKSPublic_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(UpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(E2EKSPublicServer).Update(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _E2EKSPublic_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.E2EKSPublic",
+	HandlerType: (*E2EKSPublicServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Lookup",
+			Handler:    _E2EKSPublic_Lookup_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _E2EKSPublic_Update_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
+}

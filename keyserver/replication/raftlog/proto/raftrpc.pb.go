@@ -16,16 +16,13 @@ package proto
 import proto1 "github.com/gogo/protobuf/proto"
 import raftpb "github.com/coreos/etcd/raft/raftpb"
 
+import io "io"
+import fmt "fmt"
+
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
-
-import io "io"
-import fmt "fmt"
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto1.Marshal
 
 type Nothing struct {
 }
@@ -34,127 +31,6 @@ func (m *Nothing) Reset()         { *m = Nothing{} }
 func (m *Nothing) String() string { return proto1.CompactTextString(m) }
 func (*Nothing) ProtoMessage()    {}
 
-// Client API for Raft service
-
-type RaftClient interface {
-	Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error)
-}
-
-type raftClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewRaftClient(cc *grpc.ClientConn) RaftClient {
-	return &raftClient{cc}
-}
-
-func (c *raftClient) Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/proto.Raft/Step", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// Server API for Raft service
-
-type RaftServer interface {
-	Step(context.Context, *raftpb.Message) (*Nothing, error)
-}
-
-func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
-	s.RegisterService(&_Raft_serviceDesc, srv)
-}
-
-func _Raft_Step_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(raftpb.Message)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(RaftServer).Step(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _Raft_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.Raft",
-	HandlerType: (*RaftServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Step",
-			Handler:    _Raft_Step_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
-}
-
-func (m *Nothing) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Nothing) MarshalTo(data []byte) (n int, err error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func encodeFixed64Raftrpc(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Raftrpc(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintRaftrpc(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (m *Nothing) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func sovRaftrpc(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozRaftrpc(x uint64) (n int) {
-	return sovRaftrpc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
 func (m *Nothing) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -186,6 +62,9 @@ func (m *Nothing) Unmarshal(data []byte) error {
 			skippy, err := skipRaftrpc(data[iNdEx:])
 			if err != nil {
 				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRaftrpc
 			}
 			if (iNdEx + skippy) > l {
 				return io.ErrUnexpectedEOF
@@ -242,6 +121,9 @@ func skipRaftrpc(data []byte) (n int, err error) {
 				}
 			}
 			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthRaftrpc
+			}
 			return iNdEx, nil
 		case 3:
 			for {
@@ -279,4 +161,130 @@ func skipRaftrpc(data []byte) (n int, err error) {
 		}
 	}
 	panic("unreachable")
+}
+
+var (
+	ErrInvalidLengthRaftrpc = fmt.Errorf("proto: negative length found during unmarshaling")
+)
+
+func (m *Nothing) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func sovRaftrpc(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozRaftrpc(x uint64) (n int) {
+	return sovRaftrpc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *Nothing) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Nothing) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func encodeFixed64Raftrpc(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Raftrpc(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintRaftrpc(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+
+// Client API for Raft service
+
+type RaftClient interface {
+	Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error)
+}
+
+type raftClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewRaftClient(cc *grpc.ClientConn) RaftClient {
+	return &raftClient{cc}
+}
+
+func (c *raftClient) Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/proto.Raft/Step", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Server API for Raft service
+
+type RaftServer interface {
+	Step(context.Context, *raftpb.Message) (*Nothing, error)
+}
+
+func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
+	s.RegisterService(&_Raft_serviceDesc, srv)
+}
+
+func _Raft_Step_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+	in := new(raftpb.Message)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	out, err := srv.(RaftServer).Step(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+var _Raft_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Raft",
+	HandlerType: (*RaftServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Step",
+			Handler:    _Raft_Step_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
 }
