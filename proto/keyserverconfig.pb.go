@@ -6,15 +6,15 @@ package proto
 
 // discarding unused import gogoproto "gogoproto"
 
+import io "io"
 import fmt "fmt"
 
 import strings "strings"
+import reflect "reflect"
+
 import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
-import reflect "reflect"
-
-import io "io"
 
 // ReplicaConfig contains the local configuration of a single replica of a
 // keyserver. It is valid to have just one replica, but a larger odd number is
@@ -221,1057 +221,6 @@ func (m *Replica) GetPublicKeys() []*PublicKey {
 	return nil
 }
 
-func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*ReplicaConfig)
-	if !ok {
-		return fmt.Errorf("that is not of type *ReplicaConfig")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *ReplicaConfig but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *ReplicaConfigbut is not nil && this == nil")
-	}
-	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
-		return fmt.Errorf("KeyserverConfig this(%v) Not Equal that(%v)", this.KeyserverConfig, that1.KeyserverConfig)
-	}
-	if this.ReplicaID != that1.ReplicaID {
-		return fmt.Errorf("ReplicaID this(%v) Not Equal that(%v)", this.ReplicaID, that1.ReplicaID)
-	}
-	if this.SigningKeyID != that1.SigningKeyID {
-		return fmt.Errorf("SigningKeyID this(%v) Not Equal that(%v)", this.SigningKeyID, that1.SigningKeyID)
-	}
-	if this.PublicAddr != that1.PublicAddr {
-		return fmt.Errorf("PublicAddr this(%v) Not Equal that(%v)", this.PublicAddr, that1.PublicAddr)
-	}
-	if !this.PublicTLS.Equal(&that1.PublicTLS) {
-		return fmt.Errorf("PublicTLS this(%v) Not Equal that(%v)", this.PublicTLS, that1.PublicTLS)
-	}
-	if this.VerifierAddr != that1.VerifierAddr {
-		return fmt.Errorf("VerifierAddr this(%v) Not Equal that(%v)", this.VerifierAddr, that1.VerifierAddr)
-	}
-	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
-		return fmt.Errorf("VerifierTLS this(%v) Not Equal that(%v)", this.VerifierTLS, that1.VerifierTLS)
-	}
-	if this.HKPAddr != that1.HKPAddr {
-		return fmt.Errorf("HKPAddr this(%v) Not Equal that(%v)", this.HKPAddr, that1.HKPAddr)
-	}
-	if !this.HKPTLS.Equal(&that1.HKPTLS) {
-		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
-	}
-	if !this.RaftTLS.Equal(&that1.RaftTLS) {
-		return fmt.Errorf("RaftTLS this(%v) Not Equal that(%v)", this.RaftTLS, that1.RaftTLS)
-	}
-	if this.LevelDBPath != that1.LevelDBPath {
-		return fmt.Errorf("LevelDBPath this(%v) Not Equal that(%v)", this.LevelDBPath, that1.LevelDBPath)
-	}
-	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
-		return fmt.Errorf("RaftHeartbeat this(%v) Not Equal that(%v)", this.RaftHeartbeat, that1.RaftHeartbeat)
-	}
-	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
-		return fmt.Errorf("LaggingVerifierScan this(%v) Not Equal that(%v)", this.LaggingVerifierScan, that1.LaggingVerifierScan)
-	}
-	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
-		return fmt.Errorf("ClientTimeout this(%v) Not Equal that(%v)", this.ClientTimeout, that1.ClientTimeout)
-	}
-	return nil
-}
-func (this *ReplicaConfig) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*ReplicaConfig)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
-		return false
-	}
-	if this.ReplicaID != that1.ReplicaID {
-		return false
-	}
-	if this.SigningKeyID != that1.SigningKeyID {
-		return false
-	}
-	if this.PublicAddr != that1.PublicAddr {
-		return false
-	}
-	if !this.PublicTLS.Equal(&that1.PublicTLS) {
-		return false
-	}
-	if this.VerifierAddr != that1.VerifierAddr {
-		return false
-	}
-	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
-		return false
-	}
-	if this.HKPAddr != that1.HKPAddr {
-		return false
-	}
-	if !this.HKPTLS.Equal(&that1.HKPTLS) {
-		return false
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return false
-	}
-	if !this.RaftTLS.Equal(&that1.RaftTLS) {
-		return false
-	}
-	if this.LevelDBPath != that1.LevelDBPath {
-		return false
-	}
-	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
-		return false
-	}
-	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
-		return false
-	}
-	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
-		return false
-	}
-	return true
-}
-func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*KeyserverConfig)
-	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverConfig")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *KeyserverConfig but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverConfigbut is not nil && this == nil")
-	}
-	if this.ServerID != that1.ServerID {
-		return fmt.Errorf("ServerID this(%v) Not Equal that(%v)", this.ServerID, that1.ServerID)
-	}
-	if this.Realm != that1.Realm {
-		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
-	}
-	if this.VRFKeyID != that1.VRFKeyID {
-		return fmt.Errorf("VRFKeyID this(%v) Not Equal that(%v)", this.VRFKeyID, that1.VRFKeyID)
-	}
-	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
-		return fmt.Errorf("MinEpochInterval this(%v) Not Equal that(%v)", this.MinEpochInterval, that1.MinEpochInterval)
-	}
-	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
-		return fmt.Errorf("MaxEpochInterval this(%v) Not Equal that(%v)", this.MaxEpochInterval, that1.MaxEpochInterval)
-	}
-	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
-		return fmt.Errorf("ProposalRetryInterval this(%v) Not Equal that(%v)", this.ProposalRetryInterval, that1.ProposalRetryInterval)
-	}
-	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
-		return fmt.Errorf("InitialReplicas this(%v) Not Equal that(%v)", len(this.InitialReplicas), len(that1.InitialReplicas))
-	}
-	for i := range this.InitialReplicas {
-		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
-			return fmt.Errorf("InitialReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.InitialReplicas[i], i, that1.InitialReplicas[i])
-		}
-	}
-	if this.EmailProofToAddr != that1.EmailProofToAddr {
-		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
-	}
-	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
-		return fmt.Errorf("EmailProofSubjectPrefix this(%v) Not Equal that(%v)", this.EmailProofSubjectPrefix, that1.EmailProofSubjectPrefix)
-	}
-	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
-		return fmt.Errorf("EmailProofAllowedDomains this(%v) Not Equal that(%v)", len(this.EmailProofAllowedDomains), len(that1.EmailProofAllowedDomains))
-	}
-	for i := range this.EmailProofAllowedDomains {
-		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
-			return fmt.Errorf("EmailProofAllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.EmailProofAllowedDomains[i], i, that1.EmailProofAllowedDomains[i])
-		}
-	}
-	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
-		return fmt.Errorf("InsecureSkipEmailProof this(%v) Not Equal that(%v)", this.InsecureSkipEmailProof, that1.InsecureSkipEmailProof)
-	}
-	return nil
-}
-func (this *KeyserverConfig) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*KeyserverConfig)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.ServerID != that1.ServerID {
-		return false
-	}
-	if this.Realm != that1.Realm {
-		return false
-	}
-	if this.VRFKeyID != that1.VRFKeyID {
-		return false
-	}
-	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
-		return false
-	}
-	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
-		return false
-	}
-	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
-		return false
-	}
-	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
-		return false
-	}
-	for i := range this.InitialReplicas {
-		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
-			return false
-		}
-	}
-	if this.EmailProofToAddr != that1.EmailProofToAddr {
-		return false
-	}
-	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
-		return false
-	}
-	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
-		return false
-	}
-	for i := range this.EmailProofAllowedDomains {
-		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
-			return false
-		}
-	}
-	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
-		return false
-	}
-	return true
-}
-func (this *Replica) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return fmt.Errorf("that is not of type *Replica")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Replica but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
-	}
-	if this.ID != that1.ID {
-		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
-	}
-	return nil
-}
-func (this *Replica) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.ID != that1.ID {
-		return false
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return false
-	}
-	return true
-}
-func (this *ReplicaConfig) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.ReplicaConfig{` +
-		`KeyserverConfig:` + strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1),
-		`ReplicaID:` + fmt.Sprintf("%#v", this.ReplicaID),
-		`SigningKeyID:` + fmt.Sprintf("%#v", this.SigningKeyID),
-		`PublicAddr:` + fmt.Sprintf("%#v", this.PublicAddr),
-		`PublicTLS:` + strings.Replace(this.PublicTLS.GoString(), `&`, ``, 1),
-		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
-		`VerifierTLS:` + strings.Replace(this.VerifierTLS.GoString(), `&`, ``, 1),
-		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
-		`HKPTLS:` + strings.Replace(this.HKPTLS.GoString(), `&`, ``, 1),
-		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr),
-		`RaftTLS:` + strings.Replace(this.RaftTLS.GoString(), `&`, ``, 1),
-		`LevelDBPath:` + fmt.Sprintf("%#v", this.LevelDBPath),
-		`RaftHeartbeat:` + strings.Replace(this.RaftHeartbeat.GoString(), `&`, ``, 1),
-		`LaggingVerifierScan:` + fmt.Sprintf("%#v", this.LaggingVerifierScan),
-		`ClientTimeout:` + strings.Replace(this.ClientTimeout.GoString(), `&`, ``, 1) + `}`}, ", ")
-	return s
-}
-func (this *KeyserverConfig) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.KeyserverConfig{` +
-		`ServerID:` + fmt.Sprintf("%#v", this.ServerID),
-		`Realm:` + fmt.Sprintf("%#v", this.Realm),
-		`VRFKeyID:` + fmt.Sprintf("%#v", this.VRFKeyID),
-		`MinEpochInterval:` + strings.Replace(this.MinEpochInterval.GoString(), `&`, ``, 1),
-		`MaxEpochInterval:` + strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1),
-		`ProposalRetryInterval:` + strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1),
-		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
-		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
-		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix),
-		`EmailProofAllowedDomains:` + fmt.Sprintf("%#v", this.EmailProofAllowedDomains),
-		`InsecureSkipEmailProof:` + fmt.Sprintf("%#v", this.InsecureSkipEmailProof) + `}`}, ", ")
-	return s
-}
-func (this *Replica) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.Replica{` +
-		`ID:` + fmt.Sprintf("%#v", this.ID),
-		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
-		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr) + `}`}, ", ")
-	return s
-}
-func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringKeyserverconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *ReplicaConfig) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	data[i] = 0xa
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.KeyserverConfig.Size()))
-	n1, err := m.KeyserverConfig.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n1
-	if m.ReplicaID != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ReplicaID))
-	}
-	if len(m.SigningKeyID) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.SigningKeyID)))
-		i += copy(data[i:], m.SigningKeyID)
-	}
-	if len(m.PublicAddr) > 0 {
-		data[i] = 0x22
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.PublicAddr)))
-		i += copy(data[i:], m.PublicAddr)
-	}
-	data[i] = 0x2a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.PublicTLS.Size()))
-	n2, err := m.PublicTLS.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n2
-	if len(m.VerifierAddr) > 0 {
-		data[i] = 0x32
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VerifierAddr)))
-		i += copy(data[i:], m.VerifierAddr)
-	}
-	data[i] = 0x3a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.VerifierTLS.Size()))
-	n3, err := m.VerifierTLS.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n3
-	if len(m.HKPAddr) > 0 {
-		data[i] = 0x42
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HKPAddr)))
-		i += copy(data[i:], m.HKPAddr)
-	}
-	data[i] = 0x4a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.HKPTLS.Size()))
-	n4, err := m.HKPTLS.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n4
-	if len(m.RaftAddr) > 0 {
-		data[i] = 0x52
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
-		i += copy(data[i:], m.RaftAddr)
-	}
-	data[i] = 0x5a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
-	n5, err := m.RaftTLS.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n5
-	if len(m.LevelDBPath) > 0 {
-		data[i] = 0x72
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LevelDBPath)))
-		i += copy(data[i:], m.LevelDBPath)
-	}
-	data[i] = 0x7a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
-	n6, err := m.RaftHeartbeat.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n6
-	if m.LaggingVerifierScan != 0 {
-		data[i] = 0x80
-		i++
-		data[i] = 0x1
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.LaggingVerifierScan))
-	}
-	data[i] = 0x8a
-	i++
-	data[i] = 0x1
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ClientTimeout.Size()))
-	n7, err := m.ClientTimeout.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n7
-	return i, nil
-}
-
-func (m *KeyserverConfig) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ServerID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ServerID))
-	}
-	if len(m.Realm) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Realm)))
-		i += copy(data[i:], m.Realm)
-	}
-	if len(m.VRFKeyID) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VRFKeyID)))
-		i += copy(data[i:], m.VRFKeyID)
-	}
-	data[i] = 0x22
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n8, err := m.MinEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n8
-	data[i] = 0x2a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n9, err := m.MaxEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n9
-	data[i] = 0x32
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n10, err := m.ProposalRetryInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n10
-	if len(m.InitialReplicas) > 0 {
-		for _, msg := range m.InitialReplicas {
-			data[i] = 0x3a
-			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.EmailProofToAddr) > 0 {
-		data[i] = 0x42
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofToAddr)))
-		i += copy(data[i:], m.EmailProofToAddr)
-	}
-	if len(m.EmailProofSubjectPrefix) > 0 {
-		data[i] = 0x4a
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofSubjectPrefix)))
-		i += copy(data[i:], m.EmailProofSubjectPrefix)
-	}
-	if len(m.EmailProofAllowedDomains) > 0 {
-		for _, s := range m.EmailProofAllowedDomains {
-			data[i] = 0x52
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if m.InsecureSkipEmailProof {
-		data[i] = 0x58
-		i++
-		if m.InsecureSkipEmailProof {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
-	return i, nil
-}
-
-func (m *Replica) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Replica) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.ID != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ID))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, msg := range m.PublicKeys {
-			data[i] = 0x12
-			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.RaftAddr) > 0 {
-		data[i] = 0x1a
-		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
-		i += copy(data[i:], m.RaftAddr)
-	}
-	return i, nil
-}
-
-func encodeFixed64Keyserverconfig(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Keyserverconfig(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintKeyserverconfig(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig {
-	this := &ReplicaConfig{}
-	v1 := NewPopulatedKeyserverConfig(r, easy)
-	this.KeyserverConfig = *v1
-	this.ReplicaID = uint64(uint64(r.Uint32()))
-	this.SigningKeyID = randStringKeyserverconfig(r)
-	this.PublicAddr = randStringKeyserverconfig(r)
-	v2 := NewPopulatedTLSConfig(r, easy)
-	this.PublicTLS = *v2
-	this.VerifierAddr = randStringKeyserverconfig(r)
-	v3 := NewPopulatedTLSConfig(r, easy)
-	this.VerifierTLS = *v3
-	this.HKPAddr = randStringKeyserverconfig(r)
-	v4 := NewPopulatedTLSConfig(r, easy)
-	this.HKPTLS = *v4
-	this.RaftAddr = randStringKeyserverconfig(r)
-	v5 := NewPopulatedTLSConfig(r, easy)
-	this.RaftTLS = *v5
-	this.LevelDBPath = randStringKeyserverconfig(r)
-	v6 := NewPopulatedDuration(r, easy)
-	this.RaftHeartbeat = *v6
-	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
-	v7 := NewPopulatedDuration(r, easy)
-	this.ClientTimeout = *v7
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverConfig {
-	this := &KeyserverConfig{}
-	this.ServerID = uint64(uint64(r.Uint32()))
-	this.Realm = randStringKeyserverconfig(r)
-	this.VRFKeyID = randStringKeyserverconfig(r)
-	v8 := NewPopulatedDuration(r, easy)
-	this.MinEpochInterval = *v8
-	v9 := NewPopulatedDuration(r, easy)
-	this.MaxEpochInterval = *v9
-	v10 := NewPopulatedDuration(r, easy)
-	this.ProposalRetryInterval = *v10
-	if r.Intn(10) != 0 {
-		v11 := r.Intn(10)
-		this.InitialReplicas = make([]*Replica, v11)
-		for i := 0; i < v11; i++ {
-			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
-		}
-	}
-	this.EmailProofToAddr = randStringKeyserverconfig(r)
-	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
-	v12 := r.Intn(10)
-	this.EmailProofAllowedDomains = make([]string, v12)
-	for i := 0; i < v12; i++ {
-		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
-	}
-	this.InsecureSkipEmailProof = bool(bool(r.Intn(2) == 0))
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
-	this := &Replica{}
-	this.ID = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
-		this.PublicKeys = make([]*PublicKey, v13)
-		for i := 0; i < v13; i++ {
-			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	this.RaftAddr = randStringKeyserverconfig(r)
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyKeyserverconfig interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneKeyserverconfig(r randyKeyserverconfig) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringKeyserverconfig(r randyKeyserverconfig) string {
-	v14 := r.Intn(100)
-	tmps := make([]rune, v14)
-	for i := 0; i < v14; i++ {
-		tmps[i] = randUTF8RuneKeyserverconfig(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldKeyserverconfig(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		v15 := r.Int63()
-		if r.Intn(2) == 0 {
-			v15 *= -1
-		}
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(v15))
-	case 1:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateKeyserverconfig(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *ReplicaConfig) Size() (n int) {
-	var l int
-	_ = l
-	l = m.KeyserverConfig.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if m.ReplicaID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ReplicaID))
-	}
-	l = len(m.SigningKeyID)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.PublicAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.PublicTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.VerifierAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.VerifierTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.HKPAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.HKPTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.RaftAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.RaftTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.LevelDBPath)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.RaftHeartbeat.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if m.LaggingVerifierScan != 0 {
-		n += 2 + sovKeyserverconfig(uint64(m.LaggingVerifierScan))
-	}
-	l = m.ClientTimeout.Size()
-	n += 2 + l + sovKeyserverconfig(uint64(l))
-	return n
-}
-
-func (m *KeyserverConfig) Size() (n int) {
-	var l int
-	_ = l
-	if m.ServerID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ServerID))
-	}
-	l = len(m.Realm)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.VRFKeyID)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.MinEpochInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = m.MaxEpochInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = m.ProposalRetryInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if len(m.InitialReplicas) > 0 {
-		for _, e := range m.InitialReplicas {
-			l = e.Size()
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	l = len(m.EmailProofToAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.EmailProofSubjectPrefix)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	if len(m.EmailProofAllowedDomains) > 0 {
-		for _, s := range m.EmailProofAllowedDomains {
-			l = len(s)
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	if m.InsecureSkipEmailProof {
-		n += 2
-	}
-	return n
-}
-
-func (m *Replica) Size() (n int) {
-	var l int
-	_ = l
-	if m.ID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ID))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, e := range m.PublicKeys {
-			l = e.Size()
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	l = len(m.RaftAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	return n
-}
-
-func sovKeyserverconfig(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozKeyserverconfig(x uint64) (n int) {
-	return sovKeyserverconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (this *ReplicaConfig) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&ReplicaConfig{`,
-		`KeyserverConfig:` + strings.Replace(strings.Replace(this.KeyserverConfig.String(), "KeyserverConfig", "KeyserverConfig", 1), `&`, ``, 1) + `,`,
-		`ReplicaID:` + fmt.Sprintf("%v", this.ReplicaID) + `,`,
-		`SigningKeyID:` + fmt.Sprintf("%v", this.SigningKeyID) + `,`,
-		`PublicAddr:` + fmt.Sprintf("%v", this.PublicAddr) + `,`,
-		`PublicTLS:` + strings.Replace(strings.Replace(this.PublicTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
-		`VerifierTLS:` + strings.Replace(strings.Replace(this.VerifierTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
-		`HKPTLS:` + strings.Replace(strings.Replace(this.HKPTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
-		`RaftTLS:` + strings.Replace(strings.Replace(this.RaftTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
-		`RaftHeartbeat:` + strings.Replace(strings.Replace(this.RaftHeartbeat.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`LaggingVerifierScan:` + fmt.Sprintf("%v", this.LaggingVerifierScan) + `,`,
-		`ClientTimeout:` + strings.Replace(strings.Replace(this.ClientTimeout.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *KeyserverConfig) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&KeyserverConfig{`,
-		`ServerID:` + fmt.Sprintf("%v", this.ServerID) + `,`,
-		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
-		`VRFKeyID:` + fmt.Sprintf("%v", this.VRFKeyID) + `,`,
-		`MinEpochInterval:` + strings.Replace(strings.Replace(this.MinEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`MaxEpochInterval:` + strings.Replace(strings.Replace(this.MaxEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
-		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
-		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
-		`EmailProofAllowedDomains:` + fmt.Sprintf("%v", this.EmailProofAllowedDomains) + `,`,
-		`InsecureSkipEmailProof:` + fmt.Sprintf("%v", this.InsecureSkipEmailProof) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Replica) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Replica{`,
-		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
-		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringKeyserverconfig(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
 func (m *ReplicaConfig) Unmarshal(data []byte) error {
 	l := len(data)
 	iNdEx := 0
@@ -2169,3 +1118,1055 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 var (
 	ErrInvalidLengthKeyserverconfig = fmt.Errorf("proto: negative length found during unmarshaling")
 )
+
+func (this *ReplicaConfig) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ReplicaConfig{`,
+		`KeyserverConfig:` + strings.Replace(strings.Replace(this.KeyserverConfig.String(), "KeyserverConfig", "KeyserverConfig", 1), `&`, ``, 1) + `,`,
+		`ReplicaID:` + fmt.Sprintf("%v", this.ReplicaID) + `,`,
+		`SigningKeyID:` + fmt.Sprintf("%v", this.SigningKeyID) + `,`,
+		`PublicAddr:` + fmt.Sprintf("%v", this.PublicAddr) + `,`,
+		`PublicTLS:` + strings.Replace(strings.Replace(this.PublicTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
+		`VerifierTLS:` + strings.Replace(strings.Replace(this.VerifierTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
+		`HKPTLS:` + strings.Replace(strings.Replace(this.HKPTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
+		`RaftTLS:` + strings.Replace(strings.Replace(this.RaftTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
+		`RaftHeartbeat:` + strings.Replace(strings.Replace(this.RaftHeartbeat.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`LaggingVerifierScan:` + fmt.Sprintf("%v", this.LaggingVerifierScan) + `,`,
+		`ClientTimeout:` + strings.Replace(strings.Replace(this.ClientTimeout.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *KeyserverConfig) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&KeyserverConfig{`,
+		`ServerID:` + fmt.Sprintf("%v", this.ServerID) + `,`,
+		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
+		`VRFKeyID:` + fmt.Sprintf("%v", this.VRFKeyID) + `,`,
+		`MinEpochInterval:` + strings.Replace(strings.Replace(this.MinEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`MaxEpochInterval:` + strings.Replace(strings.Replace(this.MaxEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
+		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
+		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
+		`EmailProofAllowedDomains:` + fmt.Sprintf("%v", this.EmailProofAllowedDomains) + `,`,
+		`InsecureSkipEmailProof:` + fmt.Sprintf("%v", this.InsecureSkipEmailProof) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Replica) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Replica{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringKeyserverconfig(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *ReplicaConfig) Size() (n int) {
+	var l int
+	_ = l
+	l = m.KeyserverConfig.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if m.ReplicaID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ReplicaID))
+	}
+	l = len(m.SigningKeyID)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.PublicAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.PublicTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.VerifierAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.VerifierTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.HKPAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.HKPTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.RaftAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.RaftTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.LevelDBPath)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.RaftHeartbeat.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if m.LaggingVerifierScan != 0 {
+		n += 2 + sovKeyserverconfig(uint64(m.LaggingVerifierScan))
+	}
+	l = m.ClientTimeout.Size()
+	n += 2 + l + sovKeyserverconfig(uint64(l))
+	return n
+}
+
+func (m *KeyserverConfig) Size() (n int) {
+	var l int
+	_ = l
+	if m.ServerID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ServerID))
+	}
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.VRFKeyID)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.MinEpochInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = m.MaxEpochInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = m.ProposalRetryInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if len(m.InitialReplicas) > 0 {
+		for _, e := range m.InitialReplicas {
+			l = e.Size()
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	l = len(m.EmailProofToAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.EmailProofSubjectPrefix)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	if len(m.EmailProofAllowedDomains) > 0 {
+		for _, s := range m.EmailProofAllowedDomains {
+			l = len(s)
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	if m.InsecureSkipEmailProof {
+		n += 2
+	}
+	return n
+}
+
+func (m *Replica) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ID))
+	}
+	if len(m.PublicKeys) > 0 {
+		for _, e := range m.PublicKeys {
+			l = e.Size()
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	l = len(m.RaftAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	return n
+}
+
+func sovKeyserverconfig(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozKeyserverconfig(x uint64) (n int) {
+	return sovKeyserverconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig {
+	this := &ReplicaConfig{}
+	v1 := NewPopulatedKeyserverConfig(r, easy)
+	this.KeyserverConfig = *v1
+	this.ReplicaID = uint64(uint64(r.Uint32()))
+	this.SigningKeyID = randStringKeyserverconfig(r)
+	this.PublicAddr = randStringKeyserverconfig(r)
+	v2 := NewPopulatedTLSConfig(r, easy)
+	this.PublicTLS = *v2
+	this.VerifierAddr = randStringKeyserverconfig(r)
+	v3 := NewPopulatedTLSConfig(r, easy)
+	this.VerifierTLS = *v3
+	this.HKPAddr = randStringKeyserverconfig(r)
+	v4 := NewPopulatedTLSConfig(r, easy)
+	this.HKPTLS = *v4
+	this.RaftAddr = randStringKeyserverconfig(r)
+	v5 := NewPopulatedTLSConfig(r, easy)
+	this.RaftTLS = *v5
+	this.LevelDBPath = randStringKeyserverconfig(r)
+	v6 := NewPopulatedDuration(r, easy)
+	this.RaftHeartbeat = *v6
+	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
+	v7 := NewPopulatedDuration(r, easy)
+	this.ClientTimeout = *v7
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverConfig {
+	this := &KeyserverConfig{}
+	this.ServerID = uint64(uint64(r.Uint32()))
+	this.Realm = randStringKeyserverconfig(r)
+	this.VRFKeyID = randStringKeyserverconfig(r)
+	v8 := NewPopulatedDuration(r, easy)
+	this.MinEpochInterval = *v8
+	v9 := NewPopulatedDuration(r, easy)
+	this.MaxEpochInterval = *v9
+	v10 := NewPopulatedDuration(r, easy)
+	this.ProposalRetryInterval = *v10
+	if r.Intn(10) != 0 {
+		v11 := r.Intn(10)
+		this.InitialReplicas = make([]*Replica, v11)
+		for i := 0; i < v11; i++ {
+			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
+		}
+	}
+	this.EmailProofToAddr = randStringKeyserverconfig(r)
+	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
+	v12 := r.Intn(10)
+	this.EmailProofAllowedDomains = make([]string, v12)
+	for i := 0; i < v12; i++ {
+		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
+	}
+	this.InsecureSkipEmailProof = bool(bool(r.Intn(2) == 0))
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
+	this := &Replica{}
+	this.ID = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		v13 := r.Intn(10)
+		this.PublicKeys = make([]*PublicKey, v13)
+		for i := 0; i < v13; i++ {
+			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
+		}
+	}
+	this.RaftAddr = randStringKeyserverconfig(r)
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyKeyserverconfig interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneKeyserverconfig(r randyKeyserverconfig) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringKeyserverconfig(r randyKeyserverconfig) string {
+	v14 := r.Intn(100)
+	tmps := make([]rune, v14)
+	for i := 0; i < v14; i++ {
+		tmps[i] = randUTF8RuneKeyserverconfig(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldKeyserverconfig(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		v15 := r.Int63()
+		if r.Intn(2) == 0 {
+			v15 *= -1
+		}
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(v15))
+	case 1:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateKeyserverconfig(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *ReplicaConfig) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	data[i] = 0xa
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.KeyserverConfig.Size()))
+	n1, err := m.KeyserverConfig.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n1
+	if m.ReplicaID != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.ReplicaID))
+	}
+	if len(m.SigningKeyID) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.SigningKeyID)))
+		i += copy(data[i:], m.SigningKeyID)
+	}
+	if len(m.PublicAddr) > 0 {
+		data[i] = 0x22
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.PublicAddr)))
+		i += copy(data[i:], m.PublicAddr)
+	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.PublicTLS.Size()))
+	n2, err := m.PublicTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n2
+	if len(m.VerifierAddr) > 0 {
+		data[i] = 0x32
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VerifierAddr)))
+		i += copy(data[i:], m.VerifierAddr)
+	}
+	data[i] = 0x3a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.VerifierTLS.Size()))
+	n3, err := m.VerifierTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n3
+	if len(m.HKPAddr) > 0 {
+		data[i] = 0x42
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HKPAddr)))
+		i += copy(data[i:], m.HKPAddr)
+	}
+	data[i] = 0x4a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.HKPTLS.Size()))
+	n4, err := m.HKPTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n4
+	if len(m.RaftAddr) > 0 {
+		data[i] = 0x52
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
+		i += copy(data[i:], m.RaftAddr)
+	}
+	data[i] = 0x5a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
+	n5, err := m.RaftTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n5
+	if len(m.LevelDBPath) > 0 {
+		data[i] = 0x72
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LevelDBPath)))
+		i += copy(data[i:], m.LevelDBPath)
+	}
+	data[i] = 0x7a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
+	n6, err := m.RaftHeartbeat.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n6
+	if m.LaggingVerifierScan != 0 {
+		data[i] = 0x80
+		i++
+		data[i] = 0x1
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.LaggingVerifierScan))
+	}
+	data[i] = 0x8a
+	i++
+	data[i] = 0x1
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ClientTimeout.Size()))
+	n7, err := m.ClientTimeout.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n7
+	return i, nil
+}
+
+func (m *KeyserverConfig) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ServerID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.ServerID))
+	}
+	if len(m.Realm) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Realm)))
+		i += copy(data[i:], m.Realm)
+	}
+	if len(m.VRFKeyID) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VRFKeyID)))
+		i += copy(data[i:], m.VRFKeyID)
+	}
+	data[i] = 0x22
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
+	n8, err := m.MinEpochInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n8
+	data[i] = 0x2a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
+	n9, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n9
+	data[i] = 0x32
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
+	n10, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n10
+	if len(m.InitialReplicas) > 0 {
+		for _, msg := range m.InitialReplicas {
+			data[i] = 0x3a
+			i++
+			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.EmailProofToAddr) > 0 {
+		data[i] = 0x42
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofToAddr)))
+		i += copy(data[i:], m.EmailProofToAddr)
+	}
+	if len(m.EmailProofSubjectPrefix) > 0 {
+		data[i] = 0x4a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailProofSubjectPrefix)))
+		i += copy(data[i:], m.EmailProofSubjectPrefix)
+	}
+	if len(m.EmailProofAllowedDomains) > 0 {
+		for _, s := range m.EmailProofAllowedDomains {
+			data[i] = 0x52
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if m.InsecureSkipEmailProof {
+		data[i] = 0x58
+		i++
+		if m.InsecureSkipEmailProof {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	return i, nil
+}
+
+func (m *Replica) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Replica) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.ID != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.ID))
+	}
+	if len(m.PublicKeys) > 0 {
+		for _, msg := range m.PublicKeys {
+			data[i] = 0x12
+			i++
+			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.RaftAddr) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
+		i += copy(data[i:], m.RaftAddr)
+	}
+	return i, nil
+}
+
+func encodeFixed64Keyserverconfig(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Keyserverconfig(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintKeyserverconfig(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func (this *ReplicaConfig) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.ReplicaConfig{` +
+		`KeyserverConfig:` + strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1),
+		`ReplicaID:` + fmt.Sprintf("%#v", this.ReplicaID),
+		`SigningKeyID:` + fmt.Sprintf("%#v", this.SigningKeyID),
+		`PublicAddr:` + fmt.Sprintf("%#v", this.PublicAddr),
+		`PublicTLS:` + strings.Replace(this.PublicTLS.GoString(), `&`, ``, 1),
+		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
+		`VerifierTLS:` + strings.Replace(this.VerifierTLS.GoString(), `&`, ``, 1),
+		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
+		`HKPTLS:` + strings.Replace(this.HKPTLS.GoString(), `&`, ``, 1),
+		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr),
+		`RaftTLS:` + strings.Replace(this.RaftTLS.GoString(), `&`, ``, 1),
+		`LevelDBPath:` + fmt.Sprintf("%#v", this.LevelDBPath),
+		`RaftHeartbeat:` + strings.Replace(this.RaftHeartbeat.GoString(), `&`, ``, 1),
+		`LaggingVerifierScan:` + fmt.Sprintf("%#v", this.LaggingVerifierScan),
+		`ClientTimeout:` + strings.Replace(this.ClientTimeout.GoString(), `&`, ``, 1) + `}`}, ", ")
+	return s
+}
+func (this *KeyserverConfig) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.KeyserverConfig{` +
+		`ServerID:` + fmt.Sprintf("%#v", this.ServerID),
+		`Realm:` + fmt.Sprintf("%#v", this.Realm),
+		`VRFKeyID:` + fmt.Sprintf("%#v", this.VRFKeyID),
+		`MinEpochInterval:` + strings.Replace(this.MinEpochInterval.GoString(), `&`, ``, 1),
+		`MaxEpochInterval:` + strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1),
+		`ProposalRetryInterval:` + strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1),
+		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
+		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
+		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix),
+		`EmailProofAllowedDomains:` + fmt.Sprintf("%#v", this.EmailProofAllowedDomains),
+		`InsecureSkipEmailProof:` + fmt.Sprintf("%#v", this.InsecureSkipEmailProof) + `}`}, ", ")
+	return s
+}
+func (this *Replica) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.Replica{` +
+		`ID:` + fmt.Sprintf("%#v", this.ID),
+		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
+		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr) + `}`}, ", ")
+	return s
+}
+func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringKeyserverconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*ReplicaConfig)
+	if !ok {
+		return fmt.Errorf("that is not of type *ReplicaConfig")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *ReplicaConfig but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *ReplicaConfigbut is not nil && this == nil")
+	}
+	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
+		return fmt.Errorf("KeyserverConfig this(%v) Not Equal that(%v)", this.KeyserverConfig, that1.KeyserverConfig)
+	}
+	if this.ReplicaID != that1.ReplicaID {
+		return fmt.Errorf("ReplicaID this(%v) Not Equal that(%v)", this.ReplicaID, that1.ReplicaID)
+	}
+	if this.SigningKeyID != that1.SigningKeyID {
+		return fmt.Errorf("SigningKeyID this(%v) Not Equal that(%v)", this.SigningKeyID, that1.SigningKeyID)
+	}
+	if this.PublicAddr != that1.PublicAddr {
+		return fmt.Errorf("PublicAddr this(%v) Not Equal that(%v)", this.PublicAddr, that1.PublicAddr)
+	}
+	if !this.PublicTLS.Equal(&that1.PublicTLS) {
+		return fmt.Errorf("PublicTLS this(%v) Not Equal that(%v)", this.PublicTLS, that1.PublicTLS)
+	}
+	if this.VerifierAddr != that1.VerifierAddr {
+		return fmt.Errorf("VerifierAddr this(%v) Not Equal that(%v)", this.VerifierAddr, that1.VerifierAddr)
+	}
+	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
+		return fmt.Errorf("VerifierTLS this(%v) Not Equal that(%v)", this.VerifierTLS, that1.VerifierTLS)
+	}
+	if this.HKPAddr != that1.HKPAddr {
+		return fmt.Errorf("HKPAddr this(%v) Not Equal that(%v)", this.HKPAddr, that1.HKPAddr)
+	}
+	if !this.HKPTLS.Equal(&that1.HKPTLS) {
+		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	}
+	if !this.RaftTLS.Equal(&that1.RaftTLS) {
+		return fmt.Errorf("RaftTLS this(%v) Not Equal that(%v)", this.RaftTLS, that1.RaftTLS)
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return fmt.Errorf("LevelDBPath this(%v) Not Equal that(%v)", this.LevelDBPath, that1.LevelDBPath)
+	}
+	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
+		return fmt.Errorf("RaftHeartbeat this(%v) Not Equal that(%v)", this.RaftHeartbeat, that1.RaftHeartbeat)
+	}
+	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
+		return fmt.Errorf("LaggingVerifierScan this(%v) Not Equal that(%v)", this.LaggingVerifierScan, that1.LaggingVerifierScan)
+	}
+	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
+		return fmt.Errorf("ClientTimeout this(%v) Not Equal that(%v)", this.ClientTimeout, that1.ClientTimeout)
+	}
+	return nil
+}
+func (this *ReplicaConfig) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*ReplicaConfig)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
+		return false
+	}
+	if this.ReplicaID != that1.ReplicaID {
+		return false
+	}
+	if this.SigningKeyID != that1.SigningKeyID {
+		return false
+	}
+	if this.PublicAddr != that1.PublicAddr {
+		return false
+	}
+	if !this.PublicTLS.Equal(&that1.PublicTLS) {
+		return false
+	}
+	if this.VerifierAddr != that1.VerifierAddr {
+		return false
+	}
+	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
+		return false
+	}
+	if this.HKPAddr != that1.HKPAddr {
+		return false
+	}
+	if !this.HKPTLS.Equal(&that1.HKPTLS) {
+		return false
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return false
+	}
+	if !this.RaftTLS.Equal(&that1.RaftTLS) {
+		return false
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return false
+	}
+	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
+		return false
+	}
+	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
+		return false
+	}
+	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
+		return false
+	}
+	return true
+}
+func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*KeyserverConfig)
+	if !ok {
+		return fmt.Errorf("that is not of type *KeyserverConfig")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *KeyserverConfig but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *KeyserverConfigbut is not nil && this == nil")
+	}
+	if this.ServerID != that1.ServerID {
+		return fmt.Errorf("ServerID this(%v) Not Equal that(%v)", this.ServerID, that1.ServerID)
+	}
+	if this.Realm != that1.Realm {
+		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
+	}
+	if this.VRFKeyID != that1.VRFKeyID {
+		return fmt.Errorf("VRFKeyID this(%v) Not Equal that(%v)", this.VRFKeyID, that1.VRFKeyID)
+	}
+	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
+		return fmt.Errorf("MinEpochInterval this(%v) Not Equal that(%v)", this.MinEpochInterval, that1.MinEpochInterval)
+	}
+	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
+		return fmt.Errorf("MaxEpochInterval this(%v) Not Equal that(%v)", this.MaxEpochInterval, that1.MaxEpochInterval)
+	}
+	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
+		return fmt.Errorf("ProposalRetryInterval this(%v) Not Equal that(%v)", this.ProposalRetryInterval, that1.ProposalRetryInterval)
+	}
+	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
+		return fmt.Errorf("InitialReplicas this(%v) Not Equal that(%v)", len(this.InitialReplicas), len(that1.InitialReplicas))
+	}
+	for i := range this.InitialReplicas {
+		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
+			return fmt.Errorf("InitialReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.InitialReplicas[i], i, that1.InitialReplicas[i])
+		}
+	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
+		return fmt.Errorf("EmailProofSubjectPrefix this(%v) Not Equal that(%v)", this.EmailProofSubjectPrefix, that1.EmailProofSubjectPrefix)
+	}
+	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
+		return fmt.Errorf("EmailProofAllowedDomains this(%v) Not Equal that(%v)", len(this.EmailProofAllowedDomains), len(that1.EmailProofAllowedDomains))
+	}
+	for i := range this.EmailProofAllowedDomains {
+		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
+			return fmt.Errorf("EmailProofAllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.EmailProofAllowedDomains[i], i, that1.EmailProofAllowedDomains[i])
+		}
+	}
+	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
+		return fmt.Errorf("InsecureSkipEmailProof this(%v) Not Equal that(%v)", this.InsecureSkipEmailProof, that1.InsecureSkipEmailProof)
+	}
+	return nil
+}
+func (this *KeyserverConfig) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*KeyserverConfig)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.ServerID != that1.ServerID {
+		return false
+	}
+	if this.Realm != that1.Realm {
+		return false
+	}
+	if this.VRFKeyID != that1.VRFKeyID {
+		return false
+	}
+	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
+		return false
+	}
+	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
+		return false
+	}
+	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
+		return false
+	}
+	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
+		return false
+	}
+	for i := range this.InitialReplicas {
+		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
+			return false
+		}
+	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return false
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
+		return false
+	}
+	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
+		return false
+	}
+	for i := range this.EmailProofAllowedDomains {
+		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
+			return false
+		}
+	}
+	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
+		return false
+	}
+	return true
+}
+func (this *Replica) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Replica)
+	if !ok {
+		return fmt.Errorf("that is not of type *Replica")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Replica but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
+	}
+	if this.ID != that1.ID {
+		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
+		}
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	}
+	return nil
+}
+func (this *Replica) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*Replica)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.ID != that1.ID {
+		return false
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return false
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return false
+		}
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return false
+	}
+	return true
+}

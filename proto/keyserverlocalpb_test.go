@@ -168,32 +168,13 @@ func TestReplicaStateProtoCompactText(t *testing.T) {
 	}
 }
 
-func TestReplicaStateVerboseEqual(t *testing.T) {
+func TestReplicaStateStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplicaState(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &ReplicaState{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestReplicaStateGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedReplicaState(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
 func TestReplicaStateSize(t *testing.T) {
@@ -231,13 +212,32 @@ func BenchmarkReplicaStateSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestReplicaStateStringer(t *testing.T) {
+func TestReplicaStateGoString(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplicaState(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
 	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestReplicaStateVerboseEqual(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedReplicaState(popr, false)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &ReplicaState{}
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
 

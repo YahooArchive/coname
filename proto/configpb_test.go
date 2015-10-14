@@ -322,60 +322,22 @@ func TestRealmConfigProtoCompactText(t *testing.T) {
 	}
 }
 
-func TestConfigVerboseEqual(t *testing.T) {
+func TestConfigStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &Config{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
+	if s1 != s2 {
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
-func TestRealmConfigVerboseEqual(t *testing.T) {
+func TestRealmConfigStringer(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	msg := &RealmConfig{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
-		panic(err)
-	}
-	if err := p.VerboseEqual(msg); err != nil {
-		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
-	}
-}
-func TestConfigGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedConfig(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
+	s1 := p.String()
+	s2 := fmt.Sprintf("%v", p)
 	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
-	}
-}
-func TestRealmConfigGoString(t *testing.T) {
-	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
-	p := NewPopulatedRealmConfig(popr, false)
-	s1 := p.GoString()
-	s2 := fmt.Sprintf("%#v", p)
-	if s1 != s2 {
-		t.Fatalf("GoString want %v got %v", s1, s2)
-	}
-	_, err := go_parser.ParseExpr(s1)
-	if err != nil {
-		panic(err)
+		t.Fatalf("String want %v got %v", s1, s2)
 	}
 }
 func TestConfigSize(t *testing.T) {
@@ -448,22 +410,60 @@ func BenchmarkRealmConfigSize(b *testing.B) {
 	b.SetBytes(int64(total / b.N))
 }
 
-func TestConfigStringer(t *testing.T) {
+func TestConfigGoString(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
 	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
 	}
 }
-func TestRealmConfigStringer(t *testing.T) {
+func TestRealmConfigGoString(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, false)
-	s1 := p.String()
-	s2 := fmt.Sprintf("%v", p)
+	s1 := p.GoString()
+	s2 := fmt.Sprintf("%#v", p)
 	if s1 != s2 {
-		t.Fatalf("String want %v got %v", s1, s2)
+		t.Fatalf("GoString want %v got %v", s1, s2)
+	}
+	_, err := go_parser.ParseExpr(s1)
+	if err != nil {
+		panic(err)
+	}
+}
+func TestConfigVerboseEqual(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedConfig(popr, false)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &Config{}
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
+	}
+}
+func TestRealmConfigVerboseEqual(t *testing.T) {
+	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
+	p := NewPopulatedRealmConfig(popr, false)
+	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	if err != nil {
+		panic(err)
+	}
+	msg := &RealmConfig{}
+	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+		panic(err)
+	}
+	if err := p.VerboseEqual(msg); err != nil {
+		t.Fatalf("%#v !VerboseEqual %#v, since %v", msg, p, err)
 	}
 }
 
