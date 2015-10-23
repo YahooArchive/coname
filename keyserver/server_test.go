@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
+	"fmt"
 	"io/ioutil"
 	"log"
 	mathrand "math/rand"
@@ -705,7 +706,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 	}
 	sv = &proto.PublicKey{Ed25519: pk[:]}
 
-	cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
+	cert := tlstestutil.Cert(t, caCert, caKey, fmt.Sprintf("verifier %x", proto.KeyID(sv)), nil)
 	getKey = func(keyid string) (crypto.PrivateKey, error) {
 		switch keyid {
 		case "signing":
