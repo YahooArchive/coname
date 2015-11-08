@@ -237,7 +237,7 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		err = new(jsonpb.Marshaller).Marshal(configF, cfg)
+		err = new(jsonpb.Marshaler).Marshal(configF, cfg)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -292,7 +292,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	err = new(jsonpb.Marshaller).Marshal(clientConfigF, clientConfig)
+	err = new(jsonpb.Marshaler).Marshal(clientConfigF, clientConfig)
 	if err != nil {
 		log.Panic(err)
 	}

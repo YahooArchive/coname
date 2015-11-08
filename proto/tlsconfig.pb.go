@@ -4,19 +4,27 @@
 
 package proto
 
+import proto1 "github.com/andres-erbsen/protobuf/proto"
+import fmt "fmt"
+import math "math"
+
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
-
-import strings "strings"
-import reflect "reflect"
-
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import sort "sort"
 import strconv "strconv"
 
 import bytes "bytes"
+
+import strings "strings"
+import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import sort "sort"
+import reflect "reflect"
+
+import io "io"
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 type TLSVersion int32
 
@@ -225,1059 +233,38 @@ func (m *CertificateAndKeyID) Reset()      { *m = CertificateAndKeyID{} }
 func (*CertificateAndKeyID) ProtoMessage() {}
 
 func init() {
-	github_com_andres_erbsen_protobuf_proto.RegisterEnum("proto.TLSVersion", TLSVersion_name, TLSVersion_value)
-	github_com_andres_erbsen_protobuf_proto.RegisterEnum("proto.ClientAuthType", ClientAuthType_name, ClientAuthType_value)
-	github_com_andres_erbsen_protobuf_proto.RegisterEnum("proto.CipherSuite", CipherSuite_name, CipherSuite_value)
-	github_com_andres_erbsen_protobuf_proto.RegisterEnum("proto.CurveID", CurveID_name, CurveID_value)
+	proto1.RegisterEnum("proto.TLSVersion", TLSVersion_name, TLSVersion_value)
+	proto1.RegisterEnum("proto.ClientAuthType", ClientAuthType_name, ClientAuthType_value)
+	proto1.RegisterEnum("proto.CipherSuite", CipherSuite_name, CipherSuite_value)
+	proto1.RegisterEnum("proto.CurveID", CurveID_name, CurveID_value)
 }
-func (m *TLSConfig) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Certificates", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Certificates = append(m.Certificates, &CertificateAndKeyID{})
-			if err := m.Certificates[len(m.Certificates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RootCAs", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RootCAs = append(m.RootCAs, make([]byte, postIndex-iNdEx))
-			copy(m.RootCAs[len(m.RootCAs)-1], data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextProtos", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.NextProtos = append(m.NextProtos, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ServerName", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ServerName = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ClientAuth", wireType)
-			}
-			m.ClientAuth = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.ClientAuth |= (ClientAuthType(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ClientCAs", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ClientCAs = append(m.ClientCAs, make([]byte, postIndex-iNdEx))
-			copy(m.ClientCAs[len(m.ClientCAs)-1], data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 8:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CipherSuites", wireType)
-			}
-			var v CipherSuite
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (CipherSuite(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.CipherSuites = append(m.CipherSuites, v)
-		case 9:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PreferServerCipherSuites", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.PreferServerCipherSuites = bool(v != 0)
-		case 10:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SessionTicketsEnabled", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.SessionTicketsEnabled = bool(v != 0)
-		case 11:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SessionTicketKeyID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SessionTicketKeyID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 12:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MinVersion", wireType)
-			}
-			m.MinVersion = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.MinVersion |= (TLSVersion(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 13:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxVersion", wireType)
-			}
-			m.MaxVersion = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.MaxVersion |= (TLSVersion(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 14:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CurvePreferences", wireType)
-			}
-			var v CurveID
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (CurveID(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.CurvePreferences = append(m.CurvePreferences, v)
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipTlsconfig(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+func (x TLSVersion) String() string {
+	s, ok := TLSVersion_name[int32(x)]
+	if ok {
+		return s
 	}
-
-	return nil
+	return strconv.Itoa(int(x))
 }
-func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Certificate", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Certificate = append(m.Certificate, make([]byte, postIndex-iNdEx))
-			copy(m.Certificate[len(m.Certificate)-1], data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field KeyID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.KeyID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field OCSPStaple", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.OCSPStaple = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipTlsconfig(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthTlsconfig
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+func (x ClientAuthType) String() string {
+	s, ok := ClientAuthType_name[int32(x)]
+	if ok {
+		return s
 	}
-
-	return nil
+	return strconv.Itoa(int(x))
 }
-func skipTlsconfig(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthTlsconfig
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipTlsconfig(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
+func (x CipherSuite) String() string {
+	s, ok := CipherSuite_name[int32(x)]
+	if ok {
+		return s
 	}
-	panic("unreachable")
+	return strconv.Itoa(int(x))
 }
-
-var (
-	ErrInvalidLengthTlsconfig = fmt.Errorf("proto: negative length found during unmarshaling")
-)
-
-func (this *TLSConfig) String() string {
-	if this == nil {
-		return "nil"
+func (x CurveID) String() string {
+	s, ok := CurveID_name[int32(x)]
+	if ok {
+		return s
 	}
-	s := strings.Join([]string{`&TLSConfig{`,
-		`Certificates:` + strings.Replace(fmt.Sprintf("%v", this.Certificates), "CertificateAndKeyID", "CertificateAndKeyID", 1) + `,`,
-		`RootCAs:` + fmt.Sprintf("%v", this.RootCAs) + `,`,
-		`NextProtos:` + fmt.Sprintf("%v", this.NextProtos) + `,`,
-		`ServerName:` + fmt.Sprintf("%v", this.ServerName) + `,`,
-		`ClientAuth:` + fmt.Sprintf("%v", this.ClientAuth) + `,`,
-		`ClientCAs:` + fmt.Sprintf("%v", this.ClientCAs) + `,`,
-		`CipherSuites:` + fmt.Sprintf("%v", this.CipherSuites) + `,`,
-		`PreferServerCipherSuites:` + fmt.Sprintf("%v", this.PreferServerCipherSuites) + `,`,
-		`SessionTicketsEnabled:` + fmt.Sprintf("%v", this.SessionTicketsEnabled) + `,`,
-		`SessionTicketKeyID:` + fmt.Sprintf("%v", this.SessionTicketKeyID) + `,`,
-		`MinVersion:` + fmt.Sprintf("%v", this.MinVersion) + `,`,
-		`MaxVersion:` + fmt.Sprintf("%v", this.MaxVersion) + `,`,
-		`CurvePreferences:` + fmt.Sprintf("%v", this.CurvePreferences) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *CertificateAndKeyID) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&CertificateAndKeyID{`,
-		`Certificate:` + fmt.Sprintf("%v", this.Certificate) + `,`,
-		`KeyID:` + fmt.Sprintf("%v", this.KeyID) + `,`,
-		`OCSPStaple:` + fmt.Sprintf("%v", this.OCSPStaple) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringTlsconfig(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *TLSConfig) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Certificates) > 0 {
-		for _, e := range m.Certificates {
-			l = e.Size()
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	if len(m.RootCAs) > 0 {
-		for _, b := range m.RootCAs {
-			l = len(b)
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	if len(m.NextProtos) > 0 {
-		for _, s := range m.NextProtos {
-			l = len(s)
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	l = len(m.ServerName)
-	if l > 0 {
-		n += 1 + l + sovTlsconfig(uint64(l))
-	}
-	if m.ClientAuth != 0 {
-		n += 1 + sovTlsconfig(uint64(m.ClientAuth))
-	}
-	if len(m.ClientCAs) > 0 {
-		for _, b := range m.ClientCAs {
-			l = len(b)
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	if len(m.CipherSuites) > 0 {
-		for _, e := range m.CipherSuites {
-			n += 1 + sovTlsconfig(uint64(e))
-		}
-	}
-	if m.PreferServerCipherSuites {
-		n += 2
-	}
-	if m.SessionTicketsEnabled {
-		n += 2
-	}
-	l = len(m.SessionTicketKeyID)
-	if l > 0 {
-		n += 1 + l + sovTlsconfig(uint64(l))
-	}
-	if m.MinVersion != 0 {
-		n += 1 + sovTlsconfig(uint64(m.MinVersion))
-	}
-	if m.MaxVersion != 0 {
-		n += 1 + sovTlsconfig(uint64(m.MaxVersion))
-	}
-	if len(m.CurvePreferences) > 0 {
-		for _, e := range m.CurvePreferences {
-			n += 1 + sovTlsconfig(uint64(e))
-		}
-	}
-	return n
-}
-
-func (m *CertificateAndKeyID) Size() (n int) {
-	var l int
-	_ = l
-	if len(m.Certificate) > 0 {
-		for _, b := range m.Certificate {
-			l = len(b)
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	l = len(m.KeyID)
-	if l > 0 {
-		n += 1 + l + sovTlsconfig(uint64(l))
-	}
-	if m.OCSPStaple != nil {
-		l = len(m.OCSPStaple)
-		if l > 0 {
-			n += 1 + l + sovTlsconfig(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovTlsconfig(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozTlsconfig(x uint64) (n int) {
-	return sovTlsconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedTLSConfig(r randyTlsconfig, easy bool) *TLSConfig {
-	this := &TLSConfig{}
-	if r.Intn(10) != 0 {
-		v1 := r.Intn(10)
-		this.Certificates = make([]*CertificateAndKeyID, v1)
-		for i := 0; i < v1; i++ {
-			this.Certificates[i] = NewPopulatedCertificateAndKeyID(r, easy)
-		}
-	}
-	v2 := r.Intn(100)
-	this.RootCAs = make([][]byte, v2)
-	for i := 0; i < v2; i++ {
-		v3 := r.Intn(100)
-		this.RootCAs[i] = make([]byte, v3)
-		for j := 0; j < v3; j++ {
-			this.RootCAs[i][j] = byte(r.Intn(256))
-		}
-	}
-	v4 := r.Intn(10)
-	this.NextProtos = make([]string, v4)
-	for i := 0; i < v4; i++ {
-		this.NextProtos[i] = randStringTlsconfig(r)
-	}
-	this.ServerName = randStringTlsconfig(r)
-	this.ClientAuth = ClientAuthType([]int32{0, 1, 2, 3, 4}[r.Intn(5)])
-	v5 := r.Intn(100)
-	this.ClientCAs = make([][]byte, v5)
-	for i := 0; i < v5; i++ {
-		v6 := r.Intn(100)
-		this.ClientCAs[i] = make([]byte, v6)
-		for j := 0; j < v6; j++ {
-			this.ClientCAs[i][j] = byte(r.Intn(256))
-		}
-	}
-	v7 := r.Intn(10)
-	this.CipherSuites = make([]CipherSuite, v7)
-	for i := 0; i < v7; i++ {
-		this.CipherSuites[i] = CipherSuite([]int32{0, 5, 10, 47, 53, 49159, 49161, 49162, 49169, 49170, 49171, 49172, 49199, 49195, 22016}[r.Intn(15)])
-	}
-	this.PreferServerCipherSuites = bool(bool(r.Intn(2) == 0))
-	this.SessionTicketsEnabled = bool(bool(r.Intn(2) == 0))
-	this.SessionTicketKeyID = randStringTlsconfig(r)
-	this.MinVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
-	this.MaxVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
-	v8 := r.Intn(10)
-	this.CurvePreferences = make([]CurveID, v8)
-	for i := 0; i < v8; i++ {
-		this.CurvePreferences[i] = CurveID([]int32{0, 23, 24, 25}[r.Intn(4)])
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedCertificateAndKeyID(r randyTlsconfig, easy bool) *CertificateAndKeyID {
-	this := &CertificateAndKeyID{}
-	v9 := r.Intn(100)
-	this.Certificate = make([][]byte, v9)
-	for i := 0; i < v9; i++ {
-		v10 := r.Intn(100)
-		this.Certificate[i] = make([]byte, v10)
-		for j := 0; j < v10; j++ {
-			this.Certificate[i][j] = byte(r.Intn(256))
-		}
-	}
-	this.KeyID = randStringTlsconfig(r)
-	v11 := r.Intn(100)
-	this.OCSPStaple = make([]byte, v11)
-	for i := 0; i < v11; i++ {
-		this.OCSPStaple[i] = byte(r.Intn(256))
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyTlsconfig interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneTlsconfig(r randyTlsconfig) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringTlsconfig(r randyTlsconfig) string {
-	v12 := r.Intn(100)
-	tmps := make([]rune, v12)
-	for i := 0; i < v12; i++ {
-		tmps[i] = randUTF8RuneTlsconfig(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedTlsconfig(r randyTlsconfig, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldTlsconfig(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldTlsconfig(data []byte, r randyTlsconfig, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		v13 := r.Int63()
-		if r.Intn(2) == 0 {
-			v13 *= -1
-		}
-		data = encodeVarintPopulateTlsconfig(data, uint64(v13))
-	case 1:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateTlsconfig(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateTlsconfig(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *TLSConfig) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *TLSConfig) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Certificates) > 0 {
-		for _, msg := range m.Certificates {
-			data[i] = 0xa
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
-	if len(m.RootCAs) > 0 {
-		for _, b := range m.RootCAs {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	if len(m.NextProtos) > 0 {
-		for _, s := range m.NextProtos {
-			data[i] = 0x22
-			i++
-			l = len(s)
-			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
-				l >>= 7
-				i++
-			}
-			data[i] = uint8(l)
-			i++
-			i += copy(data[i:], s)
-		}
-	}
-	if len(m.ServerName) > 0 {
-		data[i] = 0x2a
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.ServerName)))
-		i += copy(data[i:], m.ServerName)
-	}
-	if m.ClientAuth != 0 {
-		data[i] = 0x30
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.ClientAuth))
-	}
-	if len(m.ClientCAs) > 0 {
-		for _, b := range m.ClientCAs {
-			data[i] = 0x3a
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	if len(m.CipherSuites) > 0 {
-		for _, num := range m.CipherSuites {
-			data[i] = 0x40
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(num))
-		}
-	}
-	if m.PreferServerCipherSuites {
-		data[i] = 0x48
-		i++
-		if m.PreferServerCipherSuites {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
-	if m.SessionTicketsEnabled {
-		data[i] = 0x50
-		i++
-		if m.SessionTicketsEnabled {
-			data[i] = 1
-		} else {
-			data[i] = 0
-		}
-		i++
-	}
-	if len(m.SessionTicketKeyID) > 0 {
-		data[i] = 0x5a
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.SessionTicketKeyID)))
-		i += copy(data[i:], m.SessionTicketKeyID)
-	}
-	if m.MinVersion != 0 {
-		data[i] = 0x60
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.MinVersion))
-	}
-	if m.MaxVersion != 0 {
-		data[i] = 0x68
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.MaxVersion))
-	}
-	if len(m.CurvePreferences) > 0 {
-		for _, num := range m.CurvePreferences {
-			data[i] = 0x70
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(num))
-		}
-	}
-	return i, nil
-}
-
-func (m *CertificateAndKeyID) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *CertificateAndKeyID) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Certificate) > 0 {
-		for _, b := range m.Certificate {
-			data[i] = 0xa
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
-		}
-	}
-	if len(m.KeyID) > 0 {
-		data[i] = 0x12
-		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.KeyID)))
-		i += copy(data[i:], m.KeyID)
-	}
-	if m.OCSPStaple != nil {
-		if len(m.OCSPStaple) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(m.OCSPStaple)))
-			i += copy(data[i:], m.OCSPStaple)
-		}
-	}
-	return i, nil
-}
-
-func encodeFixed64Tlsconfig(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Tlsconfig(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintTlsconfig(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *TLSConfig) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.TLSConfig{` +
-		`Certificates:` + fmt.Sprintf("%#v", this.Certificates),
-		`RootCAs:` + fmt.Sprintf("%#v", this.RootCAs),
-		`NextProtos:` + fmt.Sprintf("%#v", this.NextProtos),
-		`ServerName:` + fmt.Sprintf("%#v", this.ServerName),
-		`ClientAuth:` + fmt.Sprintf("%#v", this.ClientAuth),
-		`ClientCAs:` + fmt.Sprintf("%#v", this.ClientCAs),
-		`CipherSuites:` + fmt.Sprintf("%#v", this.CipherSuites),
-		`PreferServerCipherSuites:` + fmt.Sprintf("%#v", this.PreferServerCipherSuites),
-		`SessionTicketsEnabled:` + fmt.Sprintf("%#v", this.SessionTicketsEnabled),
-		`SessionTicketKeyID:` + fmt.Sprintf("%#v", this.SessionTicketKeyID),
-		`MinVersion:` + fmt.Sprintf("%#v", this.MinVersion),
-		`MaxVersion:` + fmt.Sprintf("%#v", this.MaxVersion),
-		`CurvePreferences:` + fmt.Sprintf("%#v", this.CurvePreferences) + `}`}, ", ")
-	return s
-}
-func (this *CertificateAndKeyID) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.CertificateAndKeyID{` +
-		`Certificate:` + fmt.Sprintf("%#v", this.Certificate),
-		`KeyID:` + fmt.Sprintf("%#v", this.KeyID),
-		`OCSPStaple:` + fmt.Sprintf("%#v", this.OCSPStaple) + `}`}, ", ")
-	return s
-}
-func valueToGoStringTlsconfig(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringTlsconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
+	return strconv.Itoa(int(x))
 }
 func (this *TLSConfig) VerboseEqual(that interface{}) error {
 	if that == nil {
@@ -1533,31 +520,1144 @@ func (this *CertificateAndKeyID) Equal(that interface{}) bool {
 	}
 	return true
 }
-func (x TLSVersion) String() string {
-	s, ok := TLSVersion_name[int32(x)]
-	if ok {
-		return s
+func (this *TLSConfig) GoString() string {
+	if this == nil {
+		return "nil"
 	}
-	return strconv.Itoa(int(x))
-}
-func (x ClientAuthType) String() string {
-	s, ok := ClientAuthType_name[int32(x)]
-	if ok {
-		return s
+	s := make([]string, 0, 17)
+	s = append(s, "&proto.TLSConfig{")
+	if this.Certificates != nil {
+		s = append(s, "Certificates: "+fmt.Sprintf("%#v", this.Certificates)+",\n")
 	}
-	return strconv.Itoa(int(x))
+	s = append(s, "RootCAs: "+fmt.Sprintf("%#v", this.RootCAs)+",\n")
+	s = append(s, "NextProtos: "+fmt.Sprintf("%#v", this.NextProtos)+",\n")
+	s = append(s, "ServerName: "+fmt.Sprintf("%#v", this.ServerName)+",\n")
+	s = append(s, "ClientAuth: "+fmt.Sprintf("%#v", this.ClientAuth)+",\n")
+	s = append(s, "ClientCAs: "+fmt.Sprintf("%#v", this.ClientCAs)+",\n")
+	s = append(s, "CipherSuites: "+fmt.Sprintf("%#v", this.CipherSuites)+",\n")
+	s = append(s, "PreferServerCipherSuites: "+fmt.Sprintf("%#v", this.PreferServerCipherSuites)+",\n")
+	s = append(s, "SessionTicketsEnabled: "+fmt.Sprintf("%#v", this.SessionTicketsEnabled)+",\n")
+	s = append(s, "SessionTicketKeyID: "+fmt.Sprintf("%#v", this.SessionTicketKeyID)+",\n")
+	s = append(s, "MinVersion: "+fmt.Sprintf("%#v", this.MinVersion)+",\n")
+	s = append(s, "MaxVersion: "+fmt.Sprintf("%#v", this.MaxVersion)+",\n")
+	s = append(s, "CurvePreferences: "+fmt.Sprintf("%#v", this.CurvePreferences)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func (x CipherSuite) String() string {
-	s, ok := CipherSuite_name[int32(x)]
-	if ok {
-		return s
+func (this *CertificateAndKeyID) GoString() string {
+	if this == nil {
+		return "nil"
 	}
-	return strconv.Itoa(int(x))
+	s := make([]string, 0, 7)
+	s = append(s, "&proto.CertificateAndKeyID{")
+	s = append(s, "Certificate: "+fmt.Sprintf("%#v", this.Certificate)+",\n")
+	s = append(s, "KeyID: "+fmt.Sprintf("%#v", this.KeyID)+",\n")
+	s = append(s, "OCSPStaple: "+fmt.Sprintf("%#v", this.OCSPStaple)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func (x CurveID) String() string {
-	s, ok := CurveID_name[int32(x)]
-	if ok {
-		return s
+func valueToGoStringTlsconfig(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
 	}
-	return strconv.Itoa(int(x))
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
+func extensionToGoStringTlsconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+func (m *TLSConfig) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *TLSConfig) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Certificates) > 0 {
+		for _, msg := range m.Certificates {
+			data[i] = 0xa
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if len(m.RootCAs) > 0 {
+		for _, b := range m.RootCAs {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	if len(m.NextProtos) > 0 {
+		for _, s := range m.NextProtos {
+			data[i] = 0x22
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			data[i] = uint8(l)
+			i++
+			i += copy(data[i:], s)
+		}
+	}
+	if len(m.ServerName) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(len(m.ServerName)))
+		i += copy(data[i:], m.ServerName)
+	}
+	if m.ClientAuth != 0 {
+		data[i] = 0x30
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(m.ClientAuth))
+	}
+	if len(m.ClientCAs) > 0 {
+		for _, b := range m.ClientCAs {
+			data[i] = 0x3a
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	if len(m.CipherSuites) > 0 {
+		for _, num := range m.CipherSuites {
+			data[i] = 0x40
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(num))
+		}
+	}
+	if m.PreferServerCipherSuites {
+		data[i] = 0x48
+		i++
+		if m.PreferServerCipherSuites {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if m.SessionTicketsEnabled {
+		data[i] = 0x50
+		i++
+		if m.SessionTicketsEnabled {
+			data[i] = 1
+		} else {
+			data[i] = 0
+		}
+		i++
+	}
+	if len(m.SessionTicketKeyID) > 0 {
+		data[i] = 0x5a
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(len(m.SessionTicketKeyID)))
+		i += copy(data[i:], m.SessionTicketKeyID)
+	}
+	if m.MinVersion != 0 {
+		data[i] = 0x60
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(m.MinVersion))
+	}
+	if m.MaxVersion != 0 {
+		data[i] = 0x68
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(m.MaxVersion))
+	}
+	if len(m.CurvePreferences) > 0 {
+		for _, num := range m.CurvePreferences {
+			data[i] = 0x70
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(num))
+		}
+	}
+	return i, nil
+}
+
+func (m *CertificateAndKeyID) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *CertificateAndKeyID) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if len(m.Certificate) > 0 {
+		for _, b := range m.Certificate {
+			data[i] = 0xa
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
+			i += copy(data[i:], b)
+		}
+	}
+	if len(m.KeyID) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTlsconfig(data, i, uint64(len(m.KeyID)))
+		i += copy(data[i:], m.KeyID)
+	}
+	if m.OCSPStaple != nil {
+		if len(m.OCSPStaple) > 0 {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintTlsconfig(data, i, uint64(len(m.OCSPStaple)))
+			i += copy(data[i:], m.OCSPStaple)
+		}
+	}
+	return i, nil
+}
+
+func encodeFixed64Tlsconfig(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Tlsconfig(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintTlsconfig(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedTLSConfig(r randyTlsconfig, easy bool) *TLSConfig {
+	this := &TLSConfig{}
+	if r.Intn(10) != 0 {
+		v1 := r.Intn(10)
+		this.Certificates = make([]*CertificateAndKeyID, v1)
+		for i := 0; i < v1; i++ {
+			this.Certificates[i] = NewPopulatedCertificateAndKeyID(r, easy)
+		}
+	}
+	v2 := r.Intn(100)
+	this.RootCAs = make([][]byte, v2)
+	for i := 0; i < v2; i++ {
+		v3 := r.Intn(100)
+		this.RootCAs[i] = make([]byte, v3)
+		for j := 0; j < v3; j++ {
+			this.RootCAs[i][j] = byte(r.Intn(256))
+		}
+	}
+	v4 := r.Intn(10)
+	this.NextProtos = make([]string, v4)
+	for i := 0; i < v4; i++ {
+		this.NextProtos[i] = randStringTlsconfig(r)
+	}
+	this.ServerName = randStringTlsconfig(r)
+	this.ClientAuth = ClientAuthType([]int32{0, 1, 2, 3, 4}[r.Intn(5)])
+	v5 := r.Intn(100)
+	this.ClientCAs = make([][]byte, v5)
+	for i := 0; i < v5; i++ {
+		v6 := r.Intn(100)
+		this.ClientCAs[i] = make([]byte, v6)
+		for j := 0; j < v6; j++ {
+			this.ClientCAs[i][j] = byte(r.Intn(256))
+		}
+	}
+	v7 := r.Intn(10)
+	this.CipherSuites = make([]CipherSuite, v7)
+	for i := 0; i < v7; i++ {
+		this.CipherSuites[i] = CipherSuite([]int32{0, 5, 10, 47, 53, 49159, 49161, 49162, 49169, 49170, 49171, 49172, 49199, 49195, 22016}[r.Intn(15)])
+	}
+	this.PreferServerCipherSuites = bool(bool(r.Intn(2) == 0))
+	this.SessionTicketsEnabled = bool(bool(r.Intn(2) == 0))
+	this.SessionTicketKeyID = randStringTlsconfig(r)
+	this.MinVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
+	this.MaxVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
+	v8 := r.Intn(10)
+	this.CurvePreferences = make([]CurveID, v8)
+	for i := 0; i < v8; i++ {
+		this.CurvePreferences[i] = CurveID([]int32{0, 23, 24, 25}[r.Intn(4)])
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedCertificateAndKeyID(r randyTlsconfig, easy bool) *CertificateAndKeyID {
+	this := &CertificateAndKeyID{}
+	v9 := r.Intn(100)
+	this.Certificate = make([][]byte, v9)
+	for i := 0; i < v9; i++ {
+		v10 := r.Intn(100)
+		this.Certificate[i] = make([]byte, v10)
+		for j := 0; j < v10; j++ {
+			this.Certificate[i][j] = byte(r.Intn(256))
+		}
+	}
+	this.KeyID = randStringTlsconfig(r)
+	v11 := r.Intn(100)
+	this.OCSPStaple = make([]byte, v11)
+	for i := 0; i < v11; i++ {
+		this.OCSPStaple[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyTlsconfig interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneTlsconfig(r randyTlsconfig) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringTlsconfig(r randyTlsconfig) string {
+	v12 := r.Intn(100)
+	tmps := make([]rune, v12)
+	for i := 0; i < v12; i++ {
+		tmps[i] = randUTF8RuneTlsconfig(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedTlsconfig(r randyTlsconfig, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldTlsconfig(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldTlsconfig(data []byte, r randyTlsconfig, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		v13 := r.Int63()
+		if r.Intn(2) == 0 {
+			v13 *= -1
+		}
+		data = encodeVarintPopulateTlsconfig(data, uint64(v13))
+	case 1:
+		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateTlsconfig(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateTlsconfig(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *TLSConfig) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Certificates) > 0 {
+		for _, e := range m.Certificates {
+			l = e.Size()
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	if len(m.RootCAs) > 0 {
+		for _, b := range m.RootCAs {
+			l = len(b)
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	if len(m.NextProtos) > 0 {
+		for _, s := range m.NextProtos {
+			l = len(s)
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	l = len(m.ServerName)
+	if l > 0 {
+		n += 1 + l + sovTlsconfig(uint64(l))
+	}
+	if m.ClientAuth != 0 {
+		n += 1 + sovTlsconfig(uint64(m.ClientAuth))
+	}
+	if len(m.ClientCAs) > 0 {
+		for _, b := range m.ClientCAs {
+			l = len(b)
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	if len(m.CipherSuites) > 0 {
+		for _, e := range m.CipherSuites {
+			n += 1 + sovTlsconfig(uint64(e))
+		}
+	}
+	if m.PreferServerCipherSuites {
+		n += 2
+	}
+	if m.SessionTicketsEnabled {
+		n += 2
+	}
+	l = len(m.SessionTicketKeyID)
+	if l > 0 {
+		n += 1 + l + sovTlsconfig(uint64(l))
+	}
+	if m.MinVersion != 0 {
+		n += 1 + sovTlsconfig(uint64(m.MinVersion))
+	}
+	if m.MaxVersion != 0 {
+		n += 1 + sovTlsconfig(uint64(m.MaxVersion))
+	}
+	if len(m.CurvePreferences) > 0 {
+		for _, e := range m.CurvePreferences {
+			n += 1 + sovTlsconfig(uint64(e))
+		}
+	}
+	return n
+}
+
+func (m *CertificateAndKeyID) Size() (n int) {
+	var l int
+	_ = l
+	if len(m.Certificate) > 0 {
+		for _, b := range m.Certificate {
+			l = len(b)
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	l = len(m.KeyID)
+	if l > 0 {
+		n += 1 + l + sovTlsconfig(uint64(l))
+	}
+	if m.OCSPStaple != nil {
+		l = len(m.OCSPStaple)
+		if l > 0 {
+			n += 1 + l + sovTlsconfig(uint64(l))
+		}
+	}
+	return n
+}
+
+func sovTlsconfig(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozTlsconfig(x uint64) (n int) {
+	return sovTlsconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *TLSConfig) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&TLSConfig{`,
+		`Certificates:` + strings.Replace(fmt.Sprintf("%v", this.Certificates), "CertificateAndKeyID", "CertificateAndKeyID", 1) + `,`,
+		`RootCAs:` + fmt.Sprintf("%v", this.RootCAs) + `,`,
+		`NextProtos:` + fmt.Sprintf("%v", this.NextProtos) + `,`,
+		`ServerName:` + fmt.Sprintf("%v", this.ServerName) + `,`,
+		`ClientAuth:` + fmt.Sprintf("%v", this.ClientAuth) + `,`,
+		`ClientCAs:` + fmt.Sprintf("%v", this.ClientCAs) + `,`,
+		`CipherSuites:` + fmt.Sprintf("%v", this.CipherSuites) + `,`,
+		`PreferServerCipherSuites:` + fmt.Sprintf("%v", this.PreferServerCipherSuites) + `,`,
+		`SessionTicketsEnabled:` + fmt.Sprintf("%v", this.SessionTicketsEnabled) + `,`,
+		`SessionTicketKeyID:` + fmt.Sprintf("%v", this.SessionTicketKeyID) + `,`,
+		`MinVersion:` + fmt.Sprintf("%v", this.MinVersion) + `,`,
+		`MaxVersion:` + fmt.Sprintf("%v", this.MaxVersion) + `,`,
+		`CurvePreferences:` + fmt.Sprintf("%v", this.CurvePreferences) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *CertificateAndKeyID) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&CertificateAndKeyID{`,
+		`Certificate:` + fmt.Sprintf("%v", this.Certificate) + `,`,
+		`KeyID:` + fmt.Sprintf("%v", this.KeyID) + `,`,
+		`OCSPStaple:` + fmt.Sprintf("%v", this.OCSPStaple) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringTlsconfig(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *TLSConfig) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTlsconfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TLSConfig: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TLSConfig: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Certificates", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Certificates = append(m.Certificates, &CertificateAndKeyID{})
+			if err := m.Certificates[len(m.Certificates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RootCAs", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RootCAs = append(m.RootCAs, make([]byte, postIndex-iNdEx))
+			copy(m.RootCAs[len(m.RootCAs)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextProtos", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NextProtos = append(m.NextProtos, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ServerName = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientAuth", wireType)
+			}
+			m.ClientAuth = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ClientAuth |= (ClientAuthType(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientCAs", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ClientCAs = append(m.ClientCAs, make([]byte, postIndex-iNdEx))
+			copy(m.ClientCAs[len(m.ClientCAs)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CipherSuites", wireType)
+			}
+			var v CipherSuite
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (CipherSuite(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.CipherSuites = append(m.CipherSuites, v)
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreferServerCipherSuites", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.PreferServerCipherSuites = bool(v != 0)
+		case 10:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SessionTicketsEnabled", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.SessionTicketsEnabled = bool(v != 0)
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SessionTicketKeyID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SessionTicketKeyID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinVersion", wireType)
+			}
+			m.MinVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.MinVersion |= (TLSVersion(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 13:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxVersion", wireType)
+			}
+			m.MaxVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.MaxVersion |= (TLSVersion(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 14:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurvePreferences", wireType)
+			}
+			var v CurveID
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (CurveID(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.CurvePreferences = append(m.CurvePreferences, v)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTlsconfig(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowTlsconfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: CertificateAndKeyID: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: CertificateAndKeyID: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Certificate", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Certificate = append(m.Certificate, make([]byte, postIndex-iNdEx))
+			copy(m.Certificate[len(m.Certificate)-1], data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeyID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.KeyID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OCSPStaple", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OCSPStaple = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipTlsconfig(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthTlsconfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipTlsconfig(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowTlsconfig
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowTlsconfig
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthTlsconfig
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowTlsconfig
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipTlsconfig(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+	}
+	panic("unreachable")
+}
+
+var (
+	ErrInvalidLengthTlsconfig = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowTlsconfig   = fmt.Errorf("proto: integer overflow")
+)

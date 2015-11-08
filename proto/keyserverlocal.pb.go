@@ -4,19 +4,26 @@
 
 package proto
 
+import proto1 "github.com/andres-erbsen/protobuf/proto"
+import fmt "fmt"
+import math "math"
+
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
+import bytes "bytes"
 
 import strings "strings"
-import reflect "reflect"
-
 import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
+import reflect "reflect"
 
-import bytes "bytes"
+import io "io"
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 // ReplicaState contains the persistent internal state of a single replica.
 // Additional on-disk state is descried in server/table.go.
@@ -43,455 +50,139 @@ func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 	return EpochDelimiter{}
 }
 
-func (m *ReplicaState) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func (this *ReplicaState) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexLog", wireType)
-			}
-			m.NextIndexLog = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.NextIndexLog |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexVerifier", wireType)
-			}
-			m.NextIndexVerifier = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.NextIndexVerifier |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PreviousSummaryHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthKeyserverlocal
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochDelimiter", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverlocal
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.LastEpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ThisReplicaNeedsToSignLastEpoch", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.ThisReplicaNeedsToSignLastEpoch = bool(v != 0)
-		case 6:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PendingUpdates", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.PendingUpdates = bool(v != 0)
-		case 7:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LatestTreeSnapshot", wireType)
-			}
-			m.LatestTreeSnapshot = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.LatestTreeSnapshot |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 8:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochNeedsRatification", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.LastEpochNeedsRatification = bool(v != 0)
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipKeyserverlocal(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthKeyserverlocal
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+		return fmt.Errorf("that == nil && this != nil")
 	}
 
+	that1, ok := that.(*ReplicaState)
+	if !ok {
+		return fmt.Errorf("that is not of type *ReplicaState")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *ReplicaState but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *ReplicaStatebut is not nil && this == nil")
+	}
+	if this.NextIndexLog != that1.NextIndexLog {
+		return fmt.Errorf("NextIndexLog this(%v) Not Equal that(%v)", this.NextIndexLog, that1.NextIndexLog)
+	}
+	if this.NextIndexVerifier != that1.NextIndexVerifier {
+		return fmt.Errorf("NextIndexVerifier this(%v) Not Equal that(%v)", this.NextIndexVerifier, that1.NextIndexVerifier)
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
+	}
+	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
+		return fmt.Errorf("LastEpochDelimiter this(%v) Not Equal that(%v)", this.LastEpochDelimiter, that1.LastEpochDelimiter)
+	}
+	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
+		return fmt.Errorf("ThisReplicaNeedsToSignLastEpoch this(%v) Not Equal that(%v)", this.ThisReplicaNeedsToSignLastEpoch, that1.ThisReplicaNeedsToSignLastEpoch)
+	}
+	if this.PendingUpdates != that1.PendingUpdates {
+		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
+	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
+	}
+	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
+		return fmt.Errorf("LastEpochNeedsRatification this(%v) Not Equal that(%v)", this.LastEpochNeedsRatification, that1.LastEpochNeedsRatification)
+	}
 	return nil
 }
-func skipKeyserverlocal(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func (this *ReplicaState) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
 		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthKeyserverlocal
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipKeyserverlocal(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
+		return false
 	}
-	panic("unreachable")
+
+	that1, ok := that.(*ReplicaState)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.NextIndexLog != that1.NextIndexLog {
+		return false
+	}
+	if this.NextIndexVerifier != that1.NextIndexVerifier {
+		return false
+	}
+	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
+		return false
+	}
+	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
+		return false
+	}
+	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
+		return false
+	}
+	if this.PendingUpdates != that1.PendingUpdates {
+		return false
+	}
+	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
+		return false
+	}
+	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
+		return false
+	}
+	return true
 }
-
-var (
-	ErrInvalidLengthKeyserverlocal = fmt.Errorf("proto: negative length found during unmarshaling")
-)
-
-func (this *ReplicaState) String() string {
+func (this *ReplicaState) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&ReplicaState{`,
-		`NextIndexLog:` + fmt.Sprintf("%v", this.NextIndexLog) + `,`,
-		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
-		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
-		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
-		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
-		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
-		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
-		`LastEpochNeedsRatification:` + fmt.Sprintf("%v", this.LastEpochNeedsRatification) + `,`,
-		`}`,
-	}, "")
-	return s
+	s := make([]string, 0, 12)
+	s = append(s, "&proto.ReplicaState{")
+	s = append(s, "NextIndexLog: "+fmt.Sprintf("%#v", this.NextIndexLog)+",\n")
+	s = append(s, "NextIndexVerifier: "+fmt.Sprintf("%#v", this.NextIndexVerifier)+",\n")
+	s = append(s, "PreviousSummaryHash: "+fmt.Sprintf("%#v", this.PreviousSummaryHash)+",\n")
+	s = append(s, "LastEpochDelimiter: "+strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "ThisReplicaNeedsToSignLastEpoch: "+fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch)+",\n")
+	s = append(s, "PendingUpdates: "+fmt.Sprintf("%#v", this.PendingUpdates)+",\n")
+	s = append(s, "LatestTreeSnapshot: "+fmt.Sprintf("%#v", this.LatestTreeSnapshot)+",\n")
+	s = append(s, "LastEpochNeedsRatification: "+fmt.Sprintf("%#v", this.LastEpochNeedsRatification)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func valueToStringKeyserverlocal(v interface{}) string {
+func valueToGoStringKeyserverlocal(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
 		return "nil"
 	}
 	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func (m *ReplicaState) Size() (n int) {
-	var l int
-	_ = l
-	if m.NextIndexLog != 0 {
-		n += 1 + sovKeyserverlocal(uint64(m.NextIndexLog))
+func extensionToGoStringKeyserverlocal(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
 	}
-	if m.NextIndexVerifier != 0 {
-		n += 1 + sovKeyserverlocal(uint64(m.NextIndexVerifier))
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
 	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovKeyserverlocal(uint64(l))
-		}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	l = m.LastEpochDelimiter.Size()
-	n += 1 + l + sovKeyserverlocal(uint64(l))
-	if m.ThisReplicaNeedsToSignLastEpoch {
-		n += 2
-	}
-	if m.PendingUpdates {
-		n += 2
-	}
-	if m.LatestTreeSnapshot != 0 {
-		n += 1 + sovKeyserverlocal(uint64(m.LatestTreeSnapshot))
-	}
-	if m.LastEpochNeedsRatification {
-		n += 2
-	}
-	return n
-}
-
-func sovKeyserverlocal(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozKeyserverlocal(x uint64) (n int) {
-	return sovKeyserverlocal(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedReplicaState(r randyKeyserverlocal, easy bool) *ReplicaState {
-	this := &ReplicaState{}
-	this.NextIndexLog = uint64(uint64(r.Uint32()))
-	this.NextIndexVerifier = uint64(uint64(r.Uint32()))
-	v1 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v1)
-	for i := 0; i < v1; i++ {
-		this.PreviousSummaryHash[i] = byte(r.Intn(256))
-	}
-	v2 := NewPopulatedEpochDelimiter(r, easy)
-	this.LastEpochDelimiter = *v2
-	this.ThisReplicaNeedsToSignLastEpoch = bool(bool(r.Intn(2) == 0))
-	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
-	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
-	this.LastEpochNeedsRatification = bool(bool(r.Intn(2) == 0))
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyKeyserverlocal interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneKeyserverlocal(r randyKeyserverlocal) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringKeyserverlocal(r randyKeyserverlocal) string {
-	v3 := r.Intn(100)
-	tmps := make([]rune, v3)
-	for i := 0; i < v3; i++ {
-		tmps[i] = randUTF8RuneKeyserverlocal(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedKeyserverlocal(r randyKeyserverlocal, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldKeyserverlocal(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldKeyserverlocal(data []byte, r randyKeyserverlocal, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		v4 := r.Int63()
-		if r.Intn(2) == 0 {
-			v4 *= -1
-		}
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(v4))
-	case 1:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateKeyserverlocal(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
+	s += strings.Join(ss, ",") + "}"
+	return s
 }
 func (m *ReplicaState) Marshal() (data []byte, err error) {
 	size := m.Size()
@@ -599,135 +290,494 @@ func encodeVarintKeyserverlocal(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
-func (this *ReplicaState) GoString() string {
+func NewPopulatedReplicaState(r randyKeyserverlocal, easy bool) *ReplicaState {
+	this := &ReplicaState{}
+	this.NextIndexLog = uint64(uint64(r.Uint32()))
+	this.NextIndexVerifier = uint64(uint64(r.Uint32()))
+	v1 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v1)
+	for i := 0; i < v1; i++ {
+		this.PreviousSummaryHash[i] = byte(r.Intn(256))
+	}
+	v2 := NewPopulatedEpochDelimiter(r, easy)
+	this.LastEpochDelimiter = *v2
+	this.ThisReplicaNeedsToSignLastEpoch = bool(bool(r.Intn(2) == 0))
+	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
+	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
+	this.LastEpochNeedsRatification = bool(bool(r.Intn(2) == 0))
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyKeyserverlocal interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneKeyserverlocal(r randyKeyserverlocal) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringKeyserverlocal(r randyKeyserverlocal) string {
+	v3 := r.Intn(100)
+	tmps := make([]rune, v3)
+	for i := 0; i < v3; i++ {
+		tmps[i] = randUTF8RuneKeyserverlocal(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedKeyserverlocal(r randyKeyserverlocal, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldKeyserverlocal(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldKeyserverlocal(data []byte, r randyKeyserverlocal, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		v4 := r.Int63()
+		if r.Intn(2) == 0 {
+			v4 *= -1
+		}
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(v4))
+	case 1:
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateKeyserverlocal(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *ReplicaState) Size() (n int) {
+	var l int
+	_ = l
+	if m.NextIndexLog != 0 {
+		n += 1 + sovKeyserverlocal(uint64(m.NextIndexLog))
+	}
+	if m.NextIndexVerifier != 0 {
+		n += 1 + sovKeyserverlocal(uint64(m.NextIndexVerifier))
+	}
+	if m.PreviousSummaryHash != nil {
+		l = len(m.PreviousSummaryHash)
+		if l > 0 {
+			n += 1 + l + sovKeyserverlocal(uint64(l))
+		}
+	}
+	l = m.LastEpochDelimiter.Size()
+	n += 1 + l + sovKeyserverlocal(uint64(l))
+	if m.ThisReplicaNeedsToSignLastEpoch {
+		n += 2
+	}
+	if m.PendingUpdates {
+		n += 2
+	}
+	if m.LatestTreeSnapshot != 0 {
+		n += 1 + sovKeyserverlocal(uint64(m.LatestTreeSnapshot))
+	}
+	if m.LastEpochNeedsRatification {
+		n += 2
+	}
+	return n
+}
+
+func sovKeyserverlocal(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozKeyserverlocal(x uint64) (n int) {
+	return sovKeyserverlocal(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *ReplicaState) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&proto.ReplicaState{` +
-		`NextIndexLog:` + fmt.Sprintf("%#v", this.NextIndexLog),
-		`NextIndexVerifier:` + fmt.Sprintf("%#v", this.NextIndexVerifier),
-		`PreviousSummaryHash:` + fmt.Sprintf("%#v", this.PreviousSummaryHash),
-		`LastEpochDelimiter:` + strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1),
-		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch),
-		`PendingUpdates:` + fmt.Sprintf("%#v", this.PendingUpdates),
-		`LatestTreeSnapshot:` + fmt.Sprintf("%#v", this.LatestTreeSnapshot),
-		`LastEpochNeedsRatification:` + fmt.Sprintf("%#v", this.LastEpochNeedsRatification) + `}`}, ", ")
+	s := strings.Join([]string{`&ReplicaState{`,
+		`NextIndexLog:` + fmt.Sprintf("%v", this.NextIndexLog) + `,`,
+		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
+		`PreviousSummaryHash:` + fmt.Sprintf("%v", this.PreviousSummaryHash) + `,`,
+		`LastEpochDelimiter:` + strings.Replace(strings.Replace(this.LastEpochDelimiter.String(), "EpochDelimiter", "EpochDelimiter", 1), `&`, ``, 1) + `,`,
+		`ThisReplicaNeedsToSignLastEpoch:` + fmt.Sprintf("%v", this.ThisReplicaNeedsToSignLastEpoch) + `,`,
+		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
+		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
+		`LastEpochNeedsRatification:` + fmt.Sprintf("%v", this.LastEpochNeedsRatification) + `,`,
+		`}`,
+	}, "")
 	return s
 }
-func valueToGoStringKeyserverlocal(v interface{}, typ string) string {
+func valueToStringKeyserverlocal(v interface{}) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
 		return "nil"
 	}
 	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+	return fmt.Sprintf("*%v", pv)
 }
-func extensionToGoStringKeyserverlocal(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *ReplicaState) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
+func (m *ReplicaState) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowKeyserverlocal
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return fmt.Errorf("that == nil && this != nil")
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaState: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaState: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexLog", wireType)
+			}
+			m.NextIndexLog = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.NextIndexLog |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextIndexVerifier", wireType)
+			}
+			m.NextIndexVerifier = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.NextIndexVerifier |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PreviousSummaryHash", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochDelimiter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.LastEpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ThisReplicaNeedsToSignLastEpoch", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.ThisReplicaNeedsToSignLastEpoch = bool(v != 0)
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PendingUpdates", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.PendingUpdates = bool(v != 0)
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LatestTreeSnapshot", wireType)
+			}
+			m.LatestTreeSnapshot = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.LatestTreeSnapshot |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastEpochNeedsRatification", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.LastEpochNeedsRatification = bool(v != 0)
+		default:
+			iNdEx = preIndex
+			skippy, err := skipKeyserverlocal(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
 	}
 
-	that1, ok := that.(*ReplicaState)
-	if !ok {
-		return fmt.Errorf("that is not of type *ReplicaState")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *ReplicaState but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *ReplicaStatebut is not nil && this == nil")
-	}
-	if this.NextIndexLog != that1.NextIndexLog {
-		return fmt.Errorf("NextIndexLog this(%v) Not Equal that(%v)", this.NextIndexLog, that1.NextIndexLog)
-	}
-	if this.NextIndexVerifier != that1.NextIndexVerifier {
-		return fmt.Errorf("NextIndexVerifier this(%v) Not Equal that(%v)", this.NextIndexVerifier, that1.NextIndexVerifier)
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return fmt.Errorf("PreviousSummaryHash this(%v) Not Equal that(%v)", this.PreviousSummaryHash, that1.PreviousSummaryHash)
-	}
-	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
-		return fmt.Errorf("LastEpochDelimiter this(%v) Not Equal that(%v)", this.LastEpochDelimiter, that1.LastEpochDelimiter)
-	}
-	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
-		return fmt.Errorf("ThisReplicaNeedsToSignLastEpoch this(%v) Not Equal that(%v)", this.ThisReplicaNeedsToSignLastEpoch, that1.ThisReplicaNeedsToSignLastEpoch)
-	}
-	if this.PendingUpdates != that1.PendingUpdates {
-		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
-	}
-	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
-		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
-	}
-	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
-		return fmt.Errorf("LastEpochNeedsRatification this(%v) Not Equal that(%v)", this.LastEpochNeedsRatification, that1.LastEpochNeedsRatification)
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
 	}
 	return nil
 }
-func (this *ReplicaState) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
+func skipKeyserverlocal(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowKeyserverlocal
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return false
-	}
-
-	that1, ok := that.(*ReplicaState)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthKeyserverlocal
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowKeyserverlocal
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipKeyserverlocal(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		return false
-	} else if this == nil {
-		return false
 	}
-	if this.NextIndexLog != that1.NextIndexLog {
-		return false
-	}
-	if this.NextIndexVerifier != that1.NextIndexVerifier {
-		return false
-	}
-	if !bytes.Equal(this.PreviousSummaryHash, that1.PreviousSummaryHash) {
-		return false
-	}
-	if !this.LastEpochDelimiter.Equal(&that1.LastEpochDelimiter) {
-		return false
-	}
-	if this.ThisReplicaNeedsToSignLastEpoch != that1.ThisReplicaNeedsToSignLastEpoch {
-		return false
-	}
-	if this.PendingUpdates != that1.PendingUpdates {
-		return false
-	}
-	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
-		return false
-	}
-	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
-		return false
-	}
-	return true
+	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthKeyserverlocal = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowKeyserverlocal   = fmt.Errorf("proto: integer overflow")
+)

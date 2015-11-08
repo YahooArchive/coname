@@ -4,17 +4,49 @@
 
 package proto
 
+import proto1 "github.com/andres-erbsen/protobuf/proto"
+import fmt "fmt"
+import math "math"
+
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
+import strconv "strconv"
+
+import bytes "bytes"
 
 import strings "strings"
-import reflect "reflect"
-
 import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
-import strconv "strconv"
+import reflect "reflect"
+
+import io "io"
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
+
+type KeyserverConfig_RegistrationPolicy int32
+
+const (
+	NO_REGISTRATION    KeyserverConfig_RegistrationPolicy = 0
+	INSECURE_ALLOW_ALL KeyserverConfig_RegistrationPolicy = 1
+	DKIM               KeyserverConfig_RegistrationPolicy = 2
+	CLIENTCERT         KeyserverConfig_RegistrationPolicy = 3
+)
+
+var KeyserverConfig_RegistrationPolicy_name = map[int32]string{
+	0: "NO_REGISTRATION",
+	1: "INSECURE_ALLOW_ALL",
+	2: "DKIM",
+	3: "CLIENTCERT",
+}
+var KeyserverConfig_RegistrationPolicy_value = map[string]int32{
+	"NO_REGISTRATION":    0,
+	"INSECURE_ALLOW_ALL": 1,
+	"DKIM":               2,
+	"CLIENTCERT":         3,
+}
 
 // ReplicaConfig contains the local configuration of a single replica of a
 // keyserver. It is valid to have just one replica, but a larger odd number is
@@ -161,8 +193,13 @@ type KeyserverConfig struct {
 	EmailProofSubjectPrefix string `protobuf:"bytes,9,opt,name=email_proof_subject_prefix,proto3" json:"email_proof_subject_prefix,omitempty"`
 	// EmailProofAllowedDomains specifies the domains for which this keyserver
 	// accepts email address registrations.
-	EmailProofAllowedDomains []string `protobuf:"bytes,10,rep,name=email_proof_allowed_domains" json:"email_proof_allowed_domains,omitempty"`
-	InsecureSkipEmailProof   bool     `protobuf:"varint,11,opt,name=insecure_skip_email_proof,proto3" json:"insecure_skip_email_proof,omitempty"`
+	EmailProofAllowedDomains []string                           `protobuf:"bytes,10,rep,name=email_proof_allowed_domains" json:"email_proof_allowed_domains,omitempty"`
+	RegistrationVerification KeyserverConfig_RegistrationPolicy `protobuf:"varint,11,opt,name=RegistrationVerification,proto3,enum=proto.KeyserverConfig_RegistrationPolicy" json:"RegistrationVerification,omitempty"`
+	// Given a certificate signed by an authority trusted with handling
+	// registration, the emailAddress value from the certificate's
+	// DistinguishedName field is allowed to be regeistered by the holder
+	// of the key specified in the certificate.
+	EmailAddressCert_CA []byte `protobuf:"bytes,12,opt,name=emailAddress_cert_CA,proto3" json:"emailAddress_cert_CA,omitempty"`
 }
 
 func (m *KeyserverConfig) Reset()      { *m = KeyserverConfig{} }
@@ -221,1243 +258,443 @@ func (m *Replica) GetPublicKeys() []*PublicKey {
 	return nil
 }
 
-func (m *ReplicaConfig) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func init() {
+	proto1.RegisterEnum("proto.KeyserverConfig_RegistrationPolicy", KeyserverConfig_RegistrationPolicy_name, KeyserverConfig_RegistrationPolicy_value)
+}
+func (x KeyserverConfig_RegistrationPolicy) String() string {
+	s, ok := KeyserverConfig_RegistrationPolicy_name[int32(x)]
+	if ok {
+		return s
+	}
+	return strconv.Itoa(int(x))
+}
+func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field KeyserverConfig", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.KeyserverConfig.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaID", wireType)
-			}
-			m.ReplicaID = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.ReplicaID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field SigningKeyID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.SigningKeyID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PublicAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicTLS", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.PublicTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VerifierAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.VerifierAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VerifierTLS", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.VerifierTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HKPAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.HKPAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field HKPTLS", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.HKPTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 10:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RaftAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 11:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftTLS", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.RaftTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 14:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LevelDBPath", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.LevelDBPath = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 15:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftHeartbeat", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.RaftHeartbeat.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 16:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LaggingVerifierScan", wireType)
-			}
-			m.LaggingVerifierScan = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.LaggingVerifierScan |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 17:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ClientTimeout", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.ClientTimeout.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+		return fmt.Errorf("that == nil && this != nil")
 	}
 
+	that1, ok := that.(*ReplicaConfig)
+	if !ok {
+		return fmt.Errorf("that is not of type *ReplicaConfig")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *ReplicaConfig but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *ReplicaConfigbut is not nil && this == nil")
+	}
+	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
+		return fmt.Errorf("KeyserverConfig this(%v) Not Equal that(%v)", this.KeyserverConfig, that1.KeyserverConfig)
+	}
+	if this.ReplicaID != that1.ReplicaID {
+		return fmt.Errorf("ReplicaID this(%v) Not Equal that(%v)", this.ReplicaID, that1.ReplicaID)
+	}
+	if this.SigningKeyID != that1.SigningKeyID {
+		return fmt.Errorf("SigningKeyID this(%v) Not Equal that(%v)", this.SigningKeyID, that1.SigningKeyID)
+	}
+	if this.PublicAddr != that1.PublicAddr {
+		return fmt.Errorf("PublicAddr this(%v) Not Equal that(%v)", this.PublicAddr, that1.PublicAddr)
+	}
+	if !this.PublicTLS.Equal(&that1.PublicTLS) {
+		return fmt.Errorf("PublicTLS this(%v) Not Equal that(%v)", this.PublicTLS, that1.PublicTLS)
+	}
+	if this.VerifierAddr != that1.VerifierAddr {
+		return fmt.Errorf("VerifierAddr this(%v) Not Equal that(%v)", this.VerifierAddr, that1.VerifierAddr)
+	}
+	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
+		return fmt.Errorf("VerifierTLS this(%v) Not Equal that(%v)", this.VerifierTLS, that1.VerifierTLS)
+	}
+	if this.HKPAddr != that1.HKPAddr {
+		return fmt.Errorf("HKPAddr this(%v) Not Equal that(%v)", this.HKPAddr, that1.HKPAddr)
+	}
+	if !this.HKPTLS.Equal(&that1.HKPTLS) {
+		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	}
+	if !this.RaftTLS.Equal(&that1.RaftTLS) {
+		return fmt.Errorf("RaftTLS this(%v) Not Equal that(%v)", this.RaftTLS, that1.RaftTLS)
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return fmt.Errorf("LevelDBPath this(%v) Not Equal that(%v)", this.LevelDBPath, that1.LevelDBPath)
+	}
+	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
+		return fmt.Errorf("RaftHeartbeat this(%v) Not Equal that(%v)", this.RaftHeartbeat, that1.RaftHeartbeat)
+	}
+	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
+		return fmt.Errorf("LaggingVerifierScan this(%v) Not Equal that(%v)", this.LaggingVerifierScan, that1.LaggingVerifierScan)
+	}
+	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
+		return fmt.Errorf("ClientTimeout this(%v) Not Equal that(%v)", this.ClientTimeout, that1.ClientTimeout)
+	}
 	return nil
 }
-func (m *KeyserverConfig) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func (this *ReplicaConfig) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ServerID", wireType)
-			}
-			m.ServerID = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.ServerID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Realm", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Realm = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field VRFKeyID", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.VRFKeyID = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MinEpochInterval", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.MinEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxEpochInterval", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.MaxEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProposalRetryInterval", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.ProposalRetryInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InitialReplicas", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.InitialReplicas = append(m.InitialReplicas, &Replica{})
-			if err := m.InitialReplicas[len(m.InitialReplicas)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofToAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EmailProofToAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 9:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofSubjectPrefix", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EmailProofSubjectPrefix = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 10:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofAllowedDomains", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.EmailProofAllowedDomains = append(m.EmailProofAllowedDomains, string(data[iNdEx:postIndex]))
-			iNdEx = postIndex
-		case 11:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field InsecureSkipEmailProof", wireType)
-			}
-			var v int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			m.InsecureSkipEmailProof = bool(v != 0)
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+		return false
 	}
 
+	that1, ok := that.(*ReplicaConfig)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
+		return false
+	}
+	if this.ReplicaID != that1.ReplicaID {
+		return false
+	}
+	if this.SigningKeyID != that1.SigningKeyID {
+		return false
+	}
+	if this.PublicAddr != that1.PublicAddr {
+		return false
+	}
+	if !this.PublicTLS.Equal(&that1.PublicTLS) {
+		return false
+	}
+	if this.VerifierAddr != that1.VerifierAddr {
+		return false
+	}
+	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
+		return false
+	}
+	if this.HKPAddr != that1.HKPAddr {
+		return false
+	}
+	if !this.HKPTLS.Equal(&that1.HKPTLS) {
+		return false
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return false
+	}
+	if !this.RaftTLS.Equal(&that1.RaftTLS) {
+		return false
+	}
+	if this.LevelDBPath != that1.LevelDBPath {
+		return false
+	}
+	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
+		return false
+	}
+	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
+		return false
+	}
+	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
+		return false
+	}
+	return true
+}
+func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*KeyserverConfig)
+	if !ok {
+		return fmt.Errorf("that is not of type *KeyserverConfig")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *KeyserverConfig but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *KeyserverConfigbut is not nil && this == nil")
+	}
+	if this.ServerID != that1.ServerID {
+		return fmt.Errorf("ServerID this(%v) Not Equal that(%v)", this.ServerID, that1.ServerID)
+	}
+	if this.Realm != that1.Realm {
+		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
+	}
+	if this.VRFKeyID != that1.VRFKeyID {
+		return fmt.Errorf("VRFKeyID this(%v) Not Equal that(%v)", this.VRFKeyID, that1.VRFKeyID)
+	}
+	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
+		return fmt.Errorf("MinEpochInterval this(%v) Not Equal that(%v)", this.MinEpochInterval, that1.MinEpochInterval)
+	}
+	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
+		return fmt.Errorf("MaxEpochInterval this(%v) Not Equal that(%v)", this.MaxEpochInterval, that1.MaxEpochInterval)
+	}
+	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
+		return fmt.Errorf("ProposalRetryInterval this(%v) Not Equal that(%v)", this.ProposalRetryInterval, that1.ProposalRetryInterval)
+	}
+	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
+		return fmt.Errorf("InitialReplicas this(%v) Not Equal that(%v)", len(this.InitialReplicas), len(that1.InitialReplicas))
+	}
+	for i := range this.InitialReplicas {
+		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
+			return fmt.Errorf("InitialReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.InitialReplicas[i], i, that1.InitialReplicas[i])
+		}
+	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
+		return fmt.Errorf("EmailProofSubjectPrefix this(%v) Not Equal that(%v)", this.EmailProofSubjectPrefix, that1.EmailProofSubjectPrefix)
+	}
+	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
+		return fmt.Errorf("EmailProofAllowedDomains this(%v) Not Equal that(%v)", len(this.EmailProofAllowedDomains), len(that1.EmailProofAllowedDomains))
+	}
+	for i := range this.EmailProofAllowedDomains {
+		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
+			return fmt.Errorf("EmailProofAllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.EmailProofAllowedDomains[i], i, that1.EmailProofAllowedDomains[i])
+		}
+	}
+	if this.RegistrationVerification != that1.RegistrationVerification {
+		return fmt.Errorf("RegistrationVerification this(%v) Not Equal that(%v)", this.RegistrationVerification, that1.RegistrationVerification)
+	}
+	if !bytes.Equal(this.EmailAddressCert_CA, that1.EmailAddressCert_CA) {
+		return fmt.Errorf("EmailAddressCert_CA this(%v) Not Equal that(%v)", this.EmailAddressCert_CA, that1.EmailAddressCert_CA)
+	}
 	return nil
 }
-func (m *Replica) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func (this *KeyserverConfig) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
-			}
-			m.ID = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.ID |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PublicKeys = append(m.PublicKeys, &PublicKey{})
-			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + int(stringLen)
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.RaftAddr = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+		return false
 	}
 
+	that1, ok := that.(*KeyserverConfig)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.ServerID != that1.ServerID {
+		return false
+	}
+	if this.Realm != that1.Realm {
+		return false
+	}
+	if this.VRFKeyID != that1.VRFKeyID {
+		return false
+	}
+	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
+		return false
+	}
+	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
+		return false
+	}
+	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
+		return false
+	}
+	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
+		return false
+	}
+	for i := range this.InitialReplicas {
+		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
+			return false
+		}
+	}
+	if this.EmailProofToAddr != that1.EmailProofToAddr {
+		return false
+	}
+	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
+		return false
+	}
+	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
+		return false
+	}
+	for i := range this.EmailProofAllowedDomains {
+		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
+			return false
+		}
+	}
+	if this.RegistrationVerification != that1.RegistrationVerification {
+		return false
+	}
+	if !bytes.Equal(this.EmailAddressCert_CA, that1.EmailAddressCert_CA) {
+		return false
+	}
+	return true
+}
+func (this *Replica) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*Replica)
+	if !ok {
+		return fmt.Errorf("that is not of type *Replica")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *Replica but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
+	}
+	if this.ID != that1.ID {
+		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
+		}
+	}
+	if this.RaftAddr != that1.RaftAddr {
+		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	}
 	return nil
 }
-func skipKeyserverconfig(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
+func (this *Replica) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
 		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthKeyserverconfig
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipKeyserverconfig(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		return false
+	}
+
+	that1, ok := that.(*Replica)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.ID != that1.ID {
+		return false
+	}
+	if len(this.PublicKeys) != len(that1.PublicKeys) {
+		return false
+	}
+	for i := range this.PublicKeys {
+		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
+			return false
 		}
 	}
-	panic("unreachable")
+	if this.RaftAddr != that1.RaftAddr {
+		return false
+	}
+	return true
 }
-
-var (
-	ErrInvalidLengthKeyserverconfig = fmt.Errorf("proto: negative length found during unmarshaling")
-)
-
-func (this *ReplicaConfig) String() string {
+func (this *ReplicaConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&ReplicaConfig{`,
-		`KeyserverConfig:` + strings.Replace(strings.Replace(this.KeyserverConfig.String(), "KeyserverConfig", "KeyserverConfig", 1), `&`, ``, 1) + `,`,
-		`ReplicaID:` + fmt.Sprintf("%v", this.ReplicaID) + `,`,
-		`SigningKeyID:` + fmt.Sprintf("%v", this.SigningKeyID) + `,`,
-		`PublicAddr:` + fmt.Sprintf("%v", this.PublicAddr) + `,`,
-		`PublicTLS:` + strings.Replace(strings.Replace(this.PublicTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
-		`VerifierTLS:` + strings.Replace(strings.Replace(this.VerifierTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
-		`HKPTLS:` + strings.Replace(strings.Replace(this.HKPTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
-		`RaftTLS:` + strings.Replace(strings.Replace(this.RaftTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
-		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
-		`RaftHeartbeat:` + strings.Replace(strings.Replace(this.RaftHeartbeat.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`LaggingVerifierScan:` + fmt.Sprintf("%v", this.LaggingVerifierScan) + `,`,
-		`ClientTimeout:` + strings.Replace(strings.Replace(this.ClientTimeout.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`}`,
-	}, "")
-	return s
+	s := make([]string, 0, 19)
+	s = append(s, "&proto.ReplicaConfig{")
+	s = append(s, "KeyserverConfig: "+strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "ReplicaID: "+fmt.Sprintf("%#v", this.ReplicaID)+",\n")
+	s = append(s, "SigningKeyID: "+fmt.Sprintf("%#v", this.SigningKeyID)+",\n")
+	s = append(s, "PublicAddr: "+fmt.Sprintf("%#v", this.PublicAddr)+",\n")
+	s = append(s, "PublicTLS: "+strings.Replace(this.PublicTLS.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "VerifierAddr: "+fmt.Sprintf("%#v", this.VerifierAddr)+",\n")
+	s = append(s, "VerifierTLS: "+strings.Replace(this.VerifierTLS.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "HKPAddr: "+fmt.Sprintf("%#v", this.HKPAddr)+",\n")
+	s = append(s, "HKPTLS: "+strings.Replace(this.HKPTLS.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "RaftAddr: "+fmt.Sprintf("%#v", this.RaftAddr)+",\n")
+	s = append(s, "RaftTLS: "+strings.Replace(this.RaftTLS.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "LevelDBPath: "+fmt.Sprintf("%#v", this.LevelDBPath)+",\n")
+	s = append(s, "RaftHeartbeat: "+strings.Replace(this.RaftHeartbeat.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "LaggingVerifierScan: "+fmt.Sprintf("%#v", this.LaggingVerifierScan)+",\n")
+	s = append(s, "ClientTimeout: "+strings.Replace(this.ClientTimeout.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func (this *KeyserverConfig) String() string {
+func (this *KeyserverConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&KeyserverConfig{`,
-		`ServerID:` + fmt.Sprintf("%v", this.ServerID) + `,`,
-		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
-		`VRFKeyID:` + fmt.Sprintf("%v", this.VRFKeyID) + `,`,
-		`MinEpochInterval:` + strings.Replace(strings.Replace(this.MinEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`MaxEpochInterval:` + strings.Replace(strings.Replace(this.MaxEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
-		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
-		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
-		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
-		`EmailProofAllowedDomains:` + fmt.Sprintf("%v", this.EmailProofAllowedDomains) + `,`,
-		`InsecureSkipEmailProof:` + fmt.Sprintf("%v", this.InsecureSkipEmailProof) + `,`,
-		`}`,
-	}, "")
-	return s
+	s := make([]string, 0, 16)
+	s = append(s, "&proto.KeyserverConfig{")
+	s = append(s, "ServerID: "+fmt.Sprintf("%#v", this.ServerID)+",\n")
+	s = append(s, "Realm: "+fmt.Sprintf("%#v", this.Realm)+",\n")
+	s = append(s, "VRFKeyID: "+fmt.Sprintf("%#v", this.VRFKeyID)+",\n")
+	s = append(s, "MinEpochInterval: "+strings.Replace(this.MinEpochInterval.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "MaxEpochInterval: "+strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "ProposalRetryInterval: "+strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1)+",\n")
+	if this.InitialReplicas != nil {
+		s = append(s, "InitialReplicas: "+fmt.Sprintf("%#v", this.InitialReplicas)+",\n")
+	}
+	s = append(s, "EmailProofToAddr: "+fmt.Sprintf("%#v", this.EmailProofToAddr)+",\n")
+	s = append(s, "EmailProofSubjectPrefix: "+fmt.Sprintf("%#v", this.EmailProofSubjectPrefix)+",\n")
+	s = append(s, "EmailProofAllowedDomains: "+fmt.Sprintf("%#v", this.EmailProofAllowedDomains)+",\n")
+	s = append(s, "RegistrationVerification: "+fmt.Sprintf("%#v", this.RegistrationVerification)+",\n")
+	s = append(s, "EmailAddressCert_CA: "+fmt.Sprintf("%#v", this.EmailAddressCert_CA)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func (this *Replica) String() string {
+func (this *Replica) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&Replica{`,
-		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
-		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
-		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
-		`}`,
-	}, "")
-	return s
+	s := make([]string, 0, 7)
+	s = append(s, "&proto.Replica{")
+	s = append(s, "ID: "+fmt.Sprintf("%#v", this.ID)+",\n")
+	if this.PublicKeys != nil {
+		s = append(s, "PublicKeys: "+fmt.Sprintf("%#v", this.PublicKeys)+",\n")
+	}
+	s = append(s, "RaftAddr: "+fmt.Sprintf("%#v", this.RaftAddr)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
 }
-func valueToStringKeyserverconfig(v interface{}) string {
+func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
 		return "nil"
 	}
 	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func (m *ReplicaConfig) Size() (n int) {
-	var l int
-	_ = l
-	l = m.KeyserverConfig.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if m.ReplicaID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ReplicaID))
+func extensionToGoStringKeyserverconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
 	}
-	l = len(m.SigningKeyID)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
 	}
-	l = len(m.PublicAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	l = m.PublicTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.VerifierAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.VerifierTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.HKPAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.HKPTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.RaftAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.RaftTLS.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = len(m.LevelDBPath)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.RaftHeartbeat.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if m.LaggingVerifierScan != 0 {
-		n += 2 + sovKeyserverconfig(uint64(m.LaggingVerifierScan))
-	}
-	l = m.ClientTimeout.Size()
-	n += 2 + l + sovKeyserverconfig(uint64(l))
-	return n
-}
-
-func (m *KeyserverConfig) Size() (n int) {
-	var l int
-	_ = l
-	if m.ServerID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ServerID))
-	}
-	l = len(m.Realm)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.VRFKeyID)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = m.MinEpochInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = m.MaxEpochInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	l = m.ProposalRetryInterval.Size()
-	n += 1 + l + sovKeyserverconfig(uint64(l))
-	if len(m.InitialReplicas) > 0 {
-		for _, e := range m.InitialReplicas {
-			l = e.Size()
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	l = len(m.EmailProofToAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	l = len(m.EmailProofSubjectPrefix)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	if len(m.EmailProofAllowedDomains) > 0 {
-		for _, s := range m.EmailProofAllowedDomains {
-			l = len(s)
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	if m.InsecureSkipEmailProof {
-		n += 2
-	}
-	return n
-}
-
-func (m *Replica) Size() (n int) {
-	var l int
-	_ = l
-	if m.ID != 0 {
-		n += 1 + sovKeyserverconfig(uint64(m.ID))
-	}
-	if len(m.PublicKeys) > 0 {
-		for _, e := range m.PublicKeys {
-			l = e.Size()
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
-	}
-	l = len(m.RaftAddr)
-	if l > 0 {
-		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	return n
-}
-
-func sovKeyserverconfig(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozKeyserverconfig(x uint64) (n int) {
-	return sovKeyserverconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig {
-	this := &ReplicaConfig{}
-	v1 := NewPopulatedKeyserverConfig(r, easy)
-	this.KeyserverConfig = *v1
-	this.ReplicaID = uint64(uint64(r.Uint32()))
-	this.SigningKeyID = randStringKeyserverconfig(r)
-	this.PublicAddr = randStringKeyserverconfig(r)
-	v2 := NewPopulatedTLSConfig(r, easy)
-	this.PublicTLS = *v2
-	this.VerifierAddr = randStringKeyserverconfig(r)
-	v3 := NewPopulatedTLSConfig(r, easy)
-	this.VerifierTLS = *v3
-	this.HKPAddr = randStringKeyserverconfig(r)
-	v4 := NewPopulatedTLSConfig(r, easy)
-	this.HKPTLS = *v4
-	this.RaftAddr = randStringKeyserverconfig(r)
-	v5 := NewPopulatedTLSConfig(r, easy)
-	this.RaftTLS = *v5
-	this.LevelDBPath = randStringKeyserverconfig(r)
-	v6 := NewPopulatedDuration(r, easy)
-	this.RaftHeartbeat = *v6
-	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
-	v7 := NewPopulatedDuration(r, easy)
-	this.ClientTimeout = *v7
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverConfig {
-	this := &KeyserverConfig{}
-	this.ServerID = uint64(uint64(r.Uint32()))
-	this.Realm = randStringKeyserverconfig(r)
-	this.VRFKeyID = randStringKeyserverconfig(r)
-	v8 := NewPopulatedDuration(r, easy)
-	this.MinEpochInterval = *v8
-	v9 := NewPopulatedDuration(r, easy)
-	this.MaxEpochInterval = *v9
-	v10 := NewPopulatedDuration(r, easy)
-	this.ProposalRetryInterval = *v10
-	if r.Intn(10) != 0 {
-		v11 := r.Intn(10)
-		this.InitialReplicas = make([]*Replica, v11)
-		for i := 0; i < v11; i++ {
-			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
-		}
-	}
-	this.EmailProofToAddr = randStringKeyserverconfig(r)
-	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
-	v12 := r.Intn(10)
-	this.EmailProofAllowedDomains = make([]string, v12)
-	for i := 0; i < v12; i++ {
-		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
-	}
-	this.InsecureSkipEmailProof = bool(bool(r.Intn(2) == 0))
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
-	this := &Replica{}
-	this.ID = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
-		this.PublicKeys = make([]*PublicKey, v13)
-		for i := 0; i < v13; i++ {
-			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
-		}
-	}
-	this.RaftAddr = randStringKeyserverconfig(r)
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyKeyserverconfig interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneKeyserverconfig(r randyKeyserverconfig) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringKeyserverconfig(r randyKeyserverconfig) string {
-	v14 := r.Intn(100)
-	tmps := make([]rune, v14)
-	for i := 0; i < v14; i++ {
-		tmps[i] = randUTF8RuneKeyserverconfig(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldKeyserverconfig(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		v15 := r.Int63()
-		if r.Intn(2) == 0 {
-			v15 *= -1
-		}
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(v15))
-	case 1:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateKeyserverconfig(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
+	s += strings.Join(ss, ",") + "}"
+	return s
 }
 func (m *ReplicaConfig) Marshal() (data []byte, err error) {
 	size := m.Size()
@@ -1678,15 +915,18 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
-	if m.InsecureSkipEmailProof {
+	if m.RegistrationVerification != 0 {
 		data[i] = 0x58
 		i++
-		if m.InsecureSkipEmailProof {
-			data[i] = 1
-		} else {
-			data[i] = 0
+		i = encodeVarintKeyserverconfig(data, i, uint64(m.RegistrationVerification))
+	}
+	if m.EmailAddressCert_CA != nil {
+		if len(m.EmailAddressCert_CA) > 0 {
+			data[i] = 0x62
+			i++
+			i = encodeVarintKeyserverconfig(data, i, uint64(len(m.EmailAddressCert_CA)))
+			i += copy(data[i:], m.EmailAddressCert_CA)
 		}
-		i++
 	}
 	return i, nil
 }
@@ -1759,414 +999,1442 @@ func encodeVarintKeyserverconfig(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
-func (this *ReplicaConfig) GoString() string {
+func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig {
+	this := &ReplicaConfig{}
+	v1 := NewPopulatedKeyserverConfig(r, easy)
+	this.KeyserverConfig = *v1
+	this.ReplicaID = uint64(uint64(r.Uint32()))
+	this.SigningKeyID = randStringKeyserverconfig(r)
+	this.PublicAddr = randStringKeyserverconfig(r)
+	v2 := NewPopulatedTLSConfig(r, easy)
+	this.PublicTLS = *v2
+	this.VerifierAddr = randStringKeyserverconfig(r)
+	v3 := NewPopulatedTLSConfig(r, easy)
+	this.VerifierTLS = *v3
+	this.HKPAddr = randStringKeyserverconfig(r)
+	v4 := NewPopulatedTLSConfig(r, easy)
+	this.HKPTLS = *v4
+	this.RaftAddr = randStringKeyserverconfig(r)
+	v5 := NewPopulatedTLSConfig(r, easy)
+	this.RaftTLS = *v5
+	this.LevelDBPath = randStringKeyserverconfig(r)
+	v6 := NewPopulatedDuration(r, easy)
+	this.RaftHeartbeat = *v6
+	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
+	v7 := NewPopulatedDuration(r, easy)
+	this.ClientTimeout = *v7
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverConfig {
+	this := &KeyserverConfig{}
+	this.ServerID = uint64(uint64(r.Uint32()))
+	this.Realm = randStringKeyserverconfig(r)
+	this.VRFKeyID = randStringKeyserverconfig(r)
+	v8 := NewPopulatedDuration(r, easy)
+	this.MinEpochInterval = *v8
+	v9 := NewPopulatedDuration(r, easy)
+	this.MaxEpochInterval = *v9
+	v10 := NewPopulatedDuration(r, easy)
+	this.ProposalRetryInterval = *v10
+	if r.Intn(10) != 0 {
+		v11 := r.Intn(10)
+		this.InitialReplicas = make([]*Replica, v11)
+		for i := 0; i < v11; i++ {
+			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
+		}
+	}
+	this.EmailProofToAddr = randStringKeyserverconfig(r)
+	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
+	v12 := r.Intn(10)
+	this.EmailProofAllowedDomains = make([]string, v12)
+	for i := 0; i < v12; i++ {
+		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
+	}
+	this.RegistrationVerification = KeyserverConfig_RegistrationPolicy([]int32{0, 1, 2, 3}[r.Intn(4)])
+	v13 := r.Intn(100)
+	this.EmailAddressCert_CA = make([]byte, v13)
+	for i := 0; i < v13; i++ {
+		this.EmailAddressCert_CA[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
+	this := &Replica{}
+	this.ID = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		v14 := r.Intn(10)
+		this.PublicKeys = make([]*PublicKey, v14)
+		for i := 0; i < v14; i++ {
+			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
+		}
+	}
+	this.RaftAddr = randStringKeyserverconfig(r)
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyKeyserverconfig interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneKeyserverconfig(r randyKeyserverconfig) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringKeyserverconfig(r randyKeyserverconfig) string {
+	v15 := r.Intn(100)
+	tmps := make([]rune, v15)
+	for i := 0; i < v15; i++ {
+		tmps[i] = randUTF8RuneKeyserverconfig(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldKeyserverconfig(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		v16 := r.Int63()
+		if r.Intn(2) == 0 {
+			v16 *= -1
+		}
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(v16))
+	case 1:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateKeyserverconfig(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *ReplicaConfig) Size() (n int) {
+	var l int
+	_ = l
+	l = m.KeyserverConfig.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if m.ReplicaID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ReplicaID))
+	}
+	l = len(m.SigningKeyID)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.PublicAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.PublicTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.VerifierAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.VerifierTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.HKPAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.HKPTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.RaftAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.RaftTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.LevelDBPath)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.RaftHeartbeat.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if m.LaggingVerifierScan != 0 {
+		n += 2 + sovKeyserverconfig(uint64(m.LaggingVerifierScan))
+	}
+	l = m.ClientTimeout.Size()
+	n += 2 + l + sovKeyserverconfig(uint64(l))
+	return n
+}
+
+func (m *KeyserverConfig) Size() (n int) {
+	var l int
+	_ = l
+	if m.ServerID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ServerID))
+	}
+	l = len(m.Realm)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.VRFKeyID)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.MinEpochInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = m.MaxEpochInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = m.ProposalRetryInterval.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	if len(m.InitialReplicas) > 0 {
+		for _, e := range m.InitialReplicas {
+			l = e.Size()
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	l = len(m.EmailProofToAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = len(m.EmailProofSubjectPrefix)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	if len(m.EmailProofAllowedDomains) > 0 {
+		for _, s := range m.EmailProofAllowedDomains {
+			l = len(s)
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	if m.RegistrationVerification != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.RegistrationVerification))
+	}
+	if m.EmailAddressCert_CA != nil {
+		l = len(m.EmailAddressCert_CA)
+		if l > 0 {
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *Replica) Size() (n int) {
+	var l int
+	_ = l
+	if m.ID != 0 {
+		n += 1 + sovKeyserverconfig(uint64(m.ID))
+	}
+	if len(m.PublicKeys) > 0 {
+		for _, e := range m.PublicKeys {
+			l = e.Size()
+			n += 1 + l + sovKeyserverconfig(uint64(l))
+		}
+	}
+	l = len(m.RaftAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	return n
+}
+
+func sovKeyserverconfig(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozKeyserverconfig(x uint64) (n int) {
+	return sovKeyserverconfig(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *ReplicaConfig) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&proto.ReplicaConfig{` +
-		`KeyserverConfig:` + strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1),
-		`ReplicaID:` + fmt.Sprintf("%#v", this.ReplicaID),
-		`SigningKeyID:` + fmt.Sprintf("%#v", this.SigningKeyID),
-		`PublicAddr:` + fmt.Sprintf("%#v", this.PublicAddr),
-		`PublicTLS:` + strings.Replace(this.PublicTLS.GoString(), `&`, ``, 1),
-		`VerifierAddr:` + fmt.Sprintf("%#v", this.VerifierAddr),
-		`VerifierTLS:` + strings.Replace(this.VerifierTLS.GoString(), `&`, ``, 1),
-		`HKPAddr:` + fmt.Sprintf("%#v", this.HKPAddr),
-		`HKPTLS:` + strings.Replace(this.HKPTLS.GoString(), `&`, ``, 1),
-		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr),
-		`RaftTLS:` + strings.Replace(this.RaftTLS.GoString(), `&`, ``, 1),
-		`LevelDBPath:` + fmt.Sprintf("%#v", this.LevelDBPath),
-		`RaftHeartbeat:` + strings.Replace(this.RaftHeartbeat.GoString(), `&`, ``, 1),
-		`LaggingVerifierScan:` + fmt.Sprintf("%#v", this.LaggingVerifierScan),
-		`ClientTimeout:` + strings.Replace(this.ClientTimeout.GoString(), `&`, ``, 1) + `}`}, ", ")
+	s := strings.Join([]string{`&ReplicaConfig{`,
+		`KeyserverConfig:` + strings.Replace(strings.Replace(this.KeyserverConfig.String(), "KeyserverConfig", "KeyserverConfig", 1), `&`, ``, 1) + `,`,
+		`ReplicaID:` + fmt.Sprintf("%v", this.ReplicaID) + `,`,
+		`SigningKeyID:` + fmt.Sprintf("%v", this.SigningKeyID) + `,`,
+		`PublicAddr:` + fmt.Sprintf("%v", this.PublicAddr) + `,`,
+		`PublicTLS:` + strings.Replace(strings.Replace(this.PublicTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`VerifierAddr:` + fmt.Sprintf("%v", this.VerifierAddr) + `,`,
+		`VerifierTLS:` + strings.Replace(strings.Replace(this.VerifierTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
+		`HKPTLS:` + strings.Replace(strings.Replace(this.HKPTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
+		`RaftTLS:` + strings.Replace(strings.Replace(this.RaftTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
+		`RaftHeartbeat:` + strings.Replace(strings.Replace(this.RaftHeartbeat.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`LaggingVerifierScan:` + fmt.Sprintf("%v", this.LaggingVerifierScan) + `,`,
+		`ClientTimeout:` + strings.Replace(strings.Replace(this.ClientTimeout.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
 	return s
 }
-func (this *KeyserverConfig) GoString() string {
+func (this *KeyserverConfig) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&proto.KeyserverConfig{` +
-		`ServerID:` + fmt.Sprintf("%#v", this.ServerID),
-		`Realm:` + fmt.Sprintf("%#v", this.Realm),
-		`VRFKeyID:` + fmt.Sprintf("%#v", this.VRFKeyID),
-		`MinEpochInterval:` + strings.Replace(this.MinEpochInterval.GoString(), `&`, ``, 1),
-		`MaxEpochInterval:` + strings.Replace(this.MaxEpochInterval.GoString(), `&`, ``, 1),
-		`ProposalRetryInterval:` + strings.Replace(this.ProposalRetryInterval.GoString(), `&`, ``, 1),
-		`InitialReplicas:` + fmt.Sprintf("%#v", this.InitialReplicas),
-		`EmailProofToAddr:` + fmt.Sprintf("%#v", this.EmailProofToAddr),
-		`EmailProofSubjectPrefix:` + fmt.Sprintf("%#v", this.EmailProofSubjectPrefix),
-		`EmailProofAllowedDomains:` + fmt.Sprintf("%#v", this.EmailProofAllowedDomains),
-		`InsecureSkipEmailProof:` + fmt.Sprintf("%#v", this.InsecureSkipEmailProof) + `}`}, ", ")
+	s := strings.Join([]string{`&KeyserverConfig{`,
+		`ServerID:` + fmt.Sprintf("%v", this.ServerID) + `,`,
+		`Realm:` + fmt.Sprintf("%v", this.Realm) + `,`,
+		`VRFKeyID:` + fmt.Sprintf("%v", this.VRFKeyID) + `,`,
+		`MinEpochInterval:` + strings.Replace(strings.Replace(this.MinEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`MaxEpochInterval:` + strings.Replace(strings.Replace(this.MaxEpochInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`ProposalRetryInterval:` + strings.Replace(strings.Replace(this.ProposalRetryInterval.String(), "Duration", "Duration", 1), `&`, ``, 1) + `,`,
+		`InitialReplicas:` + strings.Replace(fmt.Sprintf("%v", this.InitialReplicas), "Replica", "Replica", 1) + `,`,
+		`EmailProofToAddr:` + fmt.Sprintf("%v", this.EmailProofToAddr) + `,`,
+		`EmailProofSubjectPrefix:` + fmt.Sprintf("%v", this.EmailProofSubjectPrefix) + `,`,
+		`EmailProofAllowedDomains:` + fmt.Sprintf("%v", this.EmailProofAllowedDomains) + `,`,
+		`RegistrationVerification:` + fmt.Sprintf("%v", this.RegistrationVerification) + `,`,
+		`EmailAddressCert_CA:` + fmt.Sprintf("%v", this.EmailAddressCert_CA) + `,`,
+		`}`,
+	}, "")
 	return s
 }
-func (this *Replica) GoString() string {
+func (this *Replica) String() string {
 	if this == nil {
 		return "nil"
 	}
-	s := strings.Join([]string{`&proto.Replica{` +
-		`ID:` + fmt.Sprintf("%#v", this.ID),
-		`PublicKeys:` + fmt.Sprintf("%#v", this.PublicKeys),
-		`RaftAddr:` + fmt.Sprintf("%#v", this.RaftAddr) + `}`}, ", ")
+	s := strings.Join([]string{`&Replica{`,
+		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
+		`PublicKeys:` + strings.Replace(fmt.Sprintf("%v", this.PublicKeys), "PublicKey", "PublicKey", 1) + `,`,
+		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
+		`}`,
+	}, "")
 	return s
 }
-func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
+func valueToStringKeyserverconfig(v interface{}) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
 		return "nil"
 	}
 	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+	return fmt.Sprintf("*%v", pv)
 }
-func extensionToGoStringKeyserverconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
+func (m *ReplicaConfig) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowKeyserverconfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return fmt.Errorf("that == nil && this != nil")
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ReplicaConfig: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ReplicaConfig: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeyserverConfig", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.KeyserverConfig.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ReplicaID", wireType)
+			}
+			m.ReplicaID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ReplicaID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SigningKeyID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.SigningKeyID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PublicAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.PublicTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VerifierAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VerifierAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VerifierTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.VerifierTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HKPAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.HKPAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HKPTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.HKPTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RaftAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.RaftTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LevelDBPath", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.LevelDBPath = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftHeartbeat", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.RaftHeartbeat.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 16:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LaggingVerifierScan", wireType)
+			}
+			m.LaggingVerifierScan = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.LaggingVerifierScan |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 17:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ClientTimeout", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ClientTimeout.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
 	}
 
-	that1, ok := that.(*ReplicaConfig)
-	if !ok {
-		return fmt.Errorf("that is not of type *ReplicaConfig")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *ReplicaConfig but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *ReplicaConfigbut is not nil && this == nil")
-	}
-	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
-		return fmt.Errorf("KeyserverConfig this(%v) Not Equal that(%v)", this.KeyserverConfig, that1.KeyserverConfig)
-	}
-	if this.ReplicaID != that1.ReplicaID {
-		return fmt.Errorf("ReplicaID this(%v) Not Equal that(%v)", this.ReplicaID, that1.ReplicaID)
-	}
-	if this.SigningKeyID != that1.SigningKeyID {
-		return fmt.Errorf("SigningKeyID this(%v) Not Equal that(%v)", this.SigningKeyID, that1.SigningKeyID)
-	}
-	if this.PublicAddr != that1.PublicAddr {
-		return fmt.Errorf("PublicAddr this(%v) Not Equal that(%v)", this.PublicAddr, that1.PublicAddr)
-	}
-	if !this.PublicTLS.Equal(&that1.PublicTLS) {
-		return fmt.Errorf("PublicTLS this(%v) Not Equal that(%v)", this.PublicTLS, that1.PublicTLS)
-	}
-	if this.VerifierAddr != that1.VerifierAddr {
-		return fmt.Errorf("VerifierAddr this(%v) Not Equal that(%v)", this.VerifierAddr, that1.VerifierAddr)
-	}
-	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
-		return fmt.Errorf("VerifierTLS this(%v) Not Equal that(%v)", this.VerifierTLS, that1.VerifierTLS)
-	}
-	if this.HKPAddr != that1.HKPAddr {
-		return fmt.Errorf("HKPAddr this(%v) Not Equal that(%v)", this.HKPAddr, that1.HKPAddr)
-	}
-	if !this.HKPTLS.Equal(&that1.HKPTLS) {
-		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
-	}
-	if !this.RaftTLS.Equal(&that1.RaftTLS) {
-		return fmt.Errorf("RaftTLS this(%v) Not Equal that(%v)", this.RaftTLS, that1.RaftTLS)
-	}
-	if this.LevelDBPath != that1.LevelDBPath {
-		return fmt.Errorf("LevelDBPath this(%v) Not Equal that(%v)", this.LevelDBPath, that1.LevelDBPath)
-	}
-	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
-		return fmt.Errorf("RaftHeartbeat this(%v) Not Equal that(%v)", this.RaftHeartbeat, that1.RaftHeartbeat)
-	}
-	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
-		return fmt.Errorf("LaggingVerifierScan this(%v) Not Equal that(%v)", this.LaggingVerifierScan, that1.LaggingVerifierScan)
-	}
-	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
-		return fmt.Errorf("ClientTimeout this(%v) Not Equal that(%v)", this.ClientTimeout, that1.ClientTimeout)
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
 	}
 	return nil
 }
-func (this *ReplicaConfig) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
+func (m *KeyserverConfig) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowKeyserverconfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return false
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: KeyserverConfig: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: KeyserverConfig: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerID", wireType)
+			}
+			m.ServerID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ServerID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Realm", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Realm = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VRFKeyID", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.VRFKeyID = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MinEpochInterval", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MinEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field MaxEpochInterval", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.MaxEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ProposalRetryInterval", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ProposalRetryInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InitialReplicas", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InitialReplicas = append(m.InitialReplicas, &Replica{})
+			if err := m.InitialReplicas[len(m.InitialReplicas)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofToAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProofToAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofSubjectPrefix", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProofSubjectPrefix = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailProofAllowedDomains", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProofAllowedDomains = append(m.EmailProofAllowedDomains, string(data[iNdEx:postIndex]))
+			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RegistrationVerification", wireType)
+			}
+			m.RegistrationVerification = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.RegistrationVerification |= (KeyserverConfig_RegistrationPolicy(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field EmailAddressCert_CA", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailAddressCert_CA = append([]byte{}, data[iNdEx:postIndex]...)
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
 	}
 
-	that1, ok := that.(*ReplicaConfig)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
-		return false
-	}
-	if this.ReplicaID != that1.ReplicaID {
-		return false
-	}
-	if this.SigningKeyID != that1.SigningKeyID {
-		return false
-	}
-	if this.PublicAddr != that1.PublicAddr {
-		return false
-	}
-	if !this.PublicTLS.Equal(&that1.PublicTLS) {
-		return false
-	}
-	if this.VerifierAddr != that1.VerifierAddr {
-		return false
-	}
-	if !this.VerifierTLS.Equal(&that1.VerifierTLS) {
-		return false
-	}
-	if this.HKPAddr != that1.HKPAddr {
-		return false
-	}
-	if !this.HKPTLS.Equal(&that1.HKPTLS) {
-		return false
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return false
-	}
-	if !this.RaftTLS.Equal(&that1.RaftTLS) {
-		return false
-	}
-	if this.LevelDBPath != that1.LevelDBPath {
-		return false
-	}
-	if !this.RaftHeartbeat.Equal(&that1.RaftHeartbeat) {
-		return false
-	}
-	if this.LaggingVerifierScan != that1.LaggingVerifierScan {
-		return false
-	}
-	if !this.ClientTimeout.Equal(&that1.ClientTimeout) {
-		return false
-	}
-	return true
-}
-func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*KeyserverConfig)
-	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverConfig")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *KeyserverConfig but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverConfigbut is not nil && this == nil")
-	}
-	if this.ServerID != that1.ServerID {
-		return fmt.Errorf("ServerID this(%v) Not Equal that(%v)", this.ServerID, that1.ServerID)
-	}
-	if this.Realm != that1.Realm {
-		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
-	}
-	if this.VRFKeyID != that1.VRFKeyID {
-		return fmt.Errorf("VRFKeyID this(%v) Not Equal that(%v)", this.VRFKeyID, that1.VRFKeyID)
-	}
-	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
-		return fmt.Errorf("MinEpochInterval this(%v) Not Equal that(%v)", this.MinEpochInterval, that1.MinEpochInterval)
-	}
-	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
-		return fmt.Errorf("MaxEpochInterval this(%v) Not Equal that(%v)", this.MaxEpochInterval, that1.MaxEpochInterval)
-	}
-	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
-		return fmt.Errorf("ProposalRetryInterval this(%v) Not Equal that(%v)", this.ProposalRetryInterval, that1.ProposalRetryInterval)
-	}
-	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
-		return fmt.Errorf("InitialReplicas this(%v) Not Equal that(%v)", len(this.InitialReplicas), len(that1.InitialReplicas))
-	}
-	for i := range this.InitialReplicas {
-		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
-			return fmt.Errorf("InitialReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.InitialReplicas[i], i, that1.InitialReplicas[i])
-		}
-	}
-	if this.EmailProofToAddr != that1.EmailProofToAddr {
-		return fmt.Errorf("EmailProofToAddr this(%v) Not Equal that(%v)", this.EmailProofToAddr, that1.EmailProofToAddr)
-	}
-	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
-		return fmt.Errorf("EmailProofSubjectPrefix this(%v) Not Equal that(%v)", this.EmailProofSubjectPrefix, that1.EmailProofSubjectPrefix)
-	}
-	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
-		return fmt.Errorf("EmailProofAllowedDomains this(%v) Not Equal that(%v)", len(this.EmailProofAllowedDomains), len(that1.EmailProofAllowedDomains))
-	}
-	for i := range this.EmailProofAllowedDomains {
-		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
-			return fmt.Errorf("EmailProofAllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.EmailProofAllowedDomains[i], i, that1.EmailProofAllowedDomains[i])
-		}
-	}
-	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
-		return fmt.Errorf("InsecureSkipEmailProof this(%v) Not Equal that(%v)", this.InsecureSkipEmailProof, that1.InsecureSkipEmailProof)
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
 	}
 	return nil
 }
-func (this *KeyserverConfig) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
+func (m *Replica) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowKeyserverconfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return false
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Replica: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Replica: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ID", wireType)
+			}
+			m.ID = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.ID |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PublicKeys", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PublicKeys = append(m.PublicKeys, &PublicKey{})
+			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RaftAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
 	}
 
-	that1, ok := that.(*KeyserverConfig)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
-		}
-		return false
-	} else if this == nil {
-		return false
-	}
-	if this.ServerID != that1.ServerID {
-		return false
-	}
-	if this.Realm != that1.Realm {
-		return false
-	}
-	if this.VRFKeyID != that1.VRFKeyID {
-		return false
-	}
-	if !this.MinEpochInterval.Equal(&that1.MinEpochInterval) {
-		return false
-	}
-	if !this.MaxEpochInterval.Equal(&that1.MaxEpochInterval) {
-		return false
-	}
-	if !this.ProposalRetryInterval.Equal(&that1.ProposalRetryInterval) {
-		return false
-	}
-	if len(this.InitialReplicas) != len(that1.InitialReplicas) {
-		return false
-	}
-	for i := range this.InitialReplicas {
-		if !this.InitialReplicas[i].Equal(that1.InitialReplicas[i]) {
-			return false
-		}
-	}
-	if this.EmailProofToAddr != that1.EmailProofToAddr {
-		return false
-	}
-	if this.EmailProofSubjectPrefix != that1.EmailProofSubjectPrefix {
-		return false
-	}
-	if len(this.EmailProofAllowedDomains) != len(that1.EmailProofAllowedDomains) {
-		return false
-	}
-	for i := range this.EmailProofAllowedDomains {
-		if this.EmailProofAllowedDomains[i] != that1.EmailProofAllowedDomains[i] {
-			return false
-		}
-	}
-	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
-		return false
-	}
-	return true
-}
-func (this *Replica) VerboseEqual(that interface{}) error {
-	if that == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that == nil && this != nil")
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return fmt.Errorf("that is not of type *Replica")
-	}
-	if that1 == nil {
-		if this == nil {
-			return nil
-		}
-		return fmt.Errorf("that is type *Replica but is nil && this != nil")
-	} else if this == nil {
-		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
-	}
-	if this.ID != that1.ID {
-		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return fmt.Errorf("PublicKeys this[%v](%v) Not Equal that[%v](%v)", i, this.PublicKeys[i], i, that1.PublicKeys[i])
-		}
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
 	}
 	return nil
 }
-func (this *Replica) Equal(that interface{}) bool {
-	if that == nil {
-		if this == nil {
-			return true
+func skipKeyserverconfig(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowKeyserverconfig
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
 		}
-		return false
-	}
-
-	that1, ok := that.(*Replica)
-	if !ok {
-		return false
-	}
-	if that1 == nil {
-		if this == nil {
-			return true
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthKeyserverconfig
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowKeyserverconfig
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipKeyserverconfig(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		return false
-	} else if this == nil {
-		return false
 	}
-	if this.ID != that1.ID {
-		return false
-	}
-	if len(this.PublicKeys) != len(that1.PublicKeys) {
-		return false
-	}
-	for i := range this.PublicKeys {
-		if !this.PublicKeys[i].Equal(that1.PublicKeys[i]) {
-			return false
-		}
-	}
-	if this.RaftAddr != that1.RaftAddr {
-		return false
-	}
-	return true
+	panic("unreachable")
 }
+
+var (
+	ErrInvalidLengthKeyserverconfig = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowKeyserverconfig   = fmt.Errorf("proto: integer overflow")
+)

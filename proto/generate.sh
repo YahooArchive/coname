@@ -21,24 +21,17 @@ cd "$DIR"
 
 protoc --coname_out=plugins=grpc:. -I . -I "$GOPATH/src/github.com/andres-erbsen/protobuf" -I "$GOPATH/src/github.com/andres-erbsen/protobuf/protobuf" *.proto
 
-function preserve {
+function generateEncodedType {
 	sed "s/Thing/$1/g" < encoded.go.template > "$1.pr.go"
 	sed "s/Thing/$1/g" < encoded_test.go.template > "$1pr_test.go"
 }
 
-preserve Profile
-preserve Entry
-preserve SignedEntryUpdate
-preserve TimestampedEpochHead
-preserve EpochHead
-preserve AuthorizationPolicy
-
-# import patched package from correct JSON output
-sed -i.bak -e 's:/gogo/:/andres-erbsen/:g' *pb*.go
-sed -i.bak -e 's:\bproto1\b:github_com_andres_erbsen_protobuf_proto:g' tlsconfig*pb*.go
-
-# preserve the encoding of repeated public keys
-sed -i.bak -e 's/append(m.PublicKeys, &PublicKey{})/append(m.PublicKeys, \&EncodedPublicKey{})/' client.pb.go
+generateEncodedType Profile
+generateEncodedType Entry
+generateEncodedType SignedEntryUpdate
+generateEncodedType TimestampedEpochHead
+generateEncodedType EpochHead
+generateEncodedType AuthorizationPolicy
 
 # enable LookupProof.Entry and LookupProof.Profile to be nullable despite using a custom type
 sed -i.bak -e 's/m.Entry = &Entry{}/m.Entry = \&EncodedEntry{}/' client.pb.go
