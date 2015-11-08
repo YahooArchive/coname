@@ -137,7 +137,7 @@ func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedEpochH
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
 		UID:            uid,
-		VerifierSigned: r,
+		Type: &proto.KeyserverStep_VerifierSigned{VerifierSigned: r},
 	})})
 	select {
 	case <-ctx.Done():

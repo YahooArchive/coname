@@ -108,7 +108,11 @@ func (h *HKPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		requiredSignatures = realm.VerificationPolicy.Quorum
+		switch realm.VerificationPolicy.PolicyType.(type) {
+		case *proto.AuthorizationPolicy_Quorum:
+			requiredSignatures = realm.VerificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum
+		default:
+		}
 	}
 
 	pf, err := h.Lookup(ctx, &proto.LookupRequest{UserId: user, QuorumRequirement: requiredSignatures})

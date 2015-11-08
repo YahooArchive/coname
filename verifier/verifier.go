@@ -165,16 +165,16 @@ func (vr *Verifier) run() {
 func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb kv.Batch) (deferredIO func()) {
 	// vr: &const
 	// step, vs, wb: &mut
-	switch {
-	case step.Update != nil:
-		index := step.Update.NewEntry.Index
+	switch step.Type.(type) {
+	case *proto.VerifierStep_Update:
+		index := step.GetUpdate().NewEntry.Index
 		prevEntry, err := vr.getEntry(index, vs.NextEpoch)
-		if err := coname.VerifyUpdate(prevEntry, step.Update); err != nil {
+		if err := coname.VerifyUpdate(prevEntry, step.GetUpdate()); err != nil {
 			// the keyserver should filter all bad updates
 			log.Panicf("%d: bad update %v: %s", vs.NextIndex, *step, err)
 		}
 		var entryHash [32]byte
-		sha3.ShakeSum256(entryHash[:], step.Update.NewEntry.Encoding)
+		sha3.ShakeSum256(entryHash[:], step.GetUpdate().NewEntry.Encoding)
 		latestTree := vr.merkletree.GetSnapshot(vs.LatestTreeSnapshot)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
@@ -184,15 +184,15 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			log.Panicf("%d: Set(%x,%x): %s", vs.NextIndex, index, entryHash[:], err)
 		}
 		vs.LatestTreeSnapshot = newTree.Flush(wb).Nr
-		wb.Put(tableEntries(index, vs.NextEpoch), step.Update.NewEntry.Encoding)
+		wb.Put(tableEntries(index, vs.NextEpoch), step.GetUpdate().NewEntry.Encoding)
 
-	case step.Epoch != nil:
-		ok := coname.VerifyPolicy(vr.vs.KeyserverAuth, step.Epoch.Head.Encoding, step.Epoch.Signatures)
+	case *proto.VerifierStep_Epoch:
+		ok := coname.VerifyPolicy(vr.vs.KeyserverAuth, step.GetEpoch().Head.Encoding, step.GetEpoch().Signatures)
 		// the bad steps here will not get persisted to disk right now. do we want them to?
 		if !ok {
 			log.Panicf("%d: keyserver signature verification failed: %#v", vs.NextIndex, *step)
 		}
-		r := step.Epoch.Head
+		r := step.GetEpoch().Head
 		if r.Head.Realm != vr.realm {
 			log.Panicf("%d: seh for realm %q, expected %q: %#v", vs.NextEpoch, r.Head.Realm, vr.realm, *step)
 		}

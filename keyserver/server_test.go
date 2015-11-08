@@ -221,7 +221,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 			teardown()
 			t.Fatal(err)
 		}
-		pked := &proto.PublicKey{Ed25519: pk[:]}
+		pked := &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pk[:]}}
 		replicaID := proto.KeyID(pked)
 		pks[replicaID] = pked
 		replicaIDs = append(replicaIDs, replicaID)
@@ -264,7 +264,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 		})
 	}
 	pol.PublicKeys = pks
-	pol.Quorum = majorityQuorum(replicaIDs)
+	pol.PolicyType = &proto.AuthorizationPolicy_Quorum{Quorum: majorityQuorum(replicaIDs)}
 	return
 }
 
@@ -403,12 +403,12 @@ func doUpdate(
 			Version: version,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
-				Quorum: &proto.QuorumExpr{
+				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
 					Threshold:      0,
 					Candidates:     []uint64{},
 					Subexpressions: []*proto.QuorumExpr{},
 				},
-			},
+			}},
 			ProfileCommitment: commitment[:],
 		},
 	}
@@ -421,7 +421,7 @@ func doUpdate(
 		Profile: profile,
 		LookupParameters: &proto.LookupRequest{
 			UserId:            name,
-			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
 		},
 	})
 	if err != nil {
@@ -484,7 +484,7 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {
@@ -498,7 +498,7 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 
 	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
-		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -534,7 +534,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {
@@ -553,7 +553,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
-		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -589,7 +589,7 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {
@@ -618,11 +618,11 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 			Version: 0,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
-				Quorum: &proto.QuorumExpr{
+				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
 					Threshold:      0,
 					Candidates:     []uint64{},
 					Subexpressions: []*proto.QuorumExpr{},
-				},
+				}},
 			},
 			ProfileCommitment: commitment[:],
 		},
@@ -637,7 +637,7 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 		Profile: profile,
 		LookupParameters: &proto.LookupRequest{
 			UserId:            alice,
-			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
 		},
 	})
 	if err == nil {
@@ -667,7 +667,7 @@ func TestKeyserverUpdate(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {
@@ -704,7 +704,7 @@ func setupVerifier(t *testing.T, keyserverVerif *proto.AuthorizationPolicy, keys
 		teardown()
 		t.Fatal(err)
 	}
-	sv = &proto.PublicKey{Ed25519: pk[:]}
+	sv = &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pk[:]}}
 
 	cert := tlstestutil.Cert(t, caCert, caKey, fmt.Sprintf("verifier %x", proto.KeyID(sv)), nil)
 	getKey = func(keyid string) (crypto.PrivateKey, error) {
@@ -830,11 +830,11 @@ loop:
 		teardown = chain(v.teardown, teardown)
 	}
 	pol := copyAuthorizationPolicy(clientConfig.Realms[0].VerificationPolicy)
-	pol.Quorum = &proto.QuorumExpr{
-		Subexpressions: []*proto.QuorumExpr{pol.Quorum},
+	pol.PolicyType = &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
+		Subexpressions: []*proto.QuorumExpr{pol.GetQuorum()},
 		Threshold:      uint32(1 + nVerifiers),
 		Candidates:     verifiers,
-	}
+	}}
 	for i := 0; i < nVerifiers; i++ {
 		pol.PublicKeys[proto.KeyID(vpks[i])] = vpks[i]
 	}
@@ -849,10 +849,10 @@ func copyAuthorizationPolicy(pol *proto.AuthorizationPolicy) *proto.Authorizatio
 	}
 	return &proto.AuthorizationPolicy{
 		PublicKeys: pks,
-		Quorum: &proto.QuorumExpr{
-			Candidates: append([]uint64{}, pol.Quorum.Candidates...),
-			Threshold:  pol.Quorum.Threshold,
-		},
+		PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
+			Candidates: append([]uint64{}, pol.GetQuorum().Candidates...),
+			Threshold:  pol.GetQuorum().Threshold,
+		}},
 	}
 }
 
@@ -863,7 +863,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
 
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {
@@ -881,7 +881,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	c := proto.NewE2EKSPublicClient(conn)
 	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
 		UserId:            alice,
-		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.Quorum,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -904,7 +904,7 @@ func TestKeyserverHKP(t *testing.T) {
 	defer teardown()
 	stop := stoppableSyncedClocks(clks)
 	defer close(stop)
-	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.Quorum)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
 
 	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
 	if err != nil {

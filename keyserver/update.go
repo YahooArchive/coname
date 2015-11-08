@@ -102,7 +102,7 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
 		UID:    uid,
-		Update: req,
+		Type: &proto.KeyserverStep_Update{Update: req},
 	})})
 	select {
 	case <-ctx.Done():
