@@ -321,16 +321,16 @@ func (ks *Keyserver) run() {
 func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb kv.Batch) (deferredIO func()) {
 	// ks: &const
 	// step, rs, wb: &mut
-	switch {
-	case step.Update != nil:
-		index := step.Update.Update.NewEntry.Index
+	switch step.Type.(type) {
+	case *proto.KeyserverStep_Update:
+		index := step.GetUpdate().Update.NewEntry.Index
 		prevUpdate, err := ks.getUpdate(index, math.MaxUint64)
 		if err != nil {
 			log.Printf("getUpdate: %s", err)
 			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
-		if err := ks.verifyUpdateDeterministic(prevUpdate, step.Update); err != nil {
+		if err := ks.verifyUpdateDeterministic(prevUpdate, step.GetUpdate()); err != nil {
 			ks.wr.Notify(step.UID, updateOutput{Error: err})
 			return
 		}
@@ -352,7 +352,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 
 		var entryHash [32]byte
-		sha3.ShakeSum256(entryHash[:], step.Update.Update.NewEntry.Encoding)
+		sha3.ShakeSum256(entryHash[:], step.GetUpdate().Update.NewEntry.Encoding)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
 			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
@@ -365,7 +365,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
-		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.Update))
+		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.GetUpdate()))
 		ks.wr.Notify(step.UID, updateOutput{Epoch: epochNr})
 
 		rs.PendingUpdates = true
@@ -374,18 +374,18 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if rs.LastEpochNeedsRatification {
 			// We need to wait for the last epoch to appear in the verifier log before
 			// inserting this update.
-			wb.Put(tableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.Update.Update))
+			wb.Put(tableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.GetUpdate().Update))
 		} else {
 			// We can deliver the update to verifiers right away.
-			return ks.verifierLogAppend(&proto.VerifierStep{Update: step.Update.Update}, rs, wb)
+			return ks.verifierLogAppend(&proto.VerifierStep{Type:&proto.VerifierStep_Update{Update: step.GetUpdate().Update}}, rs, wb)
 		}
 
-	case step.EpochDelimiter != nil:
-		if step.EpochDelimiter.EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
+	case *proto.KeyserverStep_EpochDelimiter:
+		if step.GetEpochDelimiter().EpochNumber <= rs.LastEpochDelimiter.EpochNumber {
 			return // a duplicate of this step has already been handled
 		}
-		rs.LastEpochDelimiter = *step.EpochDelimiter
-		log.Printf("epoch %d", step.EpochDelimiter.EpochNumber)
+		rs.LastEpochDelimiter = *step.GetEpochDelimiter()
+		log.Printf("epoch %d", step.GetEpochDelimiter().EpochNumber)
 
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
@@ -404,7 +404,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 		snapshotNumberBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
-		wb.Put(tableMerkleTreeSnapshot(step.EpochDelimiter.EpochNumber), snapshotNumberBytes)
+		wb.Put(tableMerkleTreeSnapshot(step.GetEpochDelimiter().EpochNumber), snapshotNumberBytes)
 
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		rootHash, err := latestTree.GetRootHash()
@@ -416,10 +416,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 				RootHash:            rootHash,
 				PreviousSummaryHash: rs.PreviousSummaryHash,
 				Realm:               ks.realm,
-				Epoch:               step.EpochDelimiter.EpochNumber,
-				IssueTime:           step.EpochDelimiter.Timestamp,
+				Epoch:               step.GetEpochDelimiter().EpochNumber,
+				IssueTime:           step.GetEpochDelimiter().Timestamp,
 			}, nil},
-			Timestamp: step.EpochDelimiter.Timestamp,
+			Timestamp: step.GetEpochDelimiter().Timestamp,
 		}, nil}
 		teh.Head.UpdateEncoding()
 		teh.UpdateEncoding()
@@ -428,10 +428,10 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		sha3.ShakeSum256(rs.PreviousSummaryHash[:], teh.Head.Encoding)
 
-		wb.Put(tableEpochHeads(step.EpochDelimiter.EpochNumber), proto.MustMarshal(teh))
+		wb.Put(tableEpochHeads(step.GetEpochDelimiter().EpochNumber), proto.MustMarshal(teh))
 
-	case step.ReplicaSigned != nil:
-		newSEH := step.ReplicaSigned
+	case *proto.KeyserverStep_ReplicaSigned:
+		newSEH := step.GetReplicaSigned()
 		epochNr := newSEH.Head.Head.Epoch
 		// get epoch head
 		tehBytes, err := ks.db.Get(tableEpochHeads(epochNr))
@@ -511,7 +511,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Signatures: allSignatures,
 		}
 		oldDeferredIO := deferredIO
-		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{Epoch: allSignaturesSEH}, rs, wb)
+		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{&proto.VerifierStep_Epoch{Epoch: allSignaturesSEH}}, rs, wb)
 		deferredSendUpdates := []func(){}
 		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableUpdatesPendingRatificationPrefix}))
 		defer iter.Release()
@@ -521,7 +521,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			if err != nil {
 				log.Panicf("invalid pending update %x: %s", iter.Value(), err)
 			}
-			deferredSendUpdates = append(deferredSendUpdates, ks.verifierLogAppend(&proto.VerifierStep{Update: update}, rs, wb))
+			deferredSendUpdates = append(deferredSendUpdates, ks.verifierLogAppend(&proto.VerifierStep{&proto.VerifierStep_Update{Update: update}}, rs, wb))
 			wb.Delete(iter.Key())
 		}
 		deferredIO = func() {
@@ -534,8 +534,8 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 		}
 
-	case step.VerifierSigned != nil:
-		rNew := step.VerifierSigned
+	case *proto.KeyserverStep_VerifierSigned:
+		rNew := step.GetVerifierSigned()
 		for id := range rNew.Signatures {
 			// Note: The signature *must* have been authenticated before being inserted
 			// into the log, or else verifiers could just trample over everyone else's
@@ -632,10 +632,10 @@ func (ks *Keyserver) updateEpochProposer() {
 	case true:
 		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
 			replication.LogEntry{
-				Data: proto.MustMarshal(&proto.KeyserverStep{EpochDelimiter: &proto.EpochDelimiter{
+				Data: proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_EpochDelimiter{EpochDelimiter: &proto.EpochDelimiter{
 					EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
 					Timestamp:   proto.Time(ks.clk.Now()),
-				}}),
+				}}}),
 				ConfChange: &replication.ConfChange{
 					Operation: replication.ConfChangeNOP,
 				},
@@ -669,7 +669,7 @@ func (ks *Keyserver) updateSignatureProposer() {
 			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, tehBytes)[:]},
 		}
 		ks.signatureProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
-			replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{ReplicaSigned: seh})})
+			replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_ReplicaSigned{ReplicaSigned: seh}})})
 	case false:
 		ks.signatureProposer.Stop()
 		ks.signatureProposer = nil

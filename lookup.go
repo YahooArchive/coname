@@ -105,7 +105,11 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 	}
 	// check that there are sufficiently many fresh signatures.
 	pks := rcg.VerificationPolicy.PublicKeys
-	want := rcg.VerificationPolicy.Quorum
+	policyQuorum, ok := rcg.VerificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum)
+	if !ok {
+		return nil, fmt.Errorf("VerifyConsensus: unknown verification policy in realm config: %v", rcg)
+	}
+	want := policyQuorum.Quorum
 	can := ListQuorum(want, nil)
 	have := make(map[uint64]struct{})
 next_verifier:

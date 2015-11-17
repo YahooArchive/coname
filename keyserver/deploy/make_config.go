@@ -140,7 +140,7 @@ func main() {
 		pks = append(pks, pk)
 		sks = append(sks, sk)
 		ppk := &proto.PublicKey{
-			Ed25519: pk[:],
+			PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pk[:]},
 		}
 		replicas = append(replicas, &proto.Replica{
 			ID:         proto.KeyID(ppk),
@@ -173,7 +173,7 @@ func main() {
 	var cfgs []*proto.ReplicaConfig
 	for i, host := range hosts {
 		pk, sk := pks[i], sks[i]
-		pked := &proto.PublicKey{Ed25519: pk[:]}
+		pked := &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pk[:]}}
 		replicaID := proto.KeyID(pked)
 
 		cert, err := make_cert(caCert, caKey, host)
@@ -237,7 +237,7 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		err = new(jsonpb.Marshaller).Marshal(configF, cfg)
+		err = new(jsonpb.Marshaler).Marshal(configF, cfg)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -255,21 +255,23 @@ func main() {
 
 	verificationPolicy := &proto.AuthorizationPolicy{
 		PublicKeys: make(map[uint64]*proto.PublicKey),
-		Quorum: &proto.QuorumExpr{
-			Threshold: uint32(majority(len(hosts))),
+		PolicyType: &proto.AuthorizationPolicy_Quorum{
+			&proto.QuorumExpr{Threshold: uint32(majority(len(hosts)))},
 		},
 	}
 	replicaIDs := []uint64{}
 	for i, cfg := range cfgs {
 		replicaIDs = append(replicaIDs, cfg.ReplicaID)
-		pk := &proto.PublicKey{Ed25519: pks[i][:]}
+		pk := &proto.PublicKey{
+			PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pks[i][:]},
+		}
 		pkid := proto.KeyID(pk)
 		verificationPolicy.PublicKeys[pkid] = pk
 		replicaExpr := &proto.QuorumExpr{
 			Threshold:  1,
 			Candidates: []uint64{pkid},
 		}
-		verificationPolicy.Quorum.Subexpressions = append(verificationPolicy.Quorum.Subexpressions, replicaExpr)
+		verificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions = append(verificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions, replicaExpr)
 	}
 	clientConfig := &proto.Config{
 		Realms: []*proto.RealmConfig{
@@ -292,7 +294,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	err = new(jsonpb.Marshaller).Marshal(clientConfigF, clientConfig)
+	err = new(jsonpb.Marshaler).Marshal(clientConfigF, clientConfig)
 	if err != nil {
 		log.Panic(err)
 	}

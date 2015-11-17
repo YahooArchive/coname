@@ -4,22 +4,29 @@
 
 package proto
 
+import proto1 "github.com/andres-erbsen/protobuf/proto"
+import fmt "fmt"
+import math "math"
+
 // discarding unused import gogoproto "gogoproto"
 
-import io "io"
-import fmt "fmt"
-
 import strings "strings"
-import reflect "reflect"
-
 import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
+import reflect "reflect"
 
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
+
+import io "io"
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
 
 // UpdateRequest streams a specified number of committed updates or
 // ratifications. See replication.GetCommitted and replication.WaitCommitted.
@@ -38,25 +45,105 @@ func (*VerifierStreamRequest) ProtoMessage() {}
 // VerifierStep denotes the input to a single state transition of the verified
 // part of the keyserver state machine.
 type VerifierStep struct {
-	Update *SignedEntryUpdate `protobuf:"bytes,1,opt" json:"Update,omitempty"`
-	Epoch  *SignedEpochHead   `protobuf:"bytes,2,opt" json:"Epoch,omitempty"`
+	// Types that are valid to be assigned to Type:
+	//	*VerifierStep_Update
+	//	*VerifierStep_Epoch
+	Type isVerifierStep_Type `protobuf_oneof:"type"`
 }
 
 func (m *VerifierStep) Reset()      { *m = VerifierStep{} }
 func (*VerifierStep) ProtoMessage() {}
 
-func (m *VerifierStep) GetUpdate() *SignedEntryUpdate {
+type isVerifierStep_Type interface {
+	isVerifierStep_Type()
+	Equal(interface{}) bool
+	VerboseEqual(interface{}) error
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type VerifierStep_Update struct {
+	Update *SignedEntryUpdate `protobuf:"bytes,1,opt,name=Update,oneof"`
+}
+type VerifierStep_Epoch struct {
+	Epoch *SignedEpochHead `protobuf:"bytes,2,opt,name=Epoch,oneof"`
+}
+
+func (*VerifierStep_Update) isVerifierStep_Type() {}
+func (*VerifierStep_Epoch) isVerifierStep_Type()  {}
+
+func (m *VerifierStep) GetType() isVerifierStep_Type {
 	if m != nil {
-		return m.Update
+		return m.Type
+	}
+	return nil
+}
+
+func (m *VerifierStep) GetUpdate() *SignedEntryUpdate {
+	if x, ok := m.GetType().(*VerifierStep_Update); ok {
+		return x.Update
 	}
 	return nil
 }
 
 func (m *VerifierStep) GetEpoch() *SignedEpochHead {
-	if m != nil {
-		return m.Epoch
+	if x, ok := m.GetType().(*VerifierStep_Epoch); ok {
+		return x.Epoch
 	}
 	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*VerifierStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
+	return _VerifierStep_OneofMarshaler, _VerifierStep_OneofUnmarshaler, []interface{}{
+		(*VerifierStep_Update)(nil),
+		(*VerifierStep_Epoch)(nil),
+	}
+}
+
+func _VerifierStep_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
+	m := msg.(*VerifierStep)
+	// type
+	switch x := m.Type.(type) {
+	case *VerifierStep_Update:
+		_ = b.EncodeVarint(1<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.Update); err != nil {
+			return err
+		}
+	case *VerifierStep_Epoch:
+		_ = b.EncodeVarint(2<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.Epoch); err != nil {
+			return err
+		}
+	case nil:
+	default:
+		return fmt.Errorf("VerifierStep.Type has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _VerifierStep_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error) {
+	m := msg.(*VerifierStep)
+	switch tag {
+	case 1: // type.Update
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(SignedEntryUpdate)
+		err := b.DecodeMessage(msg)
+		m.Type = &VerifierStep_Update{msg}
+		return true, err
+	case 2: // type.Epoch
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(SignedEpochHead)
+		err := b.DecodeMessage(msg)
+		m.Type = &VerifierStep_Epoch{msg}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 type Nothing struct {
@@ -65,663 +152,6 @@ type Nothing struct {
 func (m *Nothing) Reset()      { *m = Nothing{} }
 func (*Nothing) ProtoMessage() {}
 
-func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
-			}
-			m.Start = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.Start |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PageSize", wireType)
-			}
-			m.PageSize = 0
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				m.PageSize |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipVerifier(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthVerifier
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *VerifierStep) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthVerifier
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Update == nil {
-				m.Update = &SignedEntryUpdate{}
-			}
-			if err := m.Update.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			postIndex := iNdEx + msglen
-			if msglen < 0 {
-				return ErrInvalidLengthVerifier
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Epoch == nil {
-				m.Epoch = &SignedEpochHead{}
-			}
-			if err := m.Epoch.Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipVerifier(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthVerifier
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func (m *Nothing) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		switch fieldNum {
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipVerifier(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthVerifier
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	return nil
-}
-func skipVerifier(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthVerifier
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipVerifier(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
-	}
-	panic("unreachable")
-}
-
-var (
-	ErrInvalidLengthVerifier = fmt.Errorf("proto: negative length found during unmarshaling")
-)
-
-func (this *VerifierStreamRequest) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VerifierStreamRequest{`,
-		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
-		`PageSize:` + fmt.Sprintf("%v", this.PageSize) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *VerifierStep) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&VerifierStep{`,
-		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
-		`Epoch:` + strings.Replace(fmt.Sprintf("%v", this.Epoch), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
-		`}`,
-	}, "")
-	return s
-}
-func (this *Nothing) String() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&Nothing{`,
-		`}`,
-	}, "")
-	return s
-}
-func valueToStringVerifier(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
-}
-func (m *VerifierStreamRequest) Size() (n int) {
-	var l int
-	_ = l
-	if m.Start != 0 {
-		n += 1 + sovVerifier(uint64(m.Start))
-	}
-	if m.PageSize != 0 {
-		n += 1 + sovVerifier(uint64(m.PageSize))
-	}
-	return n
-}
-
-func (m *VerifierStep) Size() (n int) {
-	var l int
-	_ = l
-	if m.Update != nil {
-		l = m.Update.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	if m.Epoch != nil {
-		l = m.Epoch.Size()
-		n += 1 + l + sovVerifier(uint64(l))
-	}
-	return n
-}
-
-func (m *Nothing) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func sovVerifier(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozVerifier(x uint64) (n int) {
-	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStreamRequest {
-	this := &VerifierStreamRequest{}
-	this.Start = uint64(uint64(r.Uint32()))
-	this.PageSize = uint64(uint64(r.Uint32()))
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
-	this := &VerifierStep{}
-	if r.Intn(10) != 0 {
-		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
-	}
-	if r.Intn(10) != 0 {
-		this.Epoch = NewPopulatedSignedEpochHead(r, easy)
-	}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-func NewPopulatedNothing(r randyVerifier, easy bool) *Nothing {
-	this := &Nothing{}
-	if !easy && r.Intn(10) != 0 {
-	}
-	return this
-}
-
-type randyVerifier interface {
-	Float32() float32
-	Float64() float64
-	Int63() int64
-	Int31() int32
-	Uint32() uint32
-	Intn(n int) int
-}
-
-func randUTF8RuneVerifier(r randyVerifier) rune {
-	ru := r.Intn(62)
-	if ru < 10 {
-		return rune(ru + 48)
-	} else if ru < 36 {
-		return rune(ru + 55)
-	}
-	return rune(ru + 61)
-}
-func randStringVerifier(r randyVerifier) string {
-	v1 := r.Intn(100)
-	tmps := make([]rune, v1)
-	for i := 0; i < v1; i++ {
-		tmps[i] = randUTF8RuneVerifier(r)
-	}
-	return string(tmps)
-}
-func randUnrecognizedVerifier(r randyVerifier, maxFieldNumber int) (data []byte) {
-	l := r.Intn(5)
-	for i := 0; i < l; i++ {
-		wire := r.Intn(4)
-		if wire == 3 {
-			wire = 5
-		}
-		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldVerifier(data, r, fieldNumber, wire)
-	}
-	return data
-}
-func randFieldVerifier(data []byte, r randyVerifier, fieldNumber int, wire int) []byte {
-	key := uint32(fieldNumber)<<3 | uint32(wire)
-	switch wire {
-	case 0:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		v2 := r.Int63()
-		if r.Intn(2) == 0 {
-			v2 *= -1
-		}
-		data = encodeVarintPopulateVerifier(data, uint64(v2))
-	case 1:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	case 2:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		ll := r.Intn(100)
-		data = encodeVarintPopulateVerifier(data, uint64(ll))
-		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
-		}
-	default:
-		data = encodeVarintPopulateVerifier(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
-	}
-	return data
-}
-func encodeVarintPopulateVerifier(data []byte, v uint64) []byte {
-	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
-		v >>= 7
-	}
-	data = append(data, uint8(v))
-	return data
-}
-func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStreamRequest) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Start != 0 {
-		data[i] = 0x8
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Start))
-	}
-	if m.PageSize != 0 {
-		data[i] = 0x10
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.PageSize))
-	}
-	return i, nil
-}
-
-func (m *VerifierStep) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *VerifierStep) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if m.Update != nil {
-		data[i] = 0xa
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Update.Size()))
-		n1, err := m.Update.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n1
-	}
-	if m.Epoch != nil {
-		data[i] = 0x12
-		i++
-		i = encodeVarintVerifier(data, i, uint64(m.Epoch.Size()))
-		n2, err := m.Epoch.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n2
-	}
-	return i, nil
-}
-
-func (m *Nothing) Marshal() (data []byte, err error) {
-	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
-	if err != nil {
-		return nil, err
-	}
-	return data[:n], nil
-}
-
-func (m *Nothing) MarshalTo(data []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	return i, nil
-}
-
-func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
-func encodeVarintVerifier(data []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	data[offset] = uint8(v)
-	return offset + 1
-}
-func (this *VerifierStreamRequest) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.VerifierStreamRequest{` +
-		`Start:` + fmt.Sprintf("%#v", this.Start),
-		`PageSize:` + fmt.Sprintf("%#v", this.PageSize) + `}`}, ", ")
-	return s
-}
-func (this *VerifierStep) GoString() string {
-	if this == nil {
-		return "nil"
-	}
-	s := strings.Join([]string{`&proto.VerifierStep{` +
-		`Update:` + fmt.Sprintf("%#v", this.Update),
-		`Epoch:` + fmt.Sprintf("%#v", this.Epoch) + `}`}, ", ")
-	return s
-}
-func valueToGoStringVerifier(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringVerifier(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
 func (this *VerifierStreamRequest) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -798,8 +228,61 @@ func (this *VerifierStep) VerboseEqual(that interface{}) error {
 	} else if this == nil {
 		return fmt.Errorf("that is type *VerifierStepbut is not nil && this == nil")
 	}
+	if that1.Type == nil {
+		if this.Type != nil {
+			return fmt.Errorf("this.Type != nil && that1.Type == nil")
+		}
+	} else if this.Type == nil {
+		return fmt.Errorf("this.Type == nil && that1.Type != nil")
+	} else if err := this.Type.VerboseEqual(that1.Type); err != nil {
+		return err
+	}
+	return nil
+}
+func (this *VerifierStep_Update) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*VerifierStep_Update)
+	if !ok {
+		return fmt.Errorf("that is not of type *VerifierStep_Update")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *VerifierStep_Update but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *VerifierStep_Updatebut is not nil && this == nil")
+	}
 	if !this.Update.Equal(that1.Update) {
 		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	return nil
+}
+func (this *VerifierStep_Epoch) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*VerifierStep_Epoch)
+	if !ok {
+		return fmt.Errorf("that is not of type *VerifierStep_Epoch")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *VerifierStep_Epoch but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *VerifierStep_Epochbut is not nil && this == nil")
 	}
 	if !this.Epoch.Equal(that1.Epoch) {
 		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
@@ -826,7 +309,60 @@ func (this *VerifierStep) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
+	if that1.Type == nil {
+		if this.Type != nil {
+			return false
+		}
+	} else if this.Type == nil {
+		return false
+	} else if !this.Type.Equal(that1.Type) {
+		return false
+	}
+	return true
+}
+func (this *VerifierStep_Update) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*VerifierStep_Update)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
 	if !this.Update.Equal(that1.Update) {
+		return false
+	}
+	return true
+}
+func (this *VerifierStep_Epoch) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*VerifierStep_Epoch)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
 		return false
 	}
 	if !this.Epoch.Equal(that1.Epoch) {
@@ -878,6 +414,74 @@ func (this *Nothing) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *VerifierStreamRequest) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&proto.VerifierStreamRequest{")
+	s = append(s, "Start: "+fmt.Sprintf("%#v", this.Start)+",\n")
+	s = append(s, "PageSize: "+fmt.Sprintf("%#v", this.PageSize)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *VerifierStep) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 6)
+	s = append(s, "&proto.VerifierStep{")
+	if this.Type != nil {
+		s = append(s, "Type: "+fmt.Sprintf("%#v", this.Type)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *VerifierStep_Update) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStep_Update{` +
+		`Update:` + fmt.Sprintf("%#v", this.Update) + `}`}, ", ")
+	return s
+}
+func (this *VerifierStep_Epoch) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.VerifierStep_Epoch{` +
+		`Epoch:` + fmt.Sprintf("%#v", this.Epoch) + `}`}, ", ")
+	return s
+}
+func valueToGoStringVerifier(v interface{}, typ string) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
+}
+func extensionToGoStringVerifier(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+	if e == nil {
+		return "nil"
+	}
+	s := "map[int32]proto.Extension{"
+	keys := make([]int, 0, len(e))
+	for k := range e {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	ss := []string{}
+	for _, k := range keys {
+		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
+	}
+	s += strings.Join(ss, ",") + "}"
+	return s
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
 
 // Client API for E2EKSVerification service
 
@@ -1022,3 +626,714 @@ var _E2EKSVerification_serviceDesc = grpc.ServiceDesc{
 		},
 	},
 }
+
+func (m *VerifierStreamRequest) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStreamRequest) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Start != 0 {
+		data[i] = 0x8
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Start))
+	}
+	if m.PageSize != 0 {
+		data[i] = 0x10
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.PageSize))
+	}
+	return i, nil
+}
+
+func (m *VerifierStep) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *VerifierStep) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Type != nil {
+		nn1, err := m.Type.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += nn1
+	}
+	return i, nil
+}
+
+func (m *VerifierStep_Update) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Update != nil {
+		data[i] = 0xa
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Update.Size()))
+		n2, err := m.Update.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+func (m *VerifierStep_Epoch) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.Epoch != nil {
+		data[i] = 0x12
+		i++
+		i = encodeVarintVerifier(data, i, uint64(m.Epoch.Size()))
+		n3, err := m.Epoch.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
+	}
+	return i, nil
+}
+func (m *Nothing) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *Nothing) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	return i, nil
+}
+
+func encodeFixed64Verifier(data []byte, offset int, v uint64) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	data[offset+4] = uint8(v >> 32)
+	data[offset+5] = uint8(v >> 40)
+	data[offset+6] = uint8(v >> 48)
+	data[offset+7] = uint8(v >> 56)
+	return offset + 8
+}
+func encodeFixed32Verifier(data []byte, offset int, v uint32) int {
+	data[offset] = uint8(v)
+	data[offset+1] = uint8(v >> 8)
+	data[offset+2] = uint8(v >> 16)
+	data[offset+3] = uint8(v >> 24)
+	return offset + 4
+}
+func encodeVarintVerifier(data []byte, offset int, v uint64) int {
+	for v >= 1<<7 {
+		data[offset] = uint8(v&0x7f | 0x80)
+		v >>= 7
+		offset++
+	}
+	data[offset] = uint8(v)
+	return offset + 1
+}
+func NewPopulatedVerifierStreamRequest(r randyVerifier, easy bool) *VerifierStreamRequest {
+	this := &VerifierStreamRequest{}
+	this.Start = uint64(uint64(r.Uint32()))
+	this.PageSize = uint64(uint64(r.Uint32()))
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedVerifierStep(r randyVerifier, easy bool) *VerifierStep {
+	this := &VerifierStep{}
+	oneofNumber_Type := []int32{1, 2}[r.Intn(2)]
+	switch oneofNumber_Type {
+	case 1:
+		this.Type = NewPopulatedVerifierStep_Update(r, easy)
+	case 2:
+		this.Type = NewPopulatedVerifierStep_Epoch(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedVerifierStep_Update(r randyVerifier, easy bool) *VerifierStep_Update {
+	this := &VerifierStep_Update{}
+	this.Update = NewPopulatedSignedEntryUpdate(r, easy)
+	return this
+}
+func NewPopulatedVerifierStep_Epoch(r randyVerifier, easy bool) *VerifierStep_Epoch {
+	this := &VerifierStep_Epoch{}
+	this.Epoch = NewPopulatedSignedEpochHead(r, easy)
+	return this
+}
+func NewPopulatedNothing(r randyVerifier, easy bool) *Nothing {
+	this := &Nothing{}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyVerifier interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneVerifier(r randyVerifier) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringVerifier(r randyVerifier) string {
+	v1 := r.Intn(100)
+	tmps := make([]rune, v1)
+	for i := 0; i < v1; i++ {
+		tmps[i] = randUTF8RuneVerifier(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedVerifier(r randyVerifier, maxFieldNumber int) (data []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		data = randFieldVerifier(data, r, fieldNumber, wire)
+	}
+	return data
+}
+func randFieldVerifier(data []byte, r randyVerifier, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		v2 := r.Int63()
+		if r.Intn(2) == 0 {
+			v2 *= -1
+		}
+		data = encodeVarintPopulateVerifier(data, uint64(v2))
+	case 1:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		ll := r.Intn(100)
+		data = encodeVarintPopulateVerifier(data, uint64(ll))
+		for j := 0; j < ll; j++ {
+			data = append(data, byte(r.Intn(256)))
+		}
+	default:
+		data = encodeVarintPopulateVerifier(data, uint64(key))
+		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return data
+}
+func encodeVarintPopulateVerifier(data []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	data = append(data, uint8(v))
+	return data
+}
+func (m *VerifierStreamRequest) Size() (n int) {
+	var l int
+	_ = l
+	if m.Start != 0 {
+		n += 1 + sovVerifier(uint64(m.Start))
+	}
+	if m.PageSize != 0 {
+		n += 1 + sovVerifier(uint64(m.PageSize))
+	}
+	return n
+}
+
+func (m *VerifierStep) Size() (n int) {
+	var l int
+	_ = l
+	if m.Type != nil {
+		n += m.Type.Size()
+	}
+	return n
+}
+
+func (m *VerifierStep_Update) Size() (n int) {
+	var l int
+	_ = l
+	if m.Update != nil {
+		l = m.Update.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	return n
+}
+func (m *VerifierStep_Epoch) Size() (n int) {
+	var l int
+	_ = l
+	if m.Epoch != nil {
+		l = m.Epoch.Size()
+		n += 1 + l + sovVerifier(uint64(l))
+	}
+	return n
+}
+func (m *Nothing) Size() (n int) {
+	var l int
+	_ = l
+	return n
+}
+
+func sovVerifier(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
+}
+func sozVerifier(x uint64) (n int) {
+	return sovVerifier(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (this *VerifierStreamRequest) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStreamRequest{`,
+		`Start:` + fmt.Sprintf("%v", this.Start) + `,`,
+		`PageSize:` + fmt.Sprintf("%v", this.PageSize) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep{`,
+		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep_Update) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep_Update{`,
+		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *VerifierStep_Epoch) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&VerifierStep_Epoch{`,
+		`Epoch:` + strings.Replace(fmt.Sprintf("%v", this.Epoch), "SignedEpochHead", "SignedEpochHead", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *Nothing) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&Nothing{`,
+		`}`,
+	}, "")
+	return s
+}
+func valueToStringVerifier(v interface{}) string {
+	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		return "nil"
+	}
+	pv := reflect.Indirect(rv).Interface()
+	return fmt.Sprintf("*%v", pv)
+}
+func (m *VerifierStreamRequest) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowVerifier
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VerifierStreamRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VerifierStreamRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Start", wireType)
+			}
+			m.Start = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.Start |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PageSize", wireType)
+			}
+			m.PageSize = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.PageSize |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipVerifier(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *VerifierStep) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowVerifier
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: VerifierStep: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: VerifierStep: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthVerifier
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &SignedEntryUpdate{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Type = &VerifierStep_Update{v}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Epoch", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthVerifier
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &SignedEpochHead{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Type = &VerifierStep_Epoch{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipVerifier(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Nothing) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowVerifier
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Nothing: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Nothing: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipVerifier(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthVerifier
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipVerifier(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowVerifier
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowVerifier
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthVerifier
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowVerifier
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipVerifier(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+	}
+	panic("unreachable")
+}
+
+var (
+	ErrInvalidLengthVerifier = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowVerifier   = fmt.Errorf("proto: integer overflow")
+)
