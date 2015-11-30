@@ -125,7 +125,7 @@ func (h *HKPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		coname.VerifyLookup(h.Config, user, pf, h.Clk.Now())
 	}
 
-	if pf.Profile.Keys == nil {
+	if pf.Profile == nil || pf.Profile.Keys == nil {
 		http.Error(w, `No results found: No keys found: unknown email`, 404)
 		return
 	}
