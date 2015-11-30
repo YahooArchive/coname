@@ -178,12 +178,14 @@ func main() {
 			Version: version,
 			UpdatePolicy: &proto.AuthorizationPolicy{
 				PublicKeys: make(map[uint64]*proto.PublicKey),
-				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
-					Threshold:      0,
-					Candidates:     []uint64{},
-					Subexpressions: []*proto.QuorumExpr{},
+				PolicyType: &proto.AuthorizationPolicy_Quorum{
+					Quorum: &proto.QuorumExpr{
+						Threshold:      0,
+						Candidates:     []uint64{},
+						Subexpressions: []*proto.QuorumExpr{},
+					},
 				},
-				}},
+			},
 			ProfileCommitment: commitment[:],
 		},
 	}
