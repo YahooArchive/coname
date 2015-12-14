@@ -24,33 +24,36 @@ message Config {
 }
 
 message RealmConfig {
+	// RealmName is the canonical name of the realm. It is signed by the
+	// verifiers as a part of the epoch head.
+	string RealmName = 1;
 	// Domains specifies a list of domains that belong to this realm.
 	// Configuring one domain to belong to multiple realms is considered an
 	// error.
 	// TODO: support TLS-style wildcards.
-	repeated string domains = 1;
+	repeated string domains = 2;
 	// Addr is the TCP (host:port) address of the keyserver GRPC interface.
-	string addr = 2;
+	string addr = 3;
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
-	string URL = 3;
+	string URL = 4;
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
 	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
-	bytes VRFPublic  = 4;
+	bytes VRFPublic  = 5;
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
-	AuthorizationPolicy verification_policy = 5;
+	AuthorizationPolicy verification_policy = 6;
 
 	// EpochTimeToLive specifies the duration for which an epoch is valid after
 	// it has been issued. A client that has access to a clock MUST NOT accept
 	// epoch heads with IssueTime more than EpochTimeToLive in the past.
-	Duration epoch_time_to_live = 6 [(gogoproto.nullable) = false];
+	Duration epoch_time_to_live = 7 [(gogoproto.nullable) = false];
 
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
-	bytes tree_nonce = 7;
+	bytes tree_nonce = 8;
 
-	TLSConfig client_tls = 8 [(gogoproto.customname) = "ClientTLS"];
+	TLSConfig client_tls = 9 [(gogoproto.customname) = "ClientTLS"];
 }

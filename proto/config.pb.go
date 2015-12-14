@@ -40,32 +40,35 @@ func (m *Config) GetRealms() []*RealmConfig {
 }
 
 type RealmConfig struct {
+	// RealmName is the canonical name of the realm. It is signed by the
+	// verifiers as a part of the epoch head.
+	RealmName string `protobuf:"bytes,1,opt,name=RealmName,proto3" json:"RealmName,omitempty"`
 	// Domains specifies a list of domains that belong to this realm.
 	// Configuring one domain to belong to multiple realms is considered an
 	// error.
 	// TODO: support TLS-style wildcards.
-	Domains []string `protobuf:"bytes,1,rep,name=domains" json:"domains,omitempty"`
+	Domains []string `protobuf:"bytes,2,rep,name=domains" json:"domains,omitempty"`
 	// Addr is the TCP (host:port) address of the keyserver GRPC interface.
-	Addr string `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
-	URL string `protobuf:"bytes,3,opt,name=URL,proto3" json:"URL,omitempty"`
+	URL string `protobuf:"bytes,4,opt,name=URL,proto3" json:"URL,omitempty"`
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
 	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
-	VRFPublic []byte `protobuf:"bytes,4,opt,name=VRFPublic,proto3" json:"VRFPublic,omitempty"`
+	VRFPublic []byte `protobuf:"bytes,5,opt,name=VRFPublic,proto3" json:"VRFPublic,omitempty"`
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
-	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,5,opt,name=verification_policy" json:"verification_policy,omitempty"`
+	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,6,opt,name=verification_policy" json:"verification_policy,omitempty"`
 	// EpochTimeToLive specifies the duration for which an epoch is valid after
 	// it has been issued. A client that has access to a clock MUST NOT accept
 	// epoch heads with IssueTime more than EpochTimeToLive in the past.
-	EpochTimeToLive Duration `protobuf:"bytes,6,opt,name=epoch_time_to_live" json:"epoch_time_to_live"`
+	EpochTimeToLive Duration `protobuf:"bytes,7,opt,name=epoch_time_to_live" json:"epoch_time_to_live"`
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
-	TreeNonce []byte     `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
-	ClientTLS *TLSConfig `protobuf:"bytes,8,opt,name=client_tls" json:"client_tls,omitempty"`
+	TreeNonce []byte     `protobuf:"bytes,8,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
+	ClientTLS *TLSConfig `protobuf:"bytes,9,opt,name=client_tls" json:"client_tls,omitempty"`
 }
 
 func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
@@ -172,6 +175,9 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 	} else if this == nil {
 		return fmt.Errorf("that is type *RealmConfigbut is not nil && this == nil")
 	}
+	if this.RealmName != that1.RealmName {
+		return fmt.Errorf("RealmName this(%v) Not Equal that(%v)", this.RealmName, that1.RealmName)
+	}
 	if len(this.Domains) != len(that1.Domains) {
 		return fmt.Errorf("Domains this(%v) Not Equal that(%v)", len(this.Domains), len(that1.Domains))
 	}
@@ -223,6 +229,9 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
+	if this.RealmName != that1.RealmName {
+		return false
+	}
 	if len(this.Domains) != len(that1.Domains) {
 		return false
 	}
@@ -270,8 +279,9 @@ func (this *RealmConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 12)
+	s := make([]string, 0, 13)
 	s = append(s, "&proto.RealmConfig{")
+	s = append(s, "RealmName: "+fmt.Sprintf("%#v", this.RealmName)+",\n")
 	s = append(s, "Domains: "+fmt.Sprintf("%#v", this.Domains)+",\n")
 	s = append(s, "Addr: "+fmt.Sprintf("%#v", this.Addr)+",\n")
 	s = append(s, "URL: "+fmt.Sprintf("%#v", this.URL)+",\n")
@@ -357,9 +367,15 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if len(m.RealmName) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintConfig(data, i, uint64(len(m.RealmName)))
+		i += copy(data[i:], m.RealmName)
+	}
 	if len(m.Domains) > 0 {
 		for _, s := range m.Domains {
-			data[i] = 0xa
+			data[i] = 0x12
 			i++
 			l = len(s)
 			for l >= 1<<7 {
@@ -373,27 +389,27 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.Addr) > 0 {
-		data[i] = 0x12
+		data[i] = 0x1a
 		i++
 		i = encodeVarintConfig(data, i, uint64(len(m.Addr)))
 		i += copy(data[i:], m.Addr)
 	}
 	if len(m.URL) > 0 {
-		data[i] = 0x1a
+		data[i] = 0x22
 		i++
 		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
 		i += copy(data[i:], m.URL)
 	}
 	if m.VRFPublic != nil {
 		if len(m.VRFPublic) > 0 {
-			data[i] = 0x22
+			data[i] = 0x2a
 			i++
 			i = encodeVarintConfig(data, i, uint64(len(m.VRFPublic)))
 			i += copy(data[i:], m.VRFPublic)
 		}
 	}
 	if m.VerificationPolicy != nil {
-		data[i] = 0x2a
+		data[i] = 0x32
 		i++
 		i = encodeVarintConfig(data, i, uint64(m.VerificationPolicy.Size()))
 		n1, err := m.VerificationPolicy.MarshalTo(data[i:])
@@ -402,7 +418,7 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 		}
 		i += n1
 	}
-	data[i] = 0x32
+	data[i] = 0x3a
 	i++
 	i = encodeVarintConfig(data, i, uint64(m.EpochTimeToLive.Size()))
 	n2, err := m.EpochTimeToLive.MarshalTo(data[i:])
@@ -412,14 +428,14 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 	i += n2
 	if m.TreeNonce != nil {
 		if len(m.TreeNonce) > 0 {
-			data[i] = 0x3a
+			data[i] = 0x42
 			i++
 			i = encodeVarintConfig(data, i, uint64(len(m.TreeNonce)))
 			i += copy(data[i:], m.TreeNonce)
 		}
 	}
 	if m.ClientTLS != nil {
-		data[i] = 0x42
+		data[i] = 0x4a
 		i++
 		i = encodeVarintConfig(data, i, uint64(m.ClientTLS.Size()))
 		n3, err := m.ClientTLS.MarshalTo(data[i:])
@@ -474,6 +490,7 @@ func NewPopulatedConfig(r randyConfig, easy bool) *Config {
 
 func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	this := &RealmConfig{}
+	this.RealmName = randStringConfig(r)
 	v2 := r.Intn(10)
 	this.Domains = make([]string, v2)
 	for i := 0; i < v2; i++ {
@@ -591,6 +608,10 @@ func (m *Config) Size() (n int) {
 func (m *RealmConfig) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.RealmName)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
 	if len(m.Domains) > 0 {
 		for _, s := range m.Domains {
 			l = len(s)
@@ -658,6 +679,7 @@ func (this *RealmConfig) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&RealmConfig{`,
+		`RealmName:` + fmt.Sprintf("%v", this.RealmName) + `,`,
 		`Domains:` + fmt.Sprintf("%v", this.Domains) + `,`,
 		`Addr:` + fmt.Sprintf("%v", this.Addr) + `,`,
 		`URL:` + fmt.Sprintf("%v", this.URL) + `,`,
@@ -790,6 +812,35 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RealmName", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RealmName = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Domains", wireType)
 			}
 			var stringLen uint64
@@ -817,7 +868,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			}
 			m.Domains = append(m.Domains, string(data[iNdEx:postIndex]))
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Addr", wireType)
 			}
@@ -846,7 +897,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			}
 			m.Addr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field URL", wireType)
 			}
@@ -875,7 +926,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			}
 			m.URL = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field VRFPublic", wireType)
 			}
@@ -903,7 +954,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			}
 			m.VRFPublic = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field VerificationPolicy", wireType)
 			}
@@ -936,7 +987,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EpochTimeToLive", wireType)
 			}
@@ -966,7 +1017,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 7:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TreeNonce", wireType)
 			}
@@ -994,7 +1045,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			}
 			m.TreeNonce = append([]byte{}, data[iNdEx:postIndex]...)
 			iNdEx = postIndex
-		case 8:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientTLS", wireType)
 			}
