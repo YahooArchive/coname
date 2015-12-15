@@ -99,6 +99,10 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 			return nil, fmt.Errorf("VerifyConsensus: epoch heads don't match: %x vs %x", want, got)
 		}
 	}
+	// check that the seh corresponds to the realm in question
+	if got := ratifications[0].Head.Head.Realm; got != rcg.RealmName {
+		return nil, fmt.Errorf("VerifyConsensus: SEH does not match realm: %q != %q", got, rcg.RealmName)
+	}
 	// check that the seh is not expired
 	if t := ratifications[0].Head.Head.IssueTime.Time().Add(rcg.EpochTimeToLive.Duration()); now.After(t) {
 		return nil, fmt.Errorf("VerifyConsensus: epoch expired at %v < %v", t, now)

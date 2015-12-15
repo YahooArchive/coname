@@ -203,6 +203,7 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 	replicaIDs := []uint64{}
 	pol := &proto.AuthorizationPolicy{}
 	realmConfig := &proto.RealmConfig{
+		RealmName:          testingRealm,
 		Domains:            []string{realmDomain},
 		VRFPublic:          vrfPublic,
 		VerificationPolicy: pol,
@@ -408,7 +409,7 @@ func doUpdate(
 					Candidates:     []uint64{},
 					Subexpressions: []*proto.QuorumExpr{},
 				},
-			}},
+				}},
 			ProfileCommitment: commitment[:],
 		},
 	}
