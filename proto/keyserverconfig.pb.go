@@ -33,15 +33,17 @@ type ReplicaConfig struct {
 	// SigningKeyID specifies the signing key by reference. The mechanism of
 	// loading keys depends on the deployment scenario; by default, the key
 	// identifier is a path to a file containing the key.
-	SigningKeyID string    `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
-	PublicAddr   string    `protobuf:"bytes,4,opt,name=public_addr,proto3" json:"public_addr,omitempty"`
-	PublicTLS    TLSConfig `protobuf:"bytes,5,opt,name=public_tls" json:"public_tls"`
-	VerifierAddr string    `protobuf:"bytes,6,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
-	VerifierTLS  TLSConfig `protobuf:"bytes,7,opt,name=verifier_tls" json:"verifier_tls"`
-	HKPAddr      string    `protobuf:"bytes,8,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
-	HKPTLS       TLSConfig `protobuf:"bytes,9,opt,name=hkp_tls" json:"hkp_tls"`
-	RaftAddr     string    `protobuf:"bytes,10,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
-	RaftTLS      TLSConfig `protobuf:"bytes,11,opt,name=raft_tls" json:"raft_tls"`
+	SigningKeyID  string    `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
+	PublicAddr    string    `protobuf:"bytes,4,opt,name=public_addr,proto3" json:"public_addr,omitempty"`
+	PublicTLS     TLSConfig `protobuf:"bytes,5,opt,name=public_tls" json:"public_tls"`
+	VerifierAddr  string    `protobuf:"bytes,6,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
+	VerifierTLS   TLSConfig `protobuf:"bytes,7,opt,name=verifier_tls" json:"verifier_tls"`
+	HKPAddr       string    `protobuf:"bytes,8,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
+	HKPTLS        TLSConfig `protobuf:"bytes,9,opt,name=hkp_tls" json:"hkp_tls"`
+	HTTPFrontAddr string    `protobuf:"bytes,10,opt,name=httpfront_addr,proto3" json:"httpfront_addr,omitempty"`
+	HTTPFrontTLS  TLSConfig `protobuf:"bytes,11,opt,name=httpfront_tls" json:"httpfront_tls"`
+	RaftAddr      string    `protobuf:"bytes,12,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
+	RaftTLS       TLSConfig `protobuf:"bytes,13,opt,name=raft_tls" json:"raft_tls"`
 	// LevelDBPath specifies the directory in which the databse is stored.
 	// Nothing else should use this directory.
 	LevelDBPath string `protobuf:"bytes,14,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
@@ -87,6 +89,13 @@ func (m *ReplicaConfig) GetVerifierTLS() TLSConfig {
 func (m *ReplicaConfig) GetHKPTLS() TLSConfig {
 	if m != nil {
 		return m.HKPTLS
+	}
+	return TLSConfig{}
+}
+
+func (m *ReplicaConfig) GetHTTPFrontTLS() TLSConfig {
+	if m != nil {
+		return m.HTTPFrontTLS
 	}
 	return TLSConfig{}
 }
@@ -275,6 +284,12 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 	if !this.HKPTLS.Equal(&that1.HKPTLS) {
 		return fmt.Errorf("HKPTLS this(%v) Not Equal that(%v)", this.HKPTLS, that1.HKPTLS)
 	}
+	if this.HTTPFrontAddr != that1.HTTPFrontAddr {
+		return fmt.Errorf("HTTPFrontAddr this(%v) Not Equal that(%v)", this.HTTPFrontAddr, that1.HTTPFrontAddr)
+	}
+	if !this.HTTPFrontTLS.Equal(&that1.HTTPFrontTLS) {
+		return fmt.Errorf("HTTPFrontTLS this(%v) Not Equal that(%v)", this.HTTPFrontTLS, that1.HTTPFrontTLS)
+	}
 	if this.RaftAddr != that1.RaftAddr {
 		return fmt.Errorf("RaftAddr this(%v) Not Equal that(%v)", this.RaftAddr, that1.RaftAddr)
 	}
@@ -340,6 +355,12 @@ func (this *ReplicaConfig) Equal(that interface{}) bool {
 		return false
 	}
 	if !this.HKPTLS.Equal(&that1.HKPTLS) {
+		return false
+	}
+	if this.HTTPFrontAddr != that1.HTTPFrontAddr {
+		return false
+	}
+	if !this.HTTPFrontTLS.Equal(&that1.HTTPFrontTLS) {
 		return false
 	}
 	if this.RaftAddr != that1.RaftAddr {
@@ -568,7 +589,7 @@ func (this *ReplicaConfig) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 19)
+	s := make([]string, 0, 21)
 	s = append(s, "&proto.ReplicaConfig{")
 	s = append(s, "KeyserverConfig: "+strings.Replace(this.KeyserverConfig.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "ReplicaID: "+fmt.Sprintf("%#v", this.ReplicaID)+",\n")
@@ -579,6 +600,8 @@ func (this *ReplicaConfig) GoString() string {
 	s = append(s, "VerifierTLS: "+strings.Replace(this.VerifierTLS.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "HKPAddr: "+fmt.Sprintf("%#v", this.HKPAddr)+",\n")
 	s = append(s, "HKPTLS: "+strings.Replace(this.HKPTLS.GoString(), `&`, ``, 1)+",\n")
+	s = append(s, "HTTPFrontAddr: "+fmt.Sprintf("%#v", this.HTTPFrontAddr)+",\n")
+	s = append(s, "HTTPFrontTLS: "+strings.Replace(this.HTTPFrontTLS.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "RaftAddr: "+fmt.Sprintf("%#v", this.RaftAddr)+",\n")
 	s = append(s, "RaftTLS: "+strings.Replace(this.RaftTLS.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "LevelDBPath: "+fmt.Sprintf("%#v", this.LevelDBPath)+",\n")
@@ -725,20 +748,34 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 		return 0, err
 	}
 	i += n4
-	if len(m.RaftAddr) > 0 {
+	if len(m.HTTPFrontAddr) > 0 {
 		data[i] = 0x52
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
-		i += copy(data[i:], m.RaftAddr)
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HTTPFrontAddr)))
+		i += copy(data[i:], m.HTTPFrontAddr)
 	}
 	data[i] = 0x5a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
-	n5, err := m.RaftTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.HTTPFrontTLS.Size()))
+	n5, err := m.HTTPFrontTLS.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n5
+	if len(m.RaftAddr) > 0 {
+		data[i] = 0x62
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
+		i += copy(data[i:], m.RaftAddr)
+	}
+	data[i] = 0x6a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
+	n6, err := m.RaftTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n6
 	if len(m.LevelDBPath) > 0 {
 		data[i] = 0x72
 		i++
@@ -748,11 +785,11 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x7a
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
-	n6, err := m.RaftHeartbeat.MarshalTo(data[i:])
+	n7, err := m.RaftHeartbeat.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n7
 	if m.LaggingVerifierScan != 0 {
 		data[i] = 0x80
 		i++
@@ -765,11 +802,11 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x1
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.ClientTimeout.Size()))
-	n7, err := m.ClientTimeout.MarshalTo(data[i:])
+	n8, err := m.ClientTimeout.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n7
+	i += n8
 	return i, nil
 }
 
@@ -808,27 +845,27 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n8, err := m.MinEpochInterval.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n8
-	data[i] = 0x2a
-	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n9, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	n9, err := m.MinEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n9
-	data[i] = 0x32
+	data[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n10, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
+	n10, err := m.MaxEpochInterval.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n10
+	data[i] = 0x32
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
+	n11, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n11
 	if len(m.InitialReplicas) > 0 {
 		for _, msg := range m.InitialReplicas {
 			data[i] = 0x3a
@@ -964,15 +1001,18 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 	this.HKPAddr = randStringKeyserverconfig(r)
 	v4 := NewPopulatedTLSConfig(r, easy)
 	this.HKPTLS = *v4
-	this.RaftAddr = randStringKeyserverconfig(r)
+	this.HTTPFrontAddr = randStringKeyserverconfig(r)
 	v5 := NewPopulatedTLSConfig(r, easy)
-	this.RaftTLS = *v5
+	this.HTTPFrontTLS = *v5
+	this.RaftAddr = randStringKeyserverconfig(r)
+	v6 := NewPopulatedTLSConfig(r, easy)
+	this.RaftTLS = *v6
 	this.LevelDBPath = randStringKeyserverconfig(r)
-	v6 := NewPopulatedDuration(r, easy)
-	this.RaftHeartbeat = *v6
-	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
 	v7 := NewPopulatedDuration(r, easy)
-	this.ClientTimeout = *v7
+	this.RaftHeartbeat = *v7
+	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
+	v8 := NewPopulatedDuration(r, easy)
+	this.ClientTimeout = *v8
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -983,24 +1023,24 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 	this.ServerID = uint64(uint64(r.Uint32()))
 	this.Realm = randStringKeyserverconfig(r)
 	this.VRFKeyID = randStringKeyserverconfig(r)
-	v8 := NewPopulatedDuration(r, easy)
-	this.MinEpochInterval = *v8
 	v9 := NewPopulatedDuration(r, easy)
-	this.MaxEpochInterval = *v9
+	this.MinEpochInterval = *v9
 	v10 := NewPopulatedDuration(r, easy)
-	this.ProposalRetryInterval = *v10
+	this.MaxEpochInterval = *v10
+	v11 := NewPopulatedDuration(r, easy)
+	this.ProposalRetryInterval = *v11
 	if r.Intn(10) != 0 {
-		v11 := r.Intn(10)
-		this.InitialReplicas = make([]*Replica, v11)
-		for i := 0; i < v11; i++ {
+		v12 := r.Intn(10)
+		this.InitialReplicas = make([]*Replica, v12)
+		for i := 0; i < v12; i++ {
 			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
 		}
 	}
 	this.EmailProofToAddr = randStringKeyserverconfig(r)
 	this.EmailProofSubjectPrefix = randStringKeyserverconfig(r)
-	v12 := r.Intn(10)
-	this.EmailProofAllowedDomains = make([]string, v12)
-	for i := 0; i < v12; i++ {
+	v13 := r.Intn(10)
+	this.EmailProofAllowedDomains = make([]string, v13)
+	for i := 0; i < v13; i++ {
 		this.EmailProofAllowedDomains[i] = randStringKeyserverconfig(r)
 	}
 	this.InsecureSkipEmailProof = bool(bool(r.Intn(2) == 0))
@@ -1013,9 +1053,9 @@ func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
 	this := &Replica{}
 	this.ID = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
-		this.PublicKeys = make([]*PublicKey, v13)
-		for i := 0; i < v13; i++ {
+		v14 := r.Intn(10)
+		this.PublicKeys = make([]*PublicKey, v14)
+		for i := 0; i < v14; i++ {
 			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -1044,9 +1084,9 @@ func randUTF8RuneKeyserverconfig(r randyKeyserverconfig) rune {
 	return rune(ru + 61)
 }
 func randStringKeyserverconfig(r randyKeyserverconfig) string {
-	v14 := r.Intn(100)
-	tmps := make([]rune, v14)
-	for i := 0; i < v14; i++ {
+	v15 := r.Intn(100)
+	tmps := make([]rune, v15)
+	for i := 0; i < v15; i++ {
 		tmps[i] = randUTF8RuneKeyserverconfig(r)
 	}
 	return string(tmps)
@@ -1068,11 +1108,11 @@ func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber i
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		v15 := r.Int63()
+		v16 := r.Int63()
 		if r.Intn(2) == 0 {
-			v15 *= -1
+			v16 *= -1
 		}
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(v15))
+		data = encodeVarintPopulateKeyserverconfig(data, uint64(v16))
 	case 1:
 		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -1126,6 +1166,12 @@ func (m *ReplicaConfig) Size() (n int) {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
 	l = m.HKPTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
+	l = len(m.HTTPFrontAddr)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
+	}
+	l = m.HTTPFrontTLS.Size()
 	n += 1 + l + sovKeyserverconfig(uint64(l))
 	l = len(m.RaftAddr)
 	if l > 0 {
@@ -1239,6 +1285,8 @@ func (this *ReplicaConfig) String() string {
 		`VerifierTLS:` + strings.Replace(strings.Replace(this.VerifierTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
 		`HKPAddr:` + fmt.Sprintf("%v", this.HKPAddr) + `,`,
 		`HKPTLS:` + strings.Replace(strings.Replace(this.HKPTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
+		`HTTPFrontAddr:` + fmt.Sprintf("%v", this.HTTPFrontAddr) + `,`,
+		`HTTPFrontTLS:` + strings.Replace(strings.Replace(this.HTTPFrontTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
 		`RaftAddr:` + fmt.Sprintf("%v", this.RaftAddr) + `,`,
 		`RaftTLS:` + strings.Replace(strings.Replace(this.RaftTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
 		`LevelDBPath:` + fmt.Sprintf("%v", this.LevelDBPath) + `,`,
@@ -1575,6 +1623,65 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 10:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HTTPFrontAddr", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.HTTPFrontAddr = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field HTTPFrontTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.HTTPFrontTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftAddr", wireType)
 			}
 			var stringLen uint64
@@ -1602,7 +1709,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			}
 			m.RaftAddr = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 11:
+		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RaftTLS", wireType)
 			}
