@@ -41,8 +41,10 @@ message ReplicaConfig {
 	TLSConfig verifier_tls = 7 [(gogoproto.customname) = "VerifierTLS", (gogoproto.nullable) = false];
 	string hkp_addr = 8 [(gogoproto.customname) = "HKPAddr"];
 	TLSConfig hkp_tls = 9 [(gogoproto.customname) = "HKPTLS", (gogoproto.nullable) = false];
-	string raft_addr = 10;
-	TLSConfig raft_tls = 11 [(gogoproto.customname) = "RaftTLS", (gogoproto.nullable) = false];
+	string httpfront_addr = 10 [(gogoproto.customname) = "HTTPFrontAddr"];
+	TLSConfig httpfront_tls = 11 [(gogoproto.customname) = "HTTPFrontTLS", (gogoproto.nullable) = false];
+	string raft_addr = 12;
+	TLSConfig raft_tls = 13 [(gogoproto.customname) = "RaftTLS", (gogoproto.nullable) = false];
 
 	// LevelDBPath specifies the directory in which the databse is stored.
 	// Nothing else should use this directory.

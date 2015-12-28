@@ -35,6 +35,7 @@ import (
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/concurrent"
 	"github.com/yahoo/coname/hkpfront"
+	"github.com/yahoo/coname/httpfront"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/keyserver/replication"
@@ -62,9 +63,10 @@ type Keyserver struct {
 	log replication.LogReplicator
 	rs  proto.ReplicaState
 
-	publicServer, verifierServer            *grpc.Server
-	hkpFront                                *hkpfront.HKPFront
-	publicListen, verifierListen, hkpListen net.Listener
+	publicServer, verifierServer                             *grpc.Server
+	hkpFront                                                 *hkpfront.HKPFront
+	httpFront                                                *httpfront.HTTPFront
+	publicListen, verifierListen, hkpListen, httpFrontListen net.Listener
 
 	clk       clock.Clock
 	lookupTXT func(string) ([]string, error)
@@ -123,6 +125,11 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		return nil, err
 	}
 	hkpTLS, err := cfg.HKPTLS.Config(getKey)
+	if err != nil {
+		return nil, err
+	}
+
+	httpFrontTLS, err := cfg.HTTPFrontTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +228,18 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 			}
 		}()
 	}
+	if cfg.HTTPFrontAddr != "" {
+		ks.httpFrontListen, err = tls.Listen("tcp", cfg.HTTPFrontAddr, httpFrontTLS)
+		if err != nil {
+			return nil, err
+		}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update}
+		defer func() {
+			if !ok {
+				ks.httpFrontListen.Close()
+			}
+		}()
+	}
 	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, nil)
 	if err != nil {
 		return nil, err
@@ -242,6 +261,9 @@ func (ks *Keyserver) Start() {
 	if ks.hkpFront != nil {
 		ks.hkpFront.Start(ks.hkpListen)
 	}
+	if ks.httpFront != nil {
+		ks.httpFront.Start(ks.httpFrontListen)
+	}
 	go ks.run()
 }
 
@@ -257,6 +279,9 @@ func (ks *Keyserver) Stop() {
 		}
 		if ks.hkpFront != nil {
 			ks.hkpFront.Stop()
+		}
+		if ks.httpFront != nil {
+			ks.httpFront.Stop()
 		}
 		close(ks.stop)
 		<-ks.stopped
@@ -377,7 +402,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			wb.Put(tableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.GetUpdate().Update))
 		} else {
 			// We can deliver the update to verifiers right away.
-			return ks.verifierLogAppend(&proto.VerifierStep{Type:&proto.VerifierStep_Update{Update: step.GetUpdate().Update}}, rs, wb)
+			return ks.verifierLogAppend(&proto.VerifierStep{Type: &proto.VerifierStep_Update{Update: step.GetUpdate().Update}}, rs, wb)
 		}
 
 	case *proto.KeyserverStep_EpochDelimiter:

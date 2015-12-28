@@ -45,6 +45,7 @@ const (
 	publicPort      = 4625
 	verifierPort    = 4626
 	hkpPort         = 11371
+	httpFrontPort   = 25519
 	raftPort        = 9807
 	realm           = "yahoo"
 	dkimProofPrefix = "_YAHOO_E2E_KEYSERVER_PROOF_"
@@ -189,10 +190,12 @@ func main() {
 			PublicAddr:          fmt.Sprintf("%s:%d", host, publicPort),
 			VerifierAddr:        fmt.Sprintf("%s:%d", host, verifierPort),
 			HKPAddr:             fmt.Sprintf("%s:%d", host, hkpPort),
+			HTTPFrontAddr:       fmt.Sprintf("%s:%d", host, httpFrontPort),
 			RaftAddr:            fmt.Sprintf("%s:%d", host, raftPort),
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+			HTTPFrontTLS:        proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			RaftTLS:             proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}},
 			LevelDBPath:         "db", // TODO
 			RaftHeartbeat:       heartbeat,
