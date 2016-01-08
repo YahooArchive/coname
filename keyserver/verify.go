@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
 
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/replication"
@@ -100,11 +101,11 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 const verifierCommonNamePrefix = "verifier" + " "
 
 func authenticateVerifier(ctx context.Context) (uint64, error) {
-	authInfo, ok := credentials.FromContext(ctx)
+	pr, ok := peer.FromContext(ctx)
 	if !ok {
-		return 0, fmt.Errorf("failed to authenticate verifier: credentials.FromContext returned false")
+		return 0, fmt.Errorf("failed to authenticate verifier: peer.FromContext returned false")
 	}
-	certChains := authInfo.(credentials.TLSInfo).State.VerifiedChains
+	certChains := pr.AuthInfo.(credentials.TLSInfo).State.VerifiedChains
 	if len(certChains) != 1 {
 		return 0, fmt.Errorf("failed to authenticate verifier: expected exactly one valid certificate chain")
 	}
@@ -136,7 +137,7 @@ func (ks *Keyserver) PushRatification(ctx context.Context, r *proto.SignedEpochH
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
-		UID:            uid,
+		UID:  uid,
 		Type: &proto.KeyserverStep_VerifierSigned{VerifierSigned: r},
 	})})
 	select {
