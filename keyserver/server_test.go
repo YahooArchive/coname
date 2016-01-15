@@ -906,55 +906,20 @@ func TestKeyserverRejectsUnsignedUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, aliceProfile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	_, _, aliceEntry, aliceProfile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	// First, do a lookup to retrieve the index
 	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
 	}
 	updateC := proto.NewE2EKSPublicClient(conn)
 
-	lookup, err := updateC.Lookup(context.Background(), &proto.LookupRequest{
-		UserId: alice,
-		// We don't care about any signatures here; the server just needs to tell us the index.
-		QuorumRequirement: &proto.QuorumExpr{
-			Threshold:      0,
-			Candidates:     []uint64{},
-			Subexpressions: []*proto.QuorumExpr{},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	index := lookup.Index
-
-	// Send a bad update
-	var commitment [64]byte
-	sha3.ShakeSum256(commitment[:], aliceProfile.Encoding)
-	badEntry := proto.EncodedEntry{
-		Entry: proto.Entry{
-			Index:   index,
-			Version: 99999,
-			UpdatePolicy: &proto.AuthorizationPolicy{
-				PublicKeys: make(map[uint64]*proto.PublicKey),
-				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
-					Threshold:      0,
-					Candidates:     []uint64{},
-					Subexpressions: []*proto.QuorumExpr{},
-				}},
-			},
-			ProfileCommitment: commitment[:],
-		},
-	}
-	badEntry.UpdateEncoding()
-
 	_, err = updateC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
-			NewEntry:   badEntry,
+			NewEntry:   *aliceEntry,
 			Signatures: make(map[uint64][]byte),
 		},
 		Profile: *aliceProfile,
