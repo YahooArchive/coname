@@ -22,8 +22,8 @@ import (
 	"sync"
 
 	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/keyserver/kv"
+	"github.com/yahoo/coname/proto"
 )
 
 const (

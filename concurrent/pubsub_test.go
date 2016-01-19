@@ -51,7 +51,7 @@ func TestPublishOnSameChannel(t *testing.T) {
 			if !ok {
 				t.Fatal("Didn't get a value")
 			} else {
-				t.Fatal("Wrong value: wanted %s, got %s", want, v)
+				t.Fatalf("Wrong value: wanted %s, got %s", want, v)
 			}
 		}
 	}
@@ -83,7 +83,7 @@ func TestPublishToMultipleSubscribers(t *testing.T) {
 				if !ok {
 					t.Fatal("Didn't get a value")
 				} else {
-					t.Fatal("Wrong value: wanted %s, got %s", want, v)
+					t.Fatalf("Wrong value: wanted %s, got %s", want, v)
 				}
 			}
 		}

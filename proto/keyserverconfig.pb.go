@@ -44,7 +44,7 @@ type ReplicaConfig struct {
 	HTTPFrontTLS  TLSConfig `protobuf:"bytes,11,opt,name=httpfront_tls" json:"httpfront_tls"`
 	RaftAddr      string    `protobuf:"bytes,12,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
 	RaftTLS       TLSConfig `protobuf:"bytes,13,opt,name=raft_tls" json:"raft_tls"`
-	// LevelDBPath specifies the directory in which the databse is stored.
+	// LevelDBPath specifies the directory in which the database is stored.
 	// Nothing else should use this directory.
 	LevelDBPath string `protobuf:"bytes,14,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
 	// RaftHeartbeat specifies the interval between successive heartbeat

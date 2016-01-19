@@ -212,10 +212,10 @@ func (vr *Verifier) step(step *proto.VerifierStep, vs *proto.VerifierState, wb k
 			log.Panicf("%d: seh with root hash %q, expected %q: %#v", vs.NextEpoch, s.RootHash, rootHash, *step)
 		}
 		seh := &proto.SignedEpochHead{
-			Head: proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
+			Head: proto.EncodedTimestampedEpochHead{TimestampedEpochHead: proto.TimestampedEpochHead{
 				Head:      s,
 				Timestamp: proto.Time(time.Now()),
-			}, nil},
+			}, Encoding: nil},
 			Signatures: make(map[uint64][]byte, 1),
 		}
 		if vs.PreviousSummaryHash == nil {

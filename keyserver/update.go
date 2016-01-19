@@ -101,7 +101,7 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
 	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
-		UID:    uid,
+		UID:  uid,
 		Type: &proto.KeyserverStep_Update{Update: req},
 	})})
 	select {

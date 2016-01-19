@@ -1016,16 +1016,16 @@ func TestKeyserverHKP(t *testing.T) {
 	}
 
 	if got, want := pgpBlock.Type, "PGP PUBLIC KEY BLOCK"; got != want {
-		t.Error("pgpBlock.Type: got %v but wanted %v", got, want)
+		t.Errorf("pgpBlock.Type: got %v but wanted %v", got, want)
 	}
 	if got, want := len(pgpBlock.Header), 0; got != want {
-		t.Error("len(pgpBlock.Header): got %v but wanted %v", got, want)
+		t.Errorf("len(pgpBlock.Header): got %v but wanted %v", got, want)
 	}
 	pgpKey, err := ioutil.ReadAll(pgpBlock.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
-		t.Error("pgpKey: got %q but wanted %q", got, want)
+		t.Errorf("pgpKey: got %q but wanted %q", got, want)
 	}
 }

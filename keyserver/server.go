@@ -436,16 +436,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if err != nil {
 			log.Panicf("ks.latestTree.GetRootHash() failed: %s", err)
 		}
-		teh := &proto.EncodedTimestampedEpochHead{proto.TimestampedEpochHead{
-			Head: proto.EncodedEpochHead{proto.EpochHead{
+		teh := &proto.EncodedTimestampedEpochHead{TimestampedEpochHead: proto.TimestampedEpochHead{
+			Head: proto.EncodedEpochHead{EpochHead: proto.EpochHead{
 				RootHash:            rootHash,
 				PreviousSummaryHash: rs.PreviousSummaryHash,
 				Realm:               ks.realm,
 				Epoch:               step.GetEpochDelimiter().EpochNumber,
 				IssueTime:           step.GetEpochDelimiter().Timestamp,
-			}, nil},
+			}, Encoding: nil},
 			Timestamp: step.GetEpochDelimiter().Timestamp,
-		}, nil}
+		}, Encoding: nil}
 		teh.Head.UpdateEncoding()
 		teh.UpdateEncoding()
 		if rs.PreviousSummaryHash == nil {
@@ -536,7 +536,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			Signatures: allSignatures,
 		}
 		oldDeferredIO := deferredIO
-		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{&proto.VerifierStep_Epoch{Epoch: allSignaturesSEH}}, rs, wb)
+		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{Type: &proto.VerifierStep_Epoch{Epoch: allSignaturesSEH}}, rs, wb)
 		deferredSendUpdates := []func(){}
 		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableUpdatesPendingRatificationPrefix}))
 		defer iter.Release()
@@ -546,7 +546,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			if err != nil {
 				log.Panicf("invalid pending update %x: %s", iter.Value(), err)
 			}
-			deferredSendUpdates = append(deferredSendUpdates, ks.verifierLogAppend(&proto.VerifierStep{&proto.VerifierStep_Update{Update: update}}, rs, wb))
+			deferredSendUpdates = append(deferredSendUpdates, ks.verifierLogAppend(&proto.VerifierStep{Type: &proto.VerifierStep_Update{Update: update}}, rs, wb))
 			wb.Delete(iter.Key())
 		}
 		deferredIO = func() {
@@ -683,7 +683,7 @@ func (ks *Keyserver) updateSignatureProposer() {
 	case true:
 		tehBytes, err := ks.db.Get(tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber))
 		if err != nil {
-			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db", err)
+			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db: %s", err)
 		}
 		var teh proto.EncodedTimestampedEpochHead
 		if err := teh.Unmarshal(tehBytes); err != nil {

@@ -15,8 +15,8 @@
 package proto
 
 import (
-	github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 	github_com_gogo_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
+	github_com_gogo_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
 	math_rand "math/rand"
 	"testing"
 	"time"
