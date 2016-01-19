@@ -368,8 +368,8 @@ loop:
 
 func doUpdate(
 	t *testing.T, ks *Keyserver, clientConfig *proto.Config, clientTLS *tls.Config, caPool *x509.CertPool, now time.Time,
-	name string, version uint64, profileContents proto.Profile,
-) *proto.EncodedProfile {
+	name string, sk *[ed25519.PrivateKeySize]byte, pk *proto.PublicKey, version uint64, profileContents proto.Profile,
+) (*proto.EncodedEntry, *proto.EncodedProfile) {
 	conn, err := grpc.Dial(ks.publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
 	if err != nil {
 		t.Fatal(err)
@@ -392,6 +392,10 @@ func doUpdate(
 	index := lookup.Index
 
 	// Do the update
+	var keyidBytes [8]byte
+	sha3.ShakeSum256(keyidBytes[:], proto.MustMarshal(pk))
+	keyid := binary.BigEndian.Uint64(keyidBytes[:8])
+
 	profile := proto.EncodedProfile{
 		Profile: profileContents,
 	}
@@ -403,10 +407,10 @@ func doUpdate(
 			Index:   index,
 			Version: version,
 			UpdatePolicy: &proto.AuthorizationPolicy{
-				PublicKeys: make(map[uint64]*proto.PublicKey),
+				PublicKeys: map[uint64]*proto.PublicKey{keyid: pk},
 				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
-					Threshold:      0,
-					Candidates:     []uint64{},
+					Threshold:      1,
+					Candidates:     []uint64{keyid},
 					Subexpressions: []*proto.QuorumExpr{},
 				},
 				}},
@@ -417,7 +421,7 @@ func doUpdate(
 	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
 			NewEntry:   entry,
-			Signatures: make(map[uint64][]byte),
+			Signatures: map[uint64][]byte{keyid: ed25519.Sign(sk, entry.Encoding)[:]},
 		},
 		Profile: profile,
 		LookupParameters: &proto.LookupRequest{
@@ -435,7 +439,21 @@ func doUpdate(
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &profile
+	return &entry, &profile
+}
+
+func doRegister(
+	t *testing.T, ks *Keyserver, clientConfig *proto.Config, clientTLS *tls.Config, caPool *x509.CertPool, now time.Time,
+	name string, version uint64, profileContents proto.Profile,
+) (*[ed25519.PrivateKeySize]byte, *proto.PublicKey, *proto.EncodedEntry, *proto.EncodedProfile) {
+	// Generate keys
+	edpk, sk, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pk := &proto.PublicKey{&proto.PublicKey_Ed25519{Ed25519: edpk[:]}}
+	e, p := doUpdate(t, ks, clientConfig, clientTLS, caPool, now, name, sk, pk, version, profileContents)
+	return sk, pk, e, p
 }
 
 func waitForFirstEpoch(ks *Keyserver, quorum *proto.QuorumExpr) {
@@ -541,7 +559,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	_, _, _, profile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
@@ -596,7 +614,7 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	_, _, aliceEntry, aliceProfile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
@@ -605,37 +623,13 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := proto.EncodedProfile{
-		Profile: proto.Profile{
-			Nonce: []byte("NONCE"),
-			Keys:  map[string][]byte{"abc": []byte{3, 2, 3}, "xyz": []byte("TEST 456")},
-		},
-	}
-	profile.UpdateEncoding()
-	var commitment [64]byte
-	sha3.ShakeSum256(commitment[:], profile.Encoding)
-	entry := proto.EncodedEntry{
-		Entry: proto.Entry{
-			Version: 0,
-			UpdatePolicy: &proto.AuthorizationPolicy{
-				PublicKeys: make(map[uint64]*proto.PublicKey),
-				PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
-					Threshold:      0,
-					Candidates:     []uint64{},
-					Subexpressions: []*proto.QuorumExpr{},
-				}},
-			},
-			ProfileCommitment: commitment[:],
-		},
-	}
-	entry.UpdateEncoding()
 	updateC := proto.NewE2EKSPublicClient(conn)
 	_, err = updateC.Update(context.Background(), &proto.UpdateRequest{
 		Update: &proto.SignedEntryUpdate{
-			NewEntry:   entry,
+			NewEntry:   *aliceEntry,
 			Signatures: make(map[uint64][]byte),
 		},
-		Profile: profile,
+		Profile: *aliceProfile,
 		LookupParameters: &proto.LookupRequest{
 			UserId:            alice,
 			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
@@ -674,12 +668,12 @@ func TestKeyserverUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	sk, pk, _, _ := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
 
-	doUpdate(t, kss[2], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 1, proto.Profile{
+	doUpdate(t, kss[2], clientConfig, clientTLS, caPool, clks[0].Now(), alice, sk, pk, 1, proto.Profile{
 		Nonce: []byte("XYZNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
 	})
@@ -870,7 +864,7 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	profile := doUpdate(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	_, _, _, profile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("noncenoncenonceNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
 	})
@@ -899,6 +893,90 @@ func TestKeyserverLookupRequireThreeVerifiers(t *testing.T) {
 	}
 }
 
+func TestKeyserverRejectsUnsignedUpdate(t *testing.T) {
+	dieOnCtrlC()
+	kss, caPool, clks, _, ck, clientConfig, teardown := setupRealm(t, 3, 3)
+	defer teardown()
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, aliceEntry, aliceProfile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateC := proto.NewE2EKSPublicClient(conn)
+
+	_, err = updateC.Update(context.Background(), &proto.UpdateRequest{
+		Update: &proto.SignedEntryUpdate{
+			NewEntry:   *aliceEntry,
+			Signatures: make(map[uint64][]byte),
+		},
+		Profile: *aliceProfile,
+		LookupParameters: &proto.LookupRequest{
+			UserId:            alice,
+			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+		},
+	})
+	if err == nil {
+		t.Fatalf("update went through even though it wasn't signed (and should have been required to be)")
+	}
+}
+
+func TestKeyserverRejectsMissignedUpdate(t *testing.T) {
+	dieOnCtrlC()
+	kss, caPool, clks, _, ck, clientConfig, teardown := setupRealm(t, 3, 3)
+	defer teardown()
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, alicePk, aliceEntry, aliceProfile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	var aliceKeyIdBytes [8]byte
+	sha3.ShakeSum256(aliceKeyIdBytes[:], proto.MustMarshal(alicePk))
+	aliceKeyid := binary.BigEndian.Uint64(aliceKeyIdBytes[:8])
+	_, badSk, _ := ed25519.GenerateKey(rand.Reader)
+
+	conn, err := grpc.Dial(kss[1].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	updateC := proto.NewE2EKSPublicClient(conn)
+	_, err = updateC.Update(context.Background(), &proto.UpdateRequest{
+		Update: &proto.SignedEntryUpdate{
+			NewEntry:   *aliceEntry,
+			Signatures: map[uint64][]byte{aliceKeyid: ed25519.Sign(badSk, aliceEntry.Encoding)[:]},
+		},
+		Profile: *aliceProfile,
+		LookupParameters: &proto.LookupRequest{
+			UserId:            alice,
+			QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+		},
+	})
+	if err == nil {
+		t.Fatalf("update went through even though it was signed with the wrong key")
+	}
+}
+
 func TestKeyserverHKP(t *testing.T) {
 	kss, caPool, clks, _, ck, clientConfig, teardown := setupRealm(t, 1, 0)
 	ks := kss[0]
@@ -913,7 +991,7 @@ func TestKeyserverHKP(t *testing.T) {
 	}
 
 	pgpKeyRef := []byte("this-is-alices-pgp-key")
-	doUpdate(t, ks, clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+	doRegister(t, ks, clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("definitely used only once"),
 		Keys:  map[string][]byte{"pgp": pgpKeyRef},
 	})

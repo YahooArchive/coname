@@ -46,7 +46,7 @@ message ReplicaConfig {
 	string raft_addr = 12;
 	TLSConfig raft_tls = 13 [(gogoproto.customname) = "RaftTLS", (gogoproto.nullable) = false];
 
-	// LevelDBPath specifies the directory in which the databse is stored.
+	// LevelDBPath specifies the directory in which the database is stored.
 	// Nothing else should use this directory.
 	string leveldb_path = 14 [(gogoproto.customname) = "LevelDBPath"];
 
