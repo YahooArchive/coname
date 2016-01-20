@@ -710,7 +710,7 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 }
 
 func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64]*proto.SignedEpochHead, error) {
-	iter := ks.db.NewIterator(&kv.Range{tableRatifications(epoch, 0), tableRatifications(epoch+1, 0)})
+	iter := ks.db.NewIterator(&kv.Range{Start: tableRatifications(epoch, 0), Limit: tableRatifications(epoch+1, 0)})
 	defer iter.Release()
 	sehs := make(map[uint64]*proto.SignedEpochHead)
 	for iter.Next() {

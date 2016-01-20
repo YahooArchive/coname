@@ -451,7 +451,7 @@ func doRegister(
 	if err != nil {
 		t.Fatal(err)
 	}
-	pk := &proto.PublicKey{&proto.PublicKey_Ed25519{Ed25519: edpk[:]}}
+	pk := &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: edpk[:]}}
 	e, p := doUpdate(t, ks, clientConfig, clientTLS, caPool, now, name, sk, pk, version, profileContents)
 	return sk, pk, e, p
 }

@@ -415,7 +415,7 @@ func (s *raftStorage) getEntryKey(nr uint64) (key []byte) {
 
 // Entries implements the raft.Storage interface
 func (s *raftStorage) Entries(lo, hi, maxSize uint64) (entries []raftpb.Entry, err error) {
-	it := s.db.NewIterator(&kv.Range{s.getEntryKey(lo), s.getEntryKey(hi)})
+	it := s.db.NewIterator(&kv.Range{Start: s.getEntryKey(lo), Limit: s.getEntryKey(hi)})
 	defer it.Release()
 	entries = make([]raftpb.Entry, 0)
 	sizeSoFar := uint64(0)
