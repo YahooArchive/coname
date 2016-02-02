@@ -24,7 +24,6 @@ import (
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/dkim"
-	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 	"golang.org/x/crypto/sha3"
@@ -100,10 +99,10 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 
 	uid := genUID()
 	ch := ks.wr.Wait(uid)
-	ks.log.Propose(ctx, replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{
-		UID:    uid,
+	ks.log.Propose(ctx, proto.MustMarshal(&proto.KeyserverStep{
+		UID:  uid,
 		Type: &proto.KeyserverStep_Update{Update: req},
-	})})
+	}))
 	select {
 	case <-ctx.Done():
 		ks.wr.Notify(uid, nil)

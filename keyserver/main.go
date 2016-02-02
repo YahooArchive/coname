@@ -18,7 +18,6 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -30,14 +29,12 @@ import (
 	"path"
 	"strings"
 
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
+	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/proto"
@@ -101,60 +98,11 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 	}
 }
 
-func majority(nReplicas int) int {
-	return nReplicas/2 + 1
-}
-
-func RunWithConfig(cfg *proto.ReplicaConfig) {
-	// TODO: since we only want to support precisely this ratification policy,
-	// this should be moved into server.go
-	ratificationPolicy := &proto.AuthorizationPolicy{
-		PublicKeys: make(map[uint64]*proto.PublicKey),
-		PolicyType: &proto.AuthorizationPolicy_Quorum{&proto.QuorumExpr{
-			Threshold: uint32(majority(len(cfg.KeyserverConfig.InitialReplicas)))},
-		},
-	}
-	replicaIDs := []uint64{}
-	for _, replica := range cfg.KeyserverConfig.InitialReplicas {
-		replicaIDs = append(replicaIDs, replica.ID)
-		replicaExpr := &proto.QuorumExpr{
-			Threshold: 1,
-		}
-		for _, pk := range replica.PublicKeys {
-			pkid := proto.KeyID(pk)
-			ratificationPolicy.PublicKeys[pkid] = pk
-			replicaExpr.Candidates = append(replicaExpr.Candidates, pkid)
-		}
-		ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions = append(ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions, replicaExpr)
-	}
-
-	leveldb, err := leveldb.OpenFile(cfg.LevelDBPath, nil)
-	if err != nil {
-		log.Fatalf("Couldn't open DB in directory %s: %s", cfg.LevelDBPath, err)
-	}
-	db := leveldbkv.Wrap(leveldb)
-
-	clk := clock.New()
-
-	raftListener, err := net.Listen("tcp", cfg.RaftAddr)
-	if err != nil {
-		log.Fatalf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
-	}
-	defer raftListener.Close()
-	raftTLS, err := cfg.RaftTLS.Config(getKey)
-	if err != nil {
-		log.Fatalf("Bad Raft TLS configuration: %s", err)
-	}
-	raftCreds := credentials.NewTLS(raftTLS)
-	raftServer := grpc.NewServer(grpc.Creds(raftCreds))
-	go raftServer.Serve(raftListener)
-	defer raftServer.Stop()
-
+func mkRaftLog(largs *logReplicatorArgs) replication.LogReplicator {
 	dialRaftPeer := func(id uint64) raftproto.RaftClient {
-		// TODO use current, not initial, config
-		for _, replica := range cfg.KeyserverConfig.InitialReplicas {
-			if replica.ID == id {
-				conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs})))
+		for _, replica := range largs.replicas {
+			if replica.ID == largs.replicaID {
+				conn, err := largs.dialReplica(replica.RaftAddr)
 				if err != nil {
 					log.Panicf("Raft GRPC dial failed: %s", err)
 				}
@@ -165,13 +113,23 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 		return nil
 	}
 
-	raft := raftlog.New(
-		cfg.ReplicaID, replicaIDs, db, []byte{tableReplicationLogPrefix},
-		clk, cfg.RaftHeartbeat.Duration(), raftServer, dialRaftPeer,
-	)
-	defer raft.Stop()
+	replicaIDs := make([]uint64, 0, len(largs.replicas))
+	for _, r := range largs.replicas {
+		replicaIDs = append(replicaIDs, r.ID)
+	}
+	return raftlog.New(largs.replicaID, replicaIDs, largs.db, largs.dbPrefix, largs.clk, largs.heartbeat, largs.replicationServer, dialRaftPeer)
+}
 
-	server, err := Open(cfg, db, raft, ratificationPolicy, clk, getKey, net.LookupTXT)
+func RunWithConfig(cfg *proto.ReplicaConfig) {
+	leveldb, err := leveldb.OpenFile(cfg.LevelDBPath, nil)
+	if err != nil {
+		log.Fatalf("Couldn't open DB in directory %s: %s", cfg.LevelDBPath, err)
+	}
+	db := leveldbkv.Wrap(leveldb)
+
+	clk := clock.New()
+
+	server, err := Open(cfg, db, net.Listen, mkRaftLog, clk, getKey, net.LookupTXT)
 	if err != nil {
 		log.Fatalf("Failed to initialize keyserver: %s", err)
 	}

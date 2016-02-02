@@ -36,6 +36,7 @@ type KeyserverStep struct {
 	//	*KeyserverStep_EpochDelimiter
 	//	*KeyserverStep_ReplicaSigned
 	//	*KeyserverStep_VerifierSigned
+	//	*KeyserverStep_AcceptableClusterChange
 	Type isKeyserverStep_Type `protobuf_oneof:"type"`
 }
 
@@ -62,11 +63,15 @@ type KeyserverStep_ReplicaSigned struct {
 type KeyserverStep_VerifierSigned struct {
 	VerifierSigned *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_signed,oneof"`
 }
+type KeyserverStep_AcceptableClusterChange struct {
+	AcceptableClusterChange *AcceptableClusterChange `protobuf:"bytes,6,opt,name=acceptable_cluster_change,oneof"`
+}
 
-func (*KeyserverStep_Update) isKeyserverStep_Type()         {}
-func (*KeyserverStep_EpochDelimiter) isKeyserverStep_Type() {}
-func (*KeyserverStep_ReplicaSigned) isKeyserverStep_Type()  {}
-func (*KeyserverStep_VerifierSigned) isKeyserverStep_Type() {}
+func (*KeyserverStep_Update) isKeyserverStep_Type()                  {}
+func (*KeyserverStep_EpochDelimiter) isKeyserverStep_Type()          {}
+func (*KeyserverStep_ReplicaSigned) isKeyserverStep_Type()           {}
+func (*KeyserverStep_VerifierSigned) isKeyserverStep_Type()          {}
+func (*KeyserverStep_AcceptableClusterChange) isKeyserverStep_Type() {}
 
 func (m *KeyserverStep) GetType() isKeyserverStep_Type {
 	if m != nil {
@@ -103,6 +108,13 @@ func (m *KeyserverStep) GetVerifierSigned() *SignedEpochHead {
 	return nil
 }
 
+func (m *KeyserverStep) GetAcceptableClusterChange() *AcceptableClusterChange {
+	if x, ok := m.GetType().(*KeyserverStep_AcceptableClusterChange); ok {
+		return x.AcceptableClusterChange
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
 	return _KeyserverStep_OneofMarshaler, _KeyserverStep_OneofUnmarshaler, []interface{}{
@@ -110,6 +122,7 @@ func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffe
 		(*KeyserverStep_EpochDelimiter)(nil),
 		(*KeyserverStep_ReplicaSigned)(nil),
 		(*KeyserverStep_VerifierSigned)(nil),
+		(*KeyserverStep_AcceptableClusterChange)(nil),
 	}
 }
 
@@ -135,6 +148,11 @@ func _KeyserverStep_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 	case *KeyserverStep_VerifierSigned:
 		_ = b.EncodeVarint(5<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.VerifierSigned); err != nil {
+			return err
+		}
+	case *KeyserverStep_AcceptableClusterChange:
+		_ = b.EncodeVarint(6<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.AcceptableClusterChange); err != nil {
 			return err
 		}
 	case nil:
@@ -179,14 +197,40 @@ func _KeyserverStep_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Type = &KeyserverStep_VerifierSigned{msg}
 		return true, err
+	case 6: // type.acceptable_cluster_change
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(AcceptableClusterChange)
+		err := b.DecodeMessage(msg)
+		m.Type = &KeyserverStep_AcceptableClusterChange{msg}
+		return true, err
 	default:
 		return false, nil
 	}
 }
 
+// AcceptableClusterChange signals that Replica would sign a EpochDelimiter
+// containing Cluster as NextEpochReplicas.
+type AcceptableClusterChange struct {
+	Replica uint64     `protobuf:"fixed64,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	Cluster []*Replica `protobuf:"bytes,2,rep,name=cluster" json:"cluster,omitempty"`
+}
+
+func (m *AcceptableClusterChange) Reset()      { *m = AcceptableClusterChange{} }
+func (*AcceptableClusterChange) ProtoMessage() {}
+
+func (m *AcceptableClusterChange) GetCluster() []*Replica {
+	if m != nil {
+		return m.Cluster
+	}
+	return nil
+}
+
 type EpochDelimiter struct {
-	EpochNumber uint64    `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
-	Timestamp   Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
+	EpochNumber       uint64     `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
+	Timestamp         Timestamp  `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
+	NextEpochReplicas []*Replica `protobuf:"bytes,3,rep,name=next_epoch_replicas" json:"next_epoch_replicas,omitempty"`
 }
 
 func (m *EpochDelimiter) Reset()      { *m = EpochDelimiter{} }
@@ -197,6 +241,13 @@ func (m *EpochDelimiter) GetTimestamp() Timestamp {
 		return m.Timestamp
 	}
 	return Timestamp{}
+}
+
+func (m *EpochDelimiter) GetNextEpochReplicas() []*Replica {
+	if m != nil {
+		return m.NextEpochReplicas
+	}
+	return nil
 }
 
 func (this *KeyserverStep) VerboseEqual(that interface{}) error {
@@ -330,6 +381,31 @@ func (this *KeyserverStep_VerifierSigned) VerboseEqual(that interface{}) error {
 	}
 	if !this.VerifierSigned.Equal(that1.VerifierSigned) {
 		return fmt.Errorf("VerifierSigned this(%v) Not Equal that(%v)", this.VerifierSigned, that1.VerifierSigned)
+	}
+	return nil
+}
+func (this *KeyserverStep_AcceptableClusterChange) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*KeyserverStep_AcceptableClusterChange)
+	if !ok {
+		return fmt.Errorf("that is not of type *KeyserverStep_AcceptableClusterChange")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *KeyserverStep_AcceptableClusterChange but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *KeyserverStep_AcceptableClusterChangebut is not nil && this == nil")
+	}
+	if !this.AcceptableClusterChange.Equal(that1.AcceptableClusterChange) {
+		return fmt.Errorf("AcceptableClusterChange this(%v) Not Equal that(%v)", this.AcceptableClusterChange, that1.AcceptableClusterChange)
 	}
 	return nil
 }
@@ -467,6 +543,97 @@ func (this *KeyserverStep_VerifierSigned) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *KeyserverStep_AcceptableClusterChange) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*KeyserverStep_AcceptableClusterChange)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.AcceptableClusterChange.Equal(that1.AcceptableClusterChange) {
+		return false
+	}
+	return true
+}
+func (this *AcceptableClusterChange) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*AcceptableClusterChange)
+	if !ok {
+		return fmt.Errorf("that is not of type *AcceptableClusterChange")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *AcceptableClusterChange but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *AcceptableClusterChangebut is not nil && this == nil")
+	}
+	if this.Replica != that1.Replica {
+		return fmt.Errorf("Replica this(%v) Not Equal that(%v)", this.Replica, that1.Replica)
+	}
+	if len(this.Cluster) != len(that1.Cluster) {
+		return fmt.Errorf("Cluster this(%v) Not Equal that(%v)", len(this.Cluster), len(that1.Cluster))
+	}
+	for i := range this.Cluster {
+		if !this.Cluster[i].Equal(that1.Cluster[i]) {
+			return fmt.Errorf("Cluster this[%v](%v) Not Equal that[%v](%v)", i, this.Cluster[i], i, that1.Cluster[i])
+		}
+	}
+	return nil
+}
+func (this *AcceptableClusterChange) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*AcceptableClusterChange)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.Replica != that1.Replica {
+		return false
+	}
+	if len(this.Cluster) != len(that1.Cluster) {
+		return false
+	}
+	for i := range this.Cluster {
+		if !this.Cluster[i].Equal(that1.Cluster[i]) {
+			return false
+		}
+	}
+	return true
+}
 func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -492,6 +659,14 @@ func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
 	}
 	if !this.Timestamp.Equal(&that1.Timestamp) {
 		return fmt.Errorf("Timestamp this(%v) Not Equal that(%v)", this.Timestamp, that1.Timestamp)
+	}
+	if len(this.NextEpochReplicas) != len(that1.NextEpochReplicas) {
+		return fmt.Errorf("NextEpochReplicas this(%v) Not Equal that(%v)", len(this.NextEpochReplicas), len(that1.NextEpochReplicas))
+	}
+	for i := range this.NextEpochReplicas {
+		if !this.NextEpochReplicas[i].Equal(that1.NextEpochReplicas[i]) {
+			return fmt.Errorf("NextEpochReplicas this[%v](%v) Not Equal that[%v](%v)", i, this.NextEpochReplicas[i], i, that1.NextEpochReplicas[i])
+		}
 	}
 	return nil
 }
@@ -521,13 +696,21 @@ func (this *EpochDelimiter) Equal(that interface{}) bool {
 	if !this.Timestamp.Equal(&that1.Timestamp) {
 		return false
 	}
+	if len(this.NextEpochReplicas) != len(that1.NextEpochReplicas) {
+		return false
+	}
+	for i := range this.NextEpochReplicas {
+		if !this.NextEpochReplicas[i].Equal(that1.NextEpochReplicas[i]) {
+			return false
+		}
+	}
 	return true
 }
 func (this *KeyserverStep) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&proto.KeyserverStep{")
 	s = append(s, "UID: "+fmt.Sprintf("%#v", this.UID)+",\n")
 	if this.Type != nil {
@@ -568,14 +751,38 @@ func (this *KeyserverStep_VerifierSigned) GoString() string {
 		`VerifierSigned:` + fmt.Sprintf("%#v", this.VerifierSigned) + `}`}, ", ")
 	return s
 }
-func (this *EpochDelimiter) GoString() string {
+func (this *KeyserverStep_AcceptableClusterChange) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.KeyserverStep_AcceptableClusterChange{` +
+		`AcceptableClusterChange:` + fmt.Sprintf("%#v", this.AcceptableClusterChange) + `}`}, ", ")
+	return s
+}
+func (this *AcceptableClusterChange) GoString() string {
 	if this == nil {
 		return "nil"
 	}
 	s := make([]string, 0, 6)
+	s = append(s, "&proto.AcceptableClusterChange{")
+	s = append(s, "Replica: "+fmt.Sprintf("%#v", this.Replica)+",\n")
+	if this.Cluster != nil {
+		s = append(s, "Cluster: "+fmt.Sprintf("%#v", this.Cluster)+",\n")
+	}
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
+func (this *EpochDelimiter) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
 	s = append(s, "&proto.EpochDelimiter{")
 	s = append(s, "EpochNumber: "+fmt.Sprintf("%#v", this.EpochNumber)+",\n")
 	s = append(s, "Timestamp: "+strings.Replace(this.Timestamp.GoString(), `&`, ``, 1)+",\n")
+	if this.NextEpochReplicas != nil {
+		s = append(s, "NextEpochReplicas: "+fmt.Sprintf("%#v", this.NextEpochReplicas)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -690,6 +897,55 @@ func (m *KeyserverStep_VerifierSigned) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
+func (m *KeyserverStep_AcceptableClusterChange) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.AcceptableClusterChange != nil {
+		data[i] = 0x32
+		i++
+		i = encodeVarintReplication(data, i, uint64(m.AcceptableClusterChange.Size()))
+		n6, err := m.AcceptableClusterChange.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	return i, nil
+}
+func (m *AcceptableClusterChange) Marshal() (data []byte, err error) {
+	size := m.Size()
+	data = make([]byte, size)
+	n, err := m.MarshalTo(data)
+	if err != nil {
+		return nil, err
+	}
+	return data[:n], nil
+}
+
+func (m *AcceptableClusterChange) MarshalTo(data []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Replica != 0 {
+		data[i] = 0x9
+		i++
+		i = encodeFixed64Replication(data, i, uint64(m.Replica))
+	}
+	if len(m.Cluster) > 0 {
+		for _, msg := range m.Cluster {
+			data[i] = 0x12
+			i++
+			i = encodeVarintReplication(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	return i, nil
+}
+
 func (m *EpochDelimiter) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -713,11 +969,23 @@ func (m *EpochDelimiter) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x12
 	i++
 	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
-	n6, err := m.Timestamp.MarshalTo(data[i:])
+	n7, err := m.Timestamp.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n7
+	if len(m.NextEpochReplicas) > 0 {
+		for _, msg := range m.NextEpochReplicas {
+			data[i] = 0x1a
+			i++
+			i = encodeVarintReplication(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	return i, nil
 }
 
@@ -751,7 +1019,7 @@ func encodeVarintReplication(data []byte, offset int, v uint64) int {
 func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
 	this := &KeyserverStep{}
 	this.UID = uint64(uint64(r.Uint32()))
-	oneofNumber_Type := []int32{2, 3, 4, 5}[r.Intn(4)]
+	oneofNumber_Type := []int32{2, 3, 4, 5, 6}[r.Intn(5)]
 	switch oneofNumber_Type {
 	case 2:
 		this.Type = NewPopulatedKeyserverStep_Update(r, easy)
@@ -761,6 +1029,8 @@ func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
 		this.Type = NewPopulatedKeyserverStep_ReplicaSigned(r, easy)
 	case 5:
 		this.Type = NewPopulatedKeyserverStep_VerifierSigned(r, easy)
+	case 6:
+		this.Type = NewPopulatedKeyserverStep_AcceptableClusterChange(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -787,11 +1057,38 @@ func NewPopulatedKeyserverStep_VerifierSigned(r randyReplication, easy bool) *Ke
 	this.VerifierSigned = NewPopulatedSignedEpochHead(r, easy)
 	return this
 }
+func NewPopulatedKeyserverStep_AcceptableClusterChange(r randyReplication, easy bool) *KeyserverStep_AcceptableClusterChange {
+	this := &KeyserverStep_AcceptableClusterChange{}
+	this.AcceptableClusterChange = NewPopulatedAcceptableClusterChange(r, easy)
+	return this
+}
+func NewPopulatedAcceptableClusterChange(r randyReplication, easy bool) *AcceptableClusterChange {
+	this := &AcceptableClusterChange{}
+	this.Replica = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		v1 := r.Intn(10)
+		this.Cluster = make([]*Replica, v1)
+		for i := 0; i < v1; i++ {
+			this.Cluster[i] = NewPopulatedReplica(r, easy)
+		}
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
 func NewPopulatedEpochDelimiter(r randyReplication, easy bool) *EpochDelimiter {
 	this := &EpochDelimiter{}
 	this.EpochNumber = uint64(uint64(r.Uint32()))
-	v1 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v1
+	v2 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v2
+	if r.Intn(10) != 0 {
+		v3 := r.Intn(10)
+		this.NextEpochReplicas = make([]*Replica, v3)
+		for i := 0; i < v3; i++ {
+			this.NextEpochReplicas[i] = NewPopulatedReplica(r, easy)
+		}
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -816,9 +1113,9 @@ func randUTF8RuneReplication(r randyReplication) rune {
 	return rune(ru + 61)
 }
 func randStringReplication(r randyReplication) string {
-	v2 := r.Intn(100)
-	tmps := make([]rune, v2)
-	for i := 0; i < v2; i++ {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
 		tmps[i] = randUTF8RuneReplication(r)
 	}
 	return string(tmps)
@@ -840,11 +1137,11 @@ func randFieldReplication(data []byte, r randyReplication, fieldNumber int, wire
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateReplication(data, uint64(key))
-		v3 := r.Int63()
+		v5 := r.Int63()
 		if r.Intn(2) == 0 {
-			v3 *= -1
+			v5 *= -1
 		}
-		data = encodeVarintPopulateReplication(data, uint64(v3))
+		data = encodeVarintPopulateReplication(data, uint64(v5))
 	case 1:
 		data = encodeVarintPopulateReplication(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -917,6 +1214,30 @@ func (m *KeyserverStep_VerifierSigned) Size() (n int) {
 	}
 	return n
 }
+func (m *KeyserverStep_AcceptableClusterChange) Size() (n int) {
+	var l int
+	_ = l
+	if m.AcceptableClusterChange != nil {
+		l = m.AcceptableClusterChange.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	return n
+}
+func (m *AcceptableClusterChange) Size() (n int) {
+	var l int
+	_ = l
+	if m.Replica != 0 {
+		n += 9
+	}
+	if len(m.Cluster) > 0 {
+		for _, e := range m.Cluster {
+			l = e.Size()
+			n += 1 + l + sovReplication(uint64(l))
+		}
+	}
+	return n
+}
+
 func (m *EpochDelimiter) Size() (n int) {
 	var l int
 	_ = l
@@ -925,6 +1246,12 @@ func (m *EpochDelimiter) Size() (n int) {
 	}
 	l = m.Timestamp.Size()
 	n += 1 + l + sovReplication(uint64(l))
+	if len(m.NextEpochReplicas) > 0 {
+		for _, e := range m.NextEpochReplicas {
+			l = e.Size()
+			n += 1 + l + sovReplication(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -992,6 +1319,27 @@ func (this *KeyserverStep_VerifierSigned) String() string {
 	}, "")
 	return s
 }
+func (this *KeyserverStep_AcceptableClusterChange) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&KeyserverStep_AcceptableClusterChange{`,
+		`AcceptableClusterChange:` + strings.Replace(fmt.Sprintf("%v", this.AcceptableClusterChange), "AcceptableClusterChange", "AcceptableClusterChange", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *AcceptableClusterChange) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&AcceptableClusterChange{`,
+		`Replica:` + fmt.Sprintf("%v", this.Replica) + `,`,
+		`Cluster:` + strings.Replace(fmt.Sprintf("%v", this.Cluster), "Replica", "Replica", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *EpochDelimiter) String() string {
 	if this == nil {
 		return "nil"
@@ -999,6 +1347,7 @@ func (this *EpochDelimiter) String() string {
 	s := strings.Join([]string{`&EpochDelimiter{`,
 		`EpochNumber:` + fmt.Sprintf("%v", this.EpochNumber) + `,`,
 		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`NextEpochReplicas:` + strings.Replace(fmt.Sprintf("%v", this.NextEpochReplicas), "Replica", "Replica", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1185,6 +1534,136 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			}
 			m.Type = &KeyserverStep_VerifierSigned{v}
 			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AcceptableClusterChange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &AcceptableClusterChange{}
+			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Type = &KeyserverStep_AcceptableClusterChange{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipReplication(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthReplication
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AcceptableClusterChange) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowReplication
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AcceptableClusterChange: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AcceptableClusterChange: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Replica", wireType)
+			}
+			m.Replica = 0
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			m.Replica = uint64(data[iNdEx-8])
+			m.Replica |= uint64(data[iNdEx-7]) << 8
+			m.Replica |= uint64(data[iNdEx-6]) << 16
+			m.Replica |= uint64(data[iNdEx-5]) << 24
+			m.Replica |= uint64(data[iNdEx-4]) << 32
+			m.Replica |= uint64(data[iNdEx-3]) << 40
+			m.Replica |= uint64(data[iNdEx-2]) << 48
+			m.Replica |= uint64(data[iNdEx-1]) << 56
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Cluster", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Cluster = append(m.Cluster, &Replica{})
+			if err := m.Cluster[len(m.Cluster)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipReplication(data[iNdEx:])
@@ -1281,6 +1760,37 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field NextEpochReplicas", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.NextEpochReplicas = append(m.NextEpochReplicas, &Replica{})
+			if err := m.NextEpochReplicas[len(m.NextEpochReplicas)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

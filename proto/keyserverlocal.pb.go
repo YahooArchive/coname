@@ -17,6 +17,9 @@ import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobu
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
+import github_com_andres_erbsen_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
+
+import errors "errors"
 
 import io "io"
 
@@ -29,15 +32,19 @@ var _ = math.Inf
 // Additional on-disk state is descried in server/table.go.
 type ReplicaState struct {
 	// cached values derived purely from the state of the log
-	NextIndexLog                    uint64         `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
-	NextIndexVerifier               uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
-	PreviousSummaryHash             []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
-	LastEpochDelimiter              EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
-	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
-	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	NextIndexLog                    uint64                              `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
+	NextIndexVerifier               uint64                              `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
+	PreviousSummaryHash             []byte                              `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	LastEpochDelimiter              EpochDelimiter                      `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
+	ThisReplicaNeedsToSignLastEpoch bool                                `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
+	PendingUpdates                  bool                                `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	AcceptableClusterChanges        map[uint64]*AcceptableClusterChange `protobuf:"bytes,9,rep,name=acceptable_cluster_changes" json:"acceptable_cluster_changes,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	CurrentCluster                  []*Replica                          `protobuf:"bytes,10,rep,name=CurrentCluster" json:"CurrentCluster,omitempty"`
+	CurrentClusterVersion           uint64                              `protobuf:"varint,11,opt,name=CurrentClusterVersion,proto3" json:"CurrentClusterVersion,omitempty"`
 	// local variables
-	LatestTreeSnapshot         uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
-	LastEpochNeedsRatification bool   `protobuf:"varint,8,opt,name=last_epoch_needs_ratification,proto3" json:"last_epoch_needs_ratification,omitempty"`
+	LatestTreeSnapshot         uint64     `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	LastEpochNeedsRatification bool       `protobuf:"varint,8,opt,name=last_epoch_needs_ratification,proto3" json:"last_epoch_needs_ratification,omitempty"`
+	OurAcceptableClusterChange []*Replica `protobuf:"bytes,12,rep,name=our_acceptable_cluster_change" json:"our_acceptable_cluster_change,omitempty"`
 }
 
 func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
@@ -48,6 +55,27 @@ func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 		return m.LastEpochDelimiter
 	}
 	return EpochDelimiter{}
+}
+
+func (m *ReplicaState) GetAcceptableClusterChanges() map[uint64]*AcceptableClusterChange {
+	if m != nil {
+		return m.AcceptableClusterChanges
+	}
+	return nil
+}
+
+func (m *ReplicaState) GetCurrentCluster() []*Replica {
+	if m != nil {
+		return m.CurrentCluster
+	}
+	return nil
+}
+
+func (m *ReplicaState) GetOurAcceptableClusterChange() []*Replica {
+	if m != nil {
+		return m.OurAcceptableClusterChange
+	}
+	return nil
 }
 
 func (this *ReplicaState) VerboseEqual(that interface{}) error {
@@ -88,11 +116,38 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 	if this.PendingUpdates != that1.PendingUpdates {
 		return fmt.Errorf("PendingUpdates this(%v) Not Equal that(%v)", this.PendingUpdates, that1.PendingUpdates)
 	}
+	if len(this.AcceptableClusterChanges) != len(that1.AcceptableClusterChanges) {
+		return fmt.Errorf("AcceptableClusterChanges this(%v) Not Equal that(%v)", len(this.AcceptableClusterChanges), len(that1.AcceptableClusterChanges))
+	}
+	for i := range this.AcceptableClusterChanges {
+		if !this.AcceptableClusterChanges[i].Equal(that1.AcceptableClusterChanges[i]) {
+			return fmt.Errorf("AcceptableClusterChanges this[%v](%v) Not Equal that[%v](%v)", i, this.AcceptableClusterChanges[i], i, that1.AcceptableClusterChanges[i])
+		}
+	}
+	if len(this.CurrentCluster) != len(that1.CurrentCluster) {
+		return fmt.Errorf("CurrentCluster this(%v) Not Equal that(%v)", len(this.CurrentCluster), len(that1.CurrentCluster))
+	}
+	for i := range this.CurrentCluster {
+		if !this.CurrentCluster[i].Equal(that1.CurrentCluster[i]) {
+			return fmt.Errorf("CurrentCluster this[%v](%v) Not Equal that[%v](%v)", i, this.CurrentCluster[i], i, that1.CurrentCluster[i])
+		}
+	}
+	if this.CurrentClusterVersion != that1.CurrentClusterVersion {
+		return fmt.Errorf("CurrentClusterVersion this(%v) Not Equal that(%v)", this.CurrentClusterVersion, that1.CurrentClusterVersion)
+	}
 	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
 		return fmt.Errorf("LatestTreeSnapshot this(%v) Not Equal that(%v)", this.LatestTreeSnapshot, that1.LatestTreeSnapshot)
 	}
 	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
 		return fmt.Errorf("LastEpochNeedsRatification this(%v) Not Equal that(%v)", this.LastEpochNeedsRatification, that1.LastEpochNeedsRatification)
+	}
+	if len(this.OurAcceptableClusterChange) != len(that1.OurAcceptableClusterChange) {
+		return fmt.Errorf("OurAcceptableClusterChange this(%v) Not Equal that(%v)", len(this.OurAcceptableClusterChange), len(that1.OurAcceptableClusterChange))
+	}
+	for i := range this.OurAcceptableClusterChange {
+		if !this.OurAcceptableClusterChange[i].Equal(that1.OurAcceptableClusterChange[i]) {
+			return fmt.Errorf("OurAcceptableClusterChange this[%v](%v) Not Equal that[%v](%v)", i, this.OurAcceptableClusterChange[i], i, that1.OurAcceptableClusterChange[i])
+		}
 	}
 	return nil
 }
@@ -134,11 +189,38 @@ func (this *ReplicaState) Equal(that interface{}) bool {
 	if this.PendingUpdates != that1.PendingUpdates {
 		return false
 	}
+	if len(this.AcceptableClusterChanges) != len(that1.AcceptableClusterChanges) {
+		return false
+	}
+	for i := range this.AcceptableClusterChanges {
+		if !this.AcceptableClusterChanges[i].Equal(that1.AcceptableClusterChanges[i]) {
+			return false
+		}
+	}
+	if len(this.CurrentCluster) != len(that1.CurrentCluster) {
+		return false
+	}
+	for i := range this.CurrentCluster {
+		if !this.CurrentCluster[i].Equal(that1.CurrentCluster[i]) {
+			return false
+		}
+	}
+	if this.CurrentClusterVersion != that1.CurrentClusterVersion {
+		return false
+	}
 	if this.LatestTreeSnapshot != that1.LatestTreeSnapshot {
 		return false
 	}
 	if this.LastEpochNeedsRatification != that1.LastEpochNeedsRatification {
 		return false
+	}
+	if len(this.OurAcceptableClusterChange) != len(that1.OurAcceptableClusterChange) {
+		return false
+	}
+	for i := range this.OurAcceptableClusterChange {
+		if !this.OurAcceptableClusterChange[i].Equal(that1.OurAcceptableClusterChange[i]) {
+			return false
+		}
 	}
 	return true
 }
@@ -146,7 +228,7 @@ func (this *ReplicaState) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 12)
+	s := make([]string, 0, 16)
 	s = append(s, "&proto.ReplicaState{")
 	s = append(s, "NextIndexLog: "+fmt.Sprintf("%#v", this.NextIndexLog)+",\n")
 	s = append(s, "NextIndexVerifier: "+fmt.Sprintf("%#v", this.NextIndexVerifier)+",\n")
@@ -154,8 +236,28 @@ func (this *ReplicaState) GoString() string {
 	s = append(s, "LastEpochDelimiter: "+strings.Replace(this.LastEpochDelimiter.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "ThisReplicaNeedsToSignLastEpoch: "+fmt.Sprintf("%#v", this.ThisReplicaNeedsToSignLastEpoch)+",\n")
 	s = append(s, "PendingUpdates: "+fmt.Sprintf("%#v", this.PendingUpdates)+",\n")
+	keysForAcceptableClusterChanges := make([]uint64, 0, len(this.AcceptableClusterChanges))
+	for k, _ := range this.AcceptableClusterChanges {
+		keysForAcceptableClusterChanges = append(keysForAcceptableClusterChanges, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForAcceptableClusterChanges)
+	mapStringForAcceptableClusterChanges := "map[uint64]*AcceptableClusterChange{"
+	for _, k := range keysForAcceptableClusterChanges {
+		mapStringForAcceptableClusterChanges += fmt.Sprintf("%#v: %#v,", k, this.AcceptableClusterChanges[k])
+	}
+	mapStringForAcceptableClusterChanges += "}"
+	if this.AcceptableClusterChanges != nil {
+		s = append(s, "AcceptableClusterChanges: "+mapStringForAcceptableClusterChanges+",\n")
+	}
+	if this.CurrentCluster != nil {
+		s = append(s, "CurrentCluster: "+fmt.Sprintf("%#v", this.CurrentCluster)+",\n")
+	}
+	s = append(s, "CurrentClusterVersion: "+fmt.Sprintf("%#v", this.CurrentClusterVersion)+",\n")
 	s = append(s, "LatestTreeSnapshot: "+fmt.Sprintf("%#v", this.LatestTreeSnapshot)+",\n")
 	s = append(s, "LastEpochNeedsRatification: "+fmt.Sprintf("%#v", this.LastEpochNeedsRatification)+",\n")
+	if this.OurAcceptableClusterChange != nil {
+		s = append(s, "OurAcceptableClusterChange: "+fmt.Sprintf("%#v", this.OurAcceptableClusterChange)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -260,6 +362,64 @@ func (m *ReplicaState) MarshalTo(data []byte) (int, error) {
 		}
 		i++
 	}
+	if len(m.AcceptableClusterChanges) > 0 {
+		keysForAcceptableClusterChanges := make([]uint64, 0, len(m.AcceptableClusterChanges))
+		for k, _ := range m.AcceptableClusterChanges {
+			keysForAcceptableClusterChanges = append(keysForAcceptableClusterChanges, k)
+		}
+		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForAcceptableClusterChanges)
+		for _, k := range keysForAcceptableClusterChanges {
+			data[i] = 0x4a
+			i++
+			v := m.AcceptableClusterChanges[k]
+			if v == nil {
+				return 0, errors.New("proto: map has nil element")
+			}
+			msgSize := v.Size()
+			mapSize := 1 + 8 + 1 + msgSize + sovKeyserverlocal(uint64(msgSize))
+			i = encodeVarintKeyserverlocal(data, i, uint64(mapSize))
+			data[i] = 0x9
+			i++
+			i = encodeFixed64Keyserverlocal(data, i, uint64(k))
+			data[i] = 0x12
+			i++
+			i = encodeVarintKeyserverlocal(data, i, uint64(v.Size()))
+			n2, err := v.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n2
+		}
+	}
+	if len(m.CurrentCluster) > 0 {
+		for _, msg := range m.CurrentCluster {
+			data[i] = 0x52
+			i++
+			i = encodeVarintKeyserverlocal(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
+	if m.CurrentClusterVersion != 0 {
+		data[i] = 0x58
+		i++
+		i = encodeVarintKeyserverlocal(data, i, uint64(m.CurrentClusterVersion))
+	}
+	if len(m.OurAcceptableClusterChange) > 0 {
+		for _, msg := range m.OurAcceptableClusterChange {
+			data[i] = 0x62
+			i++
+			i = encodeVarintKeyserverlocal(data, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(data[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	return i, nil
 }
 
@@ -305,6 +465,28 @@ func NewPopulatedReplicaState(r randyKeyserverlocal, easy bool) *ReplicaState {
 	this.PendingUpdates = bool(bool(r.Intn(2) == 0))
 	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
 	this.LastEpochNeedsRatification = bool(bool(r.Intn(2) == 0))
+	if r.Intn(10) != 0 {
+		v3 := r.Intn(10)
+		this.AcceptableClusterChanges = make(map[uint64]*AcceptableClusterChange)
+		for i := 0; i < v3; i++ {
+			this.AcceptableClusterChanges[uint64(uint64(r.Uint32()))] = NewPopulatedAcceptableClusterChange(r, easy)
+		}
+	}
+	if r.Intn(10) != 0 {
+		v4 := r.Intn(10)
+		this.CurrentCluster = make([]*Replica, v4)
+		for i := 0; i < v4; i++ {
+			this.CurrentCluster[i] = NewPopulatedReplica(r, easy)
+		}
+	}
+	this.CurrentClusterVersion = uint64(uint64(r.Uint32()))
+	if r.Intn(10) != 0 {
+		v5 := r.Intn(10)
+		this.OurAcceptableClusterChange = make([]*Replica, v5)
+		for i := 0; i < v5; i++ {
+			this.OurAcceptableClusterChange[i] = NewPopulatedReplica(r, easy)
+		}
+	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -329,9 +511,9 @@ func randUTF8RuneKeyserverlocal(r randyKeyserverlocal) rune {
 	return rune(ru + 61)
 }
 func randStringKeyserverlocal(r randyKeyserverlocal) string {
-	v3 := r.Intn(100)
-	tmps := make([]rune, v3)
-	for i := 0; i < v3; i++ {
+	v6 := r.Intn(100)
+	tmps := make([]rune, v6)
+	for i := 0; i < v6; i++ {
 		tmps[i] = randUTF8RuneKeyserverlocal(r)
 	}
 	return string(tmps)
@@ -353,11 +535,11 @@ func randFieldKeyserverlocal(data []byte, r randyKeyserverlocal, fieldNumber int
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		v4 := r.Int63()
+		v7 := r.Int63()
 		if r.Intn(2) == 0 {
-			v4 *= -1
+			v7 *= -1
 		}
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(v4))
+		data = encodeVarintPopulateKeyserverlocal(data, uint64(v7))
 	case 1:
 		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -411,6 +593,33 @@ func (m *ReplicaState) Size() (n int) {
 	if m.LastEpochNeedsRatification {
 		n += 2
 	}
+	if len(m.AcceptableClusterChanges) > 0 {
+		for k, v := range m.AcceptableClusterChanges {
+			_ = k
+			_ = v
+			l = 0
+			if v != nil {
+				l = v.Size()
+			}
+			mapEntrySize := 1 + 8 + 1 + l + sovKeyserverlocal(uint64(l))
+			n += mapEntrySize + 1 + sovKeyserverlocal(uint64(mapEntrySize))
+		}
+	}
+	if len(m.CurrentCluster) > 0 {
+		for _, e := range m.CurrentCluster {
+			l = e.Size()
+			n += 1 + l + sovKeyserverlocal(uint64(l))
+		}
+	}
+	if m.CurrentClusterVersion != 0 {
+		n += 1 + sovKeyserverlocal(uint64(m.CurrentClusterVersion))
+	}
+	if len(m.OurAcceptableClusterChange) > 0 {
+		for _, e := range m.OurAcceptableClusterChange {
+			l = e.Size()
+			n += 1 + l + sovKeyserverlocal(uint64(l))
+		}
+	}
 	return n
 }
 
@@ -431,6 +640,16 @@ func (this *ReplicaState) String() string {
 	if this == nil {
 		return "nil"
 	}
+	keysForAcceptableClusterChanges := make([]uint64, 0, len(this.AcceptableClusterChanges))
+	for k, _ := range this.AcceptableClusterChanges {
+		keysForAcceptableClusterChanges = append(keysForAcceptableClusterChanges, k)
+	}
+	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForAcceptableClusterChanges)
+	mapStringForAcceptableClusterChanges := "map[uint64]*AcceptableClusterChange{"
+	for _, k := range keysForAcceptableClusterChanges {
+		mapStringForAcceptableClusterChanges += fmt.Sprintf("%v: %v,", k, this.AcceptableClusterChanges[k])
+	}
+	mapStringForAcceptableClusterChanges += "}"
 	s := strings.Join([]string{`&ReplicaState{`,
 		`NextIndexLog:` + fmt.Sprintf("%v", this.NextIndexLog) + `,`,
 		`NextIndexVerifier:` + fmt.Sprintf("%v", this.NextIndexVerifier) + `,`,
@@ -440,6 +659,10 @@ func (this *ReplicaState) String() string {
 		`PendingUpdates:` + fmt.Sprintf("%v", this.PendingUpdates) + `,`,
 		`LatestTreeSnapshot:` + fmt.Sprintf("%v", this.LatestTreeSnapshot) + `,`,
 		`LastEpochNeedsRatification:` + fmt.Sprintf("%v", this.LastEpochNeedsRatification) + `,`,
+		`AcceptableClusterChanges:` + mapStringForAcceptableClusterChanges + `,`,
+		`CurrentCluster:` + strings.Replace(fmt.Sprintf("%v", this.CurrentCluster), "Replica", "Replica", 1) + `,`,
+		`CurrentClusterVersion:` + fmt.Sprintf("%v", this.CurrentClusterVersion) + `,`,
+		`OurAcceptableClusterChange:` + strings.Replace(fmt.Sprintf("%v", this.OurAcceptableClusterChange), "Replica", "Replica", 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -656,6 +879,191 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				}
 			}
 			m.LastEpochNeedsRatification = bool(v != 0)
+		case 9:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AcceptableClusterChanges", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			var keykey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				keykey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapkey uint64
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			mapkey = uint64(data[iNdEx-8])
+			mapkey |= uint64(data[iNdEx-7]) << 8
+			mapkey |= uint64(data[iNdEx-6]) << 16
+			mapkey |= uint64(data[iNdEx-5]) << 24
+			mapkey |= uint64(data[iNdEx-4]) << 32
+			mapkey |= uint64(data[iNdEx-3]) << 40
+			mapkey |= uint64(data[iNdEx-2]) << 48
+			mapkey |= uint64(data[iNdEx-1]) << 56
+			var valuekey uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				valuekey |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			var mapmsglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				mapmsglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if mapmsglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postmsgIndex := iNdEx + mapmsglen
+			if mapmsglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			if postmsgIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			mapvalue := &AcceptableClusterChange{}
+			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
+				return err
+			}
+			iNdEx = postmsgIndex
+			if m.AcceptableClusterChanges == nil {
+				m.AcceptableClusterChanges = make(map[uint64]*AcceptableClusterChange)
+			}
+			m.AcceptableClusterChanges[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 10:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentCluster", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CurrentCluster = append(m.CurrentCluster, &Replica{})
+			if err := m.CurrentCluster[len(m.CurrentCluster)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 11:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurrentClusterVersion", wireType)
+			}
+			m.CurrentClusterVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				m.CurrentClusterVersion |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OurAcceptableClusterChange", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverlocal
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverlocal
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.OurAcceptableClusterChange = append(m.OurAcceptableClusterChange, &Replica{})
+			if err := m.OurAcceptableClusterChange[len(m.OurAcceptableClusterChange)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipKeyserverlocal(data[iNdEx:])

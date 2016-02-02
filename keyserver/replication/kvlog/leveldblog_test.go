@@ -15,7 +15,6 @@
 package kvlog
 
 import (
-	"bytes"
 	"encoding/binary"
 	"io/ioutil"
 	"os"
@@ -59,7 +58,7 @@ func setupLog1through15Start(t *testing.T) (replication.LogReplicator, kv.DB, fu
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
 		binary.BigEndian.PutUint64(prop, i)
-		l.Propose(nil, replication.LogEntry{Data: prop})
+		l.Propose(nil, prop)
 		<-l.WaitCommitted()
 	}
 	return l, db, func() {
@@ -84,13 +83,13 @@ func TestLeveldbLogProposeWait(t *testing.T) {
 	for i := uint64(1); i < 16; i++ {
 		prop := make([]byte, 8)
 		binary.BigEndian.PutUint64(prop, i)
-		l.Propose(nil, replication.LogEntry{Data: prop})
+		l.Propose(nil, prop)
 	}
 
 	state := uint64(0)
 	for i := 1; i < 16; i++ {
 		entry := <-l.WaitCommitted()
-		e := binary.BigEndian.Uint64(entry.Data)
+		e := binary.BigEndian.Uint64(entry)
 		if e > 15 {
 			t.Errorf("%d (which is > 15) received from WaitCommitted", e)
 		}
@@ -123,7 +122,7 @@ func TestLeveldbLogStartHistoric(t *testing.T) {
 	state := uint64(0)
 	for i := 0; i < 12; i++ {
 		entry := <-l.WaitCommitted()
-		e := binary.BigEndian.Uint64(entry.Data)
+		e := binary.BigEndian.Uint64(entry)
 		if e > 15 {
 			t.Errorf("%d (which is > 15) received from WaitCommitted", e)
 		}
@@ -135,90 +134,5 @@ func TestLeveldbLogStartHistoric(t *testing.T) {
 	if state != ref {
 		t.Errorf("expected %x\n"+
 			"got      %x\n", ref, state)
-	}
-}
-
-// TestLeveldbLogGetCommitted verifies that successfully proposed entries are
-// returned by GetCommitted both before and after restart.
-func TestLeveldbLogGetCommittedRestart(t *testing.T) {
-	l, db, teardown := setupLog1through15Start(t)
-	defer teardown()
-
-	check := func() {
-		entries, err := l.GetCommitted(0, 1<<63, 1<<63)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(entries) != 15 {
-			t.Fatalf("GetCommitted: asked for all (15) entries, got %d", len(entries))
-		}
-		for i := uint64(0); i < 15; i++ {
-			ref := make([]byte, 8)
-			binary.BigEndian.PutUint64(ref, 1+i)
-			if !bytes.Equal(entries[i].Data, ref) {
-				t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
-			}
-		}
-	}
-
-	check()
-	l.Stop()
-
-	l, err := New(db, prefix15)
-	if err != nil {
-		t.Fatal(err)
-	}
-	l.Start(0)
-	check()
-	l.Stop()
-}
-
-func TestLeveldbLogGetCommittedRange(t *testing.T) {
-	l, _, teardown := setupLog1through15Start(t)
-	defer teardown()
-
-	entries, err := l.GetCommitted(1, 14, 1<<63)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 13 {
-		t.Errorf("GetCommitted: asked for 13 entries, got %d", len(entries))
-	}
-	for i := uint64(0); i < 13; i++ {
-		ref := make([]byte, 8)
-		binary.BigEndian.PutUint64(ref, i+2)
-		if !bytes.Equal(entries[i].Data, ref) {
-			t.Errorf("entries[%d]: expected %x, got %x", i, ref, entries[i])
-		}
-	}
-}
-
-func TestLeveldbLogGetCommittedSize(t *testing.T) {
-	l, _, teardown := setupLog1through15Start(t)
-	defer teardown()
-
-	entriesLimited, err := l.GetCommitted(3, 14, 18)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entriesLimited) != 2 {
-		s := 0
-		for _, e := range entriesLimited {
-			s += len(e.Data)
-		}
-		t.Errorf("CommittedEntries asked for 16 bytes, got %d", s)
-	}
-}
-
-func TestLeveldbLogGetCommittedAtLeastOne(t *testing.T) {
-	l, _, teardown := setupLog1through15Start(t)
-	defer teardown()
-
-	entriesLimited, err := l.GetCommitted(3, 14, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entriesLimited) != 1 {
-		t.Errorf("CommittedEntries asked for 0 bytes (which should return one entry), got %d entries", len(entriesLimited))
 	}
 }

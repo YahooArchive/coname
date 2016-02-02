@@ -15,48 +15,30 @@
 package keyserver
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/binary"
-	"fmt"
 	"io/ioutil"
 	"log"
-	mathrand "math/rand"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
-	"sync"
 	"testing"
 	"time"
-
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/sha3"
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yahoo/coname"
-	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
-	"github.com/yahoo/coname/keyserver/kv/tracekv"
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
 	"github.com/yahoo/coname/keyserver/replication/raftlog/nettestutil"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/proto"
-	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
 )
 
@@ -94,180 +76,236 @@ func chain(fs ...func()) func() {
 	return ret
 }
 
-func setupDB(t *testing.T) (db kv.DB, teardown func()) {
-	dir, err := ioutil.TempDir("", "keyserver")
-	if err != nil {
-		t.Fatal(err)
+func tlsConfigFromCertKeyIDClientCA(cert tls.Certificate, keyid string, clientCA *x509.Certificate) proto.TLSConfig {
+	return proto.TLSConfig{
+		Certificates: []*proto.CertificateAndKeyID{{cert.Certificate, keyid, nil}},
+		RootCAs:      [][]byte{clientCA.Raw},
+		ClientCAs:    [][]byte{clientCA.Raw},
+		ClientAuth:   proto.REQUIRE_AND_VERIFY_CLIENT_CERT,
 	}
-	teardown = func() { os.RemoveAll(dir) }
-	ldb, err := leveldb.OpenFile(dir, nil)
-	if err != nil {
-		teardown()
-		t.Fatal(err)
-	}
-	teardown = chain(func() { ldb.Close() }, teardown)
-	return leveldbkv.Wrap(ldb), teardown
 }
 
-// raft replicas are numbered 1..n  and reside in array indices 0..n-1
-// A copy of this function exists in raftlog_test.go
-func setupRaftLogCluster(t *testing.T, nReplicas, nStandbys int) (ret []replication.LogReplicator, dbs []kv.DB, clks []*clock.Mock, nw *nettestutil.Network, teardown func()) {
-	m := nReplicas
-	n := nReplicas + nStandbys
-	replicaIDs := make([]uint64, 0, n)
-	for i := uint64(0); i < uint64(n); i++ {
-		replicaIDs = append(replicaIDs, 1+i)
+type replicaTestingHooks struct {
+	dbDir string
+	db    *leveldb.DB
+
+	pcfg          *proto.ReplicaConfig
+	signingPublic *proto.PublicKey
+	keyGetters    func(string) (crypto.PrivateKey, error)
+	id            uint64
+
+	serverClock, replicationClock *clock.Mock
+
+	server *Keyserver // not initialized in setupReplica
+}
+
+func (r *replicaTestingHooks) teardown() {
+	if r.server != nil {
+		r.server.Stop()
+	}
+	if r.db != nil {
+		r.db.Close()
+	}
+	if r.dbDir != "" {
+		os.RemoveAll(r.dbDir)
+	}
+}
+
+func setupReplica(t *testing.T,
+	replicaCA *x509.Certificate, replicaCAKey *ecdsa.PrivateKey,
+	verifierCA *x509.Certificate,
+	clientCA *x509.Certificate,
+	vrfSecret *[64]byte,
+) (ret *replicaTestingHooks) {
+	ret = new(replicaTestingHooks)
+	pkRaw, signingSecret, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret.signingPublic = &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pkRaw[:]}}
+	ret.id = proto.KeyID(ret.signingPublic)
+
+	tlsCert := tlstestutil.Cert(t, replicaCA, replicaCAKey, "127.0.0.1", nil)
+	tlsSecret := tlsCert.PrivateKey
+
+	ret.dbDir, err = ioutil.TempDir("", "keyserver")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ret.db, err = leveldb.OpenFile(ret.dbDir, nil)
+	if err != nil {
+		ret.teardown()
+		t.Fatal(err)
 	}
 
-	addrs := make([]string, 0, n)
-	nw = nettestutil.New(n)
-	lookupDialerFrom := func(src int) func(uint64) raftproto.RaftClient {
-		return func(dstPlus1 uint64) raftproto.RaftClient {
-			cc, err := grpc.Dial(addrs[dstPlus1-1], grpc.WithInsecure(), grpc.WithDialer(
-				func(addr string, timeout time.Duration) (net.Conn, error) {
-					nc, err := net.DialTimeout("tcp", addr, timeout)
-					return nw.Wrap(nc, src, int(dstPlus1-1)), err
-				}))
-			if err != nil {
-				panic(err) // async dial should not err
-			}
-			return raftproto.NewRaftClient(cc)
+	ret.pcfg = &proto.ReplicaConfig{
+		SigningKeyID: "signing",
+		ReplicaID:    ret.id,
+
+		RaftAddr: nettestutil.MustReserveListener(t, "tcp", "localhost:0"),
+		RaftTLS:  tlsConfigFromCertKeyIDClientCA(tlsCert, "tls", replicaCA),
+
+		VerifierAddr:        nettestutil.MustReserveListener(t, "tcp", "localhost:0"),
+		VerifierTLS:         tlsConfigFromCertKeyIDClientCA(tlsCert, "tls", verifierCA),
+		LaggingVerifierScan: 1000 * 1000 * 1000,
+
+		PublicAddr:    nettestutil.MustReserveListener(t, "tcp", "localhost:0"),
+		PublicTLS:     tlsConfigFromCertKeyIDClientCA(tlsCert, "tls", clientCA),
+		HKPAddr:       nettestutil.MustReserveListener(t, "tcp", "localhost:0"),
+		HKPTLS:        tlsConfigFromCertKeyIDClientCA(tlsCert, "tls", clientCA),
+		ClientTimeout: proto.DurationStamp(time.Hour),
+	}
+
+	ret.keyGetters = func(keyid string) (crypto.PrivateKey, error) {
+		switch keyid {
+		case "vrf":
+			return vrfSecret, nil
+		case "signing":
+			return signingSecret, nil
+		case "tls":
+			return tlsSecret, nil
+		default:
+			panic("unknown key requested in test")
 		}
-	}
-	teardown = func() {}
 
-	for i := 0; i < n; i++ {
-		clk := clock.NewMock()
-		ln, err := net.Listen("tcp", "127.0.0.1:0")
+	}
+	ret.replicationClock = clock.NewMock()
+	ret.serverClock = clock.NewMock()
+	return
+}
+
+type keyserverTestingHooks struct {
+	cfg      *proto.KeyserverConfig
+	replicas []*replicaTestingHooks
+
+	vrfPublic []byte
+	vrfSecret *[64]byte
+
+	clientCA, verifierCA, replicaCA          *x509.Certificate
+	clientCAKey, verifierCAKey, replicaCAKey *ecdsa.PrivateKey
+
+	t *testing.T
+}
+
+func (k *keyserverTestingHooks) teardown() {
+	for _, r := range k.replicas {
+		if r.server != nil {
+			r.server.Stop()
+		}
+		r.teardown()
+	}
+}
+
+func setupReplicatedKeyserver(t *testing.T, nReplicas int) (ret *keyserverTestingHooks) {
+	ret = new(keyserverTestingHooks)
+	ret.t = t
+	ret.clientCA, _, ret.clientCAKey = tlstestutil.CA(t, nil)
+	ret.verifierCA, _, ret.verifierCAKey = tlstestutil.CA(t, nil)
+	ret.replicaCA, _, ret.replicaCAKey = tlstestutil.CA(t, nil)
+
+	var err error
+	ret.vrfPublic, ret.vrfSecret, err = vrf.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for i := 0; i < nReplicas; i++ {
+		ret.replicas = append(ret.replicas, setupReplica(t, ret.replicaCA, ret.replicaCAKey, ret.verifierCA, ret.clientCA, ret.vrfSecret))
+	}
+
+	ret.cfg = &proto.KeyserverConfig{
+		Realm:    testingRealm,
+		ServerID: 0, // TODO: remove this field (superseded by "Realm")
+		VRFKeyID: "vrf",
+
+		MinEpochInterval:      proto.DurationStamp(tick),
+		MaxEpochInterval:      proto.DurationStamp(tick),
+		ProposalRetryInterval: proto.DurationStamp(poll),
+	}
+	for i := 0; i < nReplicas; i++ {
+		ret.cfg.InitialReplicas = append(ret.cfg.InitialReplicas, &proto.Replica{
+			PublicKeys: []*proto.PublicKey{ret.replicas[i].signingPublic},
+			ID:         ret.replicas[i].id,
+			RaftAddr:   ret.replicas[i].pcfg.RaftAddr,
+		})
+	}
+
+	for i := 0; i < nReplicas; i++ {
+		r := ret.replicas[i] // explicit reference, not copy
+		r.pcfg.KeyserverConfig = *ret.cfg
+
+		// NOTE: one could mock the log here to emulate log entry loss/duplication/reordering (to test keyserver-replication interface)
+		mkLog := func(largs *logReplicatorArgs) replication.LogReplicator {
+			dialTestPeer := func(id uint64) raftproto.RaftClient {
+				for _, replica := range largs.replicas {
+					if replica.ID == largs.replicaID {
+						// NOTE: one could use a mock connection here to emulate network failures (to test replication-network interface)
+						conn, err := largs.dialReplica(replica.RaftAddr)
+						if err != nil {
+							t.Fatalf("Raft GRPC dial failed: %s", err)
+						}
+						return raftproto.NewRaftClient(conn)
+					}
+				}
+				t.Fatalf("No raft peer %x in configuration", id)
+				return nil
+			}
+
+			replicaIDs := make([]uint64, 0, len(largs.replicas))
+			for _, rr := range largs.replicas {
+				replicaIDs = append(replicaIDs, rr.ID)
+			}
+			return raftlog.New(largs.replicaID, replicaIDs, largs.db, largs.dbPrefix, r.replicationClock, largs.heartbeat, largs.replicationServer, dialTestPeer)
+		}
+		r.server, err = Open(r.pcfg, leveldbkv.Wrap(r.db), nettestutil.Listen, mkLog, r.serverClock, r.keyGetters, nil)
 		if err != nil {
-			t.Fatal(err)
+			ret.teardown()
 		}
-		s := grpc.NewServer()
-		db, dbDown := setupDB(t)
-		dbs = append(dbs, db)
-		l := raftlog.New(
-			uint64(i+1), replicaIDs[:m],
-			db, nil,
-			clk, tick,
-			s, lookupDialerFrom(i),
-		)
-		go s.Serve(ln)
-
-		ret = append(ret, l)
-		clks = append(clks, clk)
-		addrs = append(addrs, ln.Addr().String())
-		teardown = chain(func() { s.Stop(); ln.Close(); l.Stop() }, dbDown, teardown)
 	}
-
-	for _, l := range ret {
-		go func(l replication.LogReplicator) {
-			for _ = range l.LeaderHintSet() {
-			}
-		}(l)
-	}
-	return ret, dbs, clks, nw, teardown
+	return
 }
 
 func majorityQuorum(candidates []uint64) *proto.QuorumExpr {
 	return &proto.QuorumExpr{Threshold: uint32(majority(len(candidates))), Candidates: candidates}
 }
 
-// setupKeyservers initializes everything needed to start a set of keyserver
-// replicas, but does not actually start them yet
-func setupKeyservers(t *testing.T, nReplicas int) (
-	cfgs []*proto.ReplicaConfig, serverKeyGetters []func(string) (crypto.PrivateKey, error),
-	clientKeyGetter func(string) (crypto.PrivateKey, error),
-	clientConfig *proto.Config, caCert *x509.Certificate, caPool *x509.CertPool, caKey *ecdsa.PrivateKey, teardown func(),
-) {
-	caCert, caPool, caKey = tlstestutil.CA(t, nil)
-
-	vrfPublic, vrfSecret, err := vrf.GenerateKey(rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	teardown = func() {}
-
-	clientCert := tlstestutil.Cert(t, caCert, caKey, "client", nil)
-	clientKeyGetter = func(id string) (crypto.PrivateKey, error) {
+/*
+func (k *keyserverTestingHooks) realmConfig() *proto.RealmConfig {
+	clientCert := tlstestutil.Cert(k.t, k.clientCA, k.clientCAKey, "client", nil)
+	clientKeyGetter := func(id string) (crypto.PrivateKey, error) {
 		switch id {
 		case "client":
 			return clientCert.PrivateKey, nil
 		default:
-			t.Fatalf("unknown key %s", id)
+			k.t.Fatalf("unknown key requested: %q", id)
 			return nil, nil
 		}
 	}
 
-	pks := make(map[uint64]*proto.PublicKey)
-	replicaIDs := []uint64{}
-	pol := &proto.AuthorizationPolicy{}
-	realmConfig := &proto.RealmConfig{
+	ret := &proto.RealmConfig{
 		RealmName:          testingRealm,
 		Domains:            []string{realmDomain},
-		VRFPublic:          vrfPublic,
-		VerificationPolicy: pol,
+		VRFPublic:          k.vrfPublic,
+		VerificationPolicy: &proto.AuthorizationPolicy{PublicKeys: make(map[uint64]*proto.PublicKey)},
 		EpochTimeToLive:    proto.DurationStamp(time.Hour),
 		ClientTLS: &proto.TLSConfig{
-			RootCAs:      [][]byte{caCert.Raw},
+			RootCAs:      [][]byte{k.replicaCA.Raw},
 			Certificates: []*proto.CertificateAndKeyID{{clientCert.Certificate, "client", nil}},
 		},
 	}
-	clientConfig = &proto.Config{
-		Realms: []*proto.RealmConfig{realmConfig},
+	replicaIDs := []uint64{}
+	for _, r := range k.replicas {
+		ret.VerificationPolicy.PublicKeys[r.id] = r.signingPublic
+		replicaIDs = append(replicaIDs, r.id)
 	}
-	for n := 0; n < nReplicas; n++ {
-		pk, sk, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			teardown()
-			t.Fatal(err)
-		}
-		pked := &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: pk[:]}}
-		replicaID := proto.KeyID(pked)
-		pks[replicaID] = pked
-		replicaIDs = append(replicaIDs, replicaID)
-
-		cert := tlstestutil.Cert(t, caCert, caKey, "127.0.0.1", nil)
-		pcerts := []*proto.CertificateAndKeyID{{cert.Certificate, "tls", nil}}
-		cfgs = append(cfgs, &proto.ReplicaConfig{
-			KeyserverConfig: proto.KeyserverConfig{
-				Realm:    testingRealm,
-				ServerID: replicaID,
-				VRFKeyID: "vrf",
-
-				MinEpochInterval:      proto.DurationStamp(tick),
-				MaxEpochInterval:      proto.DurationStamp(tick),
-				ProposalRetryInterval: proto.DurationStamp(poll),
-			},
-
-			SigningKeyID:        "signing",
-			ReplicaID:           replicaID,
-			PublicAddr:          "localhost:0",
-			VerifierAddr:        "localhost:0",
-			HKPAddr:             "localhost:0",
-			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			ClientTimeout:       proto.DurationStamp(time.Hour),
-			LaggingVerifierScan: 1000 * 1000 * 1000,
-		})
-		serverKeyGetters = append(serverKeyGetters, func(keyid string) (crypto.PrivateKey, error) {
-			switch keyid {
-			case "vrf":
-				return vrfSecret, nil
-			case "signing":
-				return sk, nil
-			case "tls":
-				return cert.PrivateKey, nil
-			default:
-				panic("unknown key requested in test")
-			}
-		})
-	}
-	pol.PublicKeys = pks
-	pol.PolicyType = &proto.AuthorizationPolicy_Quorum{Quorum: majorityQuorum(replicaIDs)}
-	return
+	ret.VerificationPolicy.PolicyType = &proto.AuthorizationPolicy_Quorum{Quorum: majorityQuorum(replicaIDs)}
+	return ret
 }
+
+func (k *keyserverTestingHooks) clientConfig() *proto.Config {
+	return &proto.Config{Realms: []*proto.RealmConfig{k.realmConfig()}}
+}
+*/
 
 func TestOneKeyserverStartStop(t *testing.T) {
 	testKeyserverStartStop(t, 1)
@@ -278,25 +316,11 @@ func TestThreeKeyserversStartStop(t *testing.T) {
 }
 
 func testKeyserverStartStop(t *testing.T, nReplicas int) {
-	cfgs, gks, _, ccfg, _, _, _, teardown := setupKeyservers(t, nReplicas)
-	defer teardown()
-	logs, dbs, clks, _, teardown2 := setupRaftLogCluster(t, nReplicas, 0)
-	defer teardown2()
-	kss := []*Keyserver{}
-	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		ks.insecureSkipEmailProof = true
-		ks.Start()
-		kss = append(kss, ks)
-	}
-	for _, ks := range kss {
-		ks.Stop()
-	}
+	k := setupReplicatedKeyserver(t, nReplicas)
+	k.teardown()
 }
 
+/*
 func TestKeyserverStartProgressStop(t *testing.T) {
 	pprof()
 	nReplicas := 3
@@ -1029,3 +1053,4 @@ func TestKeyserverHKP(t *testing.T) {
 		t.Error("pgpKey: got %q but wanted %q", got, want)
 	}
 }
+*/

@@ -17,6 +17,7 @@ package proto;
 import "gogoproto/gogo.proto";
 import "client.proto";
 import "timestamp.proto";
+import "keyserverconfig.proto";
 
 // KeyserverStep denotes the input to a single step of the keyserver state
 // machine. Serializable high-availability replication is achieved by
@@ -53,10 +54,20 @@ message KeyserverStep {
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
 		SignedEpochHead verifier_signed = 5;
+		// AcceptableClusterChange signals willingness to change cluster membership.
+		AcceptableClusterChange acceptable_cluster_change = 6;
 	}
+}
+
+// AcceptableClusterChange signals that Replica would sign a EpochDelimiter
+// containing Cluster as NextEpochReplicas.
+message AcceptableClusterChange {
+	fixed64 replica = 1;
+	repeated Replica cluster = 2;
 }
 
 message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
 	Timestamp timestamp = 2 [(gogoproto.nullable) = false];
+	repeated Replica next_epoch_replicas = 3;
 }

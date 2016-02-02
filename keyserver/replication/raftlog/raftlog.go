@@ -48,7 +48,7 @@ type raftLog struct {
 	clk          clock.Clock
 	tickInterval time.Duration
 
-	waitCommitted chan replication.LogEntry
+	waitCommitted chan []byte
 
 	leaderHintSet chan bool
 	leaderHint    bool
@@ -130,7 +130,7 @@ func (l *raftLog) Start(lo uint64) error {
 	}
 
 	l.leaderHintSet = make(chan bool, COMMITTED_BUFFER)
-	l.waitCommitted = make(chan replication.LogEntry, COMMITTED_BUFFER)
+	l.waitCommitted = make(chan []byte, COMMITTED_BUFFER)
 	l.stop = make(chan struct{})
 	l.stopped = make(chan struct{})
 	l.grpcDropClient = make(chan uint64)
@@ -159,94 +159,19 @@ func (l *raftLog) Stop() error {
 }
 
 // Propose implements replication.LogReplicator
-func (l *raftLog) Propose(ctx context.Context, en replication.LogEntry) {
-	if en.ConfChange == nil {
-		l.node.Propose(ctx, en.Data)
-		return
-	}
-	nodeID := en.ConfChange.NodeID
-	var ct raftpb.ConfChangeType
-	switch en.ConfChange.Operation {
-	case replication.ConfChangeNOP:
-		nodeID = raft.None
-		ct = raftpb.ConfChangeUpdateNode
-	case replication.ConfChangeAddNode:
-		ct = raftpb.ConfChangeAddNode
-	case replication.ConfChangeRemoveNode:
-		ct = raftpb.ConfChangeRemoveNode
-	case replication.ConfChangeUpdateNode:
-		ct = raftpb.ConfChangeUpdateNode
-	default:
-		panic("unknown conf change type proposed")
-	}
-	l.node.ProposeConfChange(ctx, raftpb.ConfChange{
-		NodeID:  nodeID,
-		Type:    ct,
-		Context: en.Data,
-	})
+func (l *raftLog) Propose(ctx context.Context, en []byte) {
+	l.node.Propose(ctx, en)
 }
 
 // Propose implements replication.LogReplicator
-func (l *raftLog) ApplyConfChange(chn *replication.ConfChange) {
-	nodeID := chn.NodeID
-	var ct raftpb.ConfChangeType
-	switch chn.Operation {
-	case replication.ConfChangeNOP:
-		nodeID = raft.None
-		ct = raftpb.ConfChangeUpdateNode
-	case replication.ConfChangeAddNode:
-		ct = raftpb.ConfChangeAddNode
-	case replication.ConfChangeRemoveNode:
-		ct = raftpb.ConfChangeRemoveNode
-		l.grpcDropClient <- nodeID
-	case replication.ConfChangeUpdateNode:
-		ct = raftpb.ConfChangeUpdateNode
-		l.grpcDropClient <- nodeID
-	default:
-		panic("unknown conf change type applied")
-	}
-	l.node.ApplyConfChange(raftpb.ConfChange{
-		Type:   raftpb.ConfChangeType(ct),
-		NodeID: nodeID,
-	})
-}
-
 // WaitCommitted implements replication.LogReplicator
-func (l *raftLog) WaitCommitted() <-chan replication.LogEntry {
+func (l *raftLog) WaitCommitted() <-chan []byte {
 	return l.waitCommitted
 }
 
 // LeaderHintSet implements replication.LogReplicator
 func (l *raftLog) LeaderHintSet() <-chan bool {
 	return l.leaderHintSet
-}
-
-// GetCommitted implements replication.LogReplicator
-func (l *raftLog) GetCommitted(lo, hi, maxSize uint64) (ret []replication.LogEntry, err error) {
-	es, err := l.getCommittedEntries(lo, hi, maxSize)
-	if err != nil {
-		return nil, err
-	}
-	for _, e := range es {
-		ret = append(ret, replication.LogEntry{Data: e.Data})
-	}
-	return ret, err
-}
-
-func (l *raftLog) getCommittedEntries(lo, hi, maxSize uint64) ([]raftpb.Entry, error) {
-	hs, _, err := l.config.Storage.InitialState()
-	if err != nil {
-		return nil, err
-	}
-	entries, err := l.config.Storage.(*raftStorage).Entries(lo, hi, maxSize)
-	if err != nil {
-		return nil, err
-	}
-	i := 0
-	for i < len(entries) && entries[i].Index <= hs.Commit {
-		i++
-	}
-	return entries[:i], nil
 }
 
 // run is the CSP-style main of raftLog; all local struct fields (except
@@ -275,36 +200,9 @@ func (l *raftLog) run() {
 			}
 			for _, entry := range rd.CommittedEntries {
 				switch entry.Type {
-				case raftpb.EntryConfChange:
-					var cc raftpb.ConfChange
-					cc.Unmarshal(entry.Data)
-					var op replication.ConfChangeType
-					switch {
-					case cc.NodeID == raft.None:
-						op = replication.ConfChangeNOP
-					case cc.Type == raftpb.ConfChangeAddNode:
-						op = replication.ConfChangeAddNode
-					case cc.Type == raftpb.ConfChangeRemoveNode:
-						op = replication.ConfChangeRemoveNode
-					case cc.Type == raftpb.ConfChangeUpdateNode:
-						op = replication.ConfChangeUpdateNode
-					default:
-						panic("unknown conf change type from raft")
-					}
+				case raftpb.EntryNormal:
 					select {
-					case l.waitCommitted <- replication.LogEntry{
-						Data: cc.Context,
-						ConfChange: &replication.ConfChange{
-							Operation: op,
-							NodeID:    cc.NodeID,
-						},
-					}:
-					case <-l.stop:
-						return
-					}
-				default:
-					select {
-					case l.waitCommitted <- replication.LogEntry{Data: entry.Data}:
+					case l.waitCommitted <- entry.Data:
 					case <-l.stop:
 						return
 					}

@@ -24,6 +24,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"reflect"
 	"sync"
 	"time"
 
@@ -63,10 +64,10 @@ type Keyserver struct {
 	log replication.LogReplicator
 	rs  proto.ReplicaState
 
-	publicServer, verifierServer                             *grpc.Server
-	hkpFront                                                 *hkpfront.HKPFront
-	httpFront                                                *httpfront.HTTPFront
-	publicListen, verifierListen, hkpListen, httpFrontListen net.Listener
+	replicationServer, publicServer, verifierServer                             *grpc.Server
+	hkpFront                                                                    *hkpfront.HKPFront
+	httpFront                                                                   *httpfront.HTTPFront
+	replicationListen, publicListen, verifierListen, hkpListen, httpFrontListen net.Listener
 
 	clk       clock.Clock
 	lookupTXT func(string) ([]string, error)
@@ -88,9 +89,12 @@ type Keyserver struct {
 	// rs.ThisReplicaNeedsToSignLastEpoch
 	// }
 
+	setOurAcceptableClusterChange chan []*proto.Replica
+
 	// signatureProposer makes sure we try to sign epochs.
 	signatureProposer *Proposer
 	// whether our signature is needed is determined by this sensitivity list {
+	// rs.OurAcceptableClusterChange
 	// rs.ThisReplicaNeedsToSignLastEpoch
 	//}
 
@@ -105,14 +109,29 @@ type Keyserver struct {
 	stopped  chan struct{}
 }
 
+type logReplicatorArgs struct {
+	clk               clock.Clock
+	db                kv.DB
+	dbPrefix          []byte
+	replicationServer *grpc.Server
+	dialReplica       func(string, ...grpc.DialOption) (*grpc.ClientConn, error)
+	heartbeat         time.Duration
+	replicas          []*proto.Replica
+	replicaID         uint64
+}
+
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.Listener, error), mkLog func(*logReplicatorArgs) replication.LogReplicator, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
 	signingKey, err := getKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
 	}
 	vrfKey, err := getKey(cfg.VRFKeyID)
+	if err != nil {
+		return nil, err
+	}
+	raftTLS, err := cfg.RaftTLS.Config(getKey)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +157,6 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		realm:                    cfg.Realm,
 		serverID:                 cfg.ServerID,
 		replicaID:                cfg.ReplicaID,
-		serverAuthorized:         initialAuthorizationPolicy,
 		sehKey:                   signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:                vrfKey.(*[vrf.SecretKeySize]byte),
 		emailProofToAddr:         cfg.EmailProofToAddr,
@@ -151,13 +169,15 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		retryProposalInterval:    cfg.ProposalRetryInterval.Duration(),
 
 		db:                 db,
-		log:                log,
 		stop:               make(chan struct{}),
 		stopped:            make(chan struct{}),
 		wr:                 concurrent.NewOneShotPubSub(),
 		signatureBroadcast: concurrent.NewPublishSubscribe(),
+		replicationServer:  grpc.NewServer(),
 
 		leaderHint: true,
+
+		setOurAcceptableClusterChange: make(chan []*proto.Replica),
 
 		clk:                   clk,
 		lookupTXT:             LookupTXT,
@@ -175,7 +195,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
 	case ks.db.ErrNotFound():
-		// ReplicaState zero value is valid initialization
+		ks.rs.CurrentCluster = cfg.InitialReplicas
 	case nil:
 		if err := ks.rs.Unmarshal(replicaStateBytes); err != nil {
 			return nil, err
@@ -183,13 +203,40 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	default:
 		return nil, err
 	}
+
+	dialReplica := func(addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+		return grpc.Dial(addr, append([]grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs}))}, opts...)...)
+	}
+	ks.log = mkLog(&logReplicatorArgs{
+		clk:               ks.clk,
+		db:                ks.db,
+		dbPrefix:          tableReplicationLogs(ks.rs.CurrentClusterVersion),
+		replicationServer: ks.replicationServer,
+		dialReplica:       dialReplica,
+		heartbeat:         cfg.RaftHeartbeat.Duration(),
+		replicas:          ks.rs.CurrentCluster,
+		replicaID:         cfg.ReplicaID,
+	})
+	ks.serverAuthorized = replicaSetMajorityPolicy(ks.rs.CurrentCluster)
+
 	ks.leaderHint = true
 	ks.resetEpochTimers(ks.rs.LastEpochDelimiter.Timestamp.Time())
-	ks.updateEpochProposer()
+	ks.updateEpochProposer() // TODO: move?
 
 	ks.sb = concurrent.NewSequenceBroadcast(ks.rs.NextIndexVerifier)
 
 	ok := false
+	ks.replicationListen, err = net.Listen("tcp", cfg.RaftAddr)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
+	}
+	defer func() {
+		if !ok {
+			ks.replicationListen.Close()
+		}
+	}()
+	ks.replicationServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(raftTLS)))
+
 	if cfg.PublicAddr != "" {
 		ks.publicServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(publicTLS)))
 		proto.RegisterE2EKSPublicServer(ks.publicServer, ks)
@@ -252,6 +299,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 // Start makes the keyserver start handling requests (forks goroutines).
 func (ks *Keyserver) Start() {
 	ks.log.Start(ks.rs.NextIndexLog)
+	go ks.replicationServer.Serve(ks.replicationListen)
 	if ks.publicServer != nil {
 		go ks.publicServer.Serve(ks.publicListen)
 	}
@@ -270,6 +318,8 @@ func (ks *Keyserver) Start() {
 // Stop cleanly shuts down the keyserver and then returns.
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
+		ks.replicationServer.Stop()
+		ks.log.Stop()
 		// FIXME: where are the listeners closed?
 		if ks.publicServer != nil {
 			ks.publicServer.Stop()
@@ -306,11 +356,7 @@ func (ks *Keyserver) run() {
 		select {
 		case <-ks.stop:
 			return
-		case stepEntry := <-ks.log.WaitCommitted():
-			if stepEntry.ConfChange != nil {
-				ks.log.ApplyConfChange(stepEntry.ConfChange)
-			}
-			stepBytes := stepEntry.Data
+		case stepBytes := <-ks.log.WaitCommitted():
 			if stepBytes == nil {
 				continue // allow logs to skip slots for indexing purposes
 			}
@@ -330,6 +376,8 @@ func (ks *Keyserver) run() {
 			if deferredIO != nil {
 				deferredIO()
 			}
+		case replicas := <-ks.setOurAcceptableClusterChange:
+			ks.rs.OurAcceptableClusterChange = replicas
 		case ks.leaderHint = <-ks.log.LeaderHintSet():
 			ks.updateEpochProposer()
 		case <-ks.minEpochIntervalTimer.C:
@@ -424,8 +472,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			log.Panicf("new epoch delimiter but last epoch not ratified")
 		}
 		rs.LastEpochNeedsRatification = true
-		ks.updateEpochProposer()
-		deferredIO = ks.updateSignatureProposer
 
 		snapshotNumberBytes := make([]byte, 8)
 		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
@@ -454,16 +500,22 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		sha3.ShakeSum256(rs.PreviousSummaryHash[:], teh.Head.Encoding)
 
 		wb.Put(tableEpochHeads(step.GetEpochDelimiter().EpochNumber), proto.MustMarshal(teh))
+		ks.updateSignatureProposer(teh)
+		ks.updateEpochProposer()
 
 	case *proto.KeyserverStep_ReplicaSigned:
 		newSEH := step.GetReplicaSigned()
 		epochNr := newSEH.Head.Head.Epoch
 		// get epoch head
 		tehBytes, err := ks.db.Get(tableEpochHeads(epochNr))
-		if err != nil {
-			log.Panicf("get tableEpochHeads(%d): %s", epochNr, err)
+		teh := new(proto.EncodedTimestampedEpochHead)
+		if err := teh.Unmarshal(tehBytes); err != nil {
+			log.Panicf("ks.db.Get(tableEpochHeads(%d) fails to unmarshal: %s", epochNr, err)
 		}
-		// compare epoch head to signed epoch head
+		if err != nil {
+			log.Panicf("get tableEpochHeads(%d): %s (we received a signature for an epoch whose head we cannot load from our database)", epochNr, err)
+		} // establishes: epochNr <= rs.LastEpochDelimiter.EpochNumber
+		// make sure that the signature is for the exact same epoch head we have
 		if got, want := tehBytes, newSEH.Head.Encoding; !bytes.Equal(got, want) {
 			log.Panicf("replica signed different head: wanted %x, got %x", want, got)
 		}
@@ -489,14 +541,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if epochNr != rs.LastEpochDelimiter.EpochNumber {
 			break
 		}
+
+		// Is this node done with epochNr?
 		if rs.ThisReplicaNeedsToSignLastEpoch && newSEH.Signatures[ks.replicaID] != nil {
 			rs.ThisReplicaNeedsToSignLastEpoch = false
+			ks.updateSignatureProposer(teh)
 			ks.updateEpochProposer()
-			// updateSignatureProposer should in general be called after writes
-			// have been flushed to db, but given ThisReplicaNeedsToSignLast =
-			// false we know that updateSignatureProposer will not access the db.
-			ks.updateSignatureProposer()
 		}
+
 		// get all existing ratifications for this epoch
 		allSignatures := make(map[uint64][]byte)
 		existingRatifications, err := ks.allRatificationsForEpoch(epochNr)
@@ -521,23 +573,16 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if !nowRatified {
 			break
 		}
+
 		if !rs.LastEpochNeedsRatification {
 			log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
 		}
 		rs.LastEpochNeedsRatification = false
 		ks.updateEpochProposer()
-		var teh proto.EncodedTimestampedEpochHead
-		err = teh.Unmarshal(tehBytes)
-		if err != nil {
-			log.Panicf("invalid epoch head %d (%x): %s", epochNr, tehBytes, err)
-		}
-		allSignaturesSEH := &proto.SignedEpochHead{
-			Head:       teh,
-			Signatures: allSignatures,
-		}
+		allSignaturesSEH := &proto.SignedEpochHead{Head: *teh, Signatures: allSignatures}
 		oldDeferredIO := deferredIO
 		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{&proto.VerifierStep_Epoch{Epoch: allSignaturesSEH}}, rs, wb)
-		deferredSendUpdates := []func(){}
+		var deferredSendUpdates []func()
 		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableUpdatesPendingRatificationPrefix}))
 		defer iter.Release()
 		for iter.Next() {
@@ -559,6 +604,21 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 		}
 
+		if !newSEH.Head.Head.NextEpochPolicy.Equal(proto.AuthorizationPolicy{}) {
+			if rs.LastEpochDelimiter.NextEpochReplicas == nil {
+				log.Fatalf("NextEpochPolicy is set but NextEpochReplicas is nil for epoch %d", epochNr)
+			}
+			rs.CurrentCluster = rs.LastEpochDelimiter.NextEpochReplicas
+			rs.CurrentClusterVersion++
+
+			oldDeferredIO := deferredIO
+			deferredIO = func() {
+				oldDeferredIO()
+				log.Printf("This replica has reached configuration change barrier number %d. Client requests are not being processed. Please wait for the other live replicas to reach the same barrier and then 1) stop all replicas 2) copy the database to any new replicas 3) start all replicas")
+				select {}
+			}
+		}
+
 	case *proto.KeyserverStep_VerifierSigned:
 		rNew := step.GetVerifierSigned()
 		for id := range rNew.Signatures {
@@ -573,6 +633,14 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			// As above, first write to DB, *then* notify subscribers.
 			ks.signatureBroadcast.Publish(rNew.Head.Head.Epoch, rNew)
 		}
+
+	case *proto.KeyserverStep_AcceptableClusterChange:
+		a := step.GetAcceptableClusterChange()
+		if ks.rs.AcceptableClusterChanges == nil {
+			ks.rs.AcceptableClusterChanges = make(map[uint64]*proto.AcceptableClusterChange)
+		}
+		ks.rs.AcceptableClusterChanges[a.Replica] = a
+
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
@@ -583,14 +651,14 @@ type Proposer struct {
 	log      replication.LogReplicator
 	clk      clock.Clock
 	delay    time.Duration
-	proposal replication.LogEntry
+	proposal []byte
 
 	stop     chan struct{}
 	stopped  chan struct{}
 	stopOnce sync.Once
 }
 
-func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal replication.LogEntry) *Proposer {
+func StartProposer(log replication.LogReplicator, clk clock.Clock, initialDelay time.Duration, proposal []byte) *Proposer {
 	p := &Proposer{
 		log:      log,
 		clk:      clk,
@@ -653,27 +721,45 @@ func (ks *Keyserver) updateEpochProposer() {
 		return
 	}
 
+	quorum := ks.serverAuthorized.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum
+	// decide on a cluster for the next epoch. It is critical for availability
+	// that a majority replicas deem this cluster acceptable.
+	var nextEpochReplicas []*proto.Replica
+	for _, a := range ks.rs.AcceptableClusterChanges {
+		acceptors := make(map[uint64]struct{})
+		for id, b := range ks.rs.AcceptableClusterChanges {
+			if replicaSetsEquivalent(a.Cluster, b.Cluster) {
+				acceptors[id] = struct{}{}
+			}
+		}
+		if coname.CheckQuorum(quorum, acceptors) {
+			nextEpochReplicas = a.Cluster
+			break
+		}
+	}
+
 	switch want {
 	case true:
 		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
-			replication.LogEntry{
-				Data: proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_EpochDelimiter{EpochDelimiter: &proto.EpochDelimiter{
-					EpochNumber: ks.rs.LastEpochDelimiter.EpochNumber + 1,
-					Timestamp:   proto.Time(ks.clk.Now()),
-				}}}),
-				ConfChange: &replication.ConfChange{
-					Operation: replication.ConfChangeNOP,
-				},
-			})
+			proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_EpochDelimiter{EpochDelimiter: &proto.EpochDelimiter{
+				EpochNumber:       ks.rs.LastEpochDelimiter.EpochNumber + 1,
+				Timestamp:         proto.Time(ks.clk.Now()),
+				NextEpochReplicas: replicaSetCanonical(nextEpochReplicas),
+			}}}),
+		)
 	case false:
 		ks.epochProposer.Stop()
 		ks.epochProposer = nil
 	}
 }
 
-func (ks *Keyserver) updateSignatureProposer() {
-	// invariant: do not access the db if ThisReplicaNeedsToSignLastEpoch = false
-	want := ks.rs.ThisReplicaNeedsToSignLastEpoch
+// teh must be tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber)
+func (ks *Keyserver) updateSignatureProposer(teh *proto.EncodedTimestampedEpochHead) {
+	acceptCluster := teh.Head.NextEpochPolicy.Equal(&proto.AuthorizationPolicy{}) // no change
+	if reflect.DeepEqual(replicaSetMajorityPolicy(ks.rs.OurAcceptableClusterChange), teh.Head.NextEpochPolicy) {
+		acceptCluster = true
+	}
+	want := ks.rs.ThisReplicaNeedsToSignLastEpoch && acceptCluster
 	have := ks.signatureProposer != nil
 	if have == want {
 		return
@@ -681,20 +767,12 @@ func (ks *Keyserver) updateSignatureProposer() {
 
 	switch want {
 	case true:
-		tehBytes, err := ks.db.Get(tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber))
-		if err != nil {
-			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db", err)
-		}
-		var teh proto.EncodedTimestampedEpochHead
-		if err := teh.Unmarshal(tehBytes); err != nil {
-			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
-		}
 		seh := &proto.SignedEpochHead{
-			Head:       teh,
-			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, tehBytes)[:]},
+			Head:       *teh,
+			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, teh.Encoding)[:]},
 		}
 		ks.signatureProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
-			replication.LogEntry{Data: proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_ReplicaSigned{ReplicaSigned: seh}})})
+			proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_ReplicaSigned{ReplicaSigned: seh}}))
 	case false:
 		ks.signatureProposer.Stop()
 		ks.signatureProposer = nil

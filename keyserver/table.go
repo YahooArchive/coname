@@ -23,7 +23,7 @@ import (
 // NOTE: All uint64 keys are big-endian encoded to make lexicographical order
 // correspond to numeric order.
 var (
-	tableReplicationLogPrefix             byte = 'l' // index uint64 -> proto.KeyserverStep
+	tableReplicationLogsPrefix            byte = 'l' // uint64 -> opaque state, managed by the replication package
 	tableVerifierLogPrefix                byte = 'v' // index uint64 -> proto.VerifierStep
 	tableRatificationsPrefix              byte = 'r' // epoch uint64, ratifier uint64 -> []byte (signature)
 	tableEpochHeadsPrefix                 byte = 'e' // epoch uint64 -> proto.TimestampedEpochHead
@@ -34,6 +34,13 @@ var (
 
 	tableReplicaState = []byte{'e'} // proto.ReplicaState
 )
+
+func tableReplicationLogs(era uint64) []byte {
+	ret := make([]byte, 1+8)
+	ret[0] = tableReplicationLogsPrefix
+	binary.BigEndian.PutUint64(ret[1:1+8], era)
+	return ret
+}
 
 func tableRatifications(epoch, ratifier uint64) []byte {
 	ret := make([]byte, 1+8+8)

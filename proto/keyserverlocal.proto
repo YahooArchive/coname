@@ -16,6 +16,7 @@ syntax = "proto3";
 package proto;
 import "gogoproto/gogo.proto";
 import "replication.proto";
+import "keyserverconfig.proto";
 
 // ReplicaState contains the persistent internal state of a single replica.
 // Additional on-disk state is descried in server/table.go.
@@ -27,8 +28,12 @@ message ReplicaState {
 	EpochDelimiter last_epoch_delimiter = 4 [(gogoproto.nullable) = false];
 	bool this_replica_needs_to_sign_last_epoch = 5;
 	bool pending_updates = 6; // are there any updates after the last epoch delimiter?
+	map<fixed64, AcceptableClusterChange> acceptable_cluster_changes = 9; // replica id -> the new cluster it would accept
+	repeated Replica CurrentCluster = 10;
+	uint64 CurrentClusterVersion = 11;
 
 	// local variables
 	uint64 latest_tree_snapshot = 7; // NOTE: this might be deterministic, but we definitely shouldn't rely on that
-	bool last_epoch_needs_ratification = 8;
+	bool last_epoch_needs_ratification = 8; // TODO: shouldn't this be in the log-derived variables section above?
+	repeated Replica our_acceptable_cluster_change = 12; // the cluster that this replica would be willing to change to, set by explicit local operator action
 }

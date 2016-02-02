@@ -40,6 +40,7 @@ It has these top-level messages:
 	Replica
 	ReplicaState
 	KeyserverStep
+	AcceptableClusterChange
 	EpochDelimiter
 	Timestamp
 	TLSConfig
