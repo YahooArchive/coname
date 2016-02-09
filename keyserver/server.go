@@ -90,6 +90,7 @@ type Keyserver struct {
 	// }
 
 	setOurAcceptableClusterChange chan []*proto.Replica
+	clusterChangeBarrier          chan struct{} // send a value when reached
 
 	// signatureProposer makes sure we try to sign epochs.
 	signatureProposer *Proposer
@@ -178,6 +179,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 		leaderHint: true,
 
 		setOurAcceptableClusterChange: make(chan []*proto.Replica),
+		clusterChangeBarrier:          make(chan struct{}),
 
 		clk:                   clk,
 		lookupTXT:             LookupTXT,
@@ -622,7 +624,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			deferredIO = func() {
 				oldDeferredIO()
 				log.Printf("This replica has reached configuration change barrier number %d. Client requests are not being processed. Please wait for the other live replicas to reach the same barrier and then 1) stop all replicas 2) copy the database to any new replicas 3) start all replicas")
-				select {}
+				ks.clusterChangeBarrier <- struct{}{}
 			}
 		}
 
