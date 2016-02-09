@@ -101,7 +101,7 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 func mkRaftLog(largs *logReplicatorArgs) replication.LogReplicator {
 	dialRaftPeer := func(id uint64) raftproto.RaftClient {
 		for _, replica := range largs.replicas {
-			if replica.ID == largs.replicaID {
+			if replica.ID == id {
 				conn, err := largs.dialReplica(replica.RaftAddr)
 				if err != nil {
 					log.Panicf("Raft GRPC dial failed: %s", err)

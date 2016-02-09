@@ -24,16 +24,16 @@ func ReserveListener(nw string, laddr string) (string, error) {
 func MustReserveListener(t *testing.T, nw string, laddr string) string {
 	ret, err := ReserveListener(nw, laddr)
 	if err != nil {
-		t.Fatalf("failed to reserve listener for %s://%s: %s", err)
+		t.Fatalf("failed to reserve listener for %s://%s: %s", nw, laddr, err)
 	}
 	return ret
 }
 
 // Listen mimics net.Listen but returns reserved connections whenever possible
-func Listen(nw string, laddr string) (net.Listener, error) {
-	if ret, ok := reservedListeners[laddr]; ok {
-		delete(reservedListeners, laddr)
+func Listen(nw string, addr string) (net.Listener, error) {
+	if ret, ok := reservedListeners[addr]; ok {
+		delete(reservedListeners, addr)
 		return ret, nil
 	}
-	return net.Listen(nw, laddr)
+	return net.Listen(nw, addr)
 }

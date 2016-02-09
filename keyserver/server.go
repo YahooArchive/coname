@@ -204,8 +204,21 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 		return nil, err
 	}
 
+	ok := false
+	ks.replicationListen, err = Listen("tcp", cfg.RaftAddr)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
+	}
+	println("replication listening on " + ks.replicationListen.Addr().String())
+	defer func() {
+		if !ok {
+			ks.replicationListen.Close()
+		}
+	}()
+	ks.replicationServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(raftTLS)))
+
 	dialReplica := func(addr string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
-		return grpc.Dial(addr, append([]grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs}))}, opts...)...)
+		return grpc.Dial(addr, append([]grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(raftTLS))}, opts...)...)
 	}
 	ks.log = mkLog(&logReplicatorArgs{
 		clk:               ks.clk,
@@ -225,22 +238,10 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 
 	ks.sb = concurrent.NewSequenceBroadcast(ks.rs.NextIndexVerifier)
 
-	ok := false
-	ks.replicationListen, err = net.Listen("tcp", cfg.RaftAddr)
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
-	}
-	defer func() {
-		if !ok {
-			ks.replicationListen.Close()
-		}
-	}()
-	ks.replicationServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(raftTLS)))
-
 	if cfg.PublicAddr != "" {
 		ks.publicServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(publicTLS)))
 		proto.RegisterE2EKSPublicServer(ks.publicServer, ks)
-		ks.publicListen, err = net.Listen("tcp", cfg.PublicAddr)
+		ks.publicListen, err = Listen("tcp", cfg.PublicAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +254,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 	if cfg.VerifierAddr != "" {
 		ks.verifierServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(verifierTLS)))
 		proto.RegisterE2EKSVerificationServer(ks.verifierServer, ks)
-		ks.verifierListen, err = net.Listen("tcp", cfg.VerifierAddr)
+		ks.verifierListen, err = Listen("tcp", cfg.VerifierAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -264,10 +265,11 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 		}()
 	}
 	if cfg.HKPAddr != "" {
-		ks.hkpListen, err = tls.Listen("tcp", cfg.HKPAddr, hkpTLS)
+		hkpPlainListener, err := Listen("tcp", cfg.HKPAddr)
 		if err != nil {
 			return nil, err
 		}
+		ks.hkpListen = tls.NewListener(hkpPlainListener, hkpTLS)
 		ks.hkpFront = &hkpfront.HKPFront{InsecureSkipVerify: true, Lookup: ks.Lookup, Clk: ks.clk}
 		defer func() {
 			if !ok {
@@ -276,10 +278,11 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, Listen func(string, string) (net.L
 		}()
 	}
 	if cfg.HTTPFrontAddr != "" {
-		ks.httpFrontListen, err = tls.Listen("tcp", cfg.HTTPFrontAddr, httpFrontTLS)
+		httpPlainListen, err := Listen("tcp", cfg.HTTPFrontAddr)
 		if err != nil {
 			return nil, err
 		}
+		ks.httpFrontListen = tls.NewListener(httpPlainListen, httpFrontTLS)
 		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update}
 		defer func() {
 			if !ok {
@@ -319,19 +322,23 @@ func (ks *Keyserver) Start() {
 func (ks *Keyserver) Stop() {
 	ks.stopOnce.Do(func() {
 		ks.replicationServer.Stop()
+		ks.replicationListen.Close()
 		ks.log.Stop()
-		// FIXME: where are the listeners closed?
 		if ks.publicServer != nil {
 			ks.publicServer.Stop()
+			ks.publicListen.Close()
 		}
 		if ks.verifierServer != nil {
 			ks.verifierServer.Stop()
+			ks.verifierListen.Close()
 		}
 		if ks.hkpFront != nil {
 			ks.hkpFront.Stop()
+			ks.hkpListen.Close()
 		}
 		if ks.httpFront != nil {
 			ks.httpFront.Stop()
+			ks.httpFrontListen.Close()
 		}
 		close(ks.stop)
 		<-ks.stopped
@@ -604,7 +611,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 		}
 
-		if !newSEH.Head.Head.NextEpochPolicy.Equal(proto.AuthorizationPolicy{}) {
+		if !newSEH.Head.Head.NextEpochPolicy.Equal(&proto.AuthorizationPolicy{}) {
 			if rs.LastEpochDelimiter.NextEpochReplicas == nil {
 				log.Fatalf("NextEpochPolicy is set but NextEpochReplicas is nil for epoch %d", epochNr)
 			}
