@@ -24,7 +24,6 @@ import (
 	"log"
 	"math"
 	"net"
-	"reflect"
 	"sync"
 	"time"
 
@@ -467,7 +466,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			return // a duplicate of this step has already been handled
 		}
 		rs.LastEpochDelimiter = *step.GetEpochDelimiter()
-		log.Printf("epoch %d", step.GetEpochDelimiter().EpochNumber)
 
 		rs.PendingUpdates = false
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
@@ -501,6 +499,9 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}, nil},
 			Timestamp: step.GetEpochDelimiter().Timestamp,
 		}, nil}
+		if step.GetEpochDelimiter().NextEpochReplicas != nil {
+			teh.Head.NextEpochPolicy = *replicaSetMajorityPolicy(step.GetEpochDelimiter().NextEpochReplicas)
+		}
 		teh.Head.UpdateEncoding()
 		teh.UpdateEncoding()
 		if rs.PreviousSummaryHash == nil {
@@ -514,6 +515,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 
 	case *proto.KeyserverStep_ReplicaSigned:
 		newSEH := step.GetReplicaSigned()
+		var signer uint64
+		var sig []byte
+		for signer, sig = range newSEH.Signatures {
+		}
+		fmt.Printf("%d: %x saw %x sign %x with %x\n", newSEH.Head.Head.Epoch, ks.replicaID, signer, newSEH.Head.Encoding, sig)
 		epochNr := newSEH.Head.Head.Epoch
 		// get epoch head
 		tehBytes, err := ks.db.Get(tableEpochHeads(epochNr))
@@ -582,6 +588,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if !nowRatified {
 			break
 		}
+		println(rs.LastEpochDelimiter.EpochNumber)
 
 		if !rs.LastEpochNeedsRatification {
 			log.Panicf("%x: thought last epoch was not already ratified, but it was", ks.replicaID)
@@ -613,6 +620,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			}
 		}
 
+		fmt.Println("PROCESSING SIGNATURE", newSEH.Head.Head.NextEpochPolicy)
 		if !newSEH.Head.Head.NextEpochPolicy.Equal(&proto.AuthorizationPolicy{}) {
 			if rs.LastEpochDelimiter.NextEpochReplicas == nil {
 				log.Fatalf("NextEpochPolicy is set but NextEpochReplicas is nil for epoch %d", epochNr)
@@ -649,6 +657,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			ks.rs.AcceptableClusterChanges = make(map[uint64]*proto.AcceptableClusterChange)
 		}
 		ks.rs.AcceptableClusterChanges[a.Replica] = a
+		ks.wr.Notify(step.UID, nil)
 
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
@@ -730,25 +739,25 @@ func (ks *Keyserver) updateEpochProposer() {
 		return
 	}
 
-	quorum := ks.serverAuthorized.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum
-	// decide on a cluster for the next epoch. It is critical for availability
-	// that a majority replicas deem this cluster acceptable.
-	var nextEpochReplicas []*proto.Replica
-	for _, a := range ks.rs.AcceptableClusterChanges {
-		acceptors := make(map[uint64]struct{})
-		for id, b := range ks.rs.AcceptableClusterChanges {
-			if replicaSetsEquivalent(a.Cluster, b.Cluster) {
-				acceptors[id] = struct{}{}
-			}
-		}
-		if coname.CheckQuorum(quorum, acceptors) {
-			nextEpochReplicas = a.Cluster
-			break
-		}
-	}
-
 	switch want {
 	case true:
+		quorum := ks.serverAuthorized.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum
+		// decide on a cluster for the next epoch. It is critical for availability
+		// that a majority replicas deem this cluster acceptable.
+		var nextEpochReplicas []*proto.Replica
+		for _, a := range ks.rs.AcceptableClusterChanges {
+			acceptors := make(map[uint64]struct{})
+			for id, b := range ks.rs.AcceptableClusterChanges {
+				if replicaSetsEquivalent(a.Cluster, b.Cluster) {
+					acceptors[id] = struct{}{}
+				}
+			}
+			if coname.CheckQuorum(quorum, acceptors) {
+				nextEpochReplicas = a.Cluster
+				break
+			}
+		}
+
 		ks.epochProposer = StartProposer(ks.log, ks.clk, ks.retryProposalInterval,
 			proto.MustMarshal(&proto.KeyserverStep{Type: &proto.KeyserverStep_EpochDelimiter{EpochDelimiter: &proto.EpochDelimiter{
 				EpochNumber:       ks.rs.LastEpochDelimiter.EpochNumber + 1,
@@ -765,9 +774,15 @@ func (ks *Keyserver) updateEpochProposer() {
 // teh must be tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber)
 func (ks *Keyserver) updateSignatureProposer(teh *proto.EncodedTimestampedEpochHead) {
 	acceptCluster := teh.Head.NextEpochPolicy.Equal(&proto.AuthorizationPolicy{}) // no change
-	if reflect.DeepEqual(replicaSetMajorityPolicy(ks.rs.OurAcceptableClusterChange), teh.Head.NextEpochPolicy) {
-		acceptCluster = true
+	if !acceptCluster && ks.rs.OurAcceptableClusterChange != nil {
+		okPolicy := replicaSetMajorityPolicy(ks.rs.OurAcceptableClusterChange)
+		if teh.Head.NextEpochPolicy.Equal(okPolicy) {
+			acceptCluster = true
+		} else {
+			log.Printf("%x found the following cluster change unacceptable:\n%s\nThe acceptable change would have to be:\n%s\n\n", ks.replicaID, teh.Head.NextEpochPolicy, okPolicy)
+		}
 	}
+
 	want := ks.rs.ThisReplicaNeedsToSignLastEpoch && acceptCluster
 	have := ks.signatureProposer != nil
 	if have == want {
@@ -776,6 +791,7 @@ func (ks *Keyserver) updateSignatureProposer(teh *proto.EncodedTimestampedEpochH
 
 	switch want {
 	case true:
+		fmt.Println("PROPOSING SIGNATURE", teh.Head.NextEpochPolicy)
 		seh := &proto.SignedEpochHead{
 			Head:       *teh,
 			Signatures: map[uint64][]byte{ks.replicaID: ed25519.Sign(ks.sehKey, teh.Encoding)[:]},

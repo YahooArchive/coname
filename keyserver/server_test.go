@@ -857,6 +857,36 @@ func TestKeyserverHKP(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
-		t.Error("pgpKey: got %q but wanted %q", got, want)
+		t.Errorf("pgpKey: got %q but wanted %q", got, want)
+	}
+}
+
+func TestKeyserverClusterChangeStop(t *testing.T) {
+	k := setupReplicatedKeyserver(t, 3)
+	stopClocks := stoppableSyncedClocks(k.clocks())
+	defer close(stopClocks)
+	defer k.teardown()
+
+	clientConfig, _ := k.setupClient()
+	k.replicas[0].server.blockingLookup(context.Background(), &proto.LookupRequest{
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+	}, 4)
+
+	newCluster := k.replicas[0].pcfg.InitialReplicas[:2] // remove last replica
+
+	k.replicas[0].server.AcceptClusterChange(context.Background(), newCluster)
+	k.replicas[0].server.AcceptClusterChange(context.Background(), newCluster)
+	select {
+	case <-k.replicas[0].server.clusterChangeBarrier:
+		t.Fatal("cluster of 3 nodes reacted to two cluster change requests from the same replica")
+	case <-time.After(time.Millisecond):
+	}
+
+	k.replicas[1].server.AcceptClusterChange(context.Background(), newCluster)
+
+	for _, r := range k.replicas {
+		<-r.server.clusterChangeBarrier
+		println("done")
 	}
 }

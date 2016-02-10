@@ -36,6 +36,9 @@ func (ks *Keyserver) AcceptClusterChange(ctx context.Context, replicas []*proto.
 		ks.wr.Notify(uid, nil)
 		return ctx.Err()
 	case v := <-ch:
+		if v == nil {
+			return nil
+		}
 		return v.(error)
 	}
 }
