@@ -70,7 +70,7 @@ func (this *EncodedAuthorizationPolicy) VerboseEqual(that interface{}) error {
 	if thatP, ok := that.(EncodedAuthorizationPolicy); ok {
 		return this.AuthorizationPolicy.VerboseEqual(&thatP.AuthorizationPolicy)
 	}
-	return fmt.Errorf("types don't match: %T != EncodedAuthorizationPolicy")
+	return fmt.Errorf("types don't match: %T != EncodedAuthorizationPolicy", that)
 }
 
 func (this *EncodedAuthorizationPolicy) Equal(that interface{}) bool {

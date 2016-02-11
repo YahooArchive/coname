@@ -134,7 +134,6 @@ func (l *raftLog) Start(lo uint64) error {
 	l.stop = make(chan struct{})
 	l.stopped = make(chan struct{})
 	l.grpcDropClient = make(chan uint64)
-	l.stopOnce = sync.Once{}
 	l.grpcClientCache = make(map[uint64]proto.RaftClient)
 
 	go l.run()
@@ -415,7 +414,7 @@ func (s *raftStorage) getEntryKey(nr uint64) (key []byte) {
 
 // Entries implements the raft.Storage interface
 func (s *raftStorage) Entries(lo, hi, maxSize uint64) (entries []raftpb.Entry, err error) {
-	it := s.db.NewIterator(&kv.Range{s.getEntryKey(lo), s.getEntryKey(hi)})
+	it := s.db.NewIterator(&kv.Range{Start: s.getEntryKey(lo), Limit: s.getEntryKey(hi)})
 	defer it.Release()
 	entries = make([]raftpb.Entry, 0)
 	sizeSoFar := uint64(0)

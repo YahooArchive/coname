@@ -70,7 +70,7 @@ func (this *EncodedTimestampedEpochHead) VerboseEqual(that interface{}) error {
 	if thatP, ok := that.(EncodedTimestampedEpochHead); ok {
 		return this.TimestampedEpochHead.VerboseEqual(&thatP.TimestampedEpochHead)
 	}
-	return fmt.Errorf("types don't match: %T != EncodedTimestampedEpochHead")
+	return fmt.Errorf("types don't match: %T != EncodedTimestampedEpochHead", that)
 }
 
 func (this *EncodedTimestampedEpochHead) Equal(that interface{}) bool {

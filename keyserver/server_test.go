@@ -451,7 +451,7 @@ func doRegister(
 	if err != nil {
 		t.Fatal(err)
 	}
-	pk := &proto.PublicKey{&proto.PublicKey_Ed25519{Ed25519: edpk[:]}}
+	pk := &proto.PublicKey{PubkeyType: &proto.PublicKey_Ed25519{Ed25519: edpk[:]}}
 	e, p := doUpdate(t, ks, clientConfig, clientTLS, caPool, now, name, sk, pk, version, profileContents)
 	return sk, pk, e, p
 }
@@ -1016,16 +1016,16 @@ func TestKeyserverHKP(t *testing.T) {
 	}
 
 	if got, want := pgpBlock.Type, "PGP PUBLIC KEY BLOCK"; got != want {
-		t.Error("pgpBlock.Type: got %v but wanted %v", got, want)
+		t.Errorf("pgpBlock.Type: got %v but wanted %v", got, want)
 	}
 	if got, want := len(pgpBlock.Header), 0; got != want {
-		t.Error("len(pgpBlock.Header): got %v but wanted %v", got, want)
+		t.Errorf("len(pgpBlock.Header): got %v but wanted %v", got, want)
 	}
 	pgpKey, err := ioutil.ReadAll(pgpBlock.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
-		t.Error("pgpKey: got %q but wanted %q", got, want)
+		t.Errorf("pgpKey: got %q but wanted %q", got, want)
 	}
 }

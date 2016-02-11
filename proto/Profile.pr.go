@@ -70,7 +70,7 @@ func (this *EncodedProfile) VerboseEqual(that interface{}) error {
 	if thatP, ok := that.(EncodedProfile); ok {
 		return this.Profile.VerboseEqual(&thatP.Profile)
 	}
-	return fmt.Errorf("types don't match: %T != EncodedProfile")
+	return fmt.Errorf("types don't match: %T != EncodedProfile", that)
 }
 
 func (this *EncodedProfile) Equal(that interface{}) bool {

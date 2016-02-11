@@ -53,6 +53,6 @@ func TestUnmarshalMarshalNegative(t *testing.T) {
 	pk2[31] ^= 0x80
 
 	if *pk == pk2 {
-		t.Errorf("flipping sign did not change public key:\n%x\nbytes:\n\t%x\n\t%x\ndelta: %x\n", ret, A, *pk, pk2, int(pk[31])-int(pk2[31]))
+		t.Errorf("FromBytes(%v)->flipping sign did not change public key:\n%x\nbytes:\n\t%x\n\t%x\ndelta: %x\n", ret, A, *pk, pk2, int(pk[31])-int(pk2[31]))
 	}
 }

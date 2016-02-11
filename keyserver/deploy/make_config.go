@@ -259,7 +259,7 @@ func main() {
 	verificationPolicy := &proto.AuthorizationPolicy{
 		PublicKeys: make(map[uint64]*proto.PublicKey),
 		PolicyType: &proto.AuthorizationPolicy_Quorum{
-			&proto.QuorumExpr{Threshold: uint32(majority(len(hosts)))},
+			Quorum: &proto.QuorumExpr{Threshold: uint32(majority(len(hosts)))},
 		},
 	}
 	replicaIDs := []uint64{}

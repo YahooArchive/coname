@@ -70,7 +70,7 @@ func (this *EncodedSignedEntryUpdate) VerboseEqual(that interface{}) error {
 	if thatP, ok := that.(EncodedSignedEntryUpdate); ok {
 		return this.SignedEntryUpdate.VerboseEqual(&thatP.SignedEntryUpdate)
 	}
-	return fmt.Errorf("types don't match: %T != EncodedSignedEntryUpdate")
+	return fmt.Errorf("types don't match: %T != EncodedSignedEntryUpdate", that)
 }
 
 func (this *EncodedSignedEntryUpdate) Equal(that interface{}) bool {

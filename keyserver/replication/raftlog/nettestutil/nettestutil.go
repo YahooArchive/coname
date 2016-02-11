@@ -74,8 +74,8 @@ func (m *mockConn) Write(b []byte) (int, error) {
 	case dead == 1 && kill == 1:
 		return len(b), nil
 	case dead == 1 && kill == 0:
-		return 0, fmt.Errorf("networktestutil: this connection died long ago")
 		m.Close()
+		return 0, fmt.Errorf("networktestutil: this connection died long ago")
 	}
 	panic("unreachable")
 }

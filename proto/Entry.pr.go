@@ -70,7 +70,7 @@ func (this *EncodedEntry) VerboseEqual(that interface{}) error {
 	if thatP, ok := that.(EncodedEntry); ok {
 		return this.Entry.VerboseEqual(&thatP.Entry)
 	}
-	return fmt.Errorf("types don't match: %T != EncodedEntry")
+	return fmt.Errorf("types don't match: %T != EncodedEntry", that)
 }
 
 func (this *EncodedEntry) Equal(that interface{}) bool {

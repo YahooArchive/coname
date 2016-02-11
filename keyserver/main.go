@@ -110,7 +110,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 	// this should be moved into server.go
 	ratificationPolicy := &proto.AuthorizationPolicy{
 		PublicKeys: make(map[uint64]*proto.PublicKey),
-		PolicyType: &proto.AuthorizationPolicy_Quorum{&proto.QuorumExpr{
+		PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
 			Threshold: uint32(majority(len(cfg.KeyserverConfig.InitialReplicas)))},
 		},
 	}
