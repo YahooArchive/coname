@@ -134,7 +134,6 @@ func (l *raftLog) Start(lo uint64) error {
 	l.stop = make(chan struct{})
 	l.stopped = make(chan struct{})
 	l.grpcDropClient = make(chan uint64)
-	l.stopOnce = sync.Once{}
 	l.grpcClientCache = make(map[uint64]proto.RaftClient)
 
 	go l.run()
