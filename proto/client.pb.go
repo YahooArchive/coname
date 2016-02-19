@@ -37,6 +37,12 @@
 		Duration
 		ReplicaConfig
 		KeyserverConfig
+		RegistrationPolicy
+		EmailProofByDKIM
+		EmailProofByClientCert
+		EmailProofByOIDC
+		EmailProofByCustomAuth
+		OIDCConfig
 		Replica
 		ReplicaState
 		KeyserverStep
@@ -119,11 +125,44 @@ type UpdateRequest struct {
 	// values it considers invalid MUST be accepted.
 	Profile          EncodedProfile `protobuf:"bytes,2,opt,name=profile,customtype=EncodedProfile" json:"profile"`
 	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
-	DKIMProof        []byte         `protobuf:"bytes,1000,opt,name=dkim_proof,proto3" json:"dkim_proof,omitempty"`
+	// Types that are valid to be assigned to EmailProof:
+	//	*UpdateRequest_DKIMProof
+	//	*UpdateRequest_OIDCToken
+	//	*UpdateRequest_AuthData
+	EmailProof isUpdateRequest_EmailProof `protobuf_oneof:"email_proof"`
 }
 
 func (m *UpdateRequest) Reset()      { *m = UpdateRequest{} }
 func (*UpdateRequest) ProtoMessage() {}
+
+type isUpdateRequest_EmailProof interface {
+	isUpdateRequest_EmailProof()
+	Equal(interface{}) bool
+	VerboseEqual(interface{}) error
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type UpdateRequest_DKIMProof struct {
+	DKIMProof []byte `protobuf:"bytes,1000,opt,name=dkim_proof,proto3,oneof"`
+}
+type UpdateRequest_OIDCToken struct {
+	OIDCToken string `protobuf:"bytes,1001,opt,name=oidc_token,proto3,oneof"`
+}
+type UpdateRequest_AuthData struct {
+	AuthData []byte `protobuf:"bytes,1002,opt,name=auth_data,proto3,oneof"`
+}
+
+func (*UpdateRequest_DKIMProof) isUpdateRequest_EmailProof() {}
+func (*UpdateRequest_OIDCToken) isUpdateRequest_EmailProof() {}
+func (*UpdateRequest_AuthData) isUpdateRequest_EmailProof()  {}
+
+func (m *UpdateRequest) GetEmailProof() isUpdateRequest_EmailProof {
+	if m != nil {
+		return m.EmailProof
+	}
+	return nil
+}
 
 func (m *UpdateRequest) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
@@ -137,6 +176,85 @@ func (m *UpdateRequest) GetLookupParameters() *LookupRequest {
 		return m.LookupParameters
 	}
 	return nil
+}
+
+func (m *UpdateRequest) GetDKIMProof() []byte {
+	if x, ok := m.GetEmailProof().(*UpdateRequest_DKIMProof); ok {
+		return x.DKIMProof
+	}
+	return nil
+}
+
+func (m *UpdateRequest) GetOIDCToken() string {
+	if x, ok := m.GetEmailProof().(*UpdateRequest_OIDCToken); ok {
+		return x.OIDCToken
+	}
+	return ""
+}
+
+func (m *UpdateRequest) GetAuthData() []byte {
+	if x, ok := m.GetEmailProof().(*UpdateRequest_AuthData); ok {
+		return x.AuthData
+	}
+	return nil
+}
+
+// XXX_OneofFuncs is for the internal use of the proto package.
+func (*UpdateRequest) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
+	return _UpdateRequest_OneofMarshaler, _UpdateRequest_OneofUnmarshaler, []interface{}{
+		(*UpdateRequest_DKIMProof)(nil),
+		(*UpdateRequest_OIDCToken)(nil),
+		(*UpdateRequest_AuthData)(nil),
+	}
+}
+
+func _UpdateRequest_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
+	m := msg.(*UpdateRequest)
+	// email_proof
+	switch x := m.EmailProof.(type) {
+	case *UpdateRequest_DKIMProof:
+		_ = b.EncodeVarint(1000<<3 | proto1.WireBytes)
+		_ = b.EncodeRawBytes(x.DKIMProof)
+	case *UpdateRequest_OIDCToken:
+		_ = b.EncodeVarint(1001<<3 | proto1.WireBytes)
+		_ = b.EncodeStringBytes(x.OIDCToken)
+	case *UpdateRequest_AuthData:
+		_ = b.EncodeVarint(1002<<3 | proto1.WireBytes)
+		_ = b.EncodeRawBytes(x.AuthData)
+	case nil:
+	default:
+		return fmt.Errorf("UpdateRequest.EmailProof has unexpected type %T", x)
+	}
+	return nil
+}
+
+func _UpdateRequest_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error) {
+	m := msg.(*UpdateRequest)
+	switch tag {
+	case 1000: // email_proof.dkim_proof
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		x, err := b.DecodeRawBytes(true)
+		m.EmailProof = &UpdateRequest_DKIMProof{x}
+		return true, err
+	case 1001: // email_proof.oidc_token
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.EmailProof = &UpdateRequest_OIDCToken{x}
+		return true, err
+	case 1002: // email_proof.auth_data
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		x, err := b.DecodeRawBytes(true)
+		m.EmailProof = &UpdateRequest_AuthData{x}
+		return true, err
+	default:
+		return false, nil
+	}
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
@@ -697,8 +815,89 @@ func (this *UpdateRequest) VerboseEqual(that interface{}) error {
 	if !this.LookupParameters.Equal(that1.LookupParameters) {
 		return fmt.Errorf("LookupParameters this(%v) Not Equal that(%v)", this.LookupParameters, that1.LookupParameters)
 	}
+	if that1.EmailProof == nil {
+		if this.EmailProof != nil {
+			return fmt.Errorf("this.EmailProof != nil && that1.EmailProof == nil")
+		}
+	} else if this.EmailProof == nil {
+		return fmt.Errorf("this.EmailProof == nil && that1.EmailProof != nil")
+	} else if err := this.EmailProof.VerboseEqual(that1.EmailProof); err != nil {
+		return err
+	}
+	return nil
+}
+func (this *UpdateRequest_DKIMProof) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*UpdateRequest_DKIMProof)
+	if !ok {
+		return fmt.Errorf("that is not of type *UpdateRequest_DKIMProof")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *UpdateRequest_DKIMProof but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *UpdateRequest_DKIMProofbut is not nil && this == nil")
+	}
 	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
 		return fmt.Errorf("DKIMProof this(%v) Not Equal that(%v)", this.DKIMProof, that1.DKIMProof)
+	}
+	return nil
+}
+func (this *UpdateRequest_OIDCToken) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*UpdateRequest_OIDCToken)
+	if !ok {
+		return fmt.Errorf("that is not of type *UpdateRequest_OIDCToken")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *UpdateRequest_OIDCToken but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *UpdateRequest_OIDCTokenbut is not nil && this == nil")
+	}
+	if this.OIDCToken != that1.OIDCToken {
+		return fmt.Errorf("OIDCToken this(%v) Not Equal that(%v)", this.OIDCToken, that1.OIDCToken)
+	}
+	return nil
+}
+func (this *UpdateRequest_AuthData) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*UpdateRequest_AuthData)
+	if !ok {
+		return fmt.Errorf("that is not of type *UpdateRequest_AuthData")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *UpdateRequest_AuthData but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *UpdateRequest_AuthDatabut is not nil && this == nil")
+	}
+	if !bytes.Equal(this.AuthData, that1.AuthData) {
+		return fmt.Errorf("AuthData this(%v) Not Equal that(%v)", this.AuthData, that1.AuthData)
 	}
 	return nil
 }
@@ -731,7 +930,88 @@ func (this *UpdateRequest) Equal(that interface{}) bool {
 	if !this.LookupParameters.Equal(that1.LookupParameters) {
 		return false
 	}
+	if that1.EmailProof == nil {
+		if this.EmailProof != nil {
+			return false
+		}
+	} else if this.EmailProof == nil {
+		return false
+	} else if !this.EmailProof.Equal(that1.EmailProof) {
+		return false
+	}
+	return true
+}
+func (this *UpdateRequest_DKIMProof) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*UpdateRequest_DKIMProof)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
 	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
+		return false
+	}
+	return true
+}
+func (this *UpdateRequest_OIDCToken) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*UpdateRequest_OIDCToken)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.OIDCToken != that1.OIDCToken {
+		return false
+	}
+	return true
+}
+func (this *UpdateRequest_AuthData) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*UpdateRequest_AuthData)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.AuthData, that1.AuthData) {
 		return false
 	}
 	return true
@@ -1662,7 +1942,7 @@ func (this *UpdateRequest) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 8)
+	s := make([]string, 0, 10)
 	s = append(s, "&proto.UpdateRequest{")
 	if this.Update != nil {
 		s = append(s, "Update: "+fmt.Sprintf("%#v", this.Update)+",\n")
@@ -1671,9 +1951,35 @@ func (this *UpdateRequest) GoString() string {
 	if this.LookupParameters != nil {
 		s = append(s, "LookupParameters: "+fmt.Sprintf("%#v", this.LookupParameters)+",\n")
 	}
-	s = append(s, "DKIMProof: "+fmt.Sprintf("%#v", this.DKIMProof)+",\n")
+	if this.EmailProof != nil {
+		s = append(s, "EmailProof: "+fmt.Sprintf("%#v", this.EmailProof)+",\n")
+	}
 	s = append(s, "}")
 	return strings.Join(s, "")
+}
+func (this *UpdateRequest_DKIMProof) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest_DKIMProof{` +
+		`DKIMProof:` + fmt.Sprintf("%#v", this.DKIMProof) + `}`}, ", ")
+	return s
+}
+func (this *UpdateRequest_OIDCToken) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest_OIDCToken{` +
+		`OIDCToken:` + fmt.Sprintf("%#v", this.OIDCToken) + `}`}, ", ")
+	return s
+}
+func (this *UpdateRequest_AuthData) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.UpdateRequest_AuthData{` +
+		`AuthData:` + fmt.Sprintf("%#v", this.AuthData) + `}`}, ", ")
+	return s
 }
 func (this *LookupProof) GoString() string {
 	if this == nil {
@@ -2084,19 +2390,50 @@ func (m *UpdateRequest) MarshalTo(data []byte) (int, error) {
 		}
 		i += n4
 	}
-	if m.DKIMProof != nil {
-		if len(m.DKIMProof) > 0 {
-			data[i] = 0xc2
-			i++
-			data[i] = 0x3e
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.DKIMProof)))
-			i += copy(data[i:], m.DKIMProof)
+	if m.EmailProof != nil {
+		nn5, err := m.EmailProof.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
 		}
+		i += nn5
 	}
 	return i, nil
 }
 
+func (m *UpdateRequest_DKIMProof) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.DKIMProof != nil {
+		data[i] = 0xc2
+		i++
+		data[i] = 0x3e
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.DKIMProof)))
+		i += copy(data[i:], m.DKIMProof)
+	}
+	return i, nil
+}
+func (m *UpdateRequest_OIDCToken) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0xca
+	i++
+	data[i] = 0x3e
+	i++
+	i = encodeVarintClient(data, i, uint64(len(m.OIDCToken)))
+	i += copy(data[i:], m.OIDCToken)
+	return i, nil
+}
+func (m *UpdateRequest_AuthData) MarshalTo(data []byte) (int, error) {
+	i := 0
+	if m.AuthData != nil {
+		data[i] = 0xd2
+		i++
+		data[i] = 0x3e
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.AuthData)))
+		i += copy(data[i:], m.AuthData)
+	}
+	return i, nil
+}
 func (m *LookupProof) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -2150,31 +2487,31 @@ func (m *LookupProof) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x2a
 		i++
 		i = encodeVarintClient(data, i, uint64(m.TreeProof.Size()))
-		n5, err := m.TreeProof.MarshalTo(data[i:])
-		if err != nil {
-			return 0, err
-		}
-		i += n5
-	}
-	if m.Entry != nil {
-		data[i] = 0x32
-		i++
-		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
-		n6, err := m.Entry.MarshalTo(data[i:])
+		n6, err := m.TreeProof.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n6
 	}
-	if m.Profile != nil {
-		data[i] = 0x3a
+	if m.Entry != nil {
+		data[i] = 0x32
 		i++
-		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
-		n7, err := m.Profile.MarshalTo(data[i:])
+		i = encodeVarintClient(data, i, uint64(m.Entry.Size()))
+		n7, err := m.Entry.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n7
+	}
+	if m.Profile != nil {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintClient(data, i, uint64(m.Profile.Size()))
+		n8, err := m.Profile.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
 	}
 	return i, nil
 }
@@ -2253,11 +2590,11 @@ func (m *Entry) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x1a
 		i++
 		i = encodeVarintClient(data, i, uint64(m.UpdatePolicy.Size()))
-		n8, err := m.UpdatePolicy.MarshalTo(data[i:])
+		n9, err := m.UpdatePolicy.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n8
+		i += n9
 	}
 	if m.ProfileCommitment != nil {
 		if len(m.ProfileCommitment) > 0 {
@@ -2288,11 +2625,11 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NewEntry.Size()))
-	n9, err := m.NewEntry.MarshalTo(data[i:])
+	n10, err := m.NewEntry.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n9
+	i += n10
 	if len(m.Signatures) > 0 {
 		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
@@ -2383,11 +2720,11 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n10, err := m.Head.MarshalTo(data[i:])
+	n11, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n10
+	i += n11
 	if len(m.Signatures) > 0 {
 		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
@@ -2430,19 +2767,19 @@ func (m *TimestampedEpochHead) MarshalTo(data []byte) (int, error) {
 	data[i] = 0xa
 	i++
 	i = encodeVarintClient(data, i, uint64(m.Head.Size()))
-	n11, err := m.Head.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n11
-	data[i] = 0x12
-	i++
-	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
-	n12, err := m.Timestamp.MarshalTo(data[i:])
+	n12, err := m.Head.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n12
+	data[i] = 0x12
+	i++
+	i = encodeVarintClient(data, i, uint64(m.Timestamp.Size()))
+	n13, err := m.Timestamp.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n13
 	return i, nil
 }
 
@@ -2483,11 +2820,11 @@ func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x22
 	i++
 	i = encodeVarintClient(data, i, uint64(m.IssueTime.Size()))
-	n13, err := m.IssueTime.MarshalTo(data[i:])
+	n14, err := m.IssueTime.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n13
+	i += n14
 	if m.PreviousSummaryHash != nil {
 		if len(m.PreviousSummaryHash) > 0 {
 			data[i] = 0x2a
@@ -2499,11 +2836,11 @@ func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x32
 	i++
 	i = encodeVarintClient(data, i, uint64(m.NextEpochPolicy.Size()))
-	n14, err := m.NextEpochPolicy.MarshalTo(data[i:])
+	n15, err := m.NextEpochPolicy.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n14
+	i += n15
 	return i, nil
 }
 
@@ -2544,19 +2881,19 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
 			data[i] = 0x12
 			i++
 			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n15, err := v.MarshalTo(data[i:])
+			n16, err := v.MarshalTo(data[i:])
 			if err != nil {
 				return 0, err
 			}
-			i += n15
+			i += n16
 		}
 	}
 	if m.PolicyType != nil {
-		nn16, err := m.PolicyType.MarshalTo(data[i:])
+		nn17, err := m.PolicyType.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn16
+		i += nn17
 	}
 	return i, nil
 }
@@ -2567,11 +2904,11 @@ func (m *AuthorizationPolicy_Quorum) MarshalTo(data []byte) (int, error) {
 		data[i] = 0x12
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Quorum.Size()))
-		n17, err := m.Quorum.MarshalTo(data[i:])
+		n18, err := m.Quorum.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += n17
+		i += n18
 	}
 	return i, nil
 }
@@ -2591,11 +2928,11 @@ func (m *PublicKey) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if m.PubkeyType != nil {
-		nn18, err := m.PubkeyType.MarshalTo(data[i:])
+		nn19, err := m.PubkeyType.MarshalTo(data[i:])
 		if err != nil {
 			return 0, err
 		}
-		i += nn18
+		i += nn19
 	}
 	return i, nil
 }
@@ -2716,33 +3053,60 @@ func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 	if r.Intn(10) != 0 {
 		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
 	}
-	v2 := r.Intn(100)
-	this.DKIMProof = make([]byte, v2)
-	for i := 0; i < v2; i++ {
-		this.DKIMProof[i] = byte(r.Intn(256))
+	oneofNumber_EmailProof := []int32{1000, 1001, 1002}[r.Intn(3)]
+	switch oneofNumber_EmailProof {
+	case 1000:
+		this.EmailProof = NewPopulatedUpdateRequest_DKIMProof(r, easy)
+	case 1001:
+		this.EmailProof = NewPopulatedUpdateRequest_OIDCToken(r, easy)
+	case 1002:
+		this.EmailProof = NewPopulatedUpdateRequest_AuthData(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
 }
 
+func NewPopulatedUpdateRequest_DKIMProof(r randyClient, easy bool) *UpdateRequest_DKIMProof {
+	this := &UpdateRequest_DKIMProof{}
+	v2 := r.Intn(100)
+	this.DKIMProof = make([]byte, v2)
+	for i := 0; i < v2; i++ {
+		this.DKIMProof[i] = byte(r.Intn(256))
+	}
+	return this
+}
+func NewPopulatedUpdateRequest_OIDCToken(r randyClient, easy bool) *UpdateRequest_OIDCToken {
+	this := &UpdateRequest_OIDCToken{}
+	this.OIDCToken = randStringClient(r)
+	return this
+}
+func NewPopulatedUpdateRequest_AuthData(r randyClient, easy bool) *UpdateRequest_AuthData {
+	this := &UpdateRequest_AuthData{}
+	v3 := r.Intn(100)
+	this.AuthData = make([]byte, v3)
+	for i := 0; i < v3; i++ {
+		this.AuthData[i] = byte(r.Intn(256))
+	}
+	return this
+}
 func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	this := &LookupProof{}
 	this.UserId = randStringClient(r)
-	v3 := r.Intn(100)
-	this.Index = make([]byte, v3)
-	for i := 0; i < v3; i++ {
+	v4 := r.Intn(100)
+	this.Index = make([]byte, v4)
+	for i := 0; i < v4; i++ {
 		this.Index[i] = byte(r.Intn(256))
 	}
-	v4 := r.Intn(100)
-	this.IndexProof = make([]byte, v4)
-	for i := 0; i < v4; i++ {
+	v5 := r.Intn(100)
+	this.IndexProof = make([]byte, v5)
+	for i := 0; i < v5; i++ {
 		this.IndexProof[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v5 := r.Intn(10)
-		this.Ratifications = make([]*SignedEpochHead, v5)
-		for i := 0; i < v5; i++ {
+		v6 := r.Intn(10)
+		this.Ratifications = make([]*SignedEpochHead, v6)
+		for i := 0; i < v6; i++ {
 			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
 		}
 	}
@@ -2762,23 +3126,23 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 
 func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
 	this := &TreeProof{}
-	v6 := r.Intn(100)
-	this.Neighbors = make([][]byte, v6)
-	for i := 0; i < v6; i++ {
-		v7 := r.Intn(100)
-		this.Neighbors[i] = make([]byte, v7)
-		for j := 0; j < v7; j++ {
+	v7 := r.Intn(100)
+	this.Neighbors = make([][]byte, v7)
+	for i := 0; i < v7; i++ {
+		v8 := r.Intn(100)
+		this.Neighbors[i] = make([]byte, v8)
+		for j := 0; j < v8; j++ {
 			this.Neighbors[i][j] = byte(r.Intn(256))
 		}
 	}
-	v8 := r.Intn(100)
-	this.ExistingIndex = make([]byte, v8)
-	for i := 0; i < v8; i++ {
+	v9 := r.Intn(100)
+	this.ExistingIndex = make([]byte, v9)
+	for i := 0; i < v9; i++ {
 		this.ExistingIndex[i] = byte(r.Intn(256))
 	}
-	v9 := r.Intn(100)
-	this.ExistingEntryHash = make([]byte, v9)
-	for i := 0; i < v9; i++ {
+	v10 := r.Intn(100)
+	this.ExistingEntryHash = make([]byte, v10)
+	for i := 0; i < v10; i++ {
 		this.ExistingEntryHash[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2788,18 +3152,18 @@ func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
 
 func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 	this := &Entry{}
-	v10 := r.Intn(100)
-	this.Index = make([]byte, v10)
-	for i := 0; i < v10; i++ {
+	v11 := r.Intn(100)
+	this.Index = make([]byte, v11)
+	for i := 0; i < v11; i++ {
 		this.Index[i] = byte(r.Intn(256))
 	}
 	this.Version = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
 		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
-	v11 := r.Intn(100)
-	this.ProfileCommitment = make([]byte, v11)
-	for i := 0; i < v11; i++ {
+	v12 := r.Intn(100)
+	this.ProfileCommitment = make([]byte, v12)
+	for i := 0; i < v12; i++ {
 		this.ProfileCommitment[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -2809,17 +3173,17 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 
 func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate {
 	this := &SignedEntryUpdate{}
-	v12 := NewPopulatedEncodedEntry(r, easy)
-	this.NewEntry = *v12
+	v13 := NewPopulatedEncodedEntry(r, easy)
+	this.NewEntry = *v13
 	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
+		v14 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v13; i++ {
-			v14 := r.Intn(100)
-			v15 := uint64(uint64(r.Uint32()))
-			this.Signatures[v15] = make([]byte, v14)
-			for i := 0; i < v14; i++ {
-				this.Signatures[v15][i] = byte(r.Intn(256))
+		for i := 0; i < v14; i++ {
+			v15 := r.Intn(100)
+			v16 := uint64(uint64(r.Uint32()))
+			this.Signatures[v16] = make([]byte, v15)
+			for i := 0; i < v15; i++ {
+				this.Signatures[v16][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2830,20 +3194,20 @@ func NewPopulatedSignedEntryUpdate(r randyClient, easy bool) *SignedEntryUpdate 
 
 func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 	this := &Profile{}
-	v16 := r.Intn(100)
-	this.Nonce = make([]byte, v16)
-	for i := 0; i < v16; i++ {
+	v17 := r.Intn(100)
+	this.Nonce = make([]byte, v17)
+	for i := 0; i < v17; i++ {
 		this.Nonce[i] = byte(r.Intn(256))
 	}
 	if r.Intn(10) != 0 {
-		v17 := r.Intn(10)
+		v18 := r.Intn(10)
 		this.Keys = make(map[string][]byte)
-		for i := 0; i < v17; i++ {
-			v18 := r.Intn(100)
-			v19 := randStringClient(r)
-			this.Keys[v19] = make([]byte, v18)
-			for i := 0; i < v18; i++ {
-				this.Keys[v19][i] = byte(r.Intn(256))
+		for i := 0; i < v18; i++ {
+			v19 := r.Intn(100)
+			v20 := randStringClient(r)
+			this.Keys[v20] = make([]byte, v19)
+			for i := 0; i < v19; i++ {
+				this.Keys[v20][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2854,17 +3218,17 @@ func NewPopulatedProfile(r randyClient, easy bool) *Profile {
 
 func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 	this := &SignedEpochHead{}
-	v20 := NewPopulatedEncodedTimestampedEpochHead(r, easy)
-	this.Head = *v20
+	v21 := NewPopulatedEncodedTimestampedEpochHead(r, easy)
+	this.Head = *v21
 	if r.Intn(10) != 0 {
-		v21 := r.Intn(10)
+		v22 := r.Intn(10)
 		this.Signatures = make(map[uint64][]byte)
-		for i := 0; i < v21; i++ {
-			v22 := r.Intn(100)
-			v23 := uint64(uint64(r.Uint32()))
-			this.Signatures[v23] = make([]byte, v22)
-			for i := 0; i < v22; i++ {
-				this.Signatures[v23][i] = byte(r.Intn(256))
+		for i := 0; i < v22; i++ {
+			v23 := r.Intn(100)
+			v24 := uint64(uint64(r.Uint32()))
+			this.Signatures[v24] = make([]byte, v23)
+			for i := 0; i < v23; i++ {
+				this.Signatures[v24][i] = byte(r.Intn(256))
 			}
 		}
 	}
@@ -2875,10 +3239,10 @@ func NewPopulatedSignedEpochHead(r randyClient, easy bool) *SignedEpochHead {
 
 func NewPopulatedTimestampedEpochHead(r randyClient, easy bool) *TimestampedEpochHead {
 	this := &TimestampedEpochHead{}
-	v24 := NewPopulatedEncodedEpochHead(r, easy)
-	this.Head = *v24
-	v25 := NewPopulatedTimestamp(r, easy)
-	this.Timestamp = *v25
+	v25 := NewPopulatedEncodedEpochHead(r, easy)
+	this.Head = *v25
+	v26 := NewPopulatedTimestamp(r, easy)
+	this.Timestamp = *v26
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2888,20 +3252,20 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 	this := &EpochHead{}
 	this.Realm = randStringClient(r)
 	this.Epoch = uint64(uint64(r.Uint32()))
-	v26 := r.Intn(100)
-	this.RootHash = make([]byte, v26)
-	for i := 0; i < v26; i++ {
+	v27 := r.Intn(100)
+	this.RootHash = make([]byte, v27)
+	for i := 0; i < v27; i++ {
 		this.RootHash[i] = byte(r.Intn(256))
 	}
-	v27 := NewPopulatedTimestamp(r, easy)
-	this.IssueTime = *v27
-	v28 := r.Intn(100)
-	this.PreviousSummaryHash = make([]byte, v28)
-	for i := 0; i < v28; i++ {
+	v28 := NewPopulatedTimestamp(r, easy)
+	this.IssueTime = *v28
+	v29 := r.Intn(100)
+	this.PreviousSummaryHash = make([]byte, v29)
+	for i := 0; i < v29; i++ {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
-	v29 := NewPopulatedAuthorizationPolicy(r, easy)
-	this.NextEpochPolicy = *v29
+	v30 := NewPopulatedAuthorizationPolicy(r, easy)
+	this.NextEpochPolicy = *v30
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2910,9 +3274,9 @@ func NewPopulatedEpochHead(r randyClient, easy bool) *EpochHead {
 func NewPopulatedAuthorizationPolicy(r randyClient, easy bool) *AuthorizationPolicy {
 	this := &AuthorizationPolicy{}
 	if r.Intn(10) != 0 {
-		v30 := r.Intn(10)
+		v31 := r.Intn(10)
 		this.PublicKeys = make(map[uint64]*PublicKey)
-		for i := 0; i < v30; i++ {
+		for i := 0; i < v31; i++ {
 			this.PublicKeys[uint64(uint64(r.Uint32()))] = NewPopulatedPublicKey(r, easy)
 		}
 	}
@@ -2945,9 +3309,9 @@ func NewPopulatedPublicKey(r randyClient, easy bool) *PublicKey {
 
 func NewPopulatedPublicKey_Ed25519(r randyClient, easy bool) *PublicKey_Ed25519 {
 	this := &PublicKey_Ed25519{}
-	v31 := r.Intn(100)
-	this.Ed25519 = make([]byte, v31)
-	for i := 0; i < v31; i++ {
+	v32 := r.Intn(100)
+	this.Ed25519 = make([]byte, v32)
+	for i := 0; i < v32; i++ {
 		this.Ed25519[i] = byte(r.Intn(256))
 	}
 	return this
@@ -2955,15 +3319,15 @@ func NewPopulatedPublicKey_Ed25519(r randyClient, easy bool) *PublicKey_Ed25519 
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v32 := r.Intn(100)
-	this.Candidates = make([]uint64, v32)
-	for i := 0; i < v32; i++ {
+	v33 := r.Intn(100)
+	this.Candidates = make([]uint64, v33)
+	for i := 0; i < v33; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
 	if r.Intn(10) != 0 {
-		v33 := r.Intn(2)
-		this.Subexpressions = make([]*QuorumExpr, v33)
-		for i := 0; i < v33; i++ {
+		v34 := r.Intn(2)
+		this.Subexpressions = make([]*QuorumExpr, v34)
+		for i := 0; i < v34; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
 		}
 	}
@@ -2991,9 +3355,9 @@ func randUTF8RuneClient(r randyClient) rune {
 	return rune(ru + 61)
 }
 func randStringClient(r randyClient) string {
-	v34 := r.Intn(100)
-	tmps := make([]rune, v34)
-	for i := 0; i < v34; i++ {
+	v35 := r.Intn(100)
+	tmps := make([]rune, v35)
+	for i := 0; i < v35; i++ {
 		tmps[i] = randUTF8RuneClient(r)
 	}
 	return string(tmps)
@@ -3015,11 +3379,11 @@ func randFieldClient(data []byte, r randyClient, fieldNumber int, wire int) []by
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateClient(data, uint64(key))
-		v35 := r.Int63()
+		v36 := r.Int63()
 		if r.Intn(2) == 0 {
-			v35 *= -1
+			v36 *= -1
 		}
-		data = encodeVarintPopulateClient(data, uint64(v35))
+		data = encodeVarintPopulateClient(data, uint64(v36))
 	case 1:
 		data = encodeVarintPopulateClient(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -3074,15 +3438,37 @@ func (m *UpdateRequest) Size() (n int) {
 		l = m.LookupParameters.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.DKIMProof != nil {
-		l = len(m.DKIMProof)
-		if l > 0 {
-			n += 2 + l + sovClient(uint64(l))
-		}
+	if m.EmailProof != nil {
+		n += m.EmailProof.Size()
 	}
 	return n
 }
 
+func (m *UpdateRequest_DKIMProof) Size() (n int) {
+	var l int
+	_ = l
+	if m.DKIMProof != nil {
+		l = len(m.DKIMProof)
+		n += 2 + l + sovClient(uint64(l))
+	}
+	return n
+}
+func (m *UpdateRequest_OIDCToken) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.OIDCToken)
+	n += 2 + l + sovClient(uint64(l))
+	return n
+}
+func (m *UpdateRequest_AuthData) Size() (n int) {
+	var l int
+	_ = l
+	if m.AuthData != nil {
+		l = len(m.AuthData)
+		n += 2 + l + sovClient(uint64(l))
+	}
+	return n
+}
 func (m *LookupProof) Size() (n int) {
 	var l int
 	_ = l
@@ -3362,7 +3748,37 @@ func (this *UpdateRequest) String() string {
 		`Update:` + strings.Replace(fmt.Sprintf("%v", this.Update), "SignedEntryUpdate", "SignedEntryUpdate", 1) + `,`,
 		`Profile:` + strings.Replace(strings.Replace(this.Profile.String(), "Profile", "Profile", 1), `&`, ``, 1) + `,`,
 		`LookupParameters:` + strings.Replace(fmt.Sprintf("%v", this.LookupParameters), "LookupRequest", "LookupRequest", 1) + `,`,
+		`EmailProof:` + fmt.Sprintf("%v", this.EmailProof) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest_DKIMProof) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest_DKIMProof{`,
 		`DKIMProof:` + fmt.Sprintf("%v", this.DKIMProof) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest_OIDCToken) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest_OIDCToken{`,
+		`OIDCToken:` + fmt.Sprintf("%v", this.OIDCToken) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *UpdateRequest_AuthData) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&UpdateRequest_AuthData{`,
+		`AuthData:` + fmt.Sprintf("%v", this.AuthData) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3850,7 +4266,68 @@ func (m *UpdateRequest) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DKIMProof = append([]byte{}, data[iNdEx:postIndex]...)
+			v := make([]byte, postIndex-iNdEx)
+			copy(v, data[iNdEx:postIndex])
+			m.EmailProof = &UpdateRequest_DKIMProof{v}
+			iNdEx = postIndex
+		case 1001:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field OIDCToken", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowClient
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.EmailProof = &UpdateRequest_OIDCToken{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 1002:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field AuthData", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowClient
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				byteLen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := make([]byte, postIndex-iNdEx)
+			copy(v, data[iNdEx:postIndex])
+			m.EmailProof = &UpdateRequest_AuthData{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

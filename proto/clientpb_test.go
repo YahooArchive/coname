@@ -37,6 +37,12 @@ It has these top-level messages:
 	Duration
 	ReplicaConfig
 	KeyserverConfig
+	RegistrationPolicy
+	EmailProofByDKIM
+	EmailProofByClientCert
+	EmailProofByOIDC
+	EmailProofByCustomAuth
+	OIDCConfig
 	Replica
 	ReplicaState
 	KeyserverStep

@@ -51,7 +51,14 @@ message UpdateRequest {
 	Profile profile = 2	[(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
 
-	bytes dkim_proof = 1000 [(gogoproto.customname) = "DKIMProof"];
+	oneof email_proof {
+		bytes dkim_proof = 1000 [(gogoproto.customname) = "DKIMProof"];
+		// oidc_token contains OpenID Connect token received from the provider
+		string oidc_token = 1001 [(gogoproto.customname) = "OIDCToken"];
+		// auth_data is an opaque field and is primarily provided in case keyserver
+		// wants to do custom verification to confirm ownership of an email address
+		bytes auth_data = 1002;
+	}
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
