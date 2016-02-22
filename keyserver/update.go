@@ -56,24 +56,26 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 	}
 	if prevUpdate == nil { // registration: check email proof
 		if !ks.insecureSkipEmailProof {
+			if req.EmailProof == nil {
+				return fmt.Errorf("No email proof provided")
+			}
 			// determine registration type
-			switch t := req.EmailProof.(type) {
-			case *proto.UpdateRequest_DKIMProof:
-				// TODO: DKIM proof fields need to come from the new EmailProofByDKIM object
-				email, payload, err := dkim.CheckEmailProof(t.DKIMProof, ks.emailProofToAddr,
-					ks.emailProofSubjectPrefix, ks.lookupTXT, ks.clk.Now)
+			switch t := req.EmailProof.ProofType.(type) {
+			case *proto.EmailProof_DKIMProof:
+				lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
+				if lastAtIndex == -1 {
+					return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
+				}
+				if _, ok := ks.dkimProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
+					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
+
+				}
+				email, payload, err := dkim.CheckEmailProof(t.DKIMProof, ks.dkimProofToAddr, ks.dkimProofToAddr, ks.lookupTXT, ks.clk.Now)
 				if err != nil {
 					return fmt.Errorf("failed to verify DKIM proof: %s", err)
 				}
 				if got, want := email, req.LookupParameters.UserId; got != want {
 					return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
-				}
-				lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
-				if lastAtIndex == -1 {
-					return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
-				}
-				if _, ok := ks.emailProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
-					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 				}
 				entryHash, err := base64.StdEncoding.DecodeString(payload)
 				if err != nil {
