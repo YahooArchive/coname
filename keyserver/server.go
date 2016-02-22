@@ -52,12 +52,14 @@ type Keyserver struct {
 	serverID, replicaID uint64
 	serverAuthorized    *proto.AuthorizationPolicy
 
-	sehKey                   *[ed25519.PrivateKeySize]byte
-	vrfSecret                *[vrf.SecretKeySize]byte
-	emailProofToAddr         string
-	emailProofSubjectPrefix  string
-	emailProofAllowedDomains map[string]struct{}
-	insecureSkipEmailProof   bool
+	sehKey    *[ed25519.PrivateKeySize]byte
+	vrfSecret *[vrf.SecretKeySize]byte
+
+	dkimProofToAddr         string
+	dkimProofSubjectPrefix  string
+	dkimProofAllowedDomains map[string]struct{}
+
+	insecureSkipEmailProof bool
 
 	db  kv.DB
 	log replication.LogReplicator
@@ -135,20 +137,17 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	}
 
 	ks = &Keyserver{
-		realm:                    cfg.Realm,
-		serverID:                 cfg.ServerID,
-		replicaID:                cfg.ReplicaID,
-		serverAuthorized:         initialAuthorizationPolicy,
-		sehKey:                   signingKey.(*[ed25519.PrivateKeySize]byte),
-		vrfSecret:                vrfKey.(*[vrf.SecretKeySize]byte),
-		emailProofToAddr:         cfg.EmailProofToAddr,
-		emailProofSubjectPrefix:  cfg.EmailProofSubjectPrefix,
-		emailProofAllowedDomains: make(map[string]struct{}),
-		laggingVerifierScan:      cfg.LaggingVerifierScan,
-		clientTimeout:            cfg.ClientTimeout.Duration(),
-		minEpochInterval:         cfg.MinEpochInterval.Duration(),
-		maxEpochInterval:         cfg.MaxEpochInterval.Duration(),
-		retryProposalInterval:    cfg.ProposalRetryInterval.Duration(),
+		realm:                 cfg.Realm,
+		serverID:              cfg.ServerID,
+		replicaID:             cfg.ReplicaID,
+		serverAuthorized:      initialAuthorizationPolicy,
+		sehKey:                signingKey.(*[ed25519.PrivateKeySize]byte),
+		vrfSecret:             vrfKey.(*[vrf.SecretKeySize]byte),
+		laggingVerifierScan:   cfg.LaggingVerifierScan,
+		clientTimeout:         cfg.ClientTimeout.Duration(),
+		minEpochInterval:      cfg.MinEpochInterval.Duration(),
+		maxEpochInterval:      cfg.MaxEpochInterval.Duration(),
+		retryProposalInterval: cfg.ProposalRetryInterval.Duration(),
 
 		db:                 db,
 		log:                log,
@@ -164,13 +163,20 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		minEpochIntervalTimer: clk.Timer(0),
 		maxEpochIntervalTimer: clk.Timer(0),
 	}
-	for _, d := range cfg.EmailProofAllowedDomains {
-		ks.emailProofAllowedDomains[d] = struct{}{}
-	}
 
-	// TODO remove this before production
-	if cfg.KeyserverConfig.InsecureSkipEmailProof {
-		ks.insecureSkipEmailProof = true
+	for _, p := range cfg.RegistrationPolicy {
+		switch t := p.PolicyType.(type) {
+		case *proto.RegistrationPolicy_EmailProofByDKIM:
+			for _, d := range t.EmailProofByDKIM.AllowedDomains {
+				ks.dkimProofAllowedDomains[d] = struct{}{}
+			}
+			ks.dkimProofToAddr = t.EmailProofByDKIM.ToAddr
+			ks.dkimProofSubjectPrefix = t.EmailProofByDKIM.SubjectPrefix
+
+		// TODO remove this before production
+		case *proto.RegistrationPolicy_InsecureSkipEmailProof:
+			ks.insecureSkipEmailProof = true
+		}
 	}
 
 	switch replicaStateBytes, err := db.Get(tableReplicaState); err {

@@ -119,24 +119,78 @@ message KeyserverConfig {
 	// cluster configuration.
 	repeated Replica initial_replicas = 7;
 
-	// EmailProofToAddr specifies the additional allowed to address in email
-	// proofs. By default, only proofs sent to the user being registered all
-	// accepted. This option can be used to allow proofs emailed directly to
-	// the keyserver to be accepted (but the keyserver does NOT implement a
-	// SMTP interface right now).
-	string email_proof_to_addr = 8;
-	// EmailProofSubjectPrefix is used for DKIM-based email address
-	// registration.  The proof challenge is sent in the subject line, with an
-	// optional string preceding it. For example, if EmailProofSubjectPrefix =
-	// "account verification: ", then the proof email needs to have a subject
-	// line "account verification: abcd" for verify challenge abcd.
-	string email_proof_subject_prefix = 9;
+	// Keyserver may support multiple registration policies at a time.
+	// A policy is acceptable only for the domains it supports.
+	repeated RegistrationPolicy registration_policy = 8;
+}
 
-	// EmailProofAllowedDomains specifies the domains for which this keyserver
-	// accepts email address registrations.
-	repeated string email_proof_allowed_domains = 10;
+// RegistrationPolicy specifies the list of policies the keyserver may support,
+// to confirm the ownership of an email address
+message RegistrationPolicy {
+	oneof policy_type {
+		bool insecure_skip_email_proof = 1;
+		EmailProofByDKIM email_proof_by_dkim = 2	[(gogoproto.customname) = "EmailProofByDKIM"];
+		EmailProofByClientCert email_proof_by_client_cert = 3;
+		EmailProofByOIDC email_proof_by_oidc = 4	[(gogoproto.customname) = "EmailProofByOIDC"];
+	}
+}
 
-	bool insecure_skip_email_proof = 11;
+message EmailProofByDKIM {
+	// AllowedDomains specifies the domains for which this keyserver accepts
+	// email address registrations.
+	repeated string allowed_domains = 1;
+	// ToAddr specifies the additional allowed to address in email proofs. By
+	// default, only proofs sent to the user being registered all accepted.
+	// This option can be used to allow proofs emailed directly to the
+	// keyserver to be accepted (but the keyserver does NOT implement a SMTP
+	// interface right now).
+	string to_addr = 2;
+	// SubjectPrefix is used for DKIM-based email address registration.  The
+	// proof challenge is sent in the subject line, with an optional string
+	// preceding it. For example, if EmailProofSubjectPrefix = "account
+	// verification: ", then the proof email needs to have a subject line
+	// "account verification: abcd" for verify challenge abcd.
+	string subject_prefix = 3;
+}
+
+// EmailProofByClientCert accepts a certificate signed by an authority trusted
+// with handling registration as sufficient confirmation of ownership of an
+// email address. The emailAddress value in the certificate's DistinguishedName
+// field is allowed to be registered by the holder of the key specified in the
+// certificate.
+message EmailProofByClientCert {
+	// AllowedDomains specifies the domains for which this keyserver accepts
+	// email address registrations by this policy.
+	repeated string allowed_domains = 1;
+	// CaCert contains the trusted certificate authority certificate in DER format.
+	bytes ca_cert = 2;
+}
+
+// EmailProofByOIDC accepts an ID token fetched from an OpenID Connect provider
+// and validates it as specified in the configuration. The token must have a 
+// valid signature, not expired, signed by the expected provider and must contain
+// the expected Client ID
+message EmailProofByOIDC {
+	repeated OIDCConfig oidc_config = 1 [(gogoproto.customname) = "OIDCConfig"];
+}
+
+// OIDCConfig contains the OpenID Connect client configuration which is used to
+// validate the token received from the keyserver client.
+message OIDCConfig {
+	// AllowedDomains specifies the domains for which this keyserver accepts
+	// email address registrations by this policy.
+	repeated string allowed_domains = 1;
+	// DiscoveryURL specifies the location of OpenID Connect discovery document
+	// as specified at http://openid.net/specs/openid-connect-discovery-1_0.html
+	string discovery_url = 2	[(gogoproto.customname) = "DiscoveryURL"];
+	// Issuer specifies OpenID Connect issuer discovery url
+	string issuer = 3;
+	// clientID specifies client's ID when the app is registered
+	string clientID = 4	[(gogoproto.customname) = "ClientID"];
+	// Validity specifies the maximum amount of time the server is willing
+	// to accept an OpenID Connect token from the issue time in the token itself.
+	// A zero value means server will only rely on the expiry field in the token.
+	Duration validity = 5	[(gogoproto.nullable) = false];
 }
 
 message Replica {

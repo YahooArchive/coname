@@ -56,33 +56,44 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 	}
 	if prevUpdate == nil { // registration: check email proof
 		if !ks.insecureSkipEmailProof {
-			email, payload, err := dkim.CheckEmailProof(req.DKIMProof, ks.emailProofToAddr,
-				ks.emailProofSubjectPrefix, ks.lookupTXT, ks.clk.Now)
-			if err != nil {
-				return fmt.Errorf("failed to verify DKIM proof: %s", err)
+			if req.EmailProof == nil {
+				return fmt.Errorf("No email proof provided")
 			}
-			if got, want := email, req.LookupParameters.UserId; got != want {
-				return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
-			}
-			lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
-			if lastAtIndex == -1 {
-				return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
-			}
-			if _, ok := ks.emailProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
-				return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
-			}
-			entryHash, err := base64.StdEncoding.DecodeString(payload)
-			if err != nil {
-				return fmt.Errorf("bad base64 in email proof: %q", payload)
-			}
-			var entryHashProposed [32]byte
-			sha3.ShakeSum256(entryHashProposed[:], req.Update.NewEntry.Encoding)
-			if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
-				return fmt.Errorf("email proof does not match requested entry: %s vs %s (%x)", base64.StdEncoding.EncodeToString(entryHashProposed[:]), payload, req.Update.NewEntry.Encoding)
+			// determine registration type
+			switch t := req.EmailProof.ProofType.(type) {
+			case *proto.EmailProof_DKIMProof:
+				lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
+				if lastAtIndex == -1 {
+					return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
+				}
+				if _, ok := ks.dkimProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
+					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
+
+				}
+				email, payload, err := dkim.CheckEmailProof(t.DKIMProof, ks.dkimProofToAddr, ks.dkimProofToAddr, ks.lookupTXT, ks.clk.Now)
+				if err != nil {
+					return fmt.Errorf("failed to verify DKIM proof: %s", err)
+				}
+				if got, want := email, req.LookupParameters.UserId; got != want {
+					return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
+				}
+				entryHash, err := base64.StdEncoding.DecodeString(payload)
+				if err != nil {
+					return fmt.Errorf("bad base64 in email proof: %q", payload)
+				}
+				var entryHashProposed [32]byte
+				sha3.ShakeSum256(entryHashProposed[:], req.Update.NewEntry.Encoding)
+				if !bytes.Equal(entryHashProposed[:], entryHash[:]) {
+					return fmt.Errorf("email proof does not match requested entry: %s vs %s (%x)", base64.StdEncoding.EncodeToString(entryHashProposed[:]), payload, req.Update.NewEntry.Encoding)
+				}
+
+			//TODO: handle other email proof types
+
+			default:
+				return fmt.Errorf("Invalid email proof type: %T", t)
 			}
 		}
 	}
-
 	return ks.verifyUpdateDeterministic(prevUpdate, req)
 }
 

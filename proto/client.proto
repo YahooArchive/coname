@@ -51,7 +51,7 @@ message UpdateRequest {
 	Profile profile = 2	[(gogoproto.customtype) = "EncodedProfile", (gogoproto.nullable) = false];
 	LookupRequest lookup_parameters = 3;
 
-	bytes dkim_proof = 1000 [(gogoproto.customname) = "DKIMProof"];
+	EmailProof email_proof = 1000;
 }
 
 // LookupProof encapsulates end-to-end cryptographc evidence that assuming *at
@@ -285,4 +285,14 @@ message QuorumExpr {
 	// If an implementation chooses to ban recursive thresholding, it can do so
 	// ignoring this field. However, doing so is NOT SUPPORTED.
 	repeated QuorumExpr subexpressions = 3;
+}
+
+// EmailProof provides a proof of ownership of the email address
+message EmailProof {
+	oneof proof_type {
+		bytes dkim_proof = 1 [(gogoproto.customname) = "DKIMProof"];
+		// oidc_token contains OpenID Connect token received from the provider
+		string oidc_token = 2 [(gogoproto.customname) = "OIDCToken"];
+	}
+
 }
