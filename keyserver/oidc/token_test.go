@@ -62,15 +62,16 @@ func TestIDToken(t *testing.T) {
 		kid      string
 		validity time.Duration
 		valid    bool
+		errMsg   string
 	}{
-		{aud, exp, email, true, iss, kid, validity, true},
-		{"foobar", exp, email, true, iss, kid, validity, false},
-		{aud, time.Now().Unix() - 1, email, true, iss, kid, validity, false},
-		{aud, exp, "mytest2@yahoo.com", true, iss, kid, validity, false},
-		{aud, exp, email, false, iss, kid, validity, false},
-		{aud, exp, email, true, "https://new.api.login.yahoo.com", kid, validity, false},
-		{aud, exp, email, true, iss, "222", validity, false},
-		{aud, exp, email, true, iss, kid, time.Second, false},
+		{aud, exp, email, true, iss, kid, validity, true, ""},
+		{"foobar", exp, email, true, iss, kid, validity, false, "ClientID invalid - got (foobar) wanted (" + aud + ")"},
+		{aud, time.Now().Unix() - 1, email, true, iss, kid, validity, false, "token is expired"},
+		{aud, exp, "mytest2@yahoo.com", true, iss, kid, validity, false, ""},
+		{aud, exp, email, false, iss, kid, validity, false, "email not verified"},
+		{aud, exp, email, true, "https://new.api.login.yahoo.com", kid, validity, false, "iss invalid - got (https://new.api.login.yahoo.com) wanted (" + iss + ")"},
+		{aud, exp, email, true, iss, "222", validity, false, "key is invalid or of invalid type"},
+		{aud, exp, email, true, iss, kid, time.Second, false, "\"iat\" too old"},
 	}
 
 	for i, tc := range cases {
@@ -103,6 +104,9 @@ func TestIDToken(t *testing.T) {
 		} else {
 			if err == nil && email == emailVerified {
 				t.Errorf("Negative test case failed, id: %d, token: (%v), validity: %v", i, token, tc.validity)
+			}
+			if err != nil && err.Error() != tc.errMsg {
+				t.Errorf("Negative test case failed, expected error: (%s), got: (%s)", tc.errMsg, err.Error())
 			}
 		}
 
