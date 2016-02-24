@@ -22,6 +22,9 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 		if !ok {
 			return nil, fmt.Errorf("\"kid\" not a string")
 		}
+		if c.pubKeys == nil {
+			return nil, fmt.Errorf("No public key found to verify token")
+		}
 		return c.pubKeys[kid], nil
 	})
 	if err != nil {
@@ -49,9 +52,11 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 			return "", fmt.Errorf("\"iat\" not an integer")
 		}
 
-		tm := time.Unix(int64(iat), 0)
-		if time.Now().Sub(tm) > c.Validity {
-			return "", fmt.Errorf("\"iat\" too old")
+		if c.Validity != 0 { // skip this check if Validity=0
+			tm := time.Unix(int64(iat), 0)
+			if time.Now().Sub(tm) > c.Validity {
+				return "", fmt.Errorf("\"iat\" too old")
+			}
 		}
 		emailVrf, ok := tok.Claims["email_verified"].(bool)
 		if !ok {

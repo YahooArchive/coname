@@ -59,13 +59,14 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 			if req.EmailProof == nil {
 				return fmt.Errorf("No email proof provided")
 			}
+
+			lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
+			if lastAtIndex == -1 {
+				return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
+			}
 			// determine registration type
 			switch t := req.EmailProof.ProofType.(type) {
 			case *proto.EmailProof_DKIMProof:
-				lastAtIndex := strings.LastIndex(req.LookupParameters.UserId, "@")
-				if lastAtIndex == -1 {
-					return fmt.Errorf("requested user id is not a valid email address: %q", req.LookupParameters.UserId)
-				}
 				if _, ok := ks.dkimProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
 					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 
@@ -87,6 +88,24 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 					return fmt.Errorf("email proof does not match requested entry: %s vs %s (%x)", base64.StdEncoding.EncodeToString(entryHashProposed[:]), payload, req.Update.NewEntry.Encoding)
 				}
 
+			case *proto.EmailProof_OIDCToken:
+				found := false
+				for _, oc := range ks.oidcProofConfig {
+					if _, ok := oc.allowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
+						continue
+					}
+					found = true
+					email, err := oc.oidcClient.VerifyIDToken(t.OIDCToken)
+					if err != nil {
+						return err
+					}
+					if got, want := email, req.LookupParameters.UserId; got != want {
+						return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
+					}
+				}
+				if !found {
+					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
+				}
 			//TODO: handle other email proof types
 
 			default:

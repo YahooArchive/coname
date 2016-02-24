@@ -38,6 +38,7 @@ import (
 	"github.com/yahoo/coname/httpfront"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/merkletree"
+	"github.com/yahoo/coname/keyserver/oidc"
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
@@ -58,6 +59,7 @@ type Keyserver struct {
 	dkimProofToAddr         string
 	dkimProofSubjectPrefix  string
 	dkimProofAllowedDomains map[string]struct{}
+	oidcProofConfig         []OIDCConfig
 
 	insecureSkipEmailProof bool
 
@@ -107,6 +109,12 @@ type Keyserver struct {
 	stopped  chan struct{}
 }
 
+// OIDCConfig manages an OpenID Connect object
+type OIDCConfig struct {
+	allowedDomains map[string]struct{}
+	oidcClient     *oidc.Client
+}
+
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
 func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
@@ -137,17 +145,19 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 	}
 
 	ks = &Keyserver{
-		realm:                 cfg.Realm,
-		serverID:              cfg.ServerID,
-		replicaID:             cfg.ReplicaID,
-		serverAuthorized:      initialAuthorizationPolicy,
-		sehKey:                signingKey.(*[ed25519.PrivateKeySize]byte),
-		vrfSecret:             vrfKey.(*[vrf.SecretKeySize]byte),
-		laggingVerifierScan:   cfg.LaggingVerifierScan,
-		clientTimeout:         cfg.ClientTimeout.Duration(),
-		minEpochInterval:      cfg.MinEpochInterval.Duration(),
-		maxEpochInterval:      cfg.MaxEpochInterval.Duration(),
-		retryProposalInterval: cfg.ProposalRetryInterval.Duration(),
+		realm:                   cfg.Realm,
+		serverID:                cfg.ServerID,
+		replicaID:               cfg.ReplicaID,
+		serverAuthorized:        initialAuthorizationPolicy,
+		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
+		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
+		laggingVerifierScan:     cfg.LaggingVerifierScan,
+		clientTimeout:           cfg.ClientTimeout.Duration(),
+		minEpochInterval:        cfg.MinEpochInterval.Duration(),
+		maxEpochInterval:        cfg.MaxEpochInterval.Duration(),
+		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
+		dkimProofAllowedDomains: make(map[string]struct{}),
+		oidcProofConfig:         make([]OIDCConfig, 0),
 
 		db:                 db,
 		log:                log,
@@ -173,6 +183,20 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 			ks.dkimProofToAddr = t.EmailProofByDKIM.ToAddr
 			ks.dkimProofSubjectPrefix = t.EmailProofByDKIM.SubjectPrefix
 
+		case *proto.RegistrationPolicy_EmailProofByOIDC:
+			for _, c := range t.EmailProofByOIDC.OIDCConfig {
+				o := &oidc.Client{ClientID: c.ClientID, Issuer: c.Issuer, Validity: c.Validity.Duration(), DiscoveryURL: c.DiscoveryURL}
+				err := o.FetchPubKeys()
+				if err != nil {
+					return nil, err
+				}
+				oc := OIDCConfig{oidcClient: o}
+				oc.allowedDomains = make(map[string]struct{})
+				for _, d := range c.AllowedDomains {
+					oc.allowedDomains[d] = struct{}{}
+				}
+				ks.oidcProofConfig = append(ks.oidcProofConfig, oc)
+			}
 		// TODO remove this before production
 		case *proto.RegistrationPolicy_InsecureSkipEmailProof:
 			ks.insecureSkipEmailProof = true

@@ -72,6 +72,7 @@ func TestIDToken(t *testing.T) {
 		{aud, exp, email, true, "https://new.api.login.yahoo.com", kid, validity, false, "iss invalid - got (https://new.api.login.yahoo.com) wanted (" + iss + ")"},
 		{aud, exp, email, true, iss, "222", validity, false, "key is invalid or of invalid type"},
 		{aud, exp, email, true, iss, kid, time.Second, false, "\"iat\" too old"},
+		{aud, exp, email, true, iss, kid, 0, true, ""},
 	}
 
 	for i, tc := range cases {
