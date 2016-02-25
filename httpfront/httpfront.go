@@ -126,6 +126,12 @@ func (h *HTTPFront) doUpdate(b io.Reader, ctx context.Context, userid string) (*
 func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
+	// service healthcheck
+	if r.Method == "GET" && (path == "/status" || path == "/lb") {
+		w.Write([]byte("OK"))
+		return
+	}
+
 	userid, err := auth(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
