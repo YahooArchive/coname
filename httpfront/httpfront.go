@@ -125,10 +125,13 @@ func (h *HTTPFront) doUpdate(b io.Reader, ctx context.Context, userid string) (*
 
 func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	method := r.Method
 
 	// service healthcheck
-	if r.Method == "GET" && (path == "/status" || path == "/lb") {
-		w.Write([]byte("OK"))
+	if (method == "HEAD" || method == "GET") && (path == "/status" || path == "/lb") {
+		if method == "GET" {
+			w.Write([]byte("OK"))
+		}
 		return
 	}
 
@@ -138,7 +141,7 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != "POST" || (path != "/lookup" && path != "/update") {
+	if method != "POST" || (path != "/lookup" && path != "/update") {
 		http.Error(w, `this server only supports queries of the POST /lookup or POST /update`, http.StatusNotFound)
 		return
 	}
