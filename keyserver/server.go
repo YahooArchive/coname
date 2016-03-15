@@ -61,6 +61,11 @@ type Keyserver struct {
 	dkimProofAllowedDomains map[string]struct{}
 	oidcProofConfig         []OIDCConfig
 
+	samlProofAllowedDomains     map[string]struct{}
+	samlProofIdPMetadataURL     string
+	samlProofConsumerServiceURL string
+	samlProofIdPCert            []byte
+
 	insecureSkipEmailProof bool
 
 	db  kv.DB
@@ -158,6 +163,8 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
 		dkimProofAllowedDomains: make(map[string]struct{}),
 		oidcProofConfig:         make([]OIDCConfig, 0),
+		samlProofAllowedDomains: make(map[string]struct{}),
+		samlProofIdPCert:        make([]byte, 0),
 
 		db:                 db,
 		log:                log,
@@ -197,6 +204,14 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 				}
 				ks.oidcProofConfig = append(ks.oidcProofConfig, oc)
 			}
+		case *proto.RegistrationPolicy_EmailProofBySAML:
+			for _, d := range t.EmailProofBySAML.AllowedDomains {
+				ks.samlProofAllowedDomains[d] = struct{}{}
+			}
+			ks.samlProofIdPMetadataURL = t.EmailProofBySAML.IdPMetadataURL
+			ks.samlProofConsumerServiceURL = t.EmailProofBySAML.ConsumerServiceURL
+			ks.samlProofIdPCert = t.EmailProofBySAML.IdPCert
+
 		// TODO remove this before production
 		case *proto.RegistrationPolicy_InsecureSkipEmailProof:
 			ks.insecureSkipEmailProof = true

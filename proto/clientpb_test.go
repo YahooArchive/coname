@@ -42,6 +42,7 @@ It has these top-level messages:
 	EmailProofByDKIM
 	EmailProofByClientCert
 	EmailProofByOIDC
+	EmailProofBySAML
 	OIDCConfig
 	Replica
 	ReplicaState
