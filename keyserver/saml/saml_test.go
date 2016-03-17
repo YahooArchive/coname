@@ -1,7 +1,10 @@
 package saml
 
 import (
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -15,24 +18,41 @@ func TestSAMLValidResponse(t *testing.T) {
 	authnResponse.Destination = "https://e2esp.yahoo.com"
 	authnResponse.Assertion.Issuer.Url = issuer
 	authnResponse.AddAttribute("EmailAddress", "foobar@yahoo-inc.com")
-	authnResponse.Assertion.Subject.SubjectConfirmation.SubjectConfirmationData.InResponseTo = "mymy"
 	authnResponse.Assertion.Subject.SubjectConfirmation.SubjectConfirmationData.Recipient = "https://e2esp.yahoo.com"
 
-	cert, err := ioutil.ReadFile("test.der")
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	authnResponse.Signature.KeyInfo.X509Data.X509Certificate.Cert = base64.StdEncoding.EncodeToString(cert)
-
-	payload, err := authnResponse.EncodedSignedString("test.key")
+	privateKey, err := ioutil.ReadFile("test.key")
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
 
-	// TODO: only use byte array in DER format
-	email, err := VerifySAMLResponse(payload, "test.crt", "https://e2esp.yahoo.com", "EmailAddress")
+	certPem, err := ioutil.ReadFile("./test.crt")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	certBlock, _ := pem.Decode(certPem)
+	if certBlock == nil {
+		t.Errorf("failed to PEM decode cert")
+		return
+	}
+
+	authnResponse.Signature.KeyInfo.X509Data.X509Certificate.Cert = base64.StdEncoding.EncodeToString(certBlock.Bytes)
+
+	payload, err := authnResponse.EncodedSignedString(privateKey)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	email, err := VerifySAMLResponse(payload, cert, "https://e2esp.yahoo.com", "EmailAddress")
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -41,4 +61,38 @@ func TestSAMLValidResponse(t *testing.T) {
 		t.Errorf("got %q (wanted %q)", got, want)
 		return
 	}
+}
+
+func TestSAMLValidRequest(t *testing.T) {
+	privateKey, err := ioutil.ReadFile("test.key")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	certPem, err := ioutil.ReadFile("./test.crt")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	certBlock, _ := pem.Decode(certPem)
+	if certBlock == nil {
+		t.Errorf("failed to PEM decode cert")
+		return
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	signedXML, err := GenerateSAMLRequest(cert, privateKey, "https://e2esp.yahoo.com", "https://idp.yahoo.com/saml/sso")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	fmt.Println(signedXML)
+
 }
