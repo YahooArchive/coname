@@ -454,18 +454,22 @@ type EmailProofBySAML struct {
 	// email address registrations by this policy.
 	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains" json:"allowed_domains,omitempty"`
 	// IdPMetadataURL specifies the location of Identity Provider metadata
-	// TODO: link to SAML metadata format from the specs
-	// x509 cert of the Identity provider is included in this metadata
-	IdPMetadataURL string `protobuf:"bytes,2,opt,name=idp_metadata_url,proto3" json:"idp_metadata_url,omitempty"`
-	// IdPCert contains the certificate of the Identity Provider in DER format.
-	IdPCert []byte `protobuf:"bytes,3,opt,name=idp_cert,proto3" json:"idp_cert,omitempty"`
-	// ConsumerServiceURL contains the AssertionConsumerServiceURL per
-	// TODO: link to AssertionConsumerServiceURL from SAML specs
-	ConsumerServiceURL string `protobuf:"bytes,4,opt,name=consumer_service_url,proto3" json:"consumer_service_url,omitempty"`
+	// Identity provider's x509 cert and SSO URL is included in this metadata
+	IDPMetadataURL string `protobuf:"bytes,2,opt,name=idp_metadata_url,proto3" json:"idp_metadata_url,omitempty"`
+	// ConsumerServiceURL contains the AssertionConsumerServiceURL
+	ConsumerServiceURL string    `protobuf:"bytes,4,opt,name=consumer_service_url,proto3" json:"consumer_service_url,omitempty"`
+	ServiceProviderTLS TLSConfig `protobuf:"bytes,5,opt,name=service_provider_tls" json:"service_provider_tls"`
 }
 
 func (m *EmailProofBySAML) Reset()      { *m = EmailProofBySAML{} }
 func (*EmailProofBySAML) ProtoMessage() {}
+
+func (m *EmailProofBySAML) GetServiceProviderTLS() TLSConfig {
+	if m != nil {
+		return m.ServiceProviderTLS
+	}
+	return TLSConfig{}
+}
 
 // OIDCConfig contains the OpenID Connect client configuration which is used to
 // validate the token received from the keyserver client.
@@ -1317,14 +1321,14 @@ func (this *EmailProofBySAML) VerboseEqual(that interface{}) error {
 			return fmt.Errorf("AllowedDomains this[%v](%v) Not Equal that[%v](%v)", i, this.AllowedDomains[i], i, that1.AllowedDomains[i])
 		}
 	}
-	if this.IdPMetadataURL != that1.IdPMetadataURL {
-		return fmt.Errorf("IdPMetadataURL this(%v) Not Equal that(%v)", this.IdPMetadataURL, that1.IdPMetadataURL)
-	}
-	if !bytes.Equal(this.IdPCert, that1.IdPCert) {
-		return fmt.Errorf("IdPCert this(%v) Not Equal that(%v)", this.IdPCert, that1.IdPCert)
+	if this.IDPMetadataURL != that1.IDPMetadataURL {
+		return fmt.Errorf("IDPMetadataURL this(%v) Not Equal that(%v)", this.IDPMetadataURL, that1.IDPMetadataURL)
 	}
 	if this.ConsumerServiceURL != that1.ConsumerServiceURL {
 		return fmt.Errorf("ConsumerServiceURL this(%v) Not Equal that(%v)", this.ConsumerServiceURL, that1.ConsumerServiceURL)
+	}
+	if !this.ServiceProviderTLS.Equal(&that1.ServiceProviderTLS) {
+		return fmt.Errorf("ServiceProviderTLS this(%v) Not Equal that(%v)", this.ServiceProviderTLS, that1.ServiceProviderTLS)
 	}
 	return nil
 }
@@ -1356,13 +1360,13 @@ func (this *EmailProofBySAML) Equal(that interface{}) bool {
 			return false
 		}
 	}
-	if this.IdPMetadataURL != that1.IdPMetadataURL {
-		return false
-	}
-	if !bytes.Equal(this.IdPCert, that1.IdPCert) {
+	if this.IDPMetadataURL != that1.IDPMetadataURL {
 		return false
 	}
 	if this.ConsumerServiceURL != that1.ConsumerServiceURL {
+		return false
+	}
+	if !this.ServiceProviderTLS.Equal(&that1.ServiceProviderTLS) {
 		return false
 	}
 	return true
@@ -1664,9 +1668,9 @@ func (this *EmailProofBySAML) GoString() string {
 	s := make([]string, 0, 8)
 	s = append(s, "&proto.EmailProofBySAML{")
 	s = append(s, "AllowedDomains: "+fmt.Sprintf("%#v", this.AllowedDomains)+",\n")
-	s = append(s, "IdPMetadataURL: "+fmt.Sprintf("%#v", this.IdPMetadataURL)+",\n")
-	s = append(s, "IdPCert: "+fmt.Sprintf("%#v", this.IdPCert)+",\n")
+	s = append(s, "IDPMetadataURL: "+fmt.Sprintf("%#v", this.IDPMetadataURL)+",\n")
 	s = append(s, "ConsumerServiceURL: "+fmt.Sprintf("%#v", this.ConsumerServiceURL)+",\n")
+	s = append(s, "ServiceProviderTLS: "+strings.Replace(this.ServiceProviderTLS.GoString(), `&`, ``, 1)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -2183,19 +2187,11 @@ func (m *EmailProofBySAML) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
-	if len(m.IdPMetadataURL) > 0 {
+	if len(m.IDPMetadataURL) > 0 {
 		data[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.IdPMetadataURL)))
-		i += copy(data[i:], m.IdPMetadataURL)
-	}
-	if m.IdPCert != nil {
-		if len(m.IdPCert) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(len(m.IdPCert)))
-			i += copy(data[i:], m.IdPCert)
-		}
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.IDPMetadataURL)))
+		i += copy(data[i:], m.IDPMetadataURL)
 	}
 	if len(m.ConsumerServiceURL) > 0 {
 		data[i] = 0x22
@@ -2203,6 +2199,14 @@ func (m *EmailProofBySAML) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.ConsumerServiceURL)))
 		i += copy(data[i:], m.ConsumerServiceURL)
 	}
+	data[i] = 0x2a
+	i++
+	i = encodeVarintKeyserverconfig(data, i, uint64(m.ServiceProviderTLS.Size()))
+	n17, err := m.ServiceProviderTLS.MarshalTo(data[i:])
+	if err != nil {
+		return 0, err
+	}
+	i += n17
 	return i, nil
 }
 
@@ -2257,11 +2261,11 @@ func (m *OIDCConfig) MarshalTo(data []byte) (int, error) {
 	data[i] = 0x2a
 	i++
 	i = encodeVarintKeyserverconfig(data, i, uint64(m.Validity.Size()))
-	n17, err := m.Validity.MarshalTo(data[i:])
+	n18, err := m.Validity.MarshalTo(data[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n17
+	i += n18
 	return i, nil
 }
 
@@ -2492,13 +2496,10 @@ func NewPopulatedEmailProofBySAML(r randyKeyserverconfig, easy bool) *EmailProof
 	for i := 0; i < v18; i++ {
 		this.AllowedDomains[i] = randStringKeyserverconfig(r)
 	}
-	this.IdPMetadataURL = randStringKeyserverconfig(r)
-	v19 := r.Intn(100)
-	this.IdPCert = make([]byte, v19)
-	for i := 0; i < v19; i++ {
-		this.IdPCert[i] = byte(r.Intn(256))
-	}
+	this.IDPMetadataURL = randStringKeyserverconfig(r)
 	this.ConsumerServiceURL = randStringKeyserverconfig(r)
+	v19 := NewPopulatedTLSConfig(r, easy)
+	this.ServiceProviderTLS = *v19
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2810,20 +2811,16 @@ func (m *EmailProofBySAML) Size() (n int) {
 			n += 1 + l + sovKeyserverconfig(uint64(l))
 		}
 	}
-	l = len(m.IdPMetadataURL)
+	l = len(m.IDPMetadataURL)
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
-	}
-	if m.IdPCert != nil {
-		l = len(m.IdPCert)
-		if l > 0 {
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
 	}
 	l = len(m.ConsumerServiceURL)
 	if l > 0 {
 		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
+	l = m.ServiceProviderTLS.Size()
+	n += 1 + l + sovKeyserverconfig(uint64(l))
 	return n
 }
 
@@ -3027,9 +3024,9 @@ func (this *EmailProofBySAML) String() string {
 	}
 	s := strings.Join([]string{`&EmailProofBySAML{`,
 		`AllowedDomains:` + fmt.Sprintf("%v", this.AllowedDomains) + `,`,
-		`IdPMetadataURL:` + fmt.Sprintf("%v", this.IdPMetadataURL) + `,`,
-		`IdPCert:` + fmt.Sprintf("%v", this.IdPCert) + `,`,
+		`IDPMetadataURL:` + fmt.Sprintf("%v", this.IDPMetadataURL) + `,`,
 		`ConsumerServiceURL:` + fmt.Sprintf("%v", this.ConsumerServiceURL) + `,`,
+		`ServiceProviderTLS:` + strings.Replace(strings.Replace(this.ServiceProviderTLS.String(), "TLSConfig", "TLSConfig", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -4462,7 +4459,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IdPMetadataURL", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field IDPMetadataURL", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -4487,35 +4484,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.IdPMetadataURL = string(data[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field IdPCert", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowKeyserverconfig
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthKeyserverconfig
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.IdPCert = append([]byte{}, data[iNdEx:postIndex]...)
+			m.IDPMetadataURL = string(data[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -4545,6 +4514,36 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ConsumerServiceURL = string(data[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServiceProviderTLS", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowKeyserverconfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthKeyserverconfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ServiceProviderTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+				return err
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

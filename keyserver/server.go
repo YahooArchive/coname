@@ -19,6 +19,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -40,6 +41,7 @@ import (
 	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/keyserver/oidc"
 	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/saml"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 
@@ -62,9 +64,10 @@ type Keyserver struct {
 	oidcProofConfig         []OIDCConfig
 
 	samlProofAllowedDomains     map[string]struct{}
-	samlProofIdPMetadataURL     string
+	samlProofIDPSSOURL          string
 	samlProofConsumerServiceURL string
-	samlProofIdPCert            []byte
+	samlProofIDPCert            *x509.Certificate
+	samlProofSPKey              crypto.PrivateKey
 
 	insecureSkipEmailProof bool
 
@@ -164,7 +167,6 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		dkimProofAllowedDomains: make(map[string]struct{}),
 		oidcProofConfig:         make([]OIDCConfig, 0),
 		samlProofAllowedDomains: make(map[string]struct{}),
-		samlProofIdPCert:        make([]byte, 0),
 
 		db:                 db,
 		log:                log,
@@ -208,9 +210,18 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 			for _, d := range t.EmailProofBySAML.AllowedDomains {
 				ks.samlProofAllowedDomains[d] = struct{}{}
 			}
-			ks.samlProofIdPMetadataURL = t.EmailProofBySAML.IdPMetadataURL
+			url, cert, err := saml.FetchIDPInfo(t.EmailProofBySAML.IDPMetadataURL)
+			if err != nil {
+				return nil, err
+			}
 			ks.samlProofConsumerServiceURL = t.EmailProofBySAML.ConsumerServiceURL
-			ks.samlProofIdPCert = t.EmailProofBySAML.IdPCert
+			ks.samlProofIDPSSOURL = url
+			ks.samlProofIDPCert = cert
+			key, err := getKey(t.EmailProofBySAML.ServiceProviderTLS.Certificates[0].KeyID)
+			if err != nil {
+				return nil, err
+			}
+			ks.samlProofSPKey = key
 
 		// TODO remove this before production
 		case *proto.RegistrationPolicy_InsecureSkipEmailProof:
@@ -278,7 +289,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, SAMLRequest: ks.SAMLRequest}
 		defer func() {
 			if !ok {
 				ks.httpFrontListen.Close()

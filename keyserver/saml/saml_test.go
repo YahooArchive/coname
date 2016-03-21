@@ -20,7 +20,13 @@ func TestSAMLValidResponse(t *testing.T) {
 	authnResponse.AddAttribute("EmailAddress", "foobar@yahoo-inc.com")
 	authnResponse.Assertion.Subject.SubjectConfirmation.SubjectConfirmationData.Recipient = "https://e2esp.yahoo.com"
 
-	privateKey, err := ioutil.ReadFile("test.key")
+	k, err := ioutil.ReadFile("test.key")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	kd, _ := pem.Decode(k)
+	privateKey, err := x509.ParsePKCS1PrivateKey(kd.Bytes)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -64,7 +70,13 @@ func TestSAMLValidResponse(t *testing.T) {
 }
 
 func TestSAMLValidRequest(t *testing.T) {
-	privateKey, err := ioutil.ReadFile("test.key")
+	k, err := ioutil.ReadFile("test.key")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	kd, _ := pem.Decode(k)
+	privateKey, err := x509.ParsePKCS1PrivateKey(kd.Bytes)
 	if err != nil {
 		t.Errorf(err.Error())
 		return

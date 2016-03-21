@@ -106,7 +106,7 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 				if !found {
 					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 				}
-			case *proto.EmailProof_SAMLToken:
+			case *proto.EmailProof_SAMLResponse:
 				if _, ok := ks.samlProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
 					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 
