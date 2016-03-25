@@ -24,7 +24,10 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/sha3"
@@ -107,6 +110,9 @@ type Keyserver struct {
 	stopOnce sync.Once
 	stop     chan struct{}
 	stopped  chan struct{}
+
+	inRotation   bool
+	inRotationMu sync.Mutex
 }
 
 // OIDCConfig manages an OpenID Connect object
@@ -167,6 +173,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		signatureBroadcast: concurrent.NewPublishSubscribe(),
 
 		leaderHint: true,
+		inRotation: true,
 
 		clk:                   clk,
 		lookupTXT:             LookupTXT,
@@ -263,7 +270,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation}
 		defer func() {
 			if !ok {
 				ks.httpFrontListen.Close()
@@ -295,6 +302,8 @@ func (ks *Keyserver) Start() {
 		ks.httpFront.Start(ks.httpFrontListen)
 	}
 	go ks.run()
+	go ks.takeOutOfRotation()
+	go ks.takeInRotation()
 }
 
 // Stop cleanly shuts down the keyserver and then returns.
@@ -322,6 +331,13 @@ func (ks *Keyserver) Stop() {
 		ks.log.Stop()
 		ks.signatureBroadcast.Stop()
 	})
+}
+
+//InRotation indicates whether the keyserver host is in rotation
+func (ks *Keyserver) InRotation() bool {
+	ks.inRotationMu.Lock()
+	defer ks.inRotationMu.Unlock()
+	return ks.inRotation
 }
 
 // run is the CSP-style main loop of the keyserver. All code critical for safe
@@ -607,6 +623,26 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
 	return
+}
+
+func (ks *Keyserver) takeOutOfRotation() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGUSR1)
+	for _ = range ch {
+		ks.inRotationMu.Lock()
+		ks.inRotation = false
+		ks.inRotationMu.Unlock()
+	}
+}
+
+func (ks *Keyserver) takeInRotation() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGUSR2)
+	for _ = range ch {
+		ks.inRotationMu.Lock()
+		ks.inRotation = true
+		ks.inRotationMu.Unlock()
+	}
 }
 
 type Proposer struct {
