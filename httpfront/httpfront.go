@@ -15,8 +15,9 @@ import (
 
 // HTTPFront implements a dumb http proxy for the keyserver grpc interface
 type HTTPFront struct {
-	Lookup func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
-	Update func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
+	Lookup     func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
+	Update     func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
+	InRotation func() bool
 
 	ln net.Listener
 	sr http.Server
@@ -129,6 +130,10 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// service healthcheck
 	if (method == "HEAD" || method == "GET") && (path == "/status" || path == "/lb") {
+		if !h.InRotation() {
+			http.Error(w, `server out of rotation`, http.StatusNotFound)
+			return
+		}
 		if method == "GET" {
 			w.Write([]byte("OK"))
 		}
