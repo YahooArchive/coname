@@ -10,7 +10,6 @@ before_install:
         - openssl aes-256-cbc -K $encrypted_3a7b75acb9d9_key -iv $encrypted_3a7b75acb9d9_iv -in .gitcookies.enc -out .gitcookies.sh -d
         - bash .gitcookies.sh
 go: 
- - 1.4
  - 1.5
  - 1.6
  - tip

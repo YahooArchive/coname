@@ -2220,6 +2220,10 @@ func extensionToGoStringClient(e map[int32]github_com_andres_erbsen_protobuf_pro
 var _ context.Context
 var _ grpc.ClientConn
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
 // Client API for E2EKSPublic service
 
 type E2EKSPublicClient interface {
@@ -2264,28 +2268,40 @@ func RegisterE2EKSPublicServer(s *grpc.Server, srv E2EKSPublicServer) {
 	s.RegisterService(&_E2EKSPublic_serviceDesc, srv)
 }
 
-func _E2EKSPublic_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKSPublic_Lookup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSPublicServer).Lookup(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKSPublicServer).Lookup(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.E2EKSPublic/Lookup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKSPublicServer).Lookup(ctx, req.(*LookupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _E2EKSPublic_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
+func _E2EKSPublic_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
-	out, err := srv.(E2EKSPublicServer).Update(ctx, in)
-	if err != nil {
-		return nil, err
+	if interceptor == nil {
+		return srv.(E2EKSPublicServer).Update(ctx, in)
 	}
-	return out, nil
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.E2EKSPublic/Update",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(E2EKSPublicServer).Update(ctx, req.(*UpdateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 var _E2EKSPublic_serviceDesc = grpc.ServiceDesc{
