@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,7 +67,7 @@ func TestIDToken(t *testing.T) {
 	}{
 		{aud, exp, email, true, iss, kid, validity, true, ""},
 		{"foobar", exp, email, true, iss, kid, validity, false, "ClientID invalid - got (foobar) wanted (" + aud + ")"},
-		{aud, time.Now().Unix() - 1, email, true, iss, kid, validity, false, "token is expired"},
+		{aud, time.Now().Unix() - 1, email, true, iss, kid, validity, false, "token is expired by 1s"},
 		{aud, exp, "mytest2@yahoo.com", true, iss, kid, validity, false, ""},
 		{aud, exp, email, false, iss, kid, validity, false, "email not verified"},
 		{aud, exp, email, true, "https://new.api.login.yahoo.com", kid, validity, false, "iss invalid - got (https://new.api.login.yahoo.com) wanted (" + iss + ")"},
@@ -165,7 +166,7 @@ func TestRealIDToken(t *testing.T) {
 	}
 	tokStr := "eyJhbGciOiJFUzI1NiIsImtpZCI6IjM0NjZkNTFmN2RkMGM3ODA1NjU2ODhjMTgzOTIxODE2YzQ1ODg5YWQifQ.eyJhdWQiOiJkajB5Sm1rOVNtaDNPWEJCVVVkUWIzcEJKbVE5V1Zkck9WRnRaSHBsYkZKeFRtMDRiV05IYnpsTlFTMHRKbk05WTI5dWMzVnRaWEp6WldOeVpYUW1lRDFqTnctLSIsInN1YiI6IkVRMk5UVEhER0lZR0lSREJVTEkzUFE2UEVVIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImlzcyI6Imh0dHBzOi8vYXBpLmxvZ2luLnlhaG9vLmNvbSIsIm5hbWUiOiJhZGl0eWEgbWFoZW5kcmFrYXIiLCJleHAiOjE0NTg1Nzg5MjYsImdpdmVuX25hbWUiOiJhZGl0eWEiLCJsb2NhbGUiOiJlbi1VUyIsImlhdCI6MTQ1ODU3NTMyNiwibm9uY2UiOiJmb29iYXJiYXoiLCJmYW1pbHlfbmFtZSI6Im1haGVuZHJha2FyIiwiZW1haWwiOiJhZGl0eWF0ZXN0MUB5YWhvby5jb20ifQ.YVzwmK4xhJyNSSwPPANv6vpBmOXpF4e0hG9SuvHziYs3AGQpAMFQoWu_3HiXX_t7vL8-EVtKEiG4Mp1M2m2ZZw"
 	_, err = c.VerifyIDToken(tokStr)
-	if err == nil || err.Error() != "token is expired" {
+	if err == nil || !strings.HasPrefix(err.Error(), "token is expired") {
 		t.Error("validated an expired token or unexpected error occured")
 	}
 
