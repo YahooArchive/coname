@@ -258,7 +258,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.hkpFront = &hkpfront.HKPFront{InsecureSkipVerify: true, Lookup: ks.Lookup, Clk: ks.clk}
+		ks.hkpFront = &hkpfront.HKPFront{InsecureSkipVerify: true, Lookup: ks.Lookup, Clk: ks.clk, TLSConfig: hkpTLS}
 		defer func() {
 			if !ok {
 				ks.hkpListen.Close()
@@ -270,7 +270,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation, TLSConfig: httpFrontTLS}
 		defer func() {
 			if !ok {
 				ks.httpFrontListen.Close()
