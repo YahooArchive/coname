@@ -2,8 +2,14 @@ language: go
 sudo: false
 #before_script:
 # - go vet ./...
+before_install:
+        # Decrypts .gitcookies.sh which authenticates the user
+        # for git to use when cloning from googlesource.com to
+        # bypass "bandwidth rate limit exceeded" error.
+        # See https://github.com/golang/go/issues/12933 for details
+        - openssl aes-256-cbc -K $encrypted_3a7b75acb9d9_key -iv $encrypted_3a7b75acb9d9_iv -in .gitcookies.enc -out .gitcookies.sh -d
+        - bash .gitcookies.sh
 go: 
- - 1.3
- - 1.4
  - 1.5
+ - 1.6
  - tip

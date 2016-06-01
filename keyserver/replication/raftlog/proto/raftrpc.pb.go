@@ -14,178 +14,109 @@
 package proto
 
 import proto1 "github.com/gogo/protobuf/proto"
-import raftpb "github.com/coreos/etcd/raft/raftpb"
-
-import io "io"
 import fmt "fmt"
+import math "math"
+import raftpb "github.com/coreos/etcd/raft/raftpb"
 
 import (
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
 
+import io "io"
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = proto1.Marshal
+var _ = fmt.Errorf
+var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto1.GoGoProtoPackageIsVersion1
+
 type Nothing struct {
 }
 
-func (m *Nothing) Reset()         { *m = Nothing{} }
-func (m *Nothing) String() string { return proto1.CompactTextString(m) }
-func (*Nothing) ProtoMessage()    {}
+func (m *Nothing) Reset()                    { *m = Nothing{} }
+func (m *Nothing) String() string            { return proto1.CompactTextString(m) }
+func (*Nothing) ProtoMessage()               {}
+func (*Nothing) Descriptor() ([]byte, []int) { return fileDescriptorRaftrpc, []int{0} }
 
-func (m *Nothing) Unmarshal(data []byte) error {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		switch fieldNum {
-		default:
-			var sizeOfWire int
-			for {
-				sizeOfWire++
-				wire >>= 7
-				if wire == 0 {
-					break
-				}
-			}
-			iNdEx -= sizeOfWire
-			skippy, err := skipRaftrpc(data[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthRaftrpc
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
+func init() {
+	proto1.RegisterType((*Nothing)(nil), "proto.Nothing")
+}
+
+// Reference imports to suppress errors if they are not otherwise used.
+var _ context.Context
+var _ grpc.ClientConn
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the grpc package it is being compiled against.
+const _ = grpc.SupportPackageIsVersion2
+
+// Client API for Raft service
+
+type RaftClient interface {
+	Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error)
+}
+
+type raftClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewRaftClient(cc *grpc.ClientConn) RaftClient {
+	return &raftClient{cc}
+}
+
+func (c *raftClient) Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error) {
+	out := new(Nothing)
+	err := grpc.Invoke(ctx, "/proto.Raft/Step", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil
+	return out, nil
 }
-func skipRaftrpc(data []byte) (n int, err error) {
-	l := len(data)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := data[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if data[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthRaftrpc
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := data[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipRaftrpc(data[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
+
+// Server API for Raft service
+
+type RaftServer interface {
+	Step(context.Context, *raftpb.Message) (*Nothing, error)
+}
+
+func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
+	s.RegisterService(&_Raft_serviceDesc, srv)
+}
+
+func _Raft_Step_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(raftpb.Message)
+	if err := dec(in); err != nil {
+		return nil, err
 	}
-	panic("unreachable")
-}
-
-var (
-	ErrInvalidLengthRaftrpc = fmt.Errorf("proto: negative length found during unmarshaling")
-)
-
-func (m *Nothing) Size() (n int) {
-	var l int
-	_ = l
-	return n
-}
-
-func sovRaftrpc(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
+	if interceptor == nil {
+		return srv.(RaftServer).Step(ctx, in)
 	}
-	return n
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Raft/Step",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftServer).Step(ctx, req.(*raftpb.Message))
+	}
+	return interceptor(ctx, in, info, handler)
 }
-func sozRaftrpc(x uint64) (n int) {
-	return sovRaftrpc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+
+var _Raft_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Raft",
+	HandlerType: (*RaftServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Step",
+			Handler:    _Raft_Step_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{},
 }
+
 func (m *Nothing) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -231,60 +162,189 @@ func encodeVarintRaftrpc(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	return offset + 1
 }
-
-// Client API for Raft service
-
-type RaftClient interface {
-	Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error)
+func (m *Nothing) Size() (n int) {
+	var l int
+	_ = l
+	return n
 }
 
-type raftClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewRaftClient(cc *grpc.ClientConn) RaftClient {
-	return &raftClient{cc}
-}
-
-func (c *raftClient) Step(ctx context.Context, in *raftpb.Message, opts ...grpc.CallOption) (*Nothing, error) {
-	out := new(Nothing)
-	err := grpc.Invoke(ctx, "/proto.Raft/Step", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
+func sovRaftrpc(x uint64) (n int) {
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
 	}
-	return out, nil
+	return n
 }
-
-// Server API for Raft service
-
-type RaftServer interface {
-	Step(context.Context, *raftpb.Message) (*Nothing, error)
+func sozRaftrpc(x uint64) (n int) {
+	return sovRaftrpc(uint64((x << 1) ^ uint64((int64(x) >> 63))))
 }
-
-func RegisterRaftServer(s *grpc.Server, srv RaftServer) {
-	s.RegisterService(&_Raft_serviceDesc, srv)
-}
-
-func _Raft_Step_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error) (interface{}, error) {
-	in := new(raftpb.Message)
-	if err := dec(in); err != nil {
-		return nil, err
+func (m *Nothing) Unmarshal(data []byte) error {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowRaftrpc
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Nothing: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Nothing: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipRaftrpc(data[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthRaftrpc
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
 	}
-	out, err := srv.(RaftServer).Step(ctx, in)
-	if err != nil {
-		return nil, err
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
 	}
-	return out, nil
+	return nil
+}
+func skipRaftrpc(data []byte) (n int, err error) {
+	l := len(data)
+	iNdEx := 0
+	for iNdEx < l {
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return 0, ErrIntOverflowRaftrpc
+			}
+			if iNdEx >= l {
+				return 0, io.ErrUnexpectedEOF
+			}
+			b := data[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		wireType := int(wire & 0x7)
+		switch wireType {
+		case 0:
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRaftrpc
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				iNdEx++
+				if data[iNdEx-1] < 0x80 {
+					break
+				}
+			}
+			return iNdEx, nil
+		case 1:
+			iNdEx += 8
+			return iNdEx, nil
+		case 2:
+			var length int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return 0, ErrIntOverflowRaftrpc
+				}
+				if iNdEx >= l {
+					return 0, io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				length |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			iNdEx += length
+			if length < 0 {
+				return 0, ErrInvalidLengthRaftrpc
+			}
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowRaftrpc
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipRaftrpc(data[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
+		case 5:
+			iNdEx += 4
+			return iNdEx, nil
+		default:
+			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+		}
+	}
+	panic("unreachable")
 }
 
-var _Raft_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.Raft",
-	HandlerType: (*RaftServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Step",
-			Handler:    _Raft_Step_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{},
+var (
+	ErrInvalidLengthRaftrpc = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowRaftrpc   = fmt.Errorf("proto: integer overflow")
+)
+
+var fileDescriptorRaftrpc = []byte{
+	// 139 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2d, 0x4a, 0x4c, 0x2b,
+	0x29, 0x2a, 0x48, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x52, 0xba, 0xe9,
+	0x99, 0x25, 0x19, 0xa5, 0x49, 0x7a, 0xc9, 0xf9, 0xb9, 0xfa, 0xc9, 0xf9, 0x45, 0xa9, 0xf9, 0xc5,
+	0xfa, 0xa9, 0x25, 0xc9, 0x29, 0xfa, 0x20, 0xc5, 0x60, 0xa2, 0x20, 0x09, 0x4c, 0x41, 0x74, 0x29,
+	0x71, 0x72, 0xb1, 0xfb, 0xe5, 0x97, 0x64, 0x64, 0xe6, 0xa5, 0x1b, 0xe9, 0x73, 0xb1, 0x04, 0x01,
+	0x25, 0x84, 0xd4, 0xb9, 0x58, 0x82, 0x4b, 0x52, 0x0b, 0x84, 0xf8, 0xf5, 0x20, 0xca, 0xf5, 0x7c,
+	0x53, 0x8b, 0x8b, 0x13, 0xd3, 0x53, 0xa5, 0xf8, 0x20, 0x7a, 0xf4, 0xa0, 0x1a, 0x9c, 0x78, 0x4e,
+	0x3c, 0x92, 0x63, 0xbc, 0x00, 0xc4, 0x0f, 0x80, 0x38, 0x89, 0x0d, 0x2c, 0x69, 0x0c, 0x08, 0x00,
+	0x00, 0xff, 0xff, 0x93, 0x48, 0xb0, 0x55, 0x97, 0x00, 0x00, 0x00,
 }

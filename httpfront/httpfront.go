@@ -2,6 +2,7 @@ package httpfront
 
 import (
 	//"errors"
+	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
@@ -18,6 +19,10 @@ type HTTPFront struct {
 	Lookup      func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
 	Update      func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
 	SAMLRequest func() ([]byte, error)
+	InRotation  func() bool
+
+	// this is needed due to https://github.com/golang/go/issues/14374
+	TLSConfig *tls.Config
 
 	ln net.Listener
 	sr http.Server
@@ -40,6 +45,7 @@ func (h *HTTPFront) Start(ln net.Listener) {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 4096,
 		ConnState:      h.updateConnState,
+		TLSConfig:      h.TLSConfig,
 	}
 	h.ln = ln
 	h.waitStop.Add(1)
@@ -130,6 +136,10 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// service healthcheck
 	if (method == "HEAD" || method == "GET") && (path == "/status" || path == "/lb") {
+		if !h.InRotation() {
+			http.Error(w, `server out of rotation`, http.StatusNotFound)
+			return
+		}
 		if method == "GET" {
 			w.Write([]byte("OK"))
 		}

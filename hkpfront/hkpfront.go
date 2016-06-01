@@ -1,6 +1,7 @@
 package hkpfront
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"sync"
@@ -23,6 +24,9 @@ type HKPFront struct {
 	// Config must be set and valid if InsecureSkipVerify is not set
 	Config *proto.Config
 
+	// this is needed due to https://github.com/golang/go/issues/14374
+	TLSConfig *tls.Config
+
 	ln net.Listener
 	sr http.Server
 
@@ -44,6 +48,7 @@ func (h *HKPFront) Start(ln net.Listener) {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 4096,
 		ConnState:      h.updateConnState,
+		TLSConfig:      h.TLSConfig,
 	}
 	h.ln = ln
 	h.waitStop.Add(1)
@@ -129,8 +134,9 @@ func (h *HKPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `No results found: No keys found: unknown email`, 404)
 		return
 	}
-
-	pgpKey, present := pf.Profile.Keys["pgp"]
+	// TODO: fix the keyname to be more meaningful
+	// ref. https://github.com/yahoo/coname/blob/master/proto/client.proto#L163-L164
+	pgpKey, present := pf.Profile.Keys["25519"]
 	if !present {
 		http.Error(w, `No results found: No keys found: the email is known to the keyserver, but the profile does not include an OpenPGP key`, 404)
 		return

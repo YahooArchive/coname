@@ -993,7 +993,7 @@ func TestKeyserverHKP(t *testing.T) {
 	pgpKeyRef := []byte("this-is-alices-pgp-key")
 	doRegister(t, ks, clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
 		Nonce: []byte("definitely used only once"),
-		Keys:  map[string][]byte{"pgp": pgpKeyRef},
+		Keys:  map[string][]byte{"25519": pgpKeyRef},
 	})
 
 	c := &http.Client{Transport: &http.Transport{
