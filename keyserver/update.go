@@ -25,6 +25,7 @@ import (
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/dkim"
 	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/saml"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 	"golang.org/x/crypto/sha3"
@@ -106,14 +107,19 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 				if !found {
 					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 				}
+
 			case *proto.EmailProof_SAMLResponse:
 				if _, ok := ks.samlProofAllowedDomains[req.LookupParameters.UserId[lastAtIndex+1:]]; !ok {
 					return fmt.Errorf("domain not in registration whitelist: %q", req.LookupParameters.UserId[lastAtIndex+1:])
 
 				}
-				// TODO: verify SAML response and email address
-
-			//TODO: handle other email proof types
+				email, err := saml.VerifySAMLResponse(t.SAMLResponse, ks.samlProofIDPCert, ks.samlProofConsumerServiceURL, "EmailAddress")
+				if err != nil {
+					return err
+				}
+				if got, want := email, req.LookupParameters.UserId; got != want {
+					return fmt.Errorf("requested user ID does not match the email proof: %q != %q", got, want)
+				}
 
 			default:
 				return fmt.Errorf("Invalid email proof type: %T", t)

@@ -39,15 +39,17 @@ func GenerateSAMLRequest(spCert *x509.Certificate, spKey crypto.PrivateKey, cons
 		PrivateKey:                  spKey,
 	}
 	authnRequest := sp.GetAuthnRequest()
-	b64SignedXML, err := authnRequest.EncodedSignedString(sp.PrivateKey)
+	b64SignedXML, err := authnRequest.CompressedEncodedSignedString(sp.PrivateKey)
 	if err != nil {
 		return "", err
 	}
-	if b64SignedXML == "" {
-		return "", fmt.Errorf("signed SAML request is empty")
-	}
 
-	return b64SignedXML, nil
+	// url encode the payload
+	v := url.Values{}
+	v.Set("", b64SignedXML)
+	ue := v.Encode()[1:] // strip the leading "="
+
+	return ue, nil
 }
 
 func FetchIDPInfo(metadataURL string) (string, *x509.Certificate, error) {
