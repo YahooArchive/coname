@@ -1,3 +1,6 @@
+### coname [![Build Status](https://travis-ci.org/yahoo/coname.svg?branch=master)](https://travis-ci.org/yahoo/coname) [![GoDoc](https://godoc.org/github.com/yahoo/coname?status.svg)](http://godoc.org/github.com/yahoo/coname)
+
+
 This repository contains a WORK-IN-PROGRESS implementation of an EXPERIMENTAL
 cooperative keyserver design based on ideas from `dename`
 ([readme, code](https://github.com/andres-erbsen/dename),
