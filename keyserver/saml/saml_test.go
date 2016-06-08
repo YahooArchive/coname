@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"testing"
 
 	"github.com/maditya/go-saml"
@@ -45,6 +46,11 @@ func TestSAMLValidResponse(t *testing.T) {
 	}
 
 	authnResponse.Signature.KeyInfo.X509Data.X509Certificate.Cert = base64.StdEncoding.EncodeToString(certBlock.Bytes)
+
+	_, err = exec.LookPath("xmlsec1")
+	if err != nil {
+		t.Skip("skipping subsequent test since xmlsec1 is missing")
+	}
 
 	payload, err := authnResponse.EncodedSignedString(privateKey)
 	if err != nil {
@@ -98,6 +104,10 @@ func TestSAMLValidRequest(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 		return
+	}
+	_, err = exec.LookPath("xmlsec1")
+	if err != nil {
+		t.Skip("skipping subsequent test since xmlsec1 is missing")
 	}
 
 	signedXML, err := GenerateSAMLRequest(cert, privateKey, "https://e2esp.yahoo.com", "https://idp.yahoo.com/saml/sso")
