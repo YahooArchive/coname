@@ -19,6 +19,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -43,6 +44,7 @@ import (
 	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/keyserver/oidc"
 	"github.com/yahoo/coname/keyserver/replication"
+	"github.com/yahoo/coname/keyserver/saml"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 
@@ -63,6 +65,12 @@ type Keyserver struct {
 	dkimProofSubjectPrefix  string
 	dkimProofAllowedDomains map[string]struct{}
 	oidcProofConfig         []OIDCConfig
+
+	samlProofAllowedDomains     map[string]struct{}
+	samlProofIDPSSOURL          string
+	samlProofConsumerServiceURL string
+	samlProofIDPCert            *x509.Certificate
+	samlProofSPKey              crypto.PrivateKey
 
 	insecureSkipEmailProof bool
 
@@ -164,6 +172,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		retryProposalInterval:   cfg.ProposalRetryInterval.Duration(),
 		dkimProofAllowedDomains: make(map[string]struct{}),
 		oidcProofConfig:         make([]OIDCConfig, 0),
+		samlProofAllowedDomains: make(map[string]struct{}),
 
 		db:                 db,
 		log:                log,
@@ -204,6 +213,23 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 				}
 				ks.oidcProofConfig = append(ks.oidcProofConfig, oc)
 			}
+		case *proto.RegistrationPolicy_EmailProofBySAML:
+			for _, d := range t.EmailProofBySAML.AllowedDomains {
+				ks.samlProofAllowedDomains[d] = struct{}{}
+			}
+			url, cert, err := saml.FetchIDPInfo(t.EmailProofBySAML.IDPMetadataURL)
+			if err != nil {
+				return nil, err
+			}
+			ks.samlProofConsumerServiceURL = t.EmailProofBySAML.ConsumerServiceURL
+			ks.samlProofIDPSSOURL = url
+			ks.samlProofIDPCert = cert
+			key, err := getKey(t.EmailProofBySAML.ServiceProviderTLS.Certificates[0].KeyID)
+			if err != nil {
+				return nil, err
+			}
+			ks.samlProofSPKey = key
+
 		// TODO remove this before production
 		case *proto.RegistrationPolicy_InsecureSkipEmailProof:
 			ks.insecureSkipEmailProof = true

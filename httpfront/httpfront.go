@@ -16,9 +16,10 @@ import (
 
 // HTTPFront implements a dumb http proxy for the keyserver grpc interface
 type HTTPFront struct {
-	Lookup     func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
-	Update     func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
-	InRotation func() bool
+	Lookup      func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
+	Update      func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
+	SAMLRequest func() ([]byte, error)
+	InRotation  func() bool
 
 	// this is needed due to https://github.com/golang/go/issues/14374
 	TLSConfig *tls.Config
@@ -142,6 +143,15 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if method == "GET" {
 			w.Write([]byte("OK"))
 		}
+		return
+	}
+
+	if method == "GET" && path == "/saml" {
+		samlReq, err := h.SAMLRequest()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+		}
+		w.Write(samlReq)
 		return
 	}
 

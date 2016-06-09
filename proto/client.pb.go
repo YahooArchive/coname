@@ -42,6 +42,7 @@
 		EmailProofByDKIM
 		EmailProofByClientCert
 		EmailProofByOIDC
+		EmailProofBySAML
 		OIDCConfig
 		Replica
 		ReplicaState
@@ -624,6 +625,7 @@ type EmailProof struct {
 	// Types that are valid to be assigned to ProofType:
 	//	*EmailProof_DKIMProof
 	//	*EmailProof_OIDCToken
+	//	*EmailProof_SAMLResponse
 	ProofType isEmailProof_ProofType `protobuf_oneof:"proof_type"`
 }
 
@@ -644,9 +646,13 @@ type EmailProof_DKIMProof struct {
 type EmailProof_OIDCToken struct {
 	OIDCToken string `protobuf:"bytes,2,opt,name=oidc_token,proto3,oneof"`
 }
+type EmailProof_SAMLResponse struct {
+	SAMLResponse string `protobuf:"bytes,3,opt,name=saml_response,proto3,oneof"`
+}
 
-func (*EmailProof_DKIMProof) isEmailProof_ProofType() {}
-func (*EmailProof_OIDCToken) isEmailProof_ProofType() {}
+func (*EmailProof_DKIMProof) isEmailProof_ProofType()    {}
+func (*EmailProof_OIDCToken) isEmailProof_ProofType()    {}
+func (*EmailProof_SAMLResponse) isEmailProof_ProofType() {}
 
 func (m *EmailProof) GetProofType() isEmailProof_ProofType {
 	if m != nil {
@@ -669,11 +675,19 @@ func (m *EmailProof) GetOIDCToken() string {
 	return ""
 }
 
+func (m *EmailProof) GetSAMLResponse() string {
+	if x, ok := m.GetProofType().(*EmailProof_SAMLResponse); ok {
+		return x.SAMLResponse
+	}
+	return ""
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*EmailProof) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
 	return _EmailProof_OneofMarshaler, _EmailProof_OneofUnmarshaler, []interface{}{
 		(*EmailProof_DKIMProof)(nil),
 		(*EmailProof_OIDCToken)(nil),
+		(*EmailProof_SAMLResponse)(nil),
 	}
 }
 
@@ -687,6 +701,9 @@ func _EmailProof_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 	case *EmailProof_OIDCToken:
 		_ = b.EncodeVarint(2<<3 | proto1.WireBytes)
 		_ = b.EncodeStringBytes(x.OIDCToken)
+	case *EmailProof_SAMLResponse:
+		_ = b.EncodeVarint(3<<3 | proto1.WireBytes)
+		_ = b.EncodeStringBytes(x.SAMLResponse)
 	case nil:
 	default:
 		return fmt.Errorf("EmailProof.ProofType has unexpected type %T", x)
@@ -710,6 +727,13 @@ func _EmailProof_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.B
 		}
 		x, err := b.DecodeStringBytes()
 		m.ProofType = &EmailProof_OIDCToken{x}
+		return true, err
+	case 3: // proof_type.saml_response
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		x, err := b.DecodeStringBytes()
+		m.ProofType = &EmailProof_SAMLResponse{x}
 		return true, err
 	default:
 		return false, nil
@@ -1835,6 +1859,31 @@ func (this *EmailProof_OIDCToken) VerboseEqual(that interface{}) error {
 	}
 	return nil
 }
+func (this *EmailProof_SAMLResponse) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*EmailProof_SAMLResponse)
+	if !ok {
+		return fmt.Errorf("that is not of type *EmailProof_SAMLResponse")
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *EmailProof_SAMLResponse but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *EmailProof_SAMLResponsebut is not nil && this == nil")
+	}
+	if this.SAMLResponse != that1.SAMLResponse {
+		return fmt.Errorf("SAMLResponse this(%v) Not Equal that(%v)", this.SAMLResponse, that1.SAMLResponse)
+	}
+	return nil
+}
 func (this *EmailProof) Equal(that interface{}) bool {
 	if that == nil {
 		if this == nil {
@@ -1912,6 +1961,31 @@ func (this *EmailProof_OIDCToken) Equal(that interface{}) bool {
 		return false
 	}
 	if this.OIDCToken != that1.OIDCToken {
+		return false
+	}
+	return true
+}
+func (this *EmailProof_SAMLResponse) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*EmailProof_SAMLResponse)
+	if !ok {
+		return false
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if this.SAMLResponse != that1.SAMLResponse {
 		return false
 	}
 	return true
@@ -2166,7 +2240,7 @@ func (this *EmailProof) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 6)
+	s := make([]string, 0, 7)
 	s = append(s, "&proto.EmailProof{")
 	if this.ProofType != nil {
 		s = append(s, "ProofType: "+fmt.Sprintf("%#v", this.ProofType)+",\n")
@@ -2188,6 +2262,14 @@ func (this *EmailProof_OIDCToken) GoString() string {
 	}
 	s := strings.Join([]string{`&proto.EmailProof_OIDCToken{` +
 		`OIDCToken:` + fmt.Sprintf("%#v", this.OIDCToken) + `}`}, ", ")
+	return s
+}
+func (this *EmailProof_SAMLResponse) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.EmailProof_SAMLResponse{` +
+		`SAMLResponse:` + fmt.Sprintf("%#v", this.SAMLResponse) + `}`}, ", ")
 	return s
 }
 func valueToGoStringClient(v interface{}, typ string) string {
@@ -3030,6 +3112,14 @@ func (m *EmailProof_OIDCToken) MarshalTo(data []byte) (int, error) {
 	i += copy(data[i:], m.OIDCToken)
 	return i, nil
 }
+func (m *EmailProof_SAMLResponse) MarshalTo(data []byte) (int, error) {
+	i := 0
+	data[i] = 0x1a
+	i++
+	i = encodeVarintClient(data, i, uint64(len(m.SAMLResponse)))
+	i += copy(data[i:], m.SAMLResponse)
+	return i, nil
+}
 func encodeFixed64Client(data []byte, offset int, v uint64) int {
 	data[offset] = uint8(v)
 	data[offset+1] = uint8(v >> 8)
@@ -3335,12 +3425,14 @@ func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 
 func NewPopulatedEmailProof(r randyClient, easy bool) *EmailProof {
 	this := &EmailProof{}
-	oneofNumber_ProofType := []int32{1, 2}[r.Intn(2)]
+	oneofNumber_ProofType := []int32{1, 2, 3}[r.Intn(3)]
 	switch oneofNumber_ProofType {
 	case 1:
 		this.ProofType = NewPopulatedEmailProof_DKIMProof(r, easy)
 	case 2:
 		this.ProofType = NewPopulatedEmailProof_OIDCToken(r, easy)
+	case 3:
+		this.ProofType = NewPopulatedEmailProof_SAMLResponse(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -3359,6 +3451,11 @@ func NewPopulatedEmailProof_DKIMProof(r randyClient, easy bool) *EmailProof_DKIM
 func NewPopulatedEmailProof_OIDCToken(r randyClient, easy bool) *EmailProof_OIDCToken {
 	this := &EmailProof_OIDCToken{}
 	this.OIDCToken = randStringClient(r)
+	return this
+}
+func NewPopulatedEmailProof_SAMLResponse(r randyClient, easy bool) *EmailProof_SAMLResponse {
+	this := &EmailProof_SAMLResponse{}
+	this.SAMLResponse = randStringClient(r)
 	return this
 }
 
@@ -3742,6 +3839,13 @@ func (m *EmailProof_OIDCToken) Size() (n int) {
 	n += 1 + l + sovClient(uint64(l))
 	return n
 }
+func (m *EmailProof_SAMLResponse) Size() (n int) {
+	var l int
+	_ = l
+	l = len(m.SAMLResponse)
+	n += 1 + l + sovClient(uint64(l))
+	return n
+}
 
 func sovClient(x uint64) (n int) {
 	for {
@@ -4000,6 +4104,16 @@ func (this *EmailProof_OIDCToken) String() string {
 	}
 	s := strings.Join([]string{`&EmailProof_OIDCToken{`,
 		`OIDCToken:` + fmt.Sprintf("%v", this.OIDCToken) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EmailProof_SAMLResponse) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EmailProof_SAMLResponse{`,
+		`SAMLResponse:` + fmt.Sprintf("%v", this.SAMLResponse) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -6225,6 +6339,35 @@ func (m *EmailProof) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ProofType = &EmailProof_OIDCToken{string(data[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SAMLResponse", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowClient
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := data[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthClient
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ProofType = &EmailProof_SAMLResponse{string(data[iNdEx:postIndex])}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

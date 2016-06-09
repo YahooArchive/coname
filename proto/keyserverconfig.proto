@@ -132,6 +132,7 @@ message RegistrationPolicy {
 		EmailProofByDKIM email_proof_by_dkim = 2	[(gogoproto.customname) = "EmailProofByDKIM"];
 		EmailProofByClientCert email_proof_by_client_cert = 3;
 		EmailProofByOIDC email_proof_by_oidc = 4	[(gogoproto.customname) = "EmailProofByOIDC"];
+		EmailProofBySAML email_proof_by_saml = 5	[(gogoproto.customname) = "EmailProofBySAML"];
 	}
 }
 
@@ -172,6 +173,21 @@ message EmailProofByClientCert {
 // the expected Client ID
 message EmailProofByOIDC {
 	repeated OIDCConfig oidc_config = 1 [(gogoproto.customname) = "OIDCConfig"];
+}
+
+// EmailProofBySAML accepts the SAMLResponse signed by SAML2.0 Identity Provider
+// as a sufficient confirmation of ownership of an email address. The email address
+// must match the value of EmailAddress attribute in a valid SAMLResponse
+message EmailProofBySAML {
+	// AllowedDomains specifies the domains for which this keyserver accepts
+	// email address registrations by this policy.
+	repeated string allowed_domains = 1;
+	// IdPMetadataURL specifies the location of Identity Provider metadata
+	// Identity provider's x509 cert and SSO URL is included in this metadata
+	string idp_metadata_url = 2	[(gogoproto.customname) = "IDPMetadataURL"];
+	// ConsumerServiceURL contains the AssertionConsumerServiceURL
+	string consumer_service_url = 4	[(gogoproto.customname) = "ConsumerServiceURL"];
+	TLSConfig service_provider_tls = 5 [(gogoproto.customname) = "ServiceProviderTLS", (gogoproto.nullable) = false];
 }
 
 // OIDCConfig contains the OpenID Connect client configuration which is used to
