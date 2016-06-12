@@ -150,6 +150,7 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		samlReq, err := h.SAMLRequest()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
+			return
 		}
 		w.Write(samlReq)
 		return

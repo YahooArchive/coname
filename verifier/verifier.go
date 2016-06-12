@@ -42,7 +42,7 @@ import (
 type Verifier struct {
 	realm         string
 	keyserverAddr string
-	auth          credentials.TransportAuthenticator
+	auth          credentials.TransportCredentials
 
 	id         uint64
 	signingKey *[ed25519.PrivateKeySize]byte
