@@ -17,4 +17,4 @@ set -euo pipefail
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 cd "$DIR"
 
-protoc --gogofast_out=plugins=grpc:. -I . -I "$GOPATH/src/" *.proto
+protoc --gogofast_out=plugins=grpc:. -I . -I "$GOPATH/src/" -I "$GOPATH/src/github.com/gogo/protobuf/" *.proto
