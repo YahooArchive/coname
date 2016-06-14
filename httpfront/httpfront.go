@@ -18,7 +18,7 @@ import (
 type HTTPFront struct {
 	Lookup      func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
 	Update      func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
-	SAMLRequest func() ([]byte, error)
+	SAMLRequest func() (string, error)
 	InRotation  func() bool
 
 	// this is needed due to https://github.com/golang/go/issues/14374
@@ -147,12 +147,12 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if method == "GET" && path == "/saml" {
-		samlReq, err := h.SAMLRequest()
+		url, err := h.SAMLRequest()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		w.Write(samlReq)
+		http.Redirect(w, r, url, http.StatusFound)
 		return
 	}
 
