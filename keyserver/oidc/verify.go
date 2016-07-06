@@ -31,7 +31,8 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 		return "", err
 	}
 	if tok.Valid {
-		aud, ok := tok.Claims["aud"].(string)
+		claims := tok.Claims.(jwt.MapClaims)
+		aud, ok := claims["aud"].(string)
 		if !ok {
 			return "", fmt.Errorf("\"aud\" not a string")
 		}
@@ -39,7 +40,7 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 			return "", fmt.Errorf("ClientID invalid - got (%s) wanted (%s)", aud, c.ClientID)
 		}
 
-		iss, ok := tok.Claims["iss"].(string)
+		iss, ok := claims["iss"].(string)
 		if !ok {
 			return "", fmt.Errorf("\"iss\" not a string")
 		}
@@ -47,7 +48,7 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 			return "", fmt.Errorf("iss invalid - got (%s) wanted (%s)", iss, c.Issuer)
 		}
 
-		iat, ok := tok.Claims["iat"].(float64)
+		iat, ok := claims["iat"].(float64)
 		if !ok {
 			return "", fmt.Errorf("\"iat\" not an integer")
 		}
@@ -58,14 +59,14 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 				return "", fmt.Errorf("\"iat\" too old")
 			}
 		}
-		emailVrf, ok := tok.Claims["email_verified"].(bool)
+		emailVrf, ok := claims["email_verified"].(bool)
 		if !ok {
 			return "", fmt.Errorf("\"email_verified\" missing or invalid type")
 		}
 		if !emailVrf {
 			return "", fmt.Errorf("email not verified")
 		}
-		return tok.Claims["email"].(string), err
+		return claims["email"].(string), err
 	}
 	return "", fmt.Errorf("Invalid token")
 }
