@@ -4,14 +4,13 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -28,7 +27,7 @@ var _ = math.Inf
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 type KeyserverStep struct {
-	UID uint64 `protobuf:"fixed64,1,opt,name=UID,proto3" json:"UID,omitempty"`
+	UID uint64 `protobuf:"fixed64,1,opt,name=UID,json=uID,proto3" json:"UID,omitempty"`
 	// TODO: should all fields in a oneof have their own types for extensibility?
 	//
 	// Types that are valid to be assigned to Type:
@@ -39,8 +38,9 @@ type KeyserverStep struct {
 	Type isKeyserverStep_Type `protobuf_oneof:"type"`
 }
 
-func (m *KeyserverStep) Reset()      { *m = KeyserverStep{} }
-func (*KeyserverStep) ProtoMessage() {}
+func (m *KeyserverStep) Reset()                    { *m = KeyserverStep{} }
+func (*KeyserverStep) ProtoMessage()               {}
+func (*KeyserverStep) Descriptor() ([]byte, []int) { return fileDescriptorReplication, []int{0} }
 
 type isKeyserverStep_Type interface {
 	isKeyserverStep_Type()
@@ -54,13 +54,13 @@ type KeyserverStep_Update struct {
 	Update *UpdateRequest `protobuf:"bytes,2,opt,name=update,oneof"`
 }
 type KeyserverStep_EpochDelimiter struct {
-	EpochDelimiter *EpochDelimiter `protobuf:"bytes,3,opt,name=epoch_delimiter,oneof"`
+	EpochDelimiter *EpochDelimiter `protobuf:"bytes,3,opt,name=epoch_delimiter,json=epochDelimiter,oneof"`
 }
 type KeyserverStep_ReplicaSigned struct {
-	ReplicaSigned *SignedEpochHead `protobuf:"bytes,4,opt,name=replica_signed,oneof"`
+	ReplicaSigned *SignedEpochHead `protobuf:"bytes,4,opt,name=replica_signed,json=replicaSigned,oneof"`
 }
 type KeyserverStep_VerifierSigned struct {
-	VerifierSigned *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_signed,oneof"`
+	VerifierSigned *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_signed,json=verifierSigned,oneof"`
 }
 
 func (*KeyserverStep_Update) isKeyserverStep_Type()         {}
@@ -104,8 +104,8 @@ func (m *KeyserverStep) GetVerifierSigned() *SignedEpochHead {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _KeyserverStep_OneofMarshaler, _KeyserverStep_OneofUnmarshaler, []interface{}{
+func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _KeyserverStep_OneofMarshaler, _KeyserverStep_OneofUnmarshaler, _KeyserverStep_OneofSizer, []interface{}{
 		(*KeyserverStep_Update)(nil),
 		(*KeyserverStep_EpochDelimiter)(nil),
 		(*KeyserverStep_ReplicaSigned)(nil),
@@ -184,13 +184,45 @@ func _KeyserverStep_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 	}
 }
 
+func _KeyserverStep_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*KeyserverStep)
+	// type
+	switch x := m.Type.(type) {
+	case *KeyserverStep_Update:
+		s := proto1.Size(x.Update)
+		n += proto1.SizeVarint(2<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *KeyserverStep_EpochDelimiter:
+		s := proto1.Size(x.EpochDelimiter)
+		n += proto1.SizeVarint(3<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *KeyserverStep_ReplicaSigned:
+		s := proto1.Size(x.ReplicaSigned)
+		n += proto1.SizeVarint(4<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *KeyserverStep_VerifierSigned:
+		s := proto1.Size(x.VerifierSigned)
+		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type EpochDelimiter struct {
-	EpochNumber uint64    `protobuf:"varint,1,opt,name=epoch_number,proto3" json:"epoch_number,omitempty"`
+	EpochNumber uint64    `protobuf:"varint,1,opt,name=epoch_number,json=epochNumber,proto3" json:"epoch_number,omitempty"`
 	Timestamp   Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
 }
 
-func (m *EpochDelimiter) Reset()      { *m = EpochDelimiter{} }
-func (*EpochDelimiter) ProtoMessage() {}
+func (m *EpochDelimiter) Reset()                    { *m = EpochDelimiter{} }
+func (*EpochDelimiter) ProtoMessage()               {}
+func (*EpochDelimiter) Descriptor() ([]byte, []int) { return fileDescriptorReplication, []int{1} }
 
 func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	if m != nil {
@@ -199,6 +231,10 @@ func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	return Timestamp{}
 }
 
+func init() {
+	proto1.RegisterType((*KeyserverStep)(nil), "proto.KeyserverStep")
+	proto1.RegisterType((*EpochDelimiter)(nil), "proto.EpochDelimiter")
+}
 func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -209,7 +245,12 @@ func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverStep)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep")
+		that2, ok := that.(KeyserverStep)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -217,7 +258,7 @@ func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverStep but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStepbut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverStep but is not nil && this == nil")
 	}
 	if this.UID != that1.UID {
 		return fmt.Errorf("UID this(%v) Not Equal that(%v)", this.UID, that1.UID)
@@ -243,7 +284,12 @@ func (this *KeyserverStep_Update) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverStep_Update)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep_Update")
+		that2, ok := that.(KeyserverStep_Update)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep_Update")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -251,7 +297,7 @@ func (this *KeyserverStep_Update) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverStep_Update but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStep_Updatebut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverStep_Update but is not nil && this == nil")
 	}
 	if !this.Update.Equal(that1.Update) {
 		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
@@ -268,7 +314,12 @@ func (this *KeyserverStep_EpochDelimiter) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverStep_EpochDelimiter)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep_EpochDelimiter")
+		that2, ok := that.(KeyserverStep_EpochDelimiter)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep_EpochDelimiter")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -276,7 +327,7 @@ func (this *KeyserverStep_EpochDelimiter) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverStep_EpochDelimiter but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStep_EpochDelimiterbut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverStep_EpochDelimiter but is not nil && this == nil")
 	}
 	if !this.EpochDelimiter.Equal(that1.EpochDelimiter) {
 		return fmt.Errorf("EpochDelimiter this(%v) Not Equal that(%v)", this.EpochDelimiter, that1.EpochDelimiter)
@@ -293,7 +344,12 @@ func (this *KeyserverStep_ReplicaSigned) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverStep_ReplicaSigned)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep_ReplicaSigned")
+		that2, ok := that.(KeyserverStep_ReplicaSigned)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep_ReplicaSigned")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -301,7 +357,7 @@ func (this *KeyserverStep_ReplicaSigned) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverStep_ReplicaSigned but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStep_ReplicaSignedbut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverStep_ReplicaSigned but is not nil && this == nil")
 	}
 	if !this.ReplicaSigned.Equal(that1.ReplicaSigned) {
 		return fmt.Errorf("ReplicaSigned this(%v) Not Equal that(%v)", this.ReplicaSigned, that1.ReplicaSigned)
@@ -318,7 +374,12 @@ func (this *KeyserverStep_VerifierSigned) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverStep_VerifierSigned)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverStep_VerifierSigned")
+		that2, ok := that.(KeyserverStep_VerifierSigned)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep_VerifierSigned")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -326,7 +387,7 @@ func (this *KeyserverStep_VerifierSigned) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverStep_VerifierSigned but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverStep_VerifierSignedbut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverStep_VerifierSigned but is not nil && this == nil")
 	}
 	if !this.VerifierSigned.Equal(that1.VerifierSigned) {
 		return fmt.Errorf("VerifierSigned this(%v) Not Equal that(%v)", this.VerifierSigned, that1.VerifierSigned)
@@ -343,7 +404,12 @@ func (this *KeyserverStep) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverStep)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverStep)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -377,7 +443,12 @@ func (this *KeyserverStep_Update) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverStep_Update)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverStep_Update)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -402,7 +473,12 @@ func (this *KeyserverStep_EpochDelimiter) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverStep_EpochDelimiter)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverStep_EpochDelimiter)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -427,7 +503,12 @@ func (this *KeyserverStep_ReplicaSigned) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverStep_ReplicaSigned)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverStep_ReplicaSigned)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -452,7 +533,12 @@ func (this *KeyserverStep_VerifierSigned) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverStep_VerifierSigned)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverStep_VerifierSigned)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -477,7 +563,12 @@ func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EpochDelimiter)
 	if !ok {
-		return fmt.Errorf("that is not of type *EpochDelimiter")
+		that2, ok := that.(EpochDelimiter)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EpochDelimiter")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -485,7 +576,7 @@ func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EpochDelimiter but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EpochDelimiterbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EpochDelimiter but is not nil && this == nil")
 	}
 	if this.EpochNumber != that1.EpochNumber {
 		return fmt.Errorf("EpochNumber this(%v) Not Equal that(%v)", this.EpochNumber, that1.EpochNumber)
@@ -505,7 +596,12 @@ func (this *EpochDelimiter) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EpochDelimiter)
 	if !ok {
-		return false
+		that2, ok := that.(EpochDelimiter)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -587,7 +683,7 @@ func valueToGoStringReplication(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringReplication(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringReplication(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -1409,3 +1505,31 @@ var (
 	ErrInvalidLengthReplication = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowReplication   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorReplication = []byte{
+	// 379 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x90, 0xbf, 0x6f, 0xda, 0x40,
+	0x14, 0xc7, 0x6d, 0x30, 0x96, 0x7a, 0x80, 0xa1, 0xa7, 0xb6, 0xb2, 0x18, 0xdc, 0x96, 0xa9, 0x93,
+	0xa9, 0xda, 0x0e, 0xdd, 0xda, 0x22, 0x2a, 0x81, 0x2a, 0x75, 0x30, 0x61, 0x46, 0xfe, 0xf1, 0x30,
+	0x27, 0xe1, 0x1f, 0x31, 0xe7, 0x48, 0x6c, 0xf9, 0x4f, 0xb2, 0xe6, 0x4f, 0xc8, 0x98, 0x91, 0x91,
+	0x31, 0x53, 0x04, 0x4c, 0x19, 0x19, 0x33, 0xe6, 0x71, 0x3e, 0x27, 0x62, 0xca, 0xf0, 0xd1, 0xf9,
+	0xbe, 0xef, 0x7d, 0xbf, 0xbe, 0xf7, 0xc8, 0xdb, 0x0c, 0xd2, 0x05, 0xf3, 0x5d, 0xce, 0x92, 0xd8,
+	0x4e, 0xb3, 0x84, 0x27, 0xb4, 0x26, 0x8e, 0xce, 0xd7, 0x90, 0xf1, 0x79, 0xee, 0xd9, 0x7e, 0x12,
+	0xf5, 0x22, 0x37, 0x60, 0x7c, 0xe5, 0xf6, 0x44, 0xc5, 0xcb, 0x67, 0xbd, 0x30, 0x09, 0x13, 0x71,
+	0x11, 0x5f, 0x85, 0xb1, 0xd3, 0xf0, 0x17, 0x0c, 0x62, 0x2e, 0x6f, 0x2d, 0xce, 0x22, 0x58, 0x72,
+	0x37, 0x4a, 0x0b, 0xa1, 0x7b, 0x55, 0x21, 0xcd, 0x7f, 0xb0, 0x5a, 0x42, 0x76, 0x01, 0xd9, 0x98,
+	0x43, 0x4a, 0xdb, 0xa4, 0x3a, 0x19, 0x0d, 0x4c, 0xf5, 0x93, 0xfa, 0x45, 0x77, 0xaa, 0xf9, 0x68,
+	0x40, 0x6d, 0xa2, 0xe7, 0x69, 0xe0, 0x72, 0x30, 0x2b, 0x28, 0xd6, 0xbf, 0xbd, 0x2b, 0xbc, 0xf6,
+	0x44, 0x88, 0x0e, 0x9c, 0xe7, 0x18, 0x39, 0x54, 0x1c, 0xd9, 0x45, 0x7f, 0x93, 0x16, 0xa4, 0x89,
+	0x3f, 0x9f, 0x06, 0xb0, 0x60, 0x11, 0xe3, 0x90, 0x99, 0x55, 0x61, 0x7c, 0x2f, 0x8d, 0x7f, 0x8f,
+	0xd5, 0x41, 0x59, 0x44, 0xa7, 0x01, 0x27, 0x0a, 0xfd, 0x45, 0x0c, 0xb9, 0x82, 0xe9, 0x92, 0x85,
+	0x31, 0x04, 0xa6, 0x26, 0x02, 0x3e, 0xc8, 0x80, 0xb1, 0x10, 0x45, 0xcc, 0x10, 0xdc, 0x00, 0x13,
+	0x9a, 0xb2, 0xbf, 0xa8, 0xd0, 0x3f, 0xa4, 0x85, 0xf3, 0xb0, 0x19, 0x83, 0xac, 0x4c, 0xa8, 0xbd,
+	0x92, 0x60, 0x94, 0x86, 0xa2, 0xd4, 0xd7, 0x89, 0xc6, 0x57, 0x29, 0x74, 0x19, 0x31, 0x4e, 0xdf,
+	0x4b, 0x3f, 0x93, 0x46, 0x31, 0x5f, 0x9c, 0x47, 0x1e, 0x0e, 0x77, 0x5c, 0x95, 0xe6, 0xd4, 0x85,
+	0xf6, 0x5f, 0x48, 0xf4, 0x07, 0x79, 0xf3, 0xbc, 0x69, 0xb9, 0xb5, 0xb6, 0xfc, 0xf3, 0x59, 0xa9,
+	0xf7, 0xb5, 0xf5, 0xfd, 0x47, 0xc5, 0x79, 0x69, 0xec, 0xff, 0xdc, 0xec, 0x2c, 0xe5, 0x0e, 0xd9,
+	0xee, 0x2c, 0xf5, 0x80, 0x3c, 0x22, 0x97, 0x7b, 0x4b, 0xbd, 0x46, 0x6e, 0x90, 0x5b, 0x64, 0x8d,
+	0x6c, 0x90, 0x2d, 0xf2, 0xb0, 0xb7, 0x94, 0x03, 0x9e, 0x9e, 0x2e, 0xb2, 0xbf, 0x3f, 0x05, 0x00,
+	0x00, 0xff, 0xff, 0x86, 0x63, 0x1f, 0x2e, 0x3a, 0x02, 0x00, 0x00,
+}

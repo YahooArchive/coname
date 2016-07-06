@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "gogoproto/gogo.proto";
+import "github.com/maditya/protobuf/gogoproto/gogo.proto";
 import "replication.proto";
 
 // ReplicaState contains the persistent internal state of a single replica.

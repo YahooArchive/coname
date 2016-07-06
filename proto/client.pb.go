@@ -59,20 +59,19 @@
 */
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
-import github_com_andres_erbsen_protobuf_sortkeys "github.com/andres-erbsen/protobuf/sortkeys"
+import github_com_maditya_protobuf_sortkeys "github.com/maditya/protobuf/sortkeys"
 
 import (
 	context "golang.org/x/net/context"
@@ -88,20 +87,25 @@ var _ = proto1.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+const _ = proto1.GoGoProtoPackageIsVersion1
+
 type LookupRequest struct {
 	// Epoch as of which to perform the lookup ("latest" if not specified)
 	Epoch uint64 `protobuf:"varint,1,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// UserId will be mapped to an index by the server using VRF
-	UserId string `protobuf:"bytes,2,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	// quorum_requirement specifies which verifiers must have ratified the
 	// result for it to be accepted. A server would fall back to an older
 	// directory state if the ratifications of the latest one do not satisfy
 	// the quorum requirement.
-	QuorumRequirement *QuorumExpr `protobuf:"bytes,4,opt,name=quorum_requirement" json:"quorum_requirement,omitempty"`
+	QuorumRequirement *QuorumExpr `protobuf:"bytes,4,opt,name=quorum_requirement,json=quorumRequirement" json:"quorum_requirement,omitempty"`
 }
 
-func (m *LookupRequest) Reset()      { *m = LookupRequest{} }
-func (*LookupRequest) ProtoMessage() {}
+func (m *LookupRequest) Reset()                    { *m = LookupRequest{} }
+func (*LookupRequest) ProtoMessage()               {}
+func (*LookupRequest) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{0} }
 
 func (m *LookupRequest) GetQuorumRequirement() *QuorumExpr {
 	if m != nil {
@@ -125,12 +129,13 @@ type UpdateRequest struct {
 	// profile with fields that the keyserver does not understand or whose
 	// values it considers invalid MUST be accepted.
 	Profile          EncodedProfile `protobuf:"bytes,2,opt,name=profile,customtype=EncodedProfile" json:"profile"`
-	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters" json:"lookup_parameters,omitempty"`
-	EmailProof       *EmailProof    `protobuf:"bytes,1000,opt,name=email_proof" json:"email_proof,omitempty"`
+	LookupParameters *LookupRequest `protobuf:"bytes,3,opt,name=lookup_parameters,json=lookupParameters" json:"lookup_parameters,omitempty"`
+	EmailProof       *EmailProof    `protobuf:"bytes,1000,opt,name=email_proof,json=emailProof" json:"email_proof,omitempty"`
 }
 
-func (m *UpdateRequest) Reset()      { *m = UpdateRequest{} }
-func (*UpdateRequest) ProtoMessage() {}
+func (m *UpdateRequest) Reset()                    { *m = UpdateRequest{} }
+func (*UpdateRequest) ProtoMessage()               {}
+func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{1} }
 
 func (m *UpdateRequest) GetUpdate() *SignedEntryUpdate {
 	if m != nil {
@@ -160,13 +165,13 @@ func (m *UpdateRequest) GetEmailProof() *EmailProof {
 // step of the proof does not check out, the contents of profile MUST NOT be
 // used for any other purpose than debugging.
 type LookupProof struct {
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id,omitempty"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Index  []byte `protobuf:"bytes,2,opt,name=index,proto3" json:"index,omitempty"`
 	// index_proof proves that index is a result of applying a globally fixed
 	// bijection VRF to user_id: idx = VRF(user_ID). If this proof checks out,
 	// we can safely continue by looking up the keyserver entry corresponding
 	// to index to get the public key of user_id.
-	IndexProof []byte `protobuf:"bytes,3,opt,name=index_proof,proto3" json:"index_proof,omitempty"`
+	IndexProof []byte `protobuf:"bytes,3,opt,name=index_proof,json=indexProof,proto3" json:"index_proof,omitempty"`
 	// ratifications contains signed directory state summaries for the epoch under
 	// which the lookup was performed.
 	// A single valid ratification r by a honest and correct verifier implies
@@ -181,14 +186,15 @@ type LookupProof struct {
 	// tree_proof contains an authenticated data structure lookup trace,
 	// arguing that index maps to entry in the data structure with hash
 	// ratifications[0].ratification.summary.root_hash.
-	TreeProof *TreeProof `protobuf:"bytes,5,opt,name=tree_proof" json:"tree_proof,omitempty"`
+	TreeProof *TreeProof `protobuf:"bytes,5,opt,name=tree_proof,json=treeProof" json:"tree_proof,omitempty"`
 	// Entry specifies profile by hash(profile) = entry.profile_hash
 	Entry   *EncodedEntry   `protobuf:"bytes,6,opt,name=entry,customtype=EncodedEntry" json:"entry,omitempty"`
 	Profile *EncodedProfile `protobuf:"bytes,7,opt,name=profile,customtype=EncodedProfile" json:"profile,omitempty"`
 }
 
-func (m *LookupProof) Reset()      { *m = LookupProof{} }
-func (*LookupProof) ProtoMessage() {}
+func (m *LookupProof) Reset()                    { *m = LookupProof{} }
+func (*LookupProof) ProtoMessage()               {}
+func (*LookupProof) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{2} }
 
 func (m *LookupProof) GetRatifications() []*SignedEpochHead {
 	if m != nil {
@@ -218,15 +224,16 @@ type TreeProof struct {
 	// with the requested index, but in case the leaf contains the wrong
 	// contents, it will be different. It will be nil if the requested VRF falls
 	// under an empty branch.
-	ExistingIndex []byte `protobuf:"bytes,2,opt,name=existing_index,proto3" json:"existing_index,omitempty"`
+	ExistingIndex []byte `protobuf:"bytes,2,opt,name=existing_index,json=existingIndex,proto3" json:"existing_index,omitempty"`
 	// This is the hash of the entry for the binding that does exist. If the leaf
 	// contains the wrong contents, the client can use this to verify that the
 	// incorrect leaf takes up the entire branch.
-	ExistingEntryHash []byte `protobuf:"bytes,3,opt,name=existing_entry_hash,proto3" json:"existing_entry_hash,omitempty"`
+	ExistingEntryHash []byte `protobuf:"bytes,3,opt,name=existing_entry_hash,json=existingEntryHash,proto3" json:"existing_entry_hash,omitempty"`
 }
 
-func (m *TreeProof) Reset()      { *m = TreeProof{} }
-func (*TreeProof) ProtoMessage() {}
+func (m *TreeProof) Reset()                    { *m = TreeProof{} }
+func (*TreeProof) ProtoMessage()               {}
+func (*TreeProof) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{3} }
 
 // Entry is the value type in the authenticated mapping data structure.  The
 // contents of all entries should be considered public (they are served to
@@ -257,15 +264,16 @@ type Entry struct {
 	// ther structure of their update_key other than (1) as specified in
 	// SignedEntryUpdate and (2) common-sense limits on the total size of an
 	// entry to limit storage cost.
-	UpdatePolicy *AuthorizationPolicy `protobuf:"bytes,3,opt,name=update_policy" json:"update_policy,omitempty"`
+	UpdatePolicy *AuthorizationPolicy `protobuf:"bytes,3,opt,name=update_policy,json=updatePolicy" json:"update_policy,omitempty"`
 	// ProfileCommitment uniquely specifies the profile without revealing its
 	// contents. The commitment is computed as commitment =
 	// sha3shake256(profile); the contents contain a nonce.
-	ProfileCommitment []byte `protobuf:"bytes,4,opt,name=profile_commitment,proto3" json:"profile_commitment,omitempty"`
+	ProfileCommitment []byte `protobuf:"bytes,4,opt,name=profile_commitment,json=profileCommitment,proto3" json:"profile_commitment,omitempty"`
 }
 
-func (m *Entry) Reset()      { *m = Entry{} }
-func (*Entry) ProtoMessage() {}
+func (m *Entry) Reset()                    { *m = Entry{} }
+func (*Entry) ProtoMessage()               {}
+func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{4} }
 
 func (m *Entry) GetUpdatePolicy() *AuthorizationPolicy {
 	if m != nil {
@@ -278,7 +286,7 @@ func (m *Entry) GetUpdatePolicy() *AuthorizationPolicy {
 // changing the value of an entry. In the state machine model of a namespace,
 // SignedEntryUpdate is the main input type.
 type SignedEntryUpdate struct {
-	NewEntry EncodedEntry `protobuf:"bytes,1,opt,name=new_entry,customtype=EncodedEntry" json:"new_entry"`
+	NewEntry EncodedEntry `protobuf:"bytes,1,opt,name=new_entry,json=newEntry,customtype=EncodedEntry" json:"new_entry"`
 	// NewSig, if successfully verified using update.new_entry.update_key,
 	// confirms that the new entry is willing to be bound to this index.
 	// Both the keyserver and verifiers MUST check these signatures against the
@@ -288,8 +296,9 @@ type SignedEntryUpdate struct {
 	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *SignedEntryUpdate) Reset()      { *m = SignedEntryUpdate{} }
-func (*SignedEntryUpdate) ProtoMessage() {}
+func (m *SignedEntryUpdate) Reset()                    { *m = SignedEntryUpdate{} }
+func (*SignedEntryUpdate) ProtoMessage()               {}
+func (*SignedEntryUpdate) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{5} }
 
 func (m *SignedEntryUpdate) GetSignatures() map[uint64][]byte {
 	if m != nil {
@@ -313,8 +322,9 @@ type Profile struct {
 	Keys map[string][]byte `protobuf:"bytes,2,rep,name=keys" json:"keys,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *Profile) Reset()      { *m = Profile{} }
-func (*Profile) ProtoMessage() {}
+func (m *Profile) Reset()                    { *m = Profile{} }
+func (*Profile) ProtoMessage()               {}
+func (*Profile) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{6} }
 
 func (m *Profile) GetKeys() map[string][]byte {
 	if m != nil {
@@ -337,8 +347,9 @@ type SignedEpochHead struct {
 	Signatures map[uint64][]byte `protobuf:"bytes,2,rep,name=signatures" json:"signatures,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (m *SignedEpochHead) Reset()      { *m = SignedEpochHead{} }
-func (*SignedEpochHead) ProtoMessage() {}
+func (m *SignedEpochHead) Reset()                    { *m = SignedEpochHead{} }
+func (*SignedEpochHead) ProtoMessage()               {}
+func (*SignedEpochHead) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{7} }
 
 func (m *SignedEpochHead) GetSignatures() map[uint64][]byte {
 	if m != nil {
@@ -363,8 +374,9 @@ type TimestampedEpochHead struct {
 	Timestamp Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp"`
 }
 
-func (m *TimestampedEpochHead) Reset()      { *m = TimestampedEpochHead{} }
-func (*TimestampedEpochHead) ProtoMessage() {}
+func (m *TimestampedEpochHead) Reset()                    { *m = TimestampedEpochHead{} }
+func (*TimestampedEpochHead) ProtoMessage()               {}
+func (*TimestampedEpochHead) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{8} }
 
 func (m *TimestampedEpochHead) GetTimestamp() Timestamp {
 	if m != nil {
@@ -380,10 +392,10 @@ type EpochHead struct {
 	// Epoch is a sequence number tracking distinct ratified states.
 	Epoch uint64 `protobuf:"varint,2,opt,name=epoch,proto3" json:"epoch,omitempty"`
 	// RootHash specifies the authenticated data structure.
-	RootHash []byte `protobuf:"bytes,3,opt,name=root_hash,proto3" json:"root_hash,omitempty"`
+	RootHash []byte `protobuf:"bytes,3,opt,name=root_hash,json=rootHash,proto3" json:"root_hash,omitempty"`
 	// IssueTime is the time when this epoch was released. All epochs for the
 	// same keyserver MUST have non-decreasing IssueTimes.
-	IssueTime Timestamp `protobuf:"bytes,4,opt,name=issue_time" json:"issue_time"`
+	IssueTime Timestamp `protobuf:"bytes,4,opt,name=issue_time,json=issueTime" json:"issue_time"`
 	// PreviousSummaryHash chaining is used to allow signatures from
 	// different epochs in the same quorum: a signature vouches for all
 	// epochs chained to that in addition to the one listed.
@@ -391,17 +403,18 @@ type EpochHead struct {
 	// (by induction on the hash-pointer structure) a
 	// PreviousSummeryHash for some epoch specifies the states of all
 	// previous epochs. This hash uses SHA3-SHAKE256 with 64 bytes of output.
-	PreviousSummaryHash []byte `protobuf:"bytes,5,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
+	PreviousSummaryHash []byte `protobuf:"bytes,5,opt,name=previous_summary_hash,json=previousSummaryHash,proto3" json:"previous_summary_hash,omitempty"`
 	// NextEpochPolicy allows for automated server key rollover: the new key(s)
 	// are signed by the current one as a part of the epoch. This field is nil
 	// if no key change is requested. If the server key is distributed with the
 	// client software and benefits from reliable automated updates, clients
 	// MAY ignore this field.
-	NextEpochPolicy AuthorizationPolicy `protobuf:"bytes,6,opt,name=next_epoch_policy" json:"next_epoch_policy"`
+	NextEpochPolicy AuthorizationPolicy `protobuf:"bytes,6,opt,name=next_epoch_policy,json=nextEpochPolicy" json:"next_epoch_policy"`
 }
 
-func (m *EpochHead) Reset()      { *m = EpochHead{} }
-func (*EpochHead) ProtoMessage() {}
+func (m *EpochHead) Reset()                    { *m = EpochHead{} }
+func (*EpochHead) ProtoMessage()               {}
+func (*EpochHead) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{9} }
 
 func (m *EpochHead) GetIssueTime() Timestamp {
 	if m != nil {
@@ -432,14 +445,15 @@ func (m *EpochHead) GetNextEpochPolicy() AuthorizationPolicy {
 // replica can do. Example threshold(2,freedonia,gilead,mordor).
 // 3. Adaptive key rollover during cryptocalypse.
 type AuthorizationPolicy struct {
-	PublicKeys map[uint64]*PublicKey `protobuf:"bytes,1,rep,name=public_keys" json:"public_keys,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
+	PublicKeys map[uint64]*PublicKey `protobuf:"bytes,1,rep,name=public_keys,json=publicKeys" json:"public_keys,omitempty" protobuf_key:"fixed64,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value"`
 	// Types that are valid to be assigned to PolicyType:
 	//	*AuthorizationPolicy_Quorum
 	PolicyType isAuthorizationPolicy_PolicyType `protobuf_oneof:"policy_type"`
 }
 
-func (m *AuthorizationPolicy) Reset()      { *m = AuthorizationPolicy{} }
-func (*AuthorizationPolicy) ProtoMessage() {}
+func (m *AuthorizationPolicy) Reset()                    { *m = AuthorizationPolicy{} }
+func (*AuthorizationPolicy) ProtoMessage()               {}
+func (*AuthorizationPolicy) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{10} }
 
 type isAuthorizationPolicy_PolicyType interface {
 	isAuthorizationPolicy_PolicyType()
@@ -477,8 +491,8 @@ func (m *AuthorizationPolicy) GetQuorum() *QuorumExpr {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*AuthorizationPolicy) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _AuthorizationPolicy_OneofMarshaler, _AuthorizationPolicy_OneofUnmarshaler, []interface{}{
+func (*AuthorizationPolicy) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _AuthorizationPolicy_OneofMarshaler, _AuthorizationPolicy_OneofUnmarshaler, _AuthorizationPolicy_OneofSizer, []interface{}{
 		(*AuthorizationPolicy_Quorum)(nil),
 	}
 }
@@ -515,6 +529,22 @@ func _AuthorizationPolicy_OneofUnmarshaler(msg proto1.Message, tag, wire int, b 
 	}
 }
 
+func _AuthorizationPolicy_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*AuthorizationPolicy)
+	// policy_type
+	switch x := m.PolicyType.(type) {
+	case *AuthorizationPolicy_Quorum:
+		s := proto1.Size(x.Quorum)
+		n += proto1.SizeVarint(2<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // PublicKey wraps a public key of a cryptographically secure signature
 // scheme and verification metadata. Each verifier can have its own signature
 // format and needs to implement serialization and deserialization of its own
@@ -527,8 +557,9 @@ type PublicKey struct {
 	PubkeyType isPublicKey_PubkeyType `protobuf_oneof:"pubkey_type"`
 }
 
-func (m *PublicKey) Reset()      { *m = PublicKey{} }
-func (*PublicKey) ProtoMessage() {}
+func (m *PublicKey) Reset()                    { *m = PublicKey{} }
+func (*PublicKey) ProtoMessage()               {}
+func (*PublicKey) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{11} }
 
 type isPublicKey_PubkeyType interface {
 	isPublicKey_PubkeyType()
@@ -559,8 +590,8 @@ func (m *PublicKey) GetEd25519() []byte {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*PublicKey) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _PublicKey_OneofMarshaler, _PublicKey_OneofUnmarshaler, []interface{}{
+func (*PublicKey) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _PublicKey_OneofMarshaler, _PublicKey_OneofUnmarshaler, _PublicKey_OneofSizer, []interface{}{
 		(*PublicKey_Ed25519)(nil),
 	}
 }
@@ -594,6 +625,21 @@ func _PublicKey_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.Bu
 	}
 }
 
+func _PublicKey_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*PublicKey)
+	// pubkey_type
+	switch x := m.PubkeyType.(type) {
+	case *PublicKey_Ed25519:
+		n += proto1.SizeVarint(1<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(len(x.Ed25519)))
+		n += len(x.Ed25519)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 // QuorumExpr represents a function with type set<uint64> -> bool. An
 // expression evaluates to true given args iff the sum of the following two
 // numbers is at least threshold:
@@ -610,8 +656,9 @@ type QuorumExpr struct {
 	Subexpressions []*QuorumExpr `protobuf:"bytes,3,rep,name=subexpressions" json:"subexpressions,omitempty"`
 }
 
-func (m *QuorumExpr) Reset()      { *m = QuorumExpr{} }
-func (*QuorumExpr) ProtoMessage() {}
+func (m *QuorumExpr) Reset()                    { *m = QuorumExpr{} }
+func (*QuorumExpr) ProtoMessage()               {}
+func (*QuorumExpr) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{12} }
 
 func (m *QuorumExpr) GetSubexpressions() []*QuorumExpr {
 	if m != nil {
@@ -629,8 +676,9 @@ type EmailProof struct {
 	ProofType isEmailProof_ProofType `protobuf_oneof:"proof_type"`
 }
 
-func (m *EmailProof) Reset()      { *m = EmailProof{} }
-func (*EmailProof) ProtoMessage() {}
+func (m *EmailProof) Reset()                    { *m = EmailProof{} }
+func (*EmailProof) ProtoMessage()               {}
+func (*EmailProof) Descriptor() ([]byte, []int) { return fileDescriptorClient, []int{13} }
 
 type isEmailProof_ProofType interface {
 	isEmailProof_ProofType()
@@ -641,13 +689,13 @@ type isEmailProof_ProofType interface {
 }
 
 type EmailProof_DKIMProof struct {
-	DKIMProof []byte `protobuf:"bytes,1,opt,name=dkim_proof,proto3,oneof"`
+	DKIMProof []byte `protobuf:"bytes,1,opt,name=dkim_proof,json=dkimProof,proto3,oneof"`
 }
 type EmailProof_OIDCToken struct {
-	OIDCToken string `protobuf:"bytes,2,opt,name=oidc_token,proto3,oneof"`
+	OIDCToken string `protobuf:"bytes,2,opt,name=oidc_token,json=oidcToken,proto3,oneof"`
 }
 type EmailProof_SAMLResponse struct {
-	SAMLResponse string `protobuf:"bytes,3,opt,name=saml_response,proto3,oneof"`
+	SAMLResponse string `protobuf:"bytes,3,opt,name=saml_response,json=samlResponse,proto3,oneof"`
 }
 
 func (*EmailProof_DKIMProof) isEmailProof_ProofType()    {}
@@ -683,8 +731,8 @@ func (m *EmailProof) GetSAMLResponse() string {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*EmailProof) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _EmailProof_OneofMarshaler, _EmailProof_OneofUnmarshaler, []interface{}{
+func (*EmailProof) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _EmailProof_OneofMarshaler, _EmailProof_OneofUnmarshaler, _EmailProof_OneofSizer, []interface{}{
 		(*EmailProof_DKIMProof)(nil),
 		(*EmailProof_OIDCToken)(nil),
 		(*EmailProof_SAMLResponse)(nil),
@@ -740,6 +788,45 @@ func _EmailProof_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto1.B
 	}
 }
 
+func _EmailProof_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*EmailProof)
+	// proof_type
+	switch x := m.ProofType.(type) {
+	case *EmailProof_DKIMProof:
+		n += proto1.SizeVarint(1<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(len(x.DKIMProof)))
+		n += len(x.DKIMProof)
+	case *EmailProof_OIDCToken:
+		n += proto1.SizeVarint(2<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(len(x.OIDCToken)))
+		n += len(x.OIDCToken)
+	case *EmailProof_SAMLResponse:
+		n += proto1.SizeVarint(3<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(len(x.SAMLResponse)))
+		n += len(x.SAMLResponse)
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
+func init() {
+	proto1.RegisterType((*LookupRequest)(nil), "proto.LookupRequest")
+	proto1.RegisterType((*UpdateRequest)(nil), "proto.UpdateRequest")
+	proto1.RegisterType((*LookupProof)(nil), "proto.LookupProof")
+	proto1.RegisterType((*TreeProof)(nil), "proto.TreeProof")
+	proto1.RegisterType((*Entry)(nil), "proto.Entry")
+	proto1.RegisterType((*SignedEntryUpdate)(nil), "proto.SignedEntryUpdate")
+	proto1.RegisterType((*Profile)(nil), "proto.Profile")
+	proto1.RegisterType((*SignedEpochHead)(nil), "proto.SignedEpochHead")
+	proto1.RegisterType((*TimestampedEpochHead)(nil), "proto.TimestampedEpochHead")
+	proto1.RegisterType((*EpochHead)(nil), "proto.EpochHead")
+	proto1.RegisterType((*AuthorizationPolicy)(nil), "proto.AuthorizationPolicy")
+	proto1.RegisterType((*PublicKey)(nil), "proto.PublicKey")
+	proto1.RegisterType((*QuorumExpr)(nil), "proto.QuorumExpr")
+	proto1.RegisterType((*EmailProof)(nil), "proto.EmailProof")
+}
 func (this *LookupRequest) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -750,7 +837,12 @@ func (this *LookupRequest) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*LookupRequest)
 	if !ok {
-		return fmt.Errorf("that is not of type *LookupRequest")
+		that2, ok := that.(LookupRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *LookupRequest")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -758,7 +850,7 @@ func (this *LookupRequest) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *LookupRequest but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *LookupRequestbut is not nil && this == nil")
+		return fmt.Errorf("that is type *LookupRequest but is not nil && this == nil")
 	}
 	if this.Epoch != that1.Epoch {
 		return fmt.Errorf("Epoch this(%v) Not Equal that(%v)", this.Epoch, that1.Epoch)
@@ -781,7 +873,12 @@ func (this *LookupRequest) Equal(that interface{}) bool {
 
 	that1, ok := that.(*LookupRequest)
 	if !ok {
-		return false
+		that2, ok := that.(LookupRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -812,7 +909,12 @@ func (this *UpdateRequest) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*UpdateRequest)
 	if !ok {
-		return fmt.Errorf("that is not of type *UpdateRequest")
+		that2, ok := that.(UpdateRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *UpdateRequest")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -820,7 +922,7 @@ func (this *UpdateRequest) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *UpdateRequest but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *UpdateRequestbut is not nil && this == nil")
+		return fmt.Errorf("that is type *UpdateRequest but is not nil && this == nil")
 	}
 	if !this.Update.Equal(that1.Update) {
 		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
@@ -846,7 +948,12 @@ func (this *UpdateRequest) Equal(that interface{}) bool {
 
 	that1, ok := that.(*UpdateRequest)
 	if !ok {
-		return false
+		that2, ok := that.(UpdateRequest)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -880,7 +987,12 @@ func (this *LookupProof) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*LookupProof)
 	if !ok {
-		return fmt.Errorf("that is not of type *LookupProof")
+		that2, ok := that.(LookupProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *LookupProof")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -888,7 +1000,7 @@ func (this *LookupProof) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *LookupProof but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *LookupProofbut is not nil && this == nil")
+		return fmt.Errorf("that is type *LookupProof but is not nil && this == nil")
 	}
 	if this.UserId != that1.UserId {
 		return fmt.Errorf("UserId this(%v) Not Equal that(%v)", this.UserId, that1.UserId)
@@ -936,7 +1048,12 @@ func (this *LookupProof) Equal(that interface{}) bool {
 
 	that1, ok := that.(*LookupProof)
 	if !ok {
-		return false
+		that2, ok := that.(LookupProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -992,7 +1109,12 @@ func (this *TreeProof) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*TreeProof)
 	if !ok {
-		return fmt.Errorf("that is not of type *TreeProof")
+		that2, ok := that.(TreeProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *TreeProof")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1000,7 +1122,7 @@ func (this *TreeProof) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *TreeProof but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *TreeProofbut is not nil && this == nil")
+		return fmt.Errorf("that is type *TreeProof but is not nil && this == nil")
 	}
 	if len(this.Neighbors) != len(that1.Neighbors) {
 		return fmt.Errorf("Neighbors this(%v) Not Equal that(%v)", len(this.Neighbors), len(that1.Neighbors))
@@ -1028,7 +1150,12 @@ func (this *TreeProof) Equal(that interface{}) bool {
 
 	that1, ok := that.(*TreeProof)
 	if !ok {
-		return false
+		that2, ok := that.(TreeProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1064,7 +1191,12 @@ func (this *Entry) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*Entry)
 	if !ok {
-		return fmt.Errorf("that is not of type *Entry")
+		that2, ok := that.(Entry)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *Entry")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1072,7 +1204,7 @@ func (this *Entry) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *Entry but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *Entrybut is not nil && this == nil")
+		return fmt.Errorf("that is type *Entry but is not nil && this == nil")
 	}
 	if !bytes.Equal(this.Index, that1.Index) {
 		return fmt.Errorf("Index this(%v) Not Equal that(%v)", this.Index, that1.Index)
@@ -1098,7 +1230,12 @@ func (this *Entry) Equal(that interface{}) bool {
 
 	that1, ok := that.(*Entry)
 	if !ok {
-		return false
+		that2, ok := that.(Entry)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1132,7 +1269,12 @@ func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*SignedEntryUpdate)
 	if !ok {
-		return fmt.Errorf("that is not of type *SignedEntryUpdate")
+		that2, ok := that.(SignedEntryUpdate)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *SignedEntryUpdate")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1140,7 +1282,7 @@ func (this *SignedEntryUpdate) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *SignedEntryUpdate but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEntryUpdatebut is not nil && this == nil")
+		return fmt.Errorf("that is type *SignedEntryUpdate but is not nil && this == nil")
 	}
 	if !this.NewEntry.Equal(that1.NewEntry) {
 		return fmt.Errorf("NewEntry this(%v) Not Equal that(%v)", this.NewEntry, that1.NewEntry)
@@ -1165,7 +1307,12 @@ func (this *SignedEntryUpdate) Equal(that interface{}) bool {
 
 	that1, ok := that.(*SignedEntryUpdate)
 	if !ok {
-		return false
+		that2, ok := that.(SignedEntryUpdate)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1198,7 +1345,12 @@ func (this *Profile) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*Profile)
 	if !ok {
-		return fmt.Errorf("that is not of type *Profile")
+		that2, ok := that.(Profile)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *Profile")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1206,7 +1358,7 @@ func (this *Profile) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *Profile but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *Profilebut is not nil && this == nil")
+		return fmt.Errorf("that is type *Profile but is not nil && this == nil")
 	}
 	if !bytes.Equal(this.Nonce, that1.Nonce) {
 		return fmt.Errorf("Nonce this(%v) Not Equal that(%v)", this.Nonce, that1.Nonce)
@@ -1231,7 +1383,12 @@ func (this *Profile) Equal(that interface{}) bool {
 
 	that1, ok := that.(*Profile)
 	if !ok {
-		return false
+		that2, ok := that.(Profile)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1264,7 +1421,12 @@ func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*SignedEpochHead)
 	if !ok {
-		return fmt.Errorf("that is not of type *SignedEpochHead")
+		that2, ok := that.(SignedEpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *SignedEpochHead")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1272,7 +1434,7 @@ func (this *SignedEpochHead) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *SignedEpochHead but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *SignedEpochHeadbut is not nil && this == nil")
+		return fmt.Errorf("that is type *SignedEpochHead but is not nil && this == nil")
 	}
 	if !this.Head.Equal(that1.Head) {
 		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
@@ -1297,7 +1459,12 @@ func (this *SignedEpochHead) Equal(that interface{}) bool {
 
 	that1, ok := that.(*SignedEpochHead)
 	if !ok {
-		return false
+		that2, ok := that.(SignedEpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1330,7 +1497,12 @@ func (this *TimestampedEpochHead) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*TimestampedEpochHead)
 	if !ok {
-		return fmt.Errorf("that is not of type *TimestampedEpochHead")
+		that2, ok := that.(TimestampedEpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *TimestampedEpochHead")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1338,7 +1510,7 @@ func (this *TimestampedEpochHead) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *TimestampedEpochHead but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *TimestampedEpochHeadbut is not nil && this == nil")
+		return fmt.Errorf("that is type *TimestampedEpochHead but is not nil && this == nil")
 	}
 	if !this.Head.Equal(that1.Head) {
 		return fmt.Errorf("Head this(%v) Not Equal that(%v)", this.Head, that1.Head)
@@ -1358,7 +1530,12 @@ func (this *TimestampedEpochHead) Equal(that interface{}) bool {
 
 	that1, ok := that.(*TimestampedEpochHead)
 	if !ok {
-		return false
+		that2, ok := that.(TimestampedEpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1386,7 +1563,12 @@ func (this *EpochHead) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EpochHead)
 	if !ok {
-		return fmt.Errorf("that is not of type *EpochHead")
+		that2, ok := that.(EpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EpochHead")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1394,7 +1576,7 @@ func (this *EpochHead) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EpochHead but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EpochHeadbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EpochHead but is not nil && this == nil")
 	}
 	if this.Realm != that1.Realm {
 		return fmt.Errorf("Realm this(%v) Not Equal that(%v)", this.Realm, that1.Realm)
@@ -1426,7 +1608,12 @@ func (this *EpochHead) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EpochHead)
 	if !ok {
-		return false
+		that2, ok := that.(EpochHead)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1466,7 +1653,12 @@ func (this *AuthorizationPolicy) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*AuthorizationPolicy)
 	if !ok {
-		return fmt.Errorf("that is not of type *AuthorizationPolicy")
+		that2, ok := that.(AuthorizationPolicy)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *AuthorizationPolicy")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1474,7 +1666,7 @@ func (this *AuthorizationPolicy) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *AuthorizationPolicy but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *AuthorizationPolicybut is not nil && this == nil")
+		return fmt.Errorf("that is type *AuthorizationPolicy but is not nil && this == nil")
 	}
 	if len(this.PublicKeys) != len(that1.PublicKeys) {
 		return fmt.Errorf("PublicKeys this(%v) Not Equal that(%v)", len(this.PublicKeys), len(that1.PublicKeys))
@@ -1505,7 +1697,12 @@ func (this *AuthorizationPolicy_Quorum) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*AuthorizationPolicy_Quorum)
 	if !ok {
-		return fmt.Errorf("that is not of type *AuthorizationPolicy_Quorum")
+		that2, ok := that.(AuthorizationPolicy_Quorum)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *AuthorizationPolicy_Quorum")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1513,7 +1710,7 @@ func (this *AuthorizationPolicy_Quorum) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *AuthorizationPolicy_Quorum but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *AuthorizationPolicy_Quorumbut is not nil && this == nil")
+		return fmt.Errorf("that is type *AuthorizationPolicy_Quorum but is not nil && this == nil")
 	}
 	if !this.Quorum.Equal(that1.Quorum) {
 		return fmt.Errorf("Quorum this(%v) Not Equal that(%v)", this.Quorum, that1.Quorum)
@@ -1530,7 +1727,12 @@ func (this *AuthorizationPolicy) Equal(that interface{}) bool {
 
 	that1, ok := that.(*AuthorizationPolicy)
 	if !ok {
-		return false
+		that2, ok := that.(AuthorizationPolicy)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1569,7 +1771,12 @@ func (this *AuthorizationPolicy_Quorum) Equal(that interface{}) bool {
 
 	that1, ok := that.(*AuthorizationPolicy_Quorum)
 	if !ok {
-		return false
+		that2, ok := that.(AuthorizationPolicy_Quorum)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1594,7 +1801,12 @@ func (this *PublicKey) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*PublicKey)
 	if !ok {
-		return fmt.Errorf("that is not of type *PublicKey")
+		that2, ok := that.(PublicKey)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *PublicKey")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1602,7 +1814,7 @@ func (this *PublicKey) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *PublicKey but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *PublicKeybut is not nil && this == nil")
+		return fmt.Errorf("that is type *PublicKey but is not nil && this == nil")
 	}
 	if that1.PubkeyType == nil {
 		if this.PubkeyType != nil {
@@ -1625,7 +1837,12 @@ func (this *PublicKey_Ed25519) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*PublicKey_Ed25519)
 	if !ok {
-		return fmt.Errorf("that is not of type *PublicKey_Ed25519")
+		that2, ok := that.(PublicKey_Ed25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *PublicKey_Ed25519")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1633,7 +1850,7 @@ func (this *PublicKey_Ed25519) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *PublicKey_Ed25519 but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *PublicKey_Ed25519but is not nil && this == nil")
+		return fmt.Errorf("that is type *PublicKey_Ed25519 but is not nil && this == nil")
 	}
 	if !bytes.Equal(this.Ed25519, that1.Ed25519) {
 		return fmt.Errorf("Ed25519 this(%v) Not Equal that(%v)", this.Ed25519, that1.Ed25519)
@@ -1650,7 +1867,12 @@ func (this *PublicKey) Equal(that interface{}) bool {
 
 	that1, ok := that.(*PublicKey)
 	if !ok {
-		return false
+		that2, ok := that.(PublicKey)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1681,7 +1903,12 @@ func (this *PublicKey_Ed25519) Equal(that interface{}) bool {
 
 	that1, ok := that.(*PublicKey_Ed25519)
 	if !ok {
-		return false
+		that2, ok := that.(PublicKey_Ed25519)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1706,7 +1933,12 @@ func (this *QuorumExpr) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*QuorumExpr)
 	if !ok {
-		return fmt.Errorf("that is not of type *QuorumExpr")
+		that2, ok := that.(QuorumExpr)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *QuorumExpr")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1714,7 +1946,7 @@ func (this *QuorumExpr) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *QuorumExpr but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *QuorumExprbut is not nil && this == nil")
+		return fmt.Errorf("that is type *QuorumExpr but is not nil && this == nil")
 	}
 	if this.Threshold != that1.Threshold {
 		return fmt.Errorf("Threshold this(%v) Not Equal that(%v)", this.Threshold, that1.Threshold)
@@ -1747,7 +1979,12 @@ func (this *QuorumExpr) Equal(that interface{}) bool {
 
 	that1, ok := that.(*QuorumExpr)
 	if !ok {
-		return false
+		that2, ok := that.(QuorumExpr)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1788,7 +2025,12 @@ func (this *EmailProof) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProof)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProof")
+		that2, ok := that.(EmailProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProof")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1796,7 +2038,7 @@ func (this *EmailProof) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProof but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProofbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProof but is not nil && this == nil")
 	}
 	if that1.ProofType == nil {
 		if this.ProofType != nil {
@@ -1819,7 +2061,12 @@ func (this *EmailProof_DKIMProof) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProof_DKIMProof)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProof_DKIMProof")
+		that2, ok := that.(EmailProof_DKIMProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProof_DKIMProof")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1827,7 +2074,7 @@ func (this *EmailProof_DKIMProof) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProof_DKIMProof but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProof_DKIMProofbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProof_DKIMProof but is not nil && this == nil")
 	}
 	if !bytes.Equal(this.DKIMProof, that1.DKIMProof) {
 		return fmt.Errorf("DKIMProof this(%v) Not Equal that(%v)", this.DKIMProof, that1.DKIMProof)
@@ -1844,7 +2091,12 @@ func (this *EmailProof_OIDCToken) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProof_OIDCToken)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProof_OIDCToken")
+		that2, ok := that.(EmailProof_OIDCToken)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProof_OIDCToken")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1852,7 +2104,7 @@ func (this *EmailProof_OIDCToken) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProof_OIDCToken but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProof_OIDCTokenbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProof_OIDCToken but is not nil && this == nil")
 	}
 	if this.OIDCToken != that1.OIDCToken {
 		return fmt.Errorf("OIDCToken this(%v) Not Equal that(%v)", this.OIDCToken, that1.OIDCToken)
@@ -1869,7 +2121,12 @@ func (this *EmailProof_SAMLResponse) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProof_SAMLResponse)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProof_SAMLResponse")
+		that2, ok := that.(EmailProof_SAMLResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProof_SAMLResponse")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1877,7 +2134,7 @@ func (this *EmailProof_SAMLResponse) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProof_SAMLResponse but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProof_SAMLResponsebut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProof_SAMLResponse but is not nil && this == nil")
 	}
 	if this.SAMLResponse != that1.SAMLResponse {
 		return fmt.Errorf("SAMLResponse this(%v) Not Equal that(%v)", this.SAMLResponse, that1.SAMLResponse)
@@ -1894,7 +2151,12 @@ func (this *EmailProof) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProof)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1925,7 +2187,12 @@ func (this *EmailProof_DKIMProof) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProof_DKIMProof)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProof_DKIMProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1950,7 +2217,12 @@ func (this *EmailProof_OIDCToken) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProof_OIDCToken)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProof_OIDCToken)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1975,7 +2247,12 @@ func (this *EmailProof_SAMLResponse) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProof_SAMLResponse)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProof_SAMLResponse)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -2085,7 +2362,7 @@ func (this *SignedEntryUpdate) GoString() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
@@ -2108,7 +2385,7 @@ func (this *Profile) GoString() string {
 	for k, _ := range this.Keys {
 		keysForKeys = append(keysForKeys, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
+	github_com_maditya_protobuf_sortkeys.Strings(keysForKeys)
 	mapStringForKeys := "map[string][]byte{"
 	for _, k := range keysForKeys {
 		mapStringForKeys += fmt.Sprintf("%#v: %#v,", k, this.Keys[k])
@@ -2131,7 +2408,7 @@ func (this *SignedEpochHead) GoString() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%#v: %#v,", k, this.Signatures[k])
@@ -2179,7 +2456,7 @@ func (this *AuthorizationPolicy) GoString() string {
 	for k, _ := range this.PublicKeys {
 		keysForPublicKeys = append(keysForPublicKeys, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForPublicKeys)
 	mapStringForPublicKeys := "map[uint64]*PublicKey{"
 	for _, k := range keysForPublicKeys {
 		mapStringForPublicKeys += fmt.Sprintf("%#v: %#v,", k, this.PublicKeys[k])
@@ -2280,7 +2557,7 @@ func valueToGoStringClient(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringClient(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringClient(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -2304,7 +2581,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for E2EKSPublic service
 
@@ -2399,7 +2676,8 @@ var _E2EKSPublic_serviceDesc = grpc.ServiceDesc{
 			Handler:    _E2EKSPublic_Update_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorClient,
 }
 
 func (m *LookupRequest) Marshal() (data []byte, err error) {
@@ -2520,21 +2798,17 @@ func (m *LookupProof) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintClient(data, i, uint64(len(m.UserId)))
 		i += copy(data[i:], m.UserId)
 	}
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
+	if len(m.Index) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Index)))
+		i += copy(data[i:], m.Index)
 	}
-	if m.IndexProof != nil {
-		if len(m.IndexProof) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
-			i += copy(data[i:], m.IndexProof)
-		}
+	if len(m.IndexProof) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.IndexProof)))
+		i += copy(data[i:], m.IndexProof)
 	}
 	if len(m.Ratifications) > 0 {
 		for _, msg := range m.Ratifications {
@@ -2604,21 +2878,17 @@ func (m *TreeProof) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], b)
 		}
 	}
-	if m.ExistingIndex != nil {
-		if len(m.ExistingIndex) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
-			i += copy(data[i:], m.ExistingIndex)
-		}
+	if len(m.ExistingIndex) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.ExistingIndex)))
+		i += copy(data[i:], m.ExistingIndex)
 	}
-	if m.ExistingEntryHash != nil {
-		if len(m.ExistingEntryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
-			i += copy(data[i:], m.ExistingEntryHash)
-		}
+	if len(m.ExistingEntryHash) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.ExistingEntryHash)))
+		i += copy(data[i:], m.ExistingEntryHash)
 	}
 	return i, nil
 }
@@ -2638,13 +2908,11 @@ func (m *Entry) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Index != nil {
-		if len(m.Index) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Index)))
-			i += copy(data[i:], m.Index)
-		}
+	if len(m.Index) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Index)))
+		i += copy(data[i:], m.Index)
 	}
 	if m.Version != 0 {
 		data[i] = 0x10
@@ -2661,13 +2929,11 @@ func (m *Entry) MarshalTo(data []byte) (int, error) {
 		}
 		i += n9
 	}
-	if m.ProfileCommitment != nil {
-		if len(m.ProfileCommitment) > 0 {
-			data[i] = 0x22
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.ProfileCommitment)))
-			i += copy(data[i:], m.ProfileCommitment)
-		}
+	if len(m.ProfileCommitment) > 0 {
+		data[i] = 0x22
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.ProfileCommitment)))
+		i += copy(data[i:], m.ProfileCommitment)
 	}
 	return i, nil
 }
@@ -2696,12 +2962,7 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
 	}
 	i += n10
 	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
 			v := m.Signatures[k]
@@ -2734,21 +2995,14 @@ func (m *Profile) MarshalTo(data []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if m.Nonce != nil {
-		if len(m.Nonce) > 0 {
-			data[i] = 0xa
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
-			i += copy(data[i:], m.Nonce)
-		}
+	if len(m.Nonce) > 0 {
+		data[i] = 0xa
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Nonce)))
+		i += copy(data[i:], m.Nonce)
 	}
 	if len(m.Keys) > 0 {
-		keysForKeys := make([]string, 0, len(m.Keys))
 		for k, _ := range m.Keys {
-			keysForKeys = append(keysForKeys, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
-		for _, k := range keysForKeys {
 			data[i] = 0x12
 			i++
 			v := m.Keys[k]
@@ -2791,12 +3045,7 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
 	}
 	i += n11
 	if len(m.Signatures) > 0 {
-		keysForSignatures := make([]uint64, 0, len(m.Signatures))
 		for k, _ := range m.Signatures {
-			keysForSignatures = append(keysForSignatures, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
-		for _, k := range keysForSignatures {
 			data[i] = 0x12
 			i++
 			v := m.Signatures[k]
@@ -2874,13 +3123,11 @@ func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintClient(data, i, uint64(m.Epoch))
 	}
-	if m.RootHash != nil {
-		if len(m.RootHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
-			i += copy(data[i:], m.RootHash)
-		}
+	if len(m.RootHash) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.RootHash)))
+		i += copy(data[i:], m.RootHash)
 	}
 	data[i] = 0x22
 	i++
@@ -2890,13 +3137,11 @@ func (m *EpochHead) MarshalTo(data []byte) (int, error) {
 		return 0, err
 	}
 	i += n14
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
+	if len(m.PreviousSummaryHash) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.PreviousSummaryHash)))
+		i += copy(data[i:], m.PreviousSummaryHash)
 	}
 	data[i] = 0x32
 	i++
@@ -2925,12 +3170,7 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
 	var l int
 	_ = l
 	if len(m.PublicKeys) > 0 {
-		keysForPublicKeys := make([]uint64, 0, len(m.PublicKeys))
 		for k, _ := range m.PublicKeys {
-			keysForPublicKeys = append(keysForPublicKeys, k)
-		}
-		github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
-		for _, k := range keysForPublicKeys {
 			data[i] = 0xa
 			i++
 			v := m.PublicKeys[k]
@@ -3151,7 +3391,7 @@ func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
 	this := &LookupRequest{}
 	this.Epoch = uint64(uint64(r.Uint32()))
 	this.UserId = randStringClient(r)
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.QuorumRequirement = NewPopulatedQuorumExpr(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -3161,12 +3401,12 @@ func NewPopulatedLookupRequest(r randyClient, easy bool) *LookupRequest {
 
 func NewPopulatedUpdateRequest(r randyClient, easy bool) *UpdateRequest {
 	this := &UpdateRequest{}
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.Update = NewPopulatedSignedEntryUpdate(r, easy)
 	}
 	v1 := NewPopulatedEncodedProfile(r, easy)
 	this.Profile = *v1
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.LookupParameters = NewPopulatedLookupRequest(r, easy)
 	}
 	if r.Intn(10) != 0 {
@@ -3190,8 +3430,8 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	for i := 0; i < v3; i++ {
 		this.IndexProof[i] = byte(r.Intn(256))
 	}
-	if r.Intn(10) != 0 {
-		v4 := r.Intn(10)
+	if r.Intn(10) == 0 {
+		v4 := r.Intn(5)
 		this.Ratifications = make([]*SignedEpochHead, v4)
 		for i := 0; i < v4; i++ {
 			this.Ratifications[i] = NewPopulatedSignedEpochHead(r, easy)
@@ -3200,7 +3440,7 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 	if r.Intn(10) != 0 {
 		this.TreeProof = NewPopulatedTreeProof(r, easy)
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.Entry = NewPopulatedEncodedEntry(r, easy)
 	}
 	if r.Intn(10) != 0 {
@@ -3213,7 +3453,7 @@ func NewPopulatedLookupProof(r randyClient, easy bool) *LookupProof {
 
 func NewPopulatedTreeProof(r randyClient, easy bool) *TreeProof {
 	this := &TreeProof{}
-	v5 := r.Intn(100)
+	v5 := r.Intn(10)
 	this.Neighbors = make([][]byte, v5)
 	for i := 0; i < v5; i++ {
 		v6 := r.Intn(100)
@@ -3245,7 +3485,7 @@ func NewPopulatedEntry(r randyClient, easy bool) *Entry {
 		this.Index[i] = byte(r.Intn(256))
 	}
 	this.Version = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.UpdatePolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
 	v10 := r.Intn(100)
@@ -3406,13 +3646,13 @@ func NewPopulatedPublicKey_Ed25519(r randyClient, easy bool) *PublicKey_Ed25519 
 func NewPopulatedQuorumExpr(r randyClient, easy bool) *QuorumExpr {
 	this := &QuorumExpr{}
 	this.Threshold = uint32(r.Uint32())
-	v31 := r.Intn(100)
+	v31 := r.Intn(2)
 	this.Candidates = make([]uint64, v31)
 	for i := 0; i < v31; i++ {
 		this.Candidates[i] = uint64(uint64(r.Uint32()))
 	}
-	if r.Intn(10) != 0 {
-		v32 := r.Intn(2)
+	if r.Intn(10) == 0 {
+		v32 := r.Intn(5)
 		this.Subexpressions = make([]*QuorumExpr, v32)
 		for i := 0; i < v32; i++ {
 			this.Subexpressions[i] = NewPopulatedQuorumExpr(r, easy)
@@ -3575,17 +3815,13 @@ func (m *LookupProof) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.Index)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.IndexProof != nil {
-		l = len(m.IndexProof)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.IndexProof)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	if len(m.Ratifications) > 0 {
 		for _, e := range m.Ratifications {
@@ -3617,17 +3853,13 @@ func (m *TreeProof) Size() (n int) {
 			n += 1 + l + sovClient(uint64(l))
 		}
 	}
-	if m.ExistingIndex != nil {
-		l = len(m.ExistingIndex)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.ExistingIndex)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.ExistingEntryHash != nil {
-		l = len(m.ExistingEntryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.ExistingEntryHash)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	return n
 }
@@ -3635,11 +3867,9 @@ func (m *TreeProof) Size() (n int) {
 func (m *Entry) Size() (n int) {
 	var l int
 	_ = l
-	if m.Index != nil {
-		l = len(m.Index)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.Index)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	if m.Version != 0 {
 		n += 1 + sovClient(uint64(m.Version))
@@ -3648,11 +3878,9 @@ func (m *Entry) Size() (n int) {
 		l = m.UpdatePolicy.Size()
 		n += 1 + l + sovClient(uint64(l))
 	}
-	if m.ProfileCommitment != nil {
-		l = len(m.ProfileCommitment)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.ProfileCommitment)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	return n
 }
@@ -3676,11 +3904,9 @@ func (m *SignedEntryUpdate) Size() (n int) {
 func (m *Profile) Size() (n int) {
 	var l int
 	_ = l
-	if m.Nonce != nil {
-		l = len(m.Nonce)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.Nonce)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	if len(m.Keys) > 0 {
 		for k, v := range m.Keys {
@@ -3729,19 +3955,15 @@ func (m *EpochHead) Size() (n int) {
 	if m.Epoch != 0 {
 		n += 1 + sovClient(uint64(m.Epoch))
 	}
-	if m.RootHash != nil {
-		l = len(m.RootHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.RootHash)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	l = m.IssueTime.Size()
 	n += 1 + l + sovClient(uint64(l))
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovClient(uint64(l))
-		}
+	l = len(m.PreviousSummaryHash)
+	if l > 0 {
+		n += 1 + l + sovClient(uint64(l))
 	}
 	l = m.NextEpochPolicy.Size()
 	n += 1 + l + sovClient(uint64(l))
@@ -3934,7 +4156,7 @@ func (this *SignedEntryUpdate) String() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
@@ -3955,7 +4177,7 @@ func (this *Profile) String() string {
 	for k, _ := range this.Keys {
 		keysForKeys = append(keysForKeys, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Strings(keysForKeys)
+	github_com_maditya_protobuf_sortkeys.Strings(keysForKeys)
 	mapStringForKeys := "map[string][]byte{"
 	for _, k := range keysForKeys {
 		mapStringForKeys += fmt.Sprintf("%v: %v,", k, this.Keys[k])
@@ -3976,7 +4198,7 @@ func (this *SignedEpochHead) String() string {
 	for k, _ := range this.Signatures {
 		keysForSignatures = append(keysForSignatures, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForSignatures)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForSignatures)
 	mapStringForSignatures := "map[uint64][]byte{"
 	for _, k := range keysForSignatures {
 		mapStringForSignatures += fmt.Sprintf("%v: %v,", k, this.Signatures[k])
@@ -4023,7 +4245,7 @@ func (this *AuthorizationPolicy) String() string {
 	for k, _ := range this.PublicKeys {
 		keysForPublicKeys = append(keysForPublicKeys, k)
 	}
-	github_com_andres_erbsen_protobuf_sortkeys.Uint64s(keysForPublicKeys)
+	github_com_maditya_protobuf_sortkeys.Uint64s(keysForPublicKeys)
 	mapStringForPublicKeys := "map[uint64]*PublicKey{"
 	for _, k := range keysForPublicKeys {
 		mapStringForPublicKeys += fmt.Sprintf("%v: %v,", k, this.PublicKeys[k])
@@ -4520,7 +4742,10 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Index = append(m.Index[:0], data[iNdEx:postIndex]...)
+			if m.Index == nil {
+				m.Index = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -4548,7 +4773,10 @@ func (m *LookupProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.IndexProof = append([]byte{}, data[iNdEx:postIndex]...)
+			m.IndexProof = append(m.IndexProof[:0], data[iNdEx:postIndex]...)
+			if m.IndexProof == nil {
+				m.IndexProof = []byte{}
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -4785,7 +5013,10 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ExistingIndex = append([]byte{}, data[iNdEx:postIndex]...)
+			m.ExistingIndex = append(m.ExistingIndex[:0], data[iNdEx:postIndex]...)
+			if m.ExistingIndex == nil {
+				m.ExistingIndex = []byte{}
+			}
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -4813,7 +5044,10 @@ func (m *TreeProof) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ExistingEntryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.ExistingEntryHash = append(m.ExistingEntryHash[:0], data[iNdEx:postIndex]...)
+			if m.ExistingEntryHash == nil {
+				m.ExistingEntryHash = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4891,7 +5125,10 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Index = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Index = append(m.Index[:0], data[iNdEx:postIndex]...)
+			if m.Index == nil {
+				m.Index = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 0 {
@@ -4971,7 +5208,10 @@ func (m *Entry) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ProfileCommitment = append([]byte{}, data[iNdEx:postIndex]...)
+			m.ProfileCommitment = append(m.ProfileCommitment[:0], data[iNdEx:postIndex]...)
+			if m.ProfileCommitment == nil {
+				m.ProfileCommitment = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5229,7 +5469,10 @@ func (m *Profile) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Nonce = append([]byte{}, data[iNdEx:postIndex]...)
+			m.Nonce = append(m.Nonce[:0], data[iNdEx:postIndex]...)
+			if m.Nonce == nil {
+				m.Nonce = []byte{}
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -5757,7 +6000,10 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RootHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.RootHash = append(m.RootHash[:0], data[iNdEx:postIndex]...)
+			if m.RootHash == nil {
+				m.RootHash = []byte{}
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -5815,7 +6061,10 @@ func (m *EpochHead) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.PreviousSummaryHash = append(m.PreviousSummaryHash[:0], data[iNdEx:postIndex]...)
+			if m.PreviousSummaryHash == nil {
+				m.PreviousSummaryHash = []byte{}
+			}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -6494,3 +6743,86 @@ var (
 	ErrInvalidLengthClient = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowClient   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorClient = []byte{
+	// 1257 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x56, 0xcb, 0x6f, 0x5b, 0x45,
+	0x17, 0xcf, 0x4d, 0x1c, 0xbb, 0xf7, 0xd8, 0x4e, 0xec, 0x69, 0xbe, 0x7e, 0x96, 0x8b, 0x12, 0x64,
+	0x44, 0x55, 0xf1, 0x70, 0x8a, 0x4b, 0x69, 0x8b, 0x78, 0xd5, 0xad, 0x51, 0xa2, 0xb4, 0x6a, 0xb8,
+	0x29, 0xeb, 0xab, 0x6b, 0xdf, 0x89, 0x7d, 0x15, 0xdf, 0x47, 0xef, 0xa3, 0x24, 0xac, 0xba, 0x81,
+	0x15, 0xfc, 0x1d, 0xb0, 0x67, 0xc3, 0x92, 0x65, 0x97, 0x5d, 0x22, 0x24, 0xaa, 0xb6, 0xab, 0xae,
+	0xa0, 0x4b, 0x24, 0x36, 0x9c, 0x39, 0x33, 0xf7, 0xe1, 0xc4, 0xa1, 0x2b, 0x16, 0x63, 0xdf, 0x39,
+	0xf3, 0x3b, 0x67, 0x7e, 0xe7, 0x35, 0x33, 0x50, 0x1b, 0x4d, 0x1d, 0xee, 0xc5, 0xdd, 0x20, 0xf4,
+	0x63, 0x9f, 0x2d, 0xd3, 0x5f, 0xfb, 0xd2, 0xd8, 0x89, 0x27, 0xc9, 0xb0, 0x3b, 0xf2, 0xdd, 0x4d,
+	0xd7, 0xb2, 0x9d, 0xf8, 0xc8, 0xda, 0xa4, 0x95, 0x61, 0xb2, 0xbf, 0x39, 0xf6, 0xc7, 0x3e, 0x4d,
+	0xe8, 0x4b, 0x2a, 0xb6, 0x57, 0x63, 0xc7, 0xe5, 0x51, 0x6c, 0xb9, 0x81, 0x14, 0x74, 0x1e, 0x6a,
+	0x50, 0xbf, 0xed, 0xfb, 0x07, 0x49, 0x60, 0xf0, 0xfb, 0x09, 0x2e, 0xb1, 0x35, 0x58, 0xe6, 0x81,
+	0x3f, 0x9a, 0xb4, 0xb4, 0xd7, 0xb5, 0x8b, 0x25, 0x43, 0x4e, 0xd8, 0xff, 0xa1, 0x92, 0x44, 0x3c,
+	0x34, 0x1d, 0xbb, 0xb5, 0x88, 0x72, 0xdd, 0x28, 0x8b, 0xe9, 0xb6, 0xcd, 0x3e, 0x03, 0x76, 0x3f,
+	0xf1, 0xc3, 0xc4, 0x35, 0x43, 0x34, 0xe0, 0x84, 0xdc, 0x45, 0x9a, 0xad, 0x12, 0x62, 0xaa, 0xbd,
+	0xa6, 0xdc, 0xa4, 0xfb, 0x05, 0x01, 0x06, 0x87, 0x41, 0x68, 0x34, 0x25, 0xd8, 0xc8, 0xb1, 0x9d,
+	0xbf, 0x91, 0xc2, 0x97, 0x81, 0x6d, 0xc5, 0x3c, 0xa5, 0x70, 0x09, 0xca, 0x09, 0x09, 0x88, 0x43,
+	0xb5, 0xd7, 0x52, 0x76, 0xf6, 0x9c, 0xb1, 0xc7, 0xed, 0x81, 0x17, 0x87, 0x47, 0x4a, 0x41, 0xe1,
+	0x90, 0x45, 0x05, 0x21, 0xfb, 0xce, 0x94, 0x13, 0xbd, 0x6a, 0x6f, 0x45, 0xa9, 0xec, 0x4a, 0x69,
+	0xff, 0xdc, 0xa3, 0x27, 0x1b, 0x0b, 0xbf, 0x3d, 0xd9, 0x58, 0x19, 0x78, 0x23, 0xdf, 0xe6, 0xb6,
+	0x92, 0x1b, 0xa9, 0x1a, 0xbb, 0x01, 0xcd, 0x29, 0xc5, 0xc1, 0x0c, 0xac, 0xd0, 0x72, 0x79, 0xcc,
+	0xc3, 0xa8, 0xb5, 0x44, 0xb6, 0xd6, 0x94, 0xad, 0x99, 0x38, 0x19, 0x0d, 0x09, 0xdf, 0xcd, 0xd0,
+	0xec, 0x32, 0x54, 0xb9, 0x6b, 0x39, 0x53, 0x13, 0xe1, 0xfe, 0x7e, 0xeb, 0x45, 0x65, 0x26, 0x08,
+	0x03, 0xb1, 0xb4, 0x2b, 0x56, 0x0c, 0xe0, 0xd9, 0x77, 0xe7, 0xd1, 0x22, 0x54, 0xa5, 0x61, 0x9a,
+	0x17, 0x03, 0xad, 0xcd, 0x04, 0x1a, 0xf3, 0xe2, 0x78, 0x36, 0x3f, 0x24, 0x07, 0x6b, 0x86, 0x9c,
+	0xb0, 0x0d, 0xa8, 0xd2, 0x87, 0xda, 0x73, 0x89, 0xd6, 0x80, 0x44, 0xd2, 0xde, 0x47, 0x50, 0x0f,
+	0xad, 0xd8, 0xd9, 0x77, 0x46, 0xf8, 0xeb, 0x7b, 0x11, 0xa6, 0x66, 0x09, 0x59, 0x9d, 0x9b, 0x0d,
+	0xa9, 0xc8, 0xf1, 0x16, 0xb7, 0x6c, 0x63, 0x16, 0xcc, 0x36, 0x01, 0xe2, 0x90, 0x73, 0x65, 0x7d,
+	0x99, 0x1c, 0x6a, 0x28, 0xd5, 0x7b, 0xb8, 0x20, 0xfd, 0xd1, 0xe3, 0xf4, 0x93, 0x5d, 0xc3, 0xea,
+	0x11, 0xf9, 0x69, 0x95, 0x09, 0x5b, 0x4b, 0x9d, 0x17, 0xb2, 0xfe, 0x1a, 0x26, 0x41, 0xc3, 0x24,
+	0xd4, 0x54, 0x12, 0x48, 0x6a, 0x48, 0x85, 0x62, 0x0a, 0x2b, 0xa7, 0xa6, 0x50, 0xfb, 0x97, 0x14,
+	0x8a, 0x5a, 0xd6, 0x33, 0x52, 0xec, 0x35, 0xd0, 0x3d, 0xee, 0x8c, 0x27, 0x43, 0x1f, 0x13, 0xa9,
+	0xa1, 0xd3, 0x35, 0x23, 0x17, 0xb0, 0x37, 0x61, 0x85, 0x1f, 0x3a, 0x51, 0xec, 0x78, 0x63, 0xb3,
+	0x18, 0xd6, 0x7a, 0x2a, 0xdd, 0xa6, 0xf0, 0x76, 0xe1, 0x6c, 0x06, 0x23, 0x9a, 0xe6, 0xc4, 0x8a,
+	0x26, 0x2a, 0xcc, 0xcd, 0x74, 0x89, 0xfc, 0xd8, 0xc2, 0x85, 0xce, 0x0f, 0x1a, 0x2c, 0xd3, 0x2c,
+	0x4f, 0x97, 0x56, 0x4c, 0x57, 0x0b, 0x2a, 0x0f, 0xb0, 0x54, 0x30, 0xb6, 0xb4, 0x5f, 0xc9, 0x48,
+	0xa7, 0xec, 0x53, 0xa8, 0xcb, 0x5a, 0x36, 0x03, 0x7f, 0xea, 0x8c, 0x8e, 0x54, 0xed, 0xb5, 0x55,
+	0x10, 0x6e, 0x24, 0xf1, 0xc4, 0x0f, 0x9d, 0xaf, 0x29, 0x2f, 0xbb, 0x84, 0x30, 0x6a, 0x52, 0x41,
+	0xce, 0xd8, 0xbb, 0xc0, 0x54, 0x20, 0x4c, 0x3c, 0x0f, 0x5c, 0x27, 0xce, 0x1a, 0x11, 0x99, 0xaa,
+	0x95, 0x9b, 0xd9, 0x42, 0xe7, 0x77, 0x0d, 0x9a, 0x27, 0xfa, 0x09, 0x59, 0x60, 0x8c, 0xbe, 0x92,
+	0xae, 0xaa, 0xe6, 0x3b, 0x99, 0xc2, 0x85, 0x13, 0x29, 0x3c, 0x83, 0x4a, 0xd2, 0xed, 0x2d, 0x80,
+	0x08, 0xad, 0x5a, 0x71, 0x12, 0xf2, 0x08, 0x7d, 0x14, 0xb5, 0x76, 0xf1, 0xb4, 0xf6, 0x25, 0x89,
+	0x84, 0x4a, 0x3b, 0x05, 0xdd, 0xf6, 0xc7, 0xb0, 0x7a, 0x6c, 0x99, 0x35, 0x60, 0xe9, 0x80, 0x4b,
+	0x5e, 0x65, 0x43, 0x7c, 0x8a, 0x28, 0x3f, 0xb0, 0xa6, 0x09, 0x4f, 0x9b, 0x82, 0x26, 0x1f, 0x2e,
+	0x5e, 0xd3, 0x3a, 0xdf, 0x6a, 0x50, 0x51, 0x15, 0x22, 0x50, 0x9e, 0xef, 0x8d, 0x78, 0x9a, 0x0b,
+	0x9a, 0xb0, 0x77, 0xa0, 0x84, 0x26, 0x52, 0x92, 0xad, 0xd9, 0x6a, 0xeb, 0xee, 0xe0, 0x92, 0x24,
+	0x45, 0xa8, 0xf6, 0x55, 0xd0, 0x33, 0x51, 0x91, 0x88, 0xfe, 0x2a, 0x22, 0x7f, 0x68, 0xd2, 0x91,
+	0x42, 0x97, 0xb1, 0x7b, 0x50, 0x9a, 0xe0, 0xbf, 0x8a, 0xf0, 0xf9, 0xb4, 0xa1, 0xd2, 0xb3, 0xb9,
+	0x00, 0xed, 0xbf, 0xa1, 0x02, 0x7e, 0x5e, 0x05, 0x7c, 0x1e, 0xc8, 0x20, 0x6b, 0xec, 0xf3, 0x39,
+	0xb1, 0xbf, 0x30, 0xbf, 0xcf, 0xff, 0xcb, 0xc8, 0x7f, 0xa7, 0xc1, 0xda, 0x3c, 0x96, 0xec, 0x93,
+	0x19, 0xaf, 0xd3, 0x63, 0x24, 0x77, 0xb5, 0xa5, 0x5c, 0x6d, 0xa4, 0xb5, 0x75, 0xcc, 0xbf, 0xf7,
+	0x41, 0xcf, 0xae, 0x2f, 0x75, 0xcc, 0x37, 0x8e, 0x87, 0xae, 0x5f, 0x12, 0x46, 0x8c, 0x1c, 0xd8,
+	0xf9, 0x7e, 0x11, 0xf4, 0x9c, 0x03, 0xd2, 0x0e, 0xb9, 0x35, 0x75, 0x55, 0xee, 0xe4, 0x24, 0xbf,
+	0xf3, 0x16, 0x8b, 0x77, 0xde, 0x79, 0xd0, 0xf1, 0x24, 0x89, 0x8b, 0x2d, 0x7f, 0x46, 0x08, 0x44,
+	0xa7, 0xb3, 0x2b, 0x00, 0x4e, 0x14, 0x25, 0xdc, 0x14, 0x3b, 0xa9, 0xfb, 0xee, 0x54, 0x36, 0x84,
+	0x14, 0x52, 0xd6, 0x83, 0xff, 0x05, 0x21, 0x7f, 0xe0, 0xf8, 0x49, 0x64, 0x46, 0x89, 0xeb, 0x5a,
+	0xe9, 0x91, 0xb2, 0x4c, 0xf6, 0xcf, 0xa6, 0x8b, 0x7b, 0x72, 0x8d, 0xb6, 0xba, 0x0d, 0x4d, 0x8f,
+	0x1f, 0xc6, 0x26, 0xb1, 0x4a, 0x8f, 0x87, 0xf2, 0xab, 0x8e, 0x07, 0xb5, 0xf7, 0xaa, 0x50, 0x25,
+	0xff, 0xa5, 0xb8, 0xf3, 0xa7, 0x06, 0x67, 0xe7, 0xc0, 0xd9, 0x0e, 0x54, 0x83, 0x64, 0x88, 0x9f,
+	0x26, 0x75, 0x85, 0x46, 0xe5, 0xf3, 0xd6, 0xe9, 0xf6, 0xbb, 0xbb, 0x84, 0xce, 0xfb, 0x04, 0x82,
+	0x4c, 0xc0, 0xde, 0x86, 0xb2, 0xbc, 0xe8, 0x55, 0x9e, 0x4e, 0xbe, 0x04, 0xb6, 0x16, 0x0c, 0x05,
+	0x69, 0xdf, 0x85, 0xd5, 0x63, 0xb6, 0xe6, 0xd4, 0xdb, 0x85, 0x62, 0xbd, 0xe5, 0xa1, 0xce, 0x14,
+	0x0b, 0x15, 0xd8, 0xaf, 0xa3, 0x2b, 0xc4, 0xd1, 0x8c, 0x8f, 0x02, 0xde, 0xf9, 0x00, 0xf4, 0x0c,
+	0xc6, 0xda, 0x50, 0xe1, 0x76, 0xef, 0xca, 0x95, 0xf7, 0xae, 0xcb, 0xd3, 0x00, 0x79, 0xa4, 0x02,
+	0xd2, 0x4b, 0x86, 0xb8, 0x9b, 0xd4, 0xfb, 0x46, 0x03, 0xc8, 0x09, 0x8b, 0x0b, 0x25, 0x9e, 0x60,
+	0x47, 0x4c, 0xfc, 0xa9, 0xac, 0xe1, 0xba, 0x91, 0x0b, 0xd8, 0x3a, 0xc0, 0xc8, 0xf2, 0x6c, 0x47,
+	0x9c, 0x6b, 0xb2, 0xf9, 0xca, 0x46, 0x41, 0xc2, 0xae, 0xc3, 0x4a, 0x94, 0x0c, 0x39, 0x1a, 0xe2,
+	0x51, 0x44, 0x17, 0xf1, 0x12, 0x45, 0x78, 0xce, 0x1b, 0xe9, 0x18, 0xb0, 0xf3, 0x13, 0xf2, 0xc8,
+	0x5f, 0x0f, 0x78, 0x27, 0x81, 0x7d, 0xe0, 0xb8, 0xea, 0x4e, 0x26, 0x27, 0xfa, 0xf5, 0xe7, 0x4f,
+	0x36, 0xf4, 0x5b, 0x3b, 0xdb, 0x77, 0x08, 0x82, 0x3e, 0xe9, 0x02, 0x92, 0xe1, 0x7d, 0xc7, 0x1e,
+	0x99, 0xb1, 0x7f, 0xc0, 0xe5, 0xb5, 0xa3, 0x4b, 0xfc, 0xdd, 0xed, 0x5b, 0x37, 0xef, 0x09, 0xa1,
+	0xc0, 0x0b, 0x08, 0x4d, 0xd8, 0x55, 0xa8, 0x47, 0x96, 0x3b, 0xc5, 0xf7, 0x5c, 0x14, 0xe0, 0xf6,
+	0x9c, 0x4a, 0x5f, 0xef, 0x37, 0x50, 0xa5, 0xb6, 0x77, 0xe3, 0xce, 0x6d, 0x43, 0xc9, 0x51, 0xab,
+	0x26, 0x80, 0xe9, 0xbc, 0x5f, 0x03, 0x20, 0x4e, 0x14, 0xbd, 0x5e, 0x02, 0xd5, 0x41, 0x6f, 0xb0,
+	0xb3, 0x27, 0x43, 0x8f, 0x85, 0x5f, 0x96, 0xcf, 0x1c, 0x36, 0xf7, 0x39, 0xd5, 0x66, 0x33, 0x52,
+	0xc9, 0x1c, 0x75, 0xd4, 0xbd, 0x94, 0xea, 0xcc, 0xbc, 0x13, 0xe7, 0xe9, 0xf4, 0xaf, 0x3d, 0x7e,
+	0xb6, 0xbe, 0xf0, 0x2b, 0x8e, 0xa7, 0xcf, 0xd6, 0xb5, 0x97, 0x38, 0xfe, 0xc2, 0xf1, 0xf0, 0xf9,
+	0xba, 0xf6, 0x23, 0x8e, 0x9f, 0x71, 0xfc, 0x82, 0xe3, 0x11, 0x8e, 0xc7, 0x38, 0x9e, 0xe2, 0x78,
+	0xf1, 0x7c, 0x7d, 0xe1, 0x25, 0xfe, 0x0f, 0xcb, 0x64, 0xec, 0xf2, 0x3f, 0x01, 0x00, 0x00, 0xff,
+	0xff, 0x83, 0xf3, 0x7d, 0x9c, 0x6b, 0x0b, 0x00, 0x00,
+}

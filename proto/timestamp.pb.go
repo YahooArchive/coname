@@ -4,12 +4,12 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -86,9 +86,13 @@ type Timestamp struct {
 	Nanos int32 `protobuf:"varint,2,opt,name=nanos,proto3" json:"nanos,omitempty"`
 }
 
-func (m *Timestamp) Reset()      { *m = Timestamp{} }
-func (*Timestamp) ProtoMessage() {}
+func (m *Timestamp) Reset()                    { *m = Timestamp{} }
+func (*Timestamp) ProtoMessage()               {}
+func (*Timestamp) Descriptor() ([]byte, []int) { return fileDescriptorTimestamp, []int{0} }
 
+func init() {
+	proto1.RegisterType((*Timestamp)(nil), "proto.Timestamp")
+}
 func (this *Timestamp) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -99,7 +103,12 @@ func (this *Timestamp) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*Timestamp)
 	if !ok {
-		return fmt.Errorf("that is not of type *Timestamp")
+		that2, ok := that.(Timestamp)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *Timestamp")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -107,7 +116,7 @@ func (this *Timestamp) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *Timestamp but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *Timestampbut is not nil && this == nil")
+		return fmt.Errorf("that is type *Timestamp but is not nil && this == nil")
 	}
 	if this.Seconds != that1.Seconds {
 		return fmt.Errorf("Seconds this(%v) Not Equal that(%v)", this.Seconds, that1.Seconds)
@@ -127,7 +136,12 @@ func (this *Timestamp) Equal(that interface{}) bool {
 
 	that1, ok := that.(*Timestamp)
 	if !ok {
-		return false
+		that2, ok := that.(Timestamp)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -164,7 +178,7 @@ func valueToGoStringTimestamp(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringTimestamp(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringTimestamp(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -559,3 +573,16 @@ var (
 	ErrInvalidLengthTimestamp = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowTimestamp   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorTimestamp = []byte{
+	// 138 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x2f, 0xc9, 0xcc, 0x4d,
+	0x2d, 0x2e, 0x49, 0xcc, 0x2d, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x4a,
+	0xd6, 0x5c, 0x9c, 0x21, 0x30, 0x19, 0x21, 0x09, 0x2e, 0xf6, 0xe2, 0xd4, 0xe4, 0xfc, 0xbc, 0x94,
+	0x62, 0x09, 0x46, 0x05, 0x46, 0x0d, 0xe6, 0x20, 0x18, 0x57, 0x48, 0x84, 0x8b, 0x35, 0x2f, 0x31,
+	0x2f, 0xbf, 0x58, 0x82, 0x09, 0x28, 0xce, 0x1a, 0x04, 0xe1, 0x38, 0x59, 0x5c, 0x78, 0x28, 0xc7,
+	0x70, 0x03, 0x88, 0x1f, 0x3c, 0x94, 0x63, 0xfc, 0x00, 0xc4, 0x3f, 0x80, 0xb8, 0xe1, 0x91, 0x1c,
+	0xe3, 0x0a, 0x20, 0xde, 0x01, 0xc4, 0x07, 0x80, 0xf8, 0x04, 0x10, 0x5f, 0x00, 0xe2, 0x07, 0x40,
+	0xfc, 0xe2, 0x91, 0x1c, 0xc3, 0x07, 0x20, 0x9d, 0xc4, 0x06, 0xb6, 0xdd, 0x18, 0x10, 0x00, 0x00,
+	0xff, 0xff, 0xce, 0xd2, 0x68, 0xf3, 0x97, 0x00, 0x00, 0x00,
+}

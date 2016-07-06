@@ -36,7 +36,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/agl/ed25519"
-	"github.com/andres-erbsen/protobuf/jsonpb"
+	"github.com/maditya/protobuf/jsonpb"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 )

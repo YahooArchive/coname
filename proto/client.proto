@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "gogoproto/gogo.proto";
+import "github.com/maditya/protobuf/gogoproto/gogo.proto";
 import "timestamp.proto";
 
 service E2EKSPublic {
