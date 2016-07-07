@@ -4,16 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -29,19 +28,20 @@ var _ = math.Inf
 // Additional on-disk state is descried in server/table.go.
 type ReplicaState struct {
 	// cached values derived purely from the state of the log
-	NextIndexLog                    uint64         `protobuf:"varint,1,opt,name=next_index_log,proto3" json:"next_index_log,omitempty"`
-	NextIndexVerifier               uint64         `protobuf:"varint,2,opt,name=next_index_verifier,proto3" json:"next_index_verifier,omitempty"`
-	PreviousSummaryHash             []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
-	LastEpochDelimiter              EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter" json:"last_epoch_delimiter"`
-	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
-	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,proto3" json:"pending_updates,omitempty"`
+	NextIndexLog                    uint64         `protobuf:"varint,1,opt,name=next_index_log,json=nextIndexLog,proto3" json:"next_index_log,omitempty"`
+	NextIndexVerifier               uint64         `protobuf:"varint,2,opt,name=next_index_verifier,json=nextIndexVerifier,proto3" json:"next_index_verifier,omitempty"`
+	PreviousSummaryHash             []byte         `protobuf:"bytes,3,opt,name=previous_summary_hash,json=previousSummaryHash,proto3" json:"previous_summary_hash,omitempty"`
+	LastEpochDelimiter              EpochDelimiter `protobuf:"bytes,4,opt,name=last_epoch_delimiter,json=lastEpochDelimiter" json:"last_epoch_delimiter"`
+	ThisReplicaNeedsToSignLastEpoch bool           `protobuf:"varint,5,opt,name=this_replica_needs_to_sign_last_epoch,json=thisReplicaNeedsToSignLastEpoch,proto3" json:"this_replica_needs_to_sign_last_epoch,omitempty"`
+	PendingUpdates                  bool           `protobuf:"varint,6,opt,name=pending_updates,json=pendingUpdates,proto3" json:"pending_updates,omitempty"`
 	// local variables
-	LatestTreeSnapshot         uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
-	LastEpochNeedsRatification bool   `protobuf:"varint,8,opt,name=last_epoch_needs_ratification,proto3" json:"last_epoch_needs_ratification,omitempty"`
+	LatestTreeSnapshot         uint64 `protobuf:"varint,7,opt,name=latest_tree_snapshot,json=latestTreeSnapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	LastEpochNeedsRatification bool   `protobuf:"varint,8,opt,name=last_epoch_needs_ratification,json=lastEpochNeedsRatification,proto3" json:"last_epoch_needs_ratification,omitempty"`
 }
 
-func (m *ReplicaState) Reset()      { *m = ReplicaState{} }
-func (*ReplicaState) ProtoMessage() {}
+func (m *ReplicaState) Reset()                    { *m = ReplicaState{} }
+func (*ReplicaState) ProtoMessage()               {}
+func (*ReplicaState) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverlocal, []int{0} }
 
 func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 	if m != nil {
@@ -50,6 +50,9 @@ func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 	return EpochDelimiter{}
 }
 
+func init() {
+	proto1.RegisterType((*ReplicaState)(nil), "proto.ReplicaState")
+}
 func (this *ReplicaState) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -60,7 +63,12 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*ReplicaState)
 	if !ok {
-		return fmt.Errorf("that is not of type *ReplicaState")
+		that2, ok := that.(ReplicaState)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *ReplicaState")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -68,7 +76,7 @@ func (this *ReplicaState) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *ReplicaState but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *ReplicaStatebut is not nil && this == nil")
+		return fmt.Errorf("that is type *ReplicaState but is not nil && this == nil")
 	}
 	if this.NextIndexLog != that1.NextIndexLog {
 		return fmt.Errorf("NextIndexLog this(%v) Not Equal that(%v)", this.NextIndexLog, that1.NextIndexLog)
@@ -106,7 +114,12 @@ func (this *ReplicaState) Equal(that interface{}) bool {
 
 	that1, ok := that.(*ReplicaState)
 	if !ok {
-		return false
+		that2, ok := that.(ReplicaState)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -167,7 +180,7 @@ func valueToGoStringKeyserverlocal(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringKeyserverlocal(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringKeyserverlocal(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -209,13 +222,11 @@ func (m *ReplicaState) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintKeyserverlocal(data, i, uint64(m.NextIndexVerifier))
 	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintKeyserverlocal(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
+	if len(m.PreviousSummaryHash) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintKeyserverlocal(data, i, uint64(len(m.PreviousSummaryHash)))
+		i += copy(data[i:], m.PreviousSummaryHash)
 	}
 	data[i] = 0x22
 	i++
@@ -391,11 +402,9 @@ func (m *ReplicaState) Size() (n int) {
 	if m.NextIndexVerifier != 0 {
 		n += 1 + sovKeyserverlocal(uint64(m.NextIndexVerifier))
 	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovKeyserverlocal(uint64(l))
-		}
+	l = len(m.PreviousSummaryHash)
+	if l > 0 {
+		n += 1 + l + sovKeyserverlocal(uint64(l))
 	}
 	l = m.LastEpochDelimiter.Size()
 	n += 1 + l + sovKeyserverlocal(uint64(l))
@@ -545,7 +554,10 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.PreviousSummaryHash = append(m.PreviousSummaryHash[:0], data[iNdEx:postIndex]...)
+			if m.PreviousSummaryHash == nil {
+				m.PreviousSummaryHash = []byte{}
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -781,3 +793,35 @@ var (
 	ErrInvalidLengthKeyserverlocal = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowKeyserverlocal   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorKeyserverlocal = []byte{
+	// 434 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x54, 0x91, 0xb1, 0x6f, 0xd4, 0x30,
+	0x14, 0xc6, 0x2f, 0xf4, 0x5a, 0x2a, 0x73, 0x2a, 0xaa, 0xdb, 0x4a, 0xd1, 0x49, 0xa4, 0x08, 0x81,
+	0x60, 0xca, 0x55, 0x65, 0x61, 0xa5, 0x02, 0x09, 0xa4, 0xd2, 0x21, 0x29, 0xac, 0x96, 0x2f, 0x79,
+	0x97, 0x58, 0x24, 0x76, 0x64, 0x3b, 0x55, 0x6f, 0xe3, 0xcf, 0xe1, 0x4f, 0x60, 0x64, 0xec, 0xd8,
+	0x05, 0x89, 0x09, 0xb5, 0x9d, 0x18, 0x6f, 0x64, 0xe4, 0xc5, 0xce, 0x1d, 0xc7, 0xf0, 0x29, 0xce,
+	0xf7, 0xfb, 0x9e, 0xed, 0xf7, 0x4c, 0xf6, 0x3f, 0xc3, 0xdc, 0x80, 0xbe, 0x00, 0x5d, 0xa9, 0x8c,
+	0x57, 0x71, 0xa3, 0x95, 0x55, 0x74, 0xd3, 0x7d, 0xc6, 0x47, 0x85, 0xb0, 0x65, 0x3b, 0x8d, 0x33,
+	0x55, 0x4f, 0x6a, 0x9e, 0x0b, 0x3b, 0xe7, 0x13, 0x47, 0xa6, 0xed, 0x6c, 0x52, 0xa8, 0x42, 0xb9,
+	0x1f, 0xb7, 0xf2, 0x85, 0xe3, 0x5d, 0x0d, 0x4d, 0x25, 0x32, 0x6e, 0x85, 0x92, 0xde, 0x7a, 0xf2,
+	0x63, 0x83, 0x8c, 0x12, 0xef, 0xa6, 0x96, 0x5b, 0xa0, 0x4f, 0xc9, 0x8e, 0x84, 0x4b, 0xcb, 0x84,
+	0xcc, 0xe1, 0x92, 0x55, 0xaa, 0x08, 0x83, 0xc7, 0xc1, 0x8b, 0x61, 0x32, 0xea, 0xdc, 0xf7, 0x9d,
+	0x79, 0xaa, 0x0a, 0x1a, 0x93, 0xbd, 0xb5, 0x14, 0xde, 0x4f, 0xcc, 0x04, 0xe8, 0xf0, 0x9e, 0x8b,
+	0xee, 0xae, 0xa2, 0x9f, 0x7a, 0x40, 0x8f, 0xc9, 0x41, 0xa3, 0xe1, 0x42, 0xa8, 0xd6, 0x30, 0xd3,
+	0xd6, 0x35, 0xd7, 0x73, 0x56, 0x72, 0x53, 0x86, 0x1b, 0x58, 0x31, 0x4a, 0xf6, 0x96, 0x30, 0xf5,
+	0xec, 0x1d, 0x22, 0xfa, 0x81, 0xec, 0x57, 0xdc, 0x58, 0x06, 0x8d, 0xca, 0x4a, 0x96, 0x43, 0x25,
+	0x6a, 0x61, 0xf1, 0x90, 0x21, 0x96, 0x3c, 0x38, 0x3e, 0xf0, 0x0d, 0xc4, 0x6f, 0x3b, 0xfa, 0x66,
+	0x09, 0x4f, 0x86, 0x57, 0xbf, 0x0e, 0x07, 0x09, 0xed, 0x0a, 0xff, 0x27, 0xf4, 0x8c, 0x3c, 0xb3,
+	0xa5, 0x30, 0xac, 0x9f, 0x01, 0x93, 0x00, 0xb9, 0x61, 0x56, 0x31, 0x23, 0x0a, 0xc9, 0xfe, 0x9d,
+	0x14, 0x6e, 0xe2, 0xfe, 0xdb, 0xc9, 0x61, 0x17, 0xee, 0x27, 0x73, 0xd6, 0x45, 0xcf, 0x55, 0x8a,
+	0xc1, 0xd3, 0xe5, 0xc6, 0xf4, 0x39, 0x79, 0xd8, 0x80, 0xcc, 0x85, 0x2c, 0x58, 0xdb, 0xe4, 0x38,
+	0x3a, 0x13, 0x6e, 0xb9, 0xca, 0x9d, 0xde, 0xfe, 0xe8, 0x5d, 0x7a, 0xd4, 0xf5, 0x81, 0x0b, 0xcb,
+	0xac, 0x06, 0x60, 0x46, 0xf2, 0xc6, 0x94, 0xca, 0x86, 0xf7, 0xdd, 0xb0, 0xa8, 0x67, 0xe7, 0x88,
+	0xd2, 0x9e, 0xd0, 0xd7, 0xe4, 0xd1, 0x5a, 0xe7, 0xfe, 0xa2, 0x1a, 0x5f, 0x6d, 0xd6, 0xbf, 0x5d,
+	0xb8, 0xed, 0x0e, 0x1a, 0xaf, 0xba, 0x74, 0x17, 0x4c, 0xd6, 0x12, 0x27, 0xaf, 0xae, 0x6f, 0xa3,
+	0xc1, 0x4f, 0xd4, 0xcd, 0x6d, 0x14, 0x2c, 0x50, 0x7f, 0x50, 0x5f, 0xee, 0xa2, 0xe0, 0x2b, 0xea,
+	0x1b, 0xea, 0x3b, 0xea, 0x0a, 0x75, 0x8d, 0xba, 0x41, 0xfd, 0xbe, 0x8b, 0x06, 0x0b, 0xfc, 0x4e,
+	0xb7, 0xdc, 0x5c, 0x5f, 0xfe, 0x0d, 0x00, 0x00, 0xff, 0xff, 0xf4, 0x94, 0xcf, 0xd3, 0x7c, 0x02,
+	0x00, 0x00,
+}

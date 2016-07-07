@@ -7,11 +7,11 @@ package proto
 import testing "testing"
 import math_rand "math/rand"
 import time "time"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import github_com_andres_erbsen_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
+import github_com_maditya_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
 import fmt "fmt"
 import go_parser "go/parser"
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -23,12 +23,12 @@ func TestTimestampProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Timestamp{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -49,7 +49,7 @@ func TestTimestampProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -67,7 +67,7 @@ func TestTimestampMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Timestamp{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -90,7 +90,7 @@ func BenchmarkTimestampProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -104,7 +104,7 @@ func BenchmarkTimestampProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedTimestamp(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedTimestamp(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -114,7 +114,7 @@ func BenchmarkTimestampProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -125,13 +125,13 @@ func TestTimestampJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Timestamp{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -147,9 +147,9 @@ func TestTimestampProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &Timestamp{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -165,9 +165,9 @@ func TestTimestampProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &Timestamp{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -181,12 +181,12 @@ func TestTimestampProtoCompactText(t *testing.T) {
 func TestTimestampVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTimestamp(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Timestamp{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -210,8 +210,8 @@ func TestTimestampSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -222,7 +222,7 @@ func TestTimestampSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -252,4 +252,4 @@ func TestTimestampStringer(t *testing.T) {
 	}
 }
 
-//These tests are generated by github.com/andres-erbsen/protobuf/plugin/testgen
+//These tests are generated by github.com/maditya/protobuf/plugin/testgen

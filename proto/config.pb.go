@@ -4,16 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -29,8 +28,9 @@ type Config struct {
 	Realms []*RealmConfig `protobuf:"bytes,1,rep,name=realms" json:"realms,omitempty"`
 }
 
-func (m *Config) Reset()      { *m = Config{} }
-func (*Config) ProtoMessage() {}
+func (m *Config) Reset()                    { *m = Config{} }
+func (*Config) ProtoMessage()               {}
+func (*Config) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0} }
 
 func (m *Config) GetRealms() []*RealmConfig {
 	if m != nil {
@@ -42,7 +42,7 @@ func (m *Config) GetRealms() []*RealmConfig {
 type RealmConfig struct {
 	// RealmName is the canonical name of the realm. It is signed by the
 	// verifiers as a part of the epoch head.
-	RealmName string `protobuf:"bytes,1,opt,name=RealmName,proto3" json:"RealmName,omitempty"`
+	RealmName string `protobuf:"bytes,1,opt,name=RealmName,json=realmName,proto3" json:"RealmName,omitempty"`
 	// Domains specifies a list of domains that belong to this realm.
 	// Configuring one domain to belong to multiple realms is considered an
 	// error.
@@ -52,27 +52,28 @@ type RealmConfig struct {
 	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
-	URL string `protobuf:"bytes,4,opt,name=URL,proto3" json:"URL,omitempty"`
+	URL string `protobuf:"bytes,4,opt,name=URL,json=uRL,proto3" json:"URL,omitempty"`
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
 	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
-	VRFPublic []byte `protobuf:"bytes,5,opt,name=VRFPublic,proto3" json:"VRFPublic,omitempty"`
+	VRFPublic []byte `protobuf:"bytes,5,opt,name=VRFPublic,json=vRFPublic,proto3" json:"VRFPublic,omitempty"`
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
-	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,6,opt,name=verification_policy" json:"verification_policy,omitempty"`
+	VerificationPolicy *AuthorizationPolicy `protobuf:"bytes,6,opt,name=verification_policy,json=verificationPolicy" json:"verification_policy,omitempty"`
 	// EpochTimeToLive specifies the duration for which an epoch is valid after
 	// it has been issued. A client that has access to a clock MUST NOT accept
 	// epoch heads with IssueTime more than EpochTimeToLive in the past.
-	EpochTimeToLive Duration `protobuf:"bytes,7,opt,name=epoch_time_to_live" json:"epoch_time_to_live"`
+	EpochTimeToLive Duration `protobuf:"bytes,7,opt,name=epoch_time_to_live,json=epochTimeToLive" json:"epoch_time_to_live"`
 	// TreeNonce is the global nonce that is hashed into the Merkle tree nodes.
-	TreeNonce []byte     `protobuf:"bytes,8,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
-	ClientTLS *TLSConfig `protobuf:"bytes,9,opt,name=client_tls" json:"client_tls,omitempty"`
+	TreeNonce []byte     `protobuf:"bytes,8,opt,name=tree_nonce,json=treeNonce,proto3" json:"tree_nonce,omitempty"`
+	ClientTLS *TLSConfig `protobuf:"bytes,9,opt,name=client_tls,json=clientTls" json:"client_tls,omitempty"`
 }
 
-func (m *RealmConfig) Reset()      { *m = RealmConfig{} }
-func (*RealmConfig) ProtoMessage() {}
+func (m *RealmConfig) Reset()                    { *m = RealmConfig{} }
+func (*RealmConfig) ProtoMessage()               {}
+func (*RealmConfig) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{1} }
 
 func (m *RealmConfig) GetVerificationPolicy() *AuthorizationPolicy {
 	if m != nil {
@@ -95,6 +96,10 @@ func (m *RealmConfig) GetClientTLS() *TLSConfig {
 	return nil
 }
 
+func init() {
+	proto1.RegisterType((*Config)(nil), "proto.Config")
+	proto1.RegisterType((*RealmConfig)(nil), "proto.RealmConfig")
+}
 func (this *Config) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -105,7 +110,12 @@ func (this *Config) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*Config)
 	if !ok {
-		return fmt.Errorf("that is not of type *Config")
+		that2, ok := that.(Config)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *Config")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -113,7 +123,7 @@ func (this *Config) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *Config but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *Configbut is not nil && this == nil")
+		return fmt.Errorf("that is type *Config but is not nil && this == nil")
 	}
 	if len(this.Realms) != len(that1.Realms) {
 		return fmt.Errorf("Realms this(%v) Not Equal that(%v)", len(this.Realms), len(that1.Realms))
@@ -135,7 +145,12 @@ func (this *Config) Equal(that interface{}) bool {
 
 	that1, ok := that.(*Config)
 	if !ok {
-		return false
+		that2, ok := that.(Config)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -165,7 +180,12 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*RealmConfig)
 	if !ok {
-		return fmt.Errorf("that is not of type *RealmConfig")
+		that2, ok := that.(RealmConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RealmConfig")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -173,7 +193,7 @@ func (this *RealmConfig) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *RealmConfig but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RealmConfigbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RealmConfig but is not nil && this == nil")
 	}
 	if this.RealmName != that1.RealmName {
 		return fmt.Errorf("RealmName this(%v) Not Equal that(%v)", this.RealmName, that1.RealmName)
@@ -219,7 +239,12 @@ func (this *RealmConfig) Equal(that interface{}) bool {
 
 	that1, ok := that.(*RealmConfig)
 	if !ok {
-		return false
+		that2, ok := that.(RealmConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -305,7 +330,7 @@ func valueToGoStringConfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringConfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringConfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -400,13 +425,11 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
 		i += copy(data[i:], m.URL)
 	}
-	if m.VRFPublic != nil {
-		if len(m.VRFPublic) > 0 {
-			data[i] = 0x2a
-			i++
-			i = encodeVarintConfig(data, i, uint64(len(m.VRFPublic)))
-			i += copy(data[i:], m.VRFPublic)
-		}
+	if len(m.VRFPublic) > 0 {
+		data[i] = 0x2a
+		i++
+		i = encodeVarintConfig(data, i, uint64(len(m.VRFPublic)))
+		i += copy(data[i:], m.VRFPublic)
 	}
 	if m.VerificationPolicy != nil {
 		data[i] = 0x32
@@ -426,13 +449,11 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 		return 0, err
 	}
 	i += n2
-	if m.TreeNonce != nil {
-		if len(m.TreeNonce) > 0 {
-			data[i] = 0x42
-			i++
-			i = encodeVarintConfig(data, i, uint64(len(m.TreeNonce)))
-			i += copy(data[i:], m.TreeNonce)
-		}
+	if len(m.TreeNonce) > 0 {
+		data[i] = 0x42
+		i++
+		i = encodeVarintConfig(data, i, uint64(len(m.TreeNonce)))
+		i += copy(data[i:], m.TreeNonce)
 	}
 	if m.ClientTLS != nil {
 		data[i] = 0x4a
@@ -476,8 +497,8 @@ func encodeVarintConfig(data []byte, offset int, v uint64) int {
 }
 func NewPopulatedConfig(r randyConfig, easy bool) *Config {
 	this := &Config{}
-	if r.Intn(10) != 0 {
-		v1 := r.Intn(10)
+	if r.Intn(10) == 0 {
+		v1 := r.Intn(5)
 		this.Realms = make([]*RealmConfig, v1)
 		for i := 0; i < v1; i++ {
 			this.Realms[i] = NewPopulatedRealmConfig(r, easy)
@@ -503,7 +524,7 @@ func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	for i := 0; i < v3; i++ {
 		this.VRFPublic[i] = byte(r.Intn(256))
 	}
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.VerificationPolicy = NewPopulatedAuthorizationPolicy(r, easy)
 	}
 	v4 := NewPopulatedDuration(r, easy)
@@ -626,11 +647,9 @@ func (m *RealmConfig) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
-	if m.VRFPublic != nil {
-		l = len(m.VRFPublic)
-		if l > 0 {
-			n += 1 + l + sovConfig(uint64(l))
-		}
+	l = len(m.VRFPublic)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
 	}
 	if m.VerificationPolicy != nil {
 		l = m.VerificationPolicy.Size()
@@ -638,11 +657,9 @@ func (m *RealmConfig) Size() (n int) {
 	}
 	l = m.EpochTimeToLive.Size()
 	n += 1 + l + sovConfig(uint64(l))
-	if m.TreeNonce != nil {
-		l = len(m.TreeNonce)
-		if l > 0 {
-			n += 1 + l + sovConfig(uint64(l))
-		}
+	l = len(m.TreeNonce)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
 	}
 	if m.ClientTLS != nil {
 		l = m.ClientTLS.Size()
@@ -952,7 +969,10 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.VRFPublic = append([]byte{}, data[iNdEx:postIndex]...)
+			m.VRFPublic = append(m.VRFPublic[:0], data[iNdEx:postIndex]...)
+			if m.VRFPublic == nil {
+				m.VRFPublic = []byte{}
+			}
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -1043,7 +1063,10 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TreeNonce = append([]byte{}, data[iNdEx:postIndex]...)
+			m.TreeNonce = append(m.TreeNonce[:0], data[iNdEx:postIndex]...)
+			if m.TreeNonce == nil {
+				m.TreeNonce = []byte{}
+			}
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
@@ -1203,3 +1226,34 @@ var (
 	ErrInvalidLengthConfig = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowConfig   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorConfig = []byte{
+	// 427 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x51, 0xbf, 0x6f, 0x13, 0x31,
+	0x18, 0x4d, 0x9a, 0x34, 0xc5, 0x4e, 0x20, 0x95, 0x59, 0xac, 0x08, 0x52, 0xd4, 0xa9, 0x62, 0x48,
+	0x50, 0x61, 0x60, 0x42, 0xe2, 0x8a, 0x58, 0x38, 0x55, 0x95, 0x39, 0x58, 0x4f, 0xf7, 0xc3, 0xb9,
+	0x58, 0xba, 0x3b, 0x47, 0x3e, 0x5f, 0xa4, 0x32, 0xf1, 0xe7, 0xf0, 0x27, 0x30, 0x32, 0x76, 0xec,
+	0xc8, 0x54, 0xb5, 0x99, 0x18, 0x33, 0xc2, 0xc6, 0x77, 0x9f, 0x2f, 0x52, 0x86, 0x27, 0xfb, 0xbd,
+	0x7b, 0xef, 0xf9, 0xec, 0x8f, 0x8e, 0x12, 0x5d, 0x2e, 0x54, 0x36, 0x5b, 0x19, 0x6d, 0x35, 0x3b,
+	0xc4, 0x65, 0xf2, 0x2a, 0x53, 0x76, 0x59, 0xc7, 0xb3, 0x44, 0x17, 0xf3, 0x22, 0x4a, 0x95, 0xbd,
+	0x8e, 0xe6, 0xf8, 0x25, 0xae, 0x17, 0xf3, 0x4c, 0x67, 0x1a, 0x09, 0xee, 0x5c, 0x70, 0x32, 0x4a,
+	0x72, 0x25, 0x4b, 0xdb, 0xb2, 0x27, 0x69, 0x6d, 0x22, 0xab, 0x74, 0xd9, 0xf2, 0xb1, 0xcd, 0xab,
+	0xfd, 0x73, 0x4e, 0xdf, 0xd0, 0xc1, 0x05, 0x72, 0xf6, 0x92, 0x0e, 0x8c, 0x8c, 0xf2, 0xa2, 0xe2,
+	0xdd, 0x17, 0xbd, 0xb3, 0xe1, 0x39, 0x73, 0x8e, 0x99, 0x68, 0x44, 0xe7, 0x11, 0xad, 0xe3, 0xf4,
+	0xdf, 0x01, 0x1d, 0xee, 0xe9, 0xec, 0x19, 0x25, 0x48, 0x2f, 0xa3, 0x42, 0x42, 0xbc, 0x7b, 0x46,
+	0x04, 0x31, 0x3b, 0x81, 0x71, 0x7a, 0x94, 0xea, 0x22, 0x52, 0x65, 0xc5, 0x0f, 0xa0, 0x9a, 0x88,
+	0x1d, 0x65, 0x8c, 0xf6, 0xa3, 0x34, 0x35, 0xbc, 0x87, 0x11, 0xdc, 0xb3, 0x63, 0xda, 0xfb, 0x22,
+	0x7c, 0xde, 0x47, 0xa9, 0x57, 0x0b, 0xbf, 0x69, 0xff, 0x2a, 0x3e, 0x5e, 0xd5, 0x71, 0xae, 0x12,
+	0x7e, 0x08, 0xfa, 0x48, 0x90, 0xf5, 0x4e, 0x60, 0x9f, 0xe8, 0xd3, 0xb5, 0x34, 0x6a, 0xa1, 0x12,
+	0xbc, 0x68, 0xb8, 0xd2, 0xa0, 0x5e, 0xf3, 0x01, 0xf8, 0x86, 0xe7, 0x93, 0xf6, 0x12, 0xef, 0x6b,
+	0xbb, 0xd4, 0x46, 0x7d, 0x43, 0xcb, 0x15, 0x3a, 0x04, 0xdb, 0x8f, 0x39, 0x8d, 0x79, 0x94, 0xc9,
+	0x95, 0x4e, 0x96, 0xa1, 0x55, 0x85, 0x0c, 0xad, 0x0e, 0x73, 0xb5, 0x96, 0xfc, 0x08, 0xbb, 0xc6,
+	0x6d, 0xd7, 0x87, 0xf6, 0x49, 0xbd, 0xfe, 0xcd, 0xdd, 0x49, 0x47, 0x8c, 0x31, 0x10, 0x80, 0x3f,
+	0xd0, 0x3e, 0xb8, 0xd9, 0x73, 0x4a, 0xad, 0x91, 0x32, 0x2c, 0x75, 0x99, 0x48, 0xfe, 0xc8, 0xfd,
+	0x6f, 0xa3, 0x5c, 0x36, 0x02, 0x7b, 0x47, 0xa9, 0x1b, 0x51, 0x08, 0xb3, 0xe0, 0x04, 0xab, 0x8f,
+	0xdb, 0xea, 0xc0, 0xff, 0xec, 0x5e, 0xd4, 0x7b, 0xbc, 0xb9, 0x3b, 0x21, 0x17, 0xe8, 0x03, 0x51,
+	0x10, 0x17, 0x09, 0xf2, 0xca, 0x7b, 0x7b, 0xfb, 0x30, 0xed, 0xfc, 0x06, 0xdc, 0x3f, 0x4c, 0xbb,
+	0x5b, 0xc0, 0x5f, 0xc0, 0xf7, 0xcd, 0xb4, 0xfb, 0x03, 0xf0, 0x13, 0xf0, 0x0b, 0x70, 0x03, 0xb8,
+	0x05, 0xdc, 0x03, 0xfe, 0x6c, 0xa6, 0x9d, 0x2d, 0xac, 0xf1, 0x00, 0x0f, 0x79, 0xfd, 0x3f, 0x00,
+	0x00, 0xff, 0xff, 0xdc, 0xed, 0x4e, 0x79, 0x6a, 0x02, 0x00, 0x00,
+}

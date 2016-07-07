@@ -52,7 +52,7 @@ var _ grpc.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion2
+const _ = grpc.SupportPackageIsVersion3
 
 // Client API for Raft service
 
@@ -114,7 +114,8 @@ var _Raft_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Raft_Step_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: fileDescriptorRaftrpc,
 }
 
 func (m *Nothing) Marshal() (data []byte, err error) {

@@ -4,16 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -29,32 +28,32 @@ var _ = math.Inf
 // keyserver. It is valid to have just one replica, but a larger odd number is
 // desirable for availability.
 type ReplicaConfig struct {
-	KeyserverConfig `protobuf:"bytes,1,opt,name=keyserver_config,embedded=keyserver_config" json:"keyserver_config"`
+	KeyserverConfig `protobuf:"bytes,1,opt,name=keyserver_config,json=keyserverConfig,embedded=keyserver_config" json:"keyserver_config"`
 	// ReplicaID is a globally unique identifier. See Replica.ID.
-	ReplicaID uint64 `protobuf:"varint,2,opt,name=replica_id,proto3" json:"replica_id,omitempty"`
+	ReplicaID uint64 `protobuf:"varint,2,opt,name=replica_id,json=replicaId,proto3" json:"replica_id,omitempty"`
 	// SigningKeyID specifies the signing key by reference. The mechanism of
 	// loading keys depends on the deployment scenario; by default, the key
 	// identifier is a path to a file containing the key.
-	SigningKeyID  string    `protobuf:"bytes,3,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
-	PublicAddr    string    `protobuf:"bytes,4,opt,name=public_addr,proto3" json:"public_addr,omitempty"`
-	PublicTLS     TLSConfig `protobuf:"bytes,5,opt,name=public_tls" json:"public_tls"`
-	VerifierAddr  string    `protobuf:"bytes,6,opt,name=verifier_addr,proto3" json:"verifier_addr,omitempty"`
-	VerifierTLS   TLSConfig `protobuf:"bytes,7,opt,name=verifier_tls" json:"verifier_tls"`
-	HKPAddr       string    `protobuf:"bytes,8,opt,name=hkp_addr,proto3" json:"hkp_addr,omitempty"`
-	HKPTLS        TLSConfig `protobuf:"bytes,9,opt,name=hkp_tls" json:"hkp_tls"`
-	HTTPFrontAddr string    `protobuf:"bytes,10,opt,name=httpfront_addr,proto3" json:"httpfront_addr,omitempty"`
-	HTTPFrontTLS  TLSConfig `protobuf:"bytes,11,opt,name=httpfront_tls" json:"httpfront_tls"`
-	RaftAddr      string    `protobuf:"bytes,12,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
-	RaftTLS       TLSConfig `protobuf:"bytes,13,opt,name=raft_tls" json:"raft_tls"`
+	SigningKeyID  string    `protobuf:"bytes,3,opt,name=signing_key_id,json=signingKeyId,proto3" json:"signing_key_id,omitempty"`
+	PublicAddr    string    `protobuf:"bytes,4,opt,name=public_addr,json=publicAddr,proto3" json:"public_addr,omitempty"`
+	PublicTLS     TLSConfig `protobuf:"bytes,5,opt,name=public_tls,json=publicTls" json:"public_tls"`
+	VerifierAddr  string    `protobuf:"bytes,6,opt,name=verifier_addr,json=verifierAddr,proto3" json:"verifier_addr,omitempty"`
+	VerifierTLS   TLSConfig `protobuf:"bytes,7,opt,name=verifier_tls,json=verifierTls" json:"verifier_tls"`
+	HKPAddr       string    `protobuf:"bytes,8,opt,name=hkp_addr,json=hkpAddr,proto3" json:"hkp_addr,omitempty"`
+	HKPTLS        TLSConfig `protobuf:"bytes,9,opt,name=hkp_tls,json=hkpTls" json:"hkp_tls"`
+	HTTPFrontAddr string    `protobuf:"bytes,10,opt,name=httpfront_addr,json=httpfrontAddr,proto3" json:"httpfront_addr,omitempty"`
+	HTTPFrontTLS  TLSConfig `protobuf:"bytes,11,opt,name=httpfront_tls,json=httpfrontTls" json:"httpfront_tls"`
+	RaftAddr      string    `protobuf:"bytes,12,opt,name=raft_addr,json=raftAddr,proto3" json:"raft_addr,omitempty"`
+	RaftTLS       TLSConfig `protobuf:"bytes,13,opt,name=raft_tls,json=raftTls" json:"raft_tls"`
 	// LevelDBPath specifies the directory in which the database is stored.
 	// Nothing else should use this directory.
-	LevelDBPath string `protobuf:"bytes,14,opt,name=leveldb_path,proto3" json:"leveldb_path,omitempty"`
+	LevelDBPath string `protobuf:"bytes,14,opt,name=leveldb_path,json=leveldbPath,proto3" json:"leveldb_path,omitempty"`
 	// RaftHeartbeat specifies the interval between successive heartbeat
 	// messages sent by the replicated state machine controller. Lowering the
 	// heartbeat interval generates more network traffic; increasing the
 	// interval increases the time it takes to detect a failed replica and
 	// perform an automated failover.
-	RaftHeartbeat Duration `protobuf:"bytes,15,opt,name=raft_heartbeat" json:"raft_heartbeat"`
+	RaftHeartbeat Duration `protobuf:"bytes,15,opt,name=raft_heartbeat,json=raftHeartbeat" json:"raft_heartbeat"`
 	// LaggingVerifierScan specifies the maximum number of epochs by which a
 	// verifier can be lagging us for us to still serve its signature to
 	// clients. Finding the verifier signatures is currently implemented using a
@@ -64,15 +63,16 @@ type ReplicaConfig struct {
 	// clear need for it -- the epochs far in the past will probably have
 	// expired anyway. The zero value means no limit, but it should be used for
 	// testing only. The recommended value is 1000.
-	LaggingVerifierScan uint64 `protobuf:"varint,16,opt,name=lagging_verifier_scan,proto3" json:"lagging_verifier_scan,omitempty"`
+	LaggingVerifierScan uint64 `protobuf:"varint,16,opt,name=lagging_verifier_scan,json=laggingVerifierScan,proto3" json:"lagging_verifier_scan,omitempty"`
 	// ClientTimeout specifies the maximum amount of time the server is willing
 	// to allow from the start of a client request to until it is handled. The
 	// zero value means no limit.
-	ClientTimeout Duration `protobuf:"bytes,17,opt,name=client_timeout" json:"client_timeout"`
+	ClientTimeout Duration `protobuf:"bytes,17,opt,name=client_timeout,json=clientTimeout" json:"client_timeout"`
 }
 
-func (m *ReplicaConfig) Reset()      { *m = ReplicaConfig{} }
-func (*ReplicaConfig) ProtoMessage() {}
+func (m *ReplicaConfig) Reset()                    { *m = ReplicaConfig{} }
+func (*ReplicaConfig) ProtoMessage()               {}
+func (*ReplicaConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{0} }
 
 func (m *ReplicaConfig) GetPublicTLS() TLSConfig {
 	if m != nil {
@@ -129,7 +129,7 @@ type KeyserverConfig struct {
 	// ServerID is deprecated and should not be used. TODO: remove.  Signatures
 	// should be tagged with ReplicaIDs, and the realm can be used to refer to
 	// the keyserver as a whole.
-	ServerID uint64 `protobuf:"varint,1,opt,name=server_id,proto3" json:"server_id,omitempty"`
+	ServerID uint64 `protobuf:"varint,1,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
 	// Realm specifies the general set of users whose keys this keyserver
 	// manages. If the user identifiers are email addresses, the realm should
 	// match the domain name in the email address.
@@ -138,13 +138,13 @@ type KeyserverConfig struct {
 	// reference. The mechanism of loading keys depends on the deployment
 	// scenario; by default, the key identifier is a path to a file containing
 	// the key.
-	VRFKeyID string `protobuf:"bytes,3,opt,name=vrf_key_id,proto3" json:"vrf_key_id,omitempty"`
+	VRFKeyID string `protobuf:"bytes,3,opt,name=vrf_key_id,json=vrfKeyId,proto3" json:"vrf_key_id,omitempty"`
 	// MinEpochInterval specifies the time for which the keyserver stops
 	// proposing new epochs once an epoch has been committed. The zero value
 	// means no delay. After MinEpochInterval since the last epoch, the
 	// keyserver will propose a new epoch as soon as an update has been
 	// committed.
-	MinEpochInterval Duration `protobuf:"bytes,4,opt,name=min_epoch_interval" json:"min_epoch_interval"`
+	MinEpochInterval Duration `protobuf:"bytes,4,opt,name=min_epoch_interval,json=minEpochInterval" json:"min_epoch_interval"`
 	// MaxEpochInterval specifies the time after which the keyserver will
 	// propose a new epoch even if there have been no updates since the last
 	// epoch. Vouching for the lack of updates is important to ensure the users
@@ -153,25 +153,26 @@ type KeyserverConfig struct {
 	// most MaxEpochInterval apart. The actual time between by epochs is
 	// MaxEpochInterval plus however long it takes to commit and sign a new
 	// epoch.
-	MaxEpochInterval Duration `protobuf:"bytes,5,opt,name=max_epoch_interval" json:"max_epoch_interval"`
+	MaxEpochInterval Duration `protobuf:"bytes,5,opt,name=max_epoch_interval,json=maxEpochInterval" json:"max_epoch_interval"`
 	// ProposalRetryInterval specifies the time after an unsuccessful proposal
 	// after which the proposal will be retried. A lower value will generate
 	// more redundant network traffic while a higher value will improve
 	// responsiveness in presence of network or node failures (bounded below by
 	// the raft failover time).
-	ProposalRetryInterval Duration `protobuf:"bytes,6,opt,name=proposal_retry_interval" json:"proposal_retry_interval"`
+	ProposalRetryInterval Duration `protobuf:"bytes,6,opt,name=proposal_retry_interval,json=proposalRetryInterval" json:"proposal_retry_interval"`
 	// InitialReplicas contains the cluster configuration at the beginning of
 	// time. It MUST NOT be modified ever after, and it MUST be the same for
 	// all replicas. Use AddReplica and RemoveReplica to change the current
 	// cluster configuration.
-	InitialReplicas []*Replica `protobuf:"bytes,7,rep,name=initial_replicas" json:"initial_replicas,omitempty"`
+	InitialReplicas []*Replica `protobuf:"bytes,7,rep,name=initial_replicas,json=initialReplicas" json:"initial_replicas,omitempty"`
 	// Keyserver may support multiple registration policies at a time.
 	// A policy is acceptable only for the domains it supports.
-	RegistrationPolicy []*RegistrationPolicy `protobuf:"bytes,8,rep,name=registration_policy" json:"registration_policy,omitempty"`
+	RegistrationPolicy []*RegistrationPolicy `protobuf:"bytes,8,rep,name=registration_policy,json=registrationPolicy" json:"registration_policy,omitempty"`
 }
 
-func (m *KeyserverConfig) Reset()      { *m = KeyserverConfig{} }
-func (*KeyserverConfig) ProtoMessage() {}
+func (m *KeyserverConfig) Reset()                    { *m = KeyserverConfig{} }
+func (*KeyserverConfig) ProtoMessage()               {}
+func (*KeyserverConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{1} }
 
 func (m *KeyserverConfig) GetMinEpochInterval() Duration {
 	if m != nil {
@@ -222,6 +223,9 @@ type RegistrationPolicy struct {
 
 func (m *RegistrationPolicy) Reset()      { *m = RegistrationPolicy{} }
 func (*RegistrationPolicy) ProtoMessage() {}
+func (*RegistrationPolicy) Descriptor() ([]byte, []int) {
+	return fileDescriptorKeyserverconfig, []int{2}
+}
 
 type isRegistrationPolicy_PolicyType interface {
 	isRegistrationPolicy_PolicyType()
@@ -232,19 +236,19 @@ type isRegistrationPolicy_PolicyType interface {
 }
 
 type RegistrationPolicy_InsecureSkipEmailProof struct {
-	InsecureSkipEmailProof bool `protobuf:"varint,1,opt,name=insecure_skip_email_proof,proto3,oneof"`
+	InsecureSkipEmailProof bool `protobuf:"varint,1,opt,name=insecure_skip_email_proof,json=insecureSkipEmailProof,proto3,oneof"`
 }
 type RegistrationPolicy_EmailProofByDKIM struct {
-	EmailProofByDKIM *EmailProofByDKIM `protobuf:"bytes,2,opt,name=email_proof_by_dkim,oneof"`
+	EmailProofByDKIM *EmailProofByDKIM `protobuf:"bytes,2,opt,name=email_proof_by_dkim,json=emailProofByDkim,oneof"`
 }
 type RegistrationPolicy_EmailProofByClientCert struct {
-	EmailProofByClientCert *EmailProofByClientCert `protobuf:"bytes,3,opt,name=email_proof_by_client_cert,oneof"`
+	EmailProofByClientCert *EmailProofByClientCert `protobuf:"bytes,3,opt,name=email_proof_by_client_cert,json=emailProofByClientCert,oneof"`
 }
 type RegistrationPolicy_EmailProofByOIDC struct {
-	EmailProofByOIDC *EmailProofByOIDC `protobuf:"bytes,4,opt,name=email_proof_by_oidc,oneof"`
+	EmailProofByOIDC *EmailProofByOIDC `protobuf:"bytes,4,opt,name=email_proof_by_oidc,json=emailProofByOidc,oneof"`
 }
 type RegistrationPolicy_EmailProofBySAML struct {
-	EmailProofBySAML *EmailProofBySAML `protobuf:"bytes,5,opt,name=email_proof_by_saml,oneof"`
+	EmailProofBySAML *EmailProofBySAML `protobuf:"bytes,5,opt,name=email_proof_by_saml,json=emailProofBySaml,oneof"`
 }
 
 func (*RegistrationPolicy_InsecureSkipEmailProof) isRegistrationPolicy_PolicyType() {}
@@ -296,8 +300,8 @@ func (m *RegistrationPolicy) GetEmailProofBySAML() *EmailProofBySAML {
 }
 
 // XXX_OneofFuncs is for the internal use of the proto package.
-func (*RegistrationPolicy) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), []interface{}) {
-	return _RegistrationPolicy_OneofMarshaler, _RegistrationPolicy_OneofUnmarshaler, []interface{}{
+func (*RegistrationPolicy) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
+	return _RegistrationPolicy_OneofMarshaler, _RegistrationPolicy_OneofUnmarshaler, _RegistrationPolicy_OneofSizer, []interface{}{
 		(*RegistrationPolicy_InsecureSkipEmailProof)(nil),
 		(*RegistrationPolicy_EmailProofByDKIM)(nil),
 		(*RegistrationPolicy_EmailProofByClientCert)(nil),
@@ -391,26 +395,61 @@ func _RegistrationPolicy_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *
 	}
 }
 
+func _RegistrationPolicy_OneofSizer(msg proto1.Message) (n int) {
+	m := msg.(*RegistrationPolicy)
+	// policy_type
+	switch x := m.PolicyType.(type) {
+	case *RegistrationPolicy_InsecureSkipEmailProof:
+		n += proto1.SizeVarint(1<<3 | proto1.WireVarint)
+		n += 1
+	case *RegistrationPolicy_EmailProofByDKIM:
+		s := proto1.Size(x.EmailProofByDKIM)
+		n += proto1.SizeVarint(2<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *RegistrationPolicy_EmailProofByClientCert:
+		s := proto1.Size(x.EmailProofByClientCert)
+		n += proto1.SizeVarint(3<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *RegistrationPolicy_EmailProofByOIDC:
+		s := proto1.Size(x.EmailProofByOIDC)
+		n += proto1.SizeVarint(4<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case *RegistrationPolicy_EmailProofBySAML:
+		s := proto1.Size(x.EmailProofBySAML)
+		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
+	case nil:
+	default:
+		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
+	}
+	return n
+}
+
 type EmailProofByDKIM struct {
 	// AllowedDomains specifies the domains for which this keyserver accepts
 	// email address registrations.
-	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains" json:"allowed_domains,omitempty"`
+	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains,json=allowedDomains" json:"allowed_domains,omitempty"`
 	// ToAddr specifies the additional allowed to address in email proofs. By
 	// default, only proofs sent to the user being registered all accepted.
 	// This option can be used to allow proofs emailed directly to the
 	// keyserver to be accepted (but the keyserver does NOT implement a SMTP
 	// interface right now).
-	ToAddr string `protobuf:"bytes,2,opt,name=to_addr,proto3" json:"to_addr,omitempty"`
+	ToAddr string `protobuf:"bytes,2,opt,name=to_addr,json=toAddr,proto3" json:"to_addr,omitempty"`
 	// SubjectPrefix is used for DKIM-based email address registration.  The
 	// proof challenge is sent in the subject line, with an optional string
 	// preceding it. For example, if EmailProofSubjectPrefix = "account
 	// verification: ", then the proof email needs to have a subject line
 	// "account verification: abcd" for verify challenge abcd.
-	SubjectPrefix string `protobuf:"bytes,3,opt,name=subject_prefix,proto3" json:"subject_prefix,omitempty"`
+	SubjectPrefix string `protobuf:"bytes,3,opt,name=subject_prefix,json=subjectPrefix,proto3" json:"subject_prefix,omitempty"`
 }
 
-func (m *EmailProofByDKIM) Reset()      { *m = EmailProofByDKIM{} }
-func (*EmailProofByDKIM) ProtoMessage() {}
+func (m *EmailProofByDKIM) Reset()                    { *m = EmailProofByDKIM{} }
+func (*EmailProofByDKIM) ProtoMessage()               {}
+func (*EmailProofByDKIM) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{3} }
 
 // EmailProofByClientCert accepts a certificate signed by an authority trusted
 // with handling registration as sufficient confirmation of ownership of an
@@ -420,24 +459,28 @@ func (*EmailProofByDKIM) ProtoMessage() {}
 type EmailProofByClientCert struct {
 	// AllowedDomains specifies the domains for which this keyserver accepts
 	// email address registrations by this policy.
-	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains" json:"allowed_domains,omitempty"`
+	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains,json=allowedDomains" json:"allowed_domains,omitempty"`
 	// CaCert contains the trusted certificate authority certificate in DER format.
-	CaCert []byte `protobuf:"bytes,2,opt,name=ca_cert,proto3" json:"ca_cert,omitempty"`
+	CaCert []byte `protobuf:"bytes,2,opt,name=ca_cert,json=caCert,proto3" json:"ca_cert,omitempty"`
 }
 
 func (m *EmailProofByClientCert) Reset()      { *m = EmailProofByClientCert{} }
 func (*EmailProofByClientCert) ProtoMessage() {}
+func (*EmailProofByClientCert) Descriptor() ([]byte, []int) {
+	return fileDescriptorKeyserverconfig, []int{4}
+}
 
 // EmailProofByOIDC accepts an ID token fetched from an OpenID Connect provider
 // and validates it as specified in the configuration. The token must have a
 // valid signature, not expired, signed by the expected provider and must contain
 // the expected Client ID
 type EmailProofByOIDC struct {
-	OIDCConfig []*OIDCConfig `protobuf:"bytes,1,rep,name=oidc_config" json:"oidc_config,omitempty"`
+	OIDCConfig []*OIDCConfig `protobuf:"bytes,1,rep,name=oidc_config,json=oidcConfig" json:"oidc_config,omitempty"`
 }
 
-func (m *EmailProofByOIDC) Reset()      { *m = EmailProofByOIDC{} }
-func (*EmailProofByOIDC) ProtoMessage() {}
+func (m *EmailProofByOIDC) Reset()                    { *m = EmailProofByOIDC{} }
+func (*EmailProofByOIDC) ProtoMessage()               {}
+func (*EmailProofByOIDC) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{5} }
 
 func (m *EmailProofByOIDC) GetOIDCConfig() []*OIDCConfig {
 	if m != nil {
@@ -452,17 +495,18 @@ func (m *EmailProofByOIDC) GetOIDCConfig() []*OIDCConfig {
 type EmailProofBySAML struct {
 	// AllowedDomains specifies the domains for which this keyserver accepts
 	// email address registrations by this policy.
-	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains" json:"allowed_domains,omitempty"`
+	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains,json=allowedDomains" json:"allowed_domains,omitempty"`
 	// IdPMetadataURL specifies the location of Identity Provider metadata
 	// Identity provider's x509 cert and SSO URL is included in this metadata
-	IDPMetadataURL string `protobuf:"bytes,2,opt,name=idp_metadata_url,proto3" json:"idp_metadata_url,omitempty"`
+	IDPMetadataURL string `protobuf:"bytes,2,opt,name=idp_metadata_url,json=idpMetadataUrl,proto3" json:"idp_metadata_url,omitempty"`
 	// ConsumerServiceURL contains the AssertionConsumerServiceURL
-	ConsumerServiceURL string    `protobuf:"bytes,4,opt,name=consumer_service_url,proto3" json:"consumer_service_url,omitempty"`
-	ServiceProviderTLS TLSConfig `protobuf:"bytes,5,opt,name=service_provider_tls" json:"service_provider_tls"`
+	ConsumerServiceURL string    `protobuf:"bytes,4,opt,name=consumer_service_url,json=consumerServiceUrl,proto3" json:"consumer_service_url,omitempty"`
+	ServiceProviderTLS TLSConfig `protobuf:"bytes,5,opt,name=service_provider_tls,json=serviceProviderTls" json:"service_provider_tls"`
 }
 
-func (m *EmailProofBySAML) Reset()      { *m = EmailProofBySAML{} }
-func (*EmailProofBySAML) ProtoMessage() {}
+func (m *EmailProofBySAML) Reset()                    { *m = EmailProofBySAML{} }
+func (*EmailProofBySAML) ProtoMessage()               {}
+func (*EmailProofBySAML) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{6} }
 
 func (m *EmailProofBySAML) GetServiceProviderTLS() TLSConfig {
 	if m != nil {
@@ -476,10 +520,10 @@ func (m *EmailProofBySAML) GetServiceProviderTLS() TLSConfig {
 type OIDCConfig struct {
 	// AllowedDomains specifies the domains for which this keyserver accepts
 	// email address registrations by this policy.
-	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains" json:"allowed_domains,omitempty"`
+	AllowedDomains []string `protobuf:"bytes,1,rep,name=allowed_domains,json=allowedDomains" json:"allowed_domains,omitempty"`
 	// DiscoveryURL specifies the location of OpenID Connect discovery document
 	// as specified at http://openid.net/specs/openid-connect-discovery-1_0.html
-	DiscoveryURL string `protobuf:"bytes,2,opt,name=discovery_url,proto3" json:"discovery_url,omitempty"`
+	DiscoveryURL string `protobuf:"bytes,2,opt,name=discovery_url,json=discoveryUrl,proto3" json:"discovery_url,omitempty"`
 	// Issuer specifies OpenID Connect issuer discovery url
 	Issuer string `protobuf:"bytes,3,opt,name=issuer,proto3" json:"issuer,omitempty"`
 	// clientID specifies client's ID when the app is registered
@@ -490,8 +534,9 @@ type OIDCConfig struct {
 	Validity Duration `protobuf:"bytes,5,opt,name=validity" json:"validity"`
 }
 
-func (m *OIDCConfig) Reset()      { *m = OIDCConfig{} }
-func (*OIDCConfig) ProtoMessage() {}
+func (m *OIDCConfig) Reset()                    { *m = OIDCConfig{} }
+func (*OIDCConfig) ProtoMessage()               {}
+func (*OIDCConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{7} }
 
 func (m *OIDCConfig) GetValidity() Duration {
 	if m != nil {
@@ -508,15 +553,16 @@ type Replica struct {
 	ID uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
 	// PublicKeys lists the public keys of a node, to be joined using a
 	// 1-out-of-n policy. The order of this list is NOT preserved.
-	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys" json:"public_keys,omitempty"`
+	PublicKeys []*PublicKey `protobuf:"bytes,2,rep,name=public_keys,json=publicKeys" json:"public_keys,omitempty"`
 	// RaftAddr is the Raft network address of the node, such that
 	// net.Dial("tcp", Addr) reaches the node. Supported formats include
 	// host.domain:port and ip:port.
-	RaftAddr string `protobuf:"bytes,3,opt,name=raft_addr,proto3" json:"raft_addr,omitempty"`
+	RaftAddr string `protobuf:"bytes,3,opt,name=raft_addr,json=raftAddr,proto3" json:"raft_addr,omitempty"`
 }
 
-func (m *Replica) Reset()      { *m = Replica{} }
-func (*Replica) ProtoMessage() {}
+func (m *Replica) Reset()                    { *m = Replica{} }
+func (*Replica) ProtoMessage()               {}
+func (*Replica) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{8} }
 
 func (m *Replica) GetPublicKeys() []*PublicKey {
 	if m != nil {
@@ -525,6 +571,17 @@ func (m *Replica) GetPublicKeys() []*PublicKey {
 	return nil
 }
 
+func init() {
+	proto1.RegisterType((*ReplicaConfig)(nil), "proto.ReplicaConfig")
+	proto1.RegisterType((*KeyserverConfig)(nil), "proto.KeyserverConfig")
+	proto1.RegisterType((*RegistrationPolicy)(nil), "proto.RegistrationPolicy")
+	proto1.RegisterType((*EmailProofByDKIM)(nil), "proto.EmailProofByDKIM")
+	proto1.RegisterType((*EmailProofByClientCert)(nil), "proto.EmailProofByClientCert")
+	proto1.RegisterType((*EmailProofByOIDC)(nil), "proto.EmailProofByOIDC")
+	proto1.RegisterType((*EmailProofBySAML)(nil), "proto.EmailProofBySAML")
+	proto1.RegisterType((*OIDCConfig)(nil), "proto.OIDCConfig")
+	proto1.RegisterType((*Replica)(nil), "proto.Replica")
+}
 func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -535,7 +592,12 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*ReplicaConfig)
 	if !ok {
-		return fmt.Errorf("that is not of type *ReplicaConfig")
+		that2, ok := that.(ReplicaConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *ReplicaConfig")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -543,7 +605,7 @@ func (this *ReplicaConfig) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *ReplicaConfig but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *ReplicaConfigbut is not nil && this == nil")
+		return fmt.Errorf("that is type *ReplicaConfig but is not nil && this == nil")
 	}
 	if !this.KeyserverConfig.Equal(&that1.KeyserverConfig) {
 		return fmt.Errorf("KeyserverConfig this(%v) Not Equal that(%v)", this.KeyserverConfig, that1.KeyserverConfig)
@@ -608,7 +670,12 @@ func (this *ReplicaConfig) Equal(that interface{}) bool {
 
 	that1, ok := that.(*ReplicaConfig)
 	if !ok {
-		return false
+		that2, ok := that.(ReplicaConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -681,7 +748,12 @@ func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*KeyserverConfig)
 	if !ok {
-		return fmt.Errorf("that is not of type *KeyserverConfig")
+		that2, ok := that.(KeyserverConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverConfig")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -689,7 +761,7 @@ func (this *KeyserverConfig) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *KeyserverConfig but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *KeyserverConfigbut is not nil && this == nil")
+		return fmt.Errorf("that is type *KeyserverConfig but is not nil && this == nil")
 	}
 	if this.ServerID != that1.ServerID {
 		return fmt.Errorf("ServerID this(%v) Not Equal that(%v)", this.ServerID, that1.ServerID)
@@ -737,7 +809,12 @@ func (this *KeyserverConfig) Equal(that interface{}) bool {
 
 	that1, ok := that.(*KeyserverConfig)
 	if !ok {
-		return false
+		that2, ok := that.(KeyserverConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -793,7 +870,12 @@ func (this *RegistrationPolicy) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*RegistrationPolicy)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy")
+		that2, ok := that.(RegistrationPolicy)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -801,7 +883,7 @@ func (this *RegistrationPolicy) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicybut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy but is not nil && this == nil")
 	}
 	if that1.PolicyType == nil {
 		if this.PolicyType != nil {
@@ -824,7 +906,12 @@ func (this *RegistrationPolicy_InsecureSkipEmailProof) VerboseEqual(that interfa
 
 	that1, ok := that.(*RegistrationPolicy_InsecureSkipEmailProof)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy_InsecureSkipEmailProof")
+		that2, ok := that.(RegistrationPolicy_InsecureSkipEmailProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy_InsecureSkipEmailProof")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -832,7 +919,7 @@ func (this *RegistrationPolicy_InsecureSkipEmailProof) VerboseEqual(that interfa
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy_InsecureSkipEmailProof but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicy_InsecureSkipEmailProofbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy_InsecureSkipEmailProof but is not nil && this == nil")
 	}
 	if this.InsecureSkipEmailProof != that1.InsecureSkipEmailProof {
 		return fmt.Errorf("InsecureSkipEmailProof this(%v) Not Equal that(%v)", this.InsecureSkipEmailProof, that1.InsecureSkipEmailProof)
@@ -849,7 +936,12 @@ func (this *RegistrationPolicy_EmailProofByDKIM) VerboseEqual(that interface{}) 
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByDKIM)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByDKIM")
+		that2, ok := that.(RegistrationPolicy_EmailProofByDKIM)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByDKIM")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -857,7 +949,7 @@ func (this *RegistrationPolicy_EmailProofByDKIM) VerboseEqual(that interface{}) 
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByDKIM but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByDKIMbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByDKIM but is not nil && this == nil")
 	}
 	if !this.EmailProofByDKIM.Equal(that1.EmailProofByDKIM) {
 		return fmt.Errorf("EmailProofByDKIM this(%v) Not Equal that(%v)", this.EmailProofByDKIM, that1.EmailProofByDKIM)
@@ -874,7 +966,12 @@ func (this *RegistrationPolicy_EmailProofByClientCert) VerboseEqual(that interfa
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByClientCert)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByClientCert")
+		that2, ok := that.(RegistrationPolicy_EmailProofByClientCert)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByClientCert")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -882,7 +979,7 @@ func (this *RegistrationPolicy_EmailProofByClientCert) VerboseEqual(that interfa
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByClientCert but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByClientCertbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByClientCert but is not nil && this == nil")
 	}
 	if !this.EmailProofByClientCert.Equal(that1.EmailProofByClientCert) {
 		return fmt.Errorf("EmailProofByClientCert this(%v) Not Equal that(%v)", this.EmailProofByClientCert, that1.EmailProofByClientCert)
@@ -899,7 +996,12 @@ func (this *RegistrationPolicy_EmailProofByOIDC) VerboseEqual(that interface{}) 
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByOIDC)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByOIDC")
+		that2, ok := that.(RegistrationPolicy_EmailProofByOIDC)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofByOIDC")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -907,7 +1009,7 @@ func (this *RegistrationPolicy_EmailProofByOIDC) VerboseEqual(that interface{}) 
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByOIDC but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByOIDCbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofByOIDC but is not nil && this == nil")
 	}
 	if !this.EmailProofByOIDC.Equal(that1.EmailProofByOIDC) {
 		return fmt.Errorf("EmailProofByOIDC this(%v) Not Equal that(%v)", this.EmailProofByOIDC, that1.EmailProofByOIDC)
@@ -924,7 +1026,12 @@ func (this *RegistrationPolicy_EmailProofBySAML) VerboseEqual(that interface{}) 
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofBySAML)
 	if !ok {
-		return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofBySAML")
+		that2, ok := that.(RegistrationPolicy_EmailProofBySAML)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *RegistrationPolicy_EmailProofBySAML")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -932,7 +1039,7 @@ func (this *RegistrationPolicy_EmailProofBySAML) VerboseEqual(that interface{}) 
 		}
 		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofBySAML but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofBySAMLbut is not nil && this == nil")
+		return fmt.Errorf("that is type *RegistrationPolicy_EmailProofBySAML but is not nil && this == nil")
 	}
 	if !this.EmailProofBySAML.Equal(that1.EmailProofBySAML) {
 		return fmt.Errorf("EmailProofBySAML this(%v) Not Equal that(%v)", this.EmailProofBySAML, that1.EmailProofBySAML)
@@ -949,7 +1056,12 @@ func (this *RegistrationPolicy) Equal(that interface{}) bool {
 
 	that1, ok := that.(*RegistrationPolicy)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -980,7 +1092,12 @@ func (this *RegistrationPolicy_InsecureSkipEmailProof) Equal(that interface{}) b
 
 	that1, ok := that.(*RegistrationPolicy_InsecureSkipEmailProof)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy_InsecureSkipEmailProof)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1005,7 +1122,12 @@ func (this *RegistrationPolicy_EmailProofByDKIM) Equal(that interface{}) bool {
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByDKIM)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy_EmailProofByDKIM)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1030,7 +1152,12 @@ func (this *RegistrationPolicy_EmailProofByClientCert) Equal(that interface{}) b
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByClientCert)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy_EmailProofByClientCert)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1055,7 +1182,12 @@ func (this *RegistrationPolicy_EmailProofByOIDC) Equal(that interface{}) bool {
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofByOIDC)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy_EmailProofByOIDC)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1080,7 +1212,12 @@ func (this *RegistrationPolicy_EmailProofBySAML) Equal(that interface{}) bool {
 
 	that1, ok := that.(*RegistrationPolicy_EmailProofBySAML)
 	if !ok {
-		return false
+		that2, ok := that.(RegistrationPolicy_EmailProofBySAML)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1105,7 +1242,12 @@ func (this *EmailProofByDKIM) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProofByDKIM)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProofByDKIM")
+		that2, ok := that.(EmailProofByDKIM)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProofByDKIM")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1113,7 +1255,7 @@ func (this *EmailProofByDKIM) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProofByDKIM but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProofByDKIMbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProofByDKIM but is not nil && this == nil")
 	}
 	if len(this.AllowedDomains) != len(that1.AllowedDomains) {
 		return fmt.Errorf("AllowedDomains this(%v) Not Equal that(%v)", len(this.AllowedDomains), len(that1.AllowedDomains))
@@ -1141,7 +1283,12 @@ func (this *EmailProofByDKIM) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProofByDKIM)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProofByDKIM)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1177,7 +1324,12 @@ func (this *EmailProofByClientCert) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProofByClientCert)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProofByClientCert")
+		that2, ok := that.(EmailProofByClientCert)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProofByClientCert")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1185,7 +1337,7 @@ func (this *EmailProofByClientCert) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProofByClientCert but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProofByClientCertbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProofByClientCert but is not nil && this == nil")
 	}
 	if len(this.AllowedDomains) != len(that1.AllowedDomains) {
 		return fmt.Errorf("AllowedDomains this(%v) Not Equal that(%v)", len(this.AllowedDomains), len(that1.AllowedDomains))
@@ -1210,7 +1362,12 @@ func (this *EmailProofByClientCert) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProofByClientCert)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProofByClientCert)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1243,7 +1400,12 @@ func (this *EmailProofByOIDC) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProofByOIDC)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProofByOIDC")
+		that2, ok := that.(EmailProofByOIDC)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProofByOIDC")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1251,7 +1413,7 @@ func (this *EmailProofByOIDC) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProofByOIDC but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProofByOIDCbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProofByOIDC but is not nil && this == nil")
 	}
 	if len(this.OIDCConfig) != len(that1.OIDCConfig) {
 		return fmt.Errorf("OIDCConfig this(%v) Not Equal that(%v)", len(this.OIDCConfig), len(that1.OIDCConfig))
@@ -1273,7 +1435,12 @@ func (this *EmailProofByOIDC) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProofByOIDC)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProofByOIDC)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1303,7 +1470,12 @@ func (this *EmailProofBySAML) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*EmailProofBySAML)
 	if !ok {
-		return fmt.Errorf("that is not of type *EmailProofBySAML")
+		that2, ok := that.(EmailProofBySAML)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EmailProofBySAML")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1311,7 +1483,7 @@ func (this *EmailProofBySAML) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *EmailProofBySAML but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *EmailProofBySAMLbut is not nil && this == nil")
+		return fmt.Errorf("that is type *EmailProofBySAML but is not nil && this == nil")
 	}
 	if len(this.AllowedDomains) != len(that1.AllowedDomains) {
 		return fmt.Errorf("AllowedDomains this(%v) Not Equal that(%v)", len(this.AllowedDomains), len(that1.AllowedDomains))
@@ -1342,7 +1514,12 @@ func (this *EmailProofBySAML) Equal(that interface{}) bool {
 
 	that1, ok := that.(*EmailProofBySAML)
 	if !ok {
-		return false
+		that2, ok := that.(EmailProofBySAML)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1381,7 +1558,12 @@ func (this *OIDCConfig) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*OIDCConfig)
 	if !ok {
-		return fmt.Errorf("that is not of type *OIDCConfig")
+		that2, ok := that.(OIDCConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *OIDCConfig")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1389,7 +1571,7 @@ func (this *OIDCConfig) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *OIDCConfig but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *OIDCConfigbut is not nil && this == nil")
+		return fmt.Errorf("that is type *OIDCConfig but is not nil && this == nil")
 	}
 	if len(this.AllowedDomains) != len(that1.AllowedDomains) {
 		return fmt.Errorf("AllowedDomains this(%v) Not Equal that(%v)", len(this.AllowedDomains), len(that1.AllowedDomains))
@@ -1423,7 +1605,12 @@ func (this *OIDCConfig) Equal(that interface{}) bool {
 
 	that1, ok := that.(*OIDCConfig)
 	if !ok {
-		return false
+		that2, ok := that.(OIDCConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1465,7 +1652,12 @@ func (this *Replica) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*Replica)
 	if !ok {
-		return fmt.Errorf("that is not of type *Replica")
+		that2, ok := that.(Replica)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *Replica")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1473,7 +1665,7 @@ func (this *Replica) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *Replica but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *Replicabut is not nil && this == nil")
+		return fmt.Errorf("that is type *Replica but is not nil && this == nil")
 	}
 	if this.ID != that1.ID {
 		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
@@ -1501,7 +1693,12 @@ func (this *Replica) Equal(that interface{}) bool {
 
 	that1, ok := that.(*Replica)
 	if !ok {
-		return false
+		that2, ok := that.(Replica)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -1710,7 +1907,7 @@ func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringKeyserverconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringKeyserverconfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -2116,13 +2313,11 @@ func (m *EmailProofByClientCert) MarshalTo(data []byte) (int, error) {
 			i += copy(data[i:], s)
 		}
 	}
-	if m.CaCert != nil {
-		if len(m.CaCert) > 0 {
-			data[i] = 0x12
-			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(len(m.CaCert)))
-			i += copy(data[i:], m.CaCert)
-		}
+	if len(m.CaCert) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.CaCert)))
+		i += copy(data[i:], m.CaCert)
 	}
 	return i, nil
 }
@@ -2381,14 +2576,14 @@ func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverCo
 	v11 := NewPopulatedDuration(r, easy)
 	this.ProposalRetryInterval = *v11
 	if r.Intn(10) != 0 {
-		v12 := r.Intn(10)
+		v12 := r.Intn(5)
 		this.InitialReplicas = make([]*Replica, v12)
 		for i := 0; i < v12; i++ {
 			this.InitialReplicas[i] = NewPopulatedReplica(r, easy)
 		}
 	}
 	if r.Intn(10) != 0 {
-		v13 := r.Intn(10)
+		v13 := r.Intn(5)
 		this.RegistrationPolicy = make([]*RegistrationPolicy, v13)
 		for i := 0; i < v13; i++ {
 			this.RegistrationPolicy[i] = NewPopulatedRegistrationPolicy(r, easy)
@@ -2478,7 +2673,7 @@ func NewPopulatedEmailProofByClientCert(r randyKeyserverconfig, easy bool) *Emai
 func NewPopulatedEmailProofByOIDC(r randyKeyserverconfig, easy bool) *EmailProofByOIDC {
 	this := &EmailProofByOIDC{}
 	if r.Intn(10) != 0 {
-		v17 := r.Intn(10)
+		v17 := r.Intn(5)
 		this.OIDCConfig = make([]*OIDCConfig, v17)
 		for i := 0; i < v17; i++ {
 			this.OIDCConfig[i] = NewPopulatedOIDCConfig(r, easy)
@@ -2526,7 +2721,7 @@ func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
 	this := &Replica{}
 	this.ID = uint64(uint64(r.Uint32()))
 	if r.Intn(10) != 0 {
-		v22 := r.Intn(10)
+		v22 := r.Intn(5)
 		this.PublicKeys = make([]*PublicKey, v22)
 		for i := 0; i < v22; i++ {
 			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
@@ -2781,11 +2976,9 @@ func (m *EmailProofByClientCert) Size() (n int) {
 			n += 1 + l + sovKeyserverconfig(uint64(l))
 		}
 	}
-	if m.CaCert != nil {
-		l = len(m.CaCert)
-		if l > 0 {
-			n += 1 + l + sovKeyserverconfig(uint64(l))
-		}
+	l = len(m.CaCert)
+	if l > 0 {
+		n += 1 + l + sovKeyserverconfig(uint64(l))
 	}
 	return n
 }
@@ -4295,7 +4488,10 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CaCert = append([]byte{}, data[iNdEx:postIndex]...)
+			m.CaCert = append(m.CaCert[:0], data[iNdEx:postIndex]...)
+			if m.CaCert == nil {
+				m.CaCert = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4995,3 +5191,90 @@ var (
 	ErrInvalidLengthKeyserverconfig = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowKeyserverconfig   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorKeyserverconfig = []byte{
+	// 1328 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0xcd, 0x6f, 0x1b, 0x45,
+	0x14, 0x8f, 0xe3, 0xc6, 0x1f, 0xe3, 0xcf, 0x4c, 0xd2, 0xd4, 0x0d, 0x22, 0x41, 0x46, 0x40, 0x41,
+	0xa8, 0x85, 0x20, 0x50, 0x2b, 0x7a, 0xe9, 0xda, 0xad, 0x62, 0x92, 0xa8, 0xd6, 0x3a, 0xf4, 0x00,
+	0x52, 0x57, 0xeb, 0xdd, 0xb1, 0x33, 0x64, 0xbd, 0xbb, 0xec, 0x8e, 0x43, 0x2d, 0x2e, 0xfc, 0x2f,
+	0x5c, 0xf8, 0x13, 0xb8, 0xc1, 0xb1, 0xc7, 0x1e, 0xb9, 0x10, 0xb5, 0x3d, 0x71, 0xec, 0x91, 0x23,
+	0xef, 0xcd, 0xcc, 0xae, 0x13, 0x7f, 0x44, 0xe5, 0x30, 0xb2, 0xe7, 0xbd, 0xdf, 0xfb, 0xfd, 0xde,
+	0xbc, 0x9d, 0x37, 0x33, 0xe4, 0xfa, 0x29, 0x9b, 0xc4, 0x2c, 0x3a, 0x63, 0x91, 0x13, 0xf8, 0x03,
+	0x3e, 0xbc, 0x1d, 0x46, 0x81, 0x08, 0xe8, 0x9a, 0xfc, 0xd9, 0xfe, 0x6c, 0xc8, 0xc5, 0xc9, 0xb8,
+	0x7f, 0xdb, 0x09, 0x46, 0x77, 0x46, 0xb6, 0xcb, 0xc5, 0xc4, 0xbe, 0x23, 0x3d, 0xfd, 0xf1, 0xe0,
+	0xce, 0x30, 0x18, 0x06, 0x72, 0x22, 0xff, 0xa9, 0xc0, 0xed, 0x9a, 0xf0, 0xe2, 0x8b, 0x4c, 0xdb,
+	0x55, 0x77, 0x1c, 0xd9, 0x82, 0x07, 0xbe, 0x9e, 0x97, 0x1d, 0x8f, 0x33, 0x5f, 0xa8, 0x59, 0xf3,
+	0x8f, 0x3c, 0xa9, 0x98, 0x2c, 0xf4, 0xb8, 0x63, 0xb7, 0x64, 0x14, 0x3d, 0x20, 0xf5, 0x34, 0x25,
+	0x4b, 0x31, 0x35, 0x32, 0xef, 0x65, 0x6e, 0x95, 0xf6, 0xb6, 0x54, 0xcc, 0xed, 0x83, 0xc4, 0xad,
+	0x22, 0x8c, 0xc2, 0xf3, 0xf3, 0xdd, 0x95, 0x17, 0xe7, 0xbb, 0x19, 0xb3, 0x76, 0x7a, 0xd9, 0x45,
+	0x3f, 0x25, 0x24, 0x52, 0xec, 0x16, 0x77, 0x1b, 0xab, 0x40, 0x73, 0xcd, 0xa8, 0xbc, 0x3e, 0xdf,
+	0x2d, 0x6a, 0xcd, 0x4e, 0xdb, 0x2c, 0x6a, 0x40, 0xc7, 0xa5, 0x5f, 0x91, 0x6a, 0xcc, 0x87, 0x3e,
+	0xf7, 0x87, 0x16, 0x10, 0x61, 0x44, 0x16, 0x22, 0x8a, 0x46, 0x1d, 0x22, 0xca, 0x3d, 0xe5, 0x01,
+	0x71, 0x08, 0x2a, 0xc7, 0xd3, 0x99, 0x4b, 0x77, 0x49, 0x29, 0x1c, 0xf7, 0x81, 0xc4, 0xb2, 0x5d,
+	0x37, 0x6a, 0x5c, 0xc3, 0x20, 0x93, 0x28, 0xd3, 0x03, 0xb0, 0x50, 0x83, 0xe8, 0x99, 0x05, 0xd5,
+	0x69, 0xac, 0xc9, 0xd5, 0xd4, 0xf5, 0x6a, 0x8e, 0x0f, 0x7b, 0x7a, 0x1d, 0xeb, 0xb8, 0x0e, 0x4c,
+	0xae, 0x2b, 0xb1, 0xe0, 0x30, 0x8b, 0x2a, 0xec, 0xd8, 0x8b, 0xe9, 0xfb, 0xa4, 0x02, 0xeb, 0xe2,
+	0x03, 0x0e, 0x65, 0x91, 0x32, 0x39, 0x29, 0x53, 0x4e, 0x8c, 0x52, 0x68, 0x9f, 0xa4, 0x73, 0x29,
+	0x95, 0x5f, 0x22, 0xb5, 0xa1, 0xa5, 0x4a, 0x4f, 0x34, 0x1a, 0xc5, 0x4a, 0x49, 0x28, 0xca, 0x7d,
+	0x48, 0x0a, 0x27, 0xa7, 0xa1, 0x52, 0x2a, 0xc8, 0x2a, 0x94, 0x00, 0x9f, 0xdf, 0x3f, 0xe8, 0xa2,
+	0x90, 0x99, 0x07, 0xa7, 0x54, 0xbc, 0x47, 0xf0, 0xaf, 0x14, 0x2b, 0x2e, 0x11, 0xab, 0x6a, 0xb1,
+	0x1c, 0x04, 0xa3, 0x4e, 0x0e, 0x02, 0x50, 0xe2, 0x2e, 0xa9, 0x9e, 0x08, 0x11, 0x0e, 0xa2, 0xc0,
+	0x17, 0x4a, 0x88, 0x48, 0xa1, 0x75, 0xc0, 0x56, 0xf6, 0x8f, 0x8f, 0xbb, 0x8f, 0xd0, 0x23, 0xe5,
+	0x2a, 0x29, 0x50, 0x8a, 0x1e, 0x90, 0xa9, 0x41, 0x4a, 0x97, 0x96, 0x48, 0x6f, 0x6a, 0xe9, 0x72,
+	0x4a, 0x87, 0x09, 0x94, 0xd3, 0x60, 0x4c, 0xe3, 0x1d, 0x52, 0x8c, 0xec, 0x81, 0xce, 0xa0, 0x2c,
+	0x8b, 0x5a, 0x40, 0x83, 0x54, 0xba, 0x4f, 0xe4, 0x7f, 0x29, 0x52, 0x59, 0x22, 0x52, 0xd3, 0x22,
+	0x79, 0x13, 0x90, 0xc8, 0x9f, 0xc7, 0x10, 0xa4, 0xde, 0x23, 0x65, 0x8f, 0x9d, 0x31, 0xcf, 0xed,
+	0x5b, 0xa1, 0x2d, 0x4e, 0x1a, 0x55, 0xb9, 0xbe, 0x1a, 0x16, 0xfe, 0x10, 0xed, 0x6d, 0xa3, 0x0b,
+	0x66, 0xb3, 0xa4, 0x41, 0x38, 0x01, 0xc5, 0xaa, 0x54, 0x3c, 0x61, 0x76, 0x24, 0xfa, 0xcc, 0x16,
+	0x8d, 0x9a, 0xd4, 0xad, 0x69, 0xdd, 0xb6, 0x6e, 0x27, 0xe3, 0x1a, 0xca, 0x9a, 0x15, 0x04, 0xef,
+	0x27, 0x58, 0x50, 0xbc, 0xee, 0xd9, 0xc3, 0x21, 0x6e, 0xe1, 0x74, 0x23, 0xc4, 0x8e, 0xed, 0x37,
+	0xea, 0xb8, 0xf7, 0xcd, 0x0d, 0xed, 0x4c, 0x3e, 0x7b, 0x0f, 0x5c, 0xa8, 0xa8, 0x7a, 0xd2, 0x12,
+	0x7c, 0xc4, 0x82, 0xb1, 0x68, 0xac, 0x5f, 0xa9, 0xa8, 0xc0, 0xc7, 0x0a, 0xdb, 0x3c, 0xcf, 0x92,
+	0xda, 0x4c, 0x47, 0xd2, 0x8f, 0x49, 0x51, 0x37, 0x30, 0xf4, 0x50, 0x46, 0x76, 0x5d, 0x19, 0x16,
+	0x5d, 0xe8, 0x49, 0x23, 0xf4, 0x4f, 0x41, 0xb9, 0xa1, 0x77, 0x36, 0xc9, 0x5a, 0xc4, 0x6c, 0x6f,
+	0x24, 0x9b, 0xb3, 0x68, 0xaa, 0x09, 0xfd, 0x84, 0x90, 0xb3, 0x68, 0x70, 0xb9, 0x0b, 0x25, 0xc3,
+	0x13, 0xf3, 0x91, 0xea, 0xc0, 0x02, 0xf8, 0x55, 0xf7, 0xb5, 0x08, 0x1d, 0x71, 0xdf, 0x62, 0x61,
+	0xe0, 0x9c, 0x58, 0xdc, 0x17, 0xc0, 0x6c, 0x7b, 0xb2, 0x09, 0x97, 0x2e, 0xa1, 0x0e, 0x01, 0x0f,
+	0x11, 0xdf, 0xd1, 0x70, 0x49, 0x62, 0x3f, 0x9b, 0x25, 0x59, 0xbb, 0x9a, 0xc4, 0x7e, 0x76, 0x99,
+	0xe4, 0x88, 0xdc, 0x00, 0x64, 0x18, 0xc4, 0xb6, 0x67, 0x45, 0x4c, 0x44, 0x93, 0x29, 0x53, 0xee,
+	0x2a, 0xa6, 0xeb, 0x49, 0x94, 0x89, 0x41, 0x29, 0xdd, 0x3d, 0x52, 0xe7, 0x3e, 0x17, 0x5c, 0xb2,
+	0xc9, 0x33, 0x0a, 0x1b, 0x3a, 0x0b, 0x3c, 0x55, 0xcd, 0xa3, 0x4f, 0x31, 0xb3, 0xa6, 0x71, 0x7a,
+	0x1e, 0xd3, 0x6f, 0xc8, 0x46, 0xc4, 0x86, 0x3c, 0x16, 0x4a, 0xc7, 0x0a, 0x03, 0xb0, 0x4f, 0xa0,
+	0x91, 0x31, 0xfa, 0x66, 0x1a, 0x3d, 0x45, 0x74, 0x25, 0xc0, 0xa4, 0xd1, 0x9c, 0xad, 0xf9, 0x77,
+	0x96, 0xd0, 0x79, 0x28, 0xfd, 0x9a, 0xdc, 0xe4, 0x7e, 0xcc, 0x9c, 0x71, 0xc4, 0xac, 0xf8, 0x94,
+	0x87, 0x16, 0x1b, 0xd9, 0xdc, 0xb3, 0x80, 0x3a, 0x18, 0xc8, 0x6f, 0x5e, 0xd8, 0x5f, 0x31, 0xb7,
+	0x12, 0x48, 0x0f, 0x10, 0x0f, 0x11, 0xd0, 0x45, 0x3f, 0x7d, 0x4a, 0x36, 0x2e, 0xc0, 0xad, 0xfe,
+	0xc4, 0x72, 0x4f, 0xb9, 0xda, 0x03, 0xa5, 0xbd, 0x1b, 0x3a, 0xbf, 0x29, 0xde, 0x98, 0xb4, 0x0f,
+	0x3a, 0x47, 0xc6, 0x26, 0xec, 0x80, 0xfa, 0xac, 0x15, 0x54, 0xea, 0xec, 0xa2, 0x0d, 0x88, 0xe8,
+	0xf7, 0x64, 0x7b, 0x86, 0x5f, 0xef, 0x70, 0x87, 0x45, 0x42, 0xee, 0xa7, 0xd2, 0xde, 0xbb, 0x0b,
+	0x64, 0x5a, 0x12, 0xd5, 0x02, 0x10, 0x26, 0xcf, 0x16, 0x7a, 0x16, 0x24, 0x1f, 0x70, 0xd7, 0xd1,
+	0x3b, 0x6e, 0x51, 0xf2, 0x8f, 0x3b, 0xed, 0xd6, 0x7c, 0xf2, 0x68, 0x9d, 0x4d, 0xfe, 0x31, 0x10,
+	0x2d, 0xe0, 0x8f, 0xed, 0x51, 0xb2, 0x19, 0x17, 0xf1, 0xf7, 0x1e, 0x1c, 0x1d, 0xce, 0xf3, 0xa3,
+	0x75, 0x96, 0xbf, 0x07, 0x44, 0x46, 0x05, 0xae, 0x2b, 0xf9, 0x0d, 0x2d, 0x31, 0x09, 0x59, 0xf3,
+	0x67, 0x32, 0x57, 0x53, 0xfa, 0x11, 0xa9, 0xd9, 0x9e, 0x17, 0xfc, 0xc4, 0x5c, 0xcb, 0x0d, 0xc0,
+	0xe9, 0xc7, 0xf0, 0x49, 0xb3, 0xd0, 0x9f, 0x55, 0x6d, 0x6e, 0x2b, 0x2b, 0xbd, 0x41, 0xf2, 0x22,
+	0x50, 0x47, 0xa7, 0x6a, 0xe0, 0x9c, 0x08, 0xe4, 0xc1, 0xf9, 0x01, 0xdc, 0xa5, 0xe3, 0xfe, 0x0f,
+	0xcc, 0x11, 0xb0, 0x0c, 0x36, 0xe0, 0xcf, 0x54, 0x17, 0x9b, 0x15, 0x6d, 0xed, 0x4a, 0x63, 0xf3,
+	0x3b, 0xb2, 0xb5, 0xb8, 0xfe, 0xff, 0x2b, 0x05, 0xb8, 0xde, 0xe5, 0x87, 0xc5, 0x14, 0xca, 0x66,
+	0x0e, 0xde, 0x12, 0x30, 0x6b, 0x3e, 0x21, 0x73, 0xf5, 0x86, 0x9b, 0xb8, 0x84, 0x1f, 0x6b, 0xfa,
+	0xb0, 0xc0, 0x86, 0x58, 0xd7, 0x35, 0x45, 0x44, 0x72, 0x67, 0x41, 0x35, 0xc9, 0x74, 0x6e, 0x12,
+	0x8c, 0x52, 0xff, 0x9b, 0xbf, 0xae, 0x92, 0xb9, 0x42, 0xbf, 0x7d, 0xba, 0xf7, 0xa1, 0xab, 0xdd,
+	0xd0, 0x1a, 0x31, 0x61, 0xbb, 0xb6, 0xb0, 0xad, 0x71, 0xe4, 0xa9, 0xd2, 0x19, 0x14, 0x34, 0xab,
+	0x9d, 0x76, 0xf7, 0x48, 0xbb, 0xbe, 0x35, 0x0f, 0xcd, 0x2a, 0x60, 0xd3, 0x79, 0xe4, 0xc1, 0x05,
+	0xbf, 0x09, 0xa9, 0xc7, 0xe3, 0x11, 0x9e, 0xeb, 0x70, 0x4c, 0x70, 0x87, 0x49, 0x06, 0xf9, 0xe6,
+	0x30, 0xb6, 0x80, 0x81, 0xb6, 0xb4, 0xbf, 0xa7, 0xdc, 0xc8, 0x42, 0x9d, 0x19, 0x1b, 0x30, 0x3d,
+	0x25, 0x9b, 0x09, 0x01, 0xac, 0xfe, 0x8c, 0xbb, 0xfa, 0xc9, 0xb0, 0xec, 0x75, 0xb2, 0xad, 0x6f,
+	0x39, 0xaa, 0x39, 0xba, 0x3a, 0x08, 0x2f, 0x3c, 0x1a, 0xcf, 0xd8, 0xbc, 0xb8, 0xf9, 0x2a, 0x43,
+	0x2e, 0x14, 0xf0, 0xed, 0xeb, 0xf3, 0x25, 0xa9, 0xb8, 0x1c, 0x9e, 0x90, 0x70, 0x3d, 0x4c, 0x2e,
+	0x14, 0x47, 0xbe, 0xc1, 0xda, 0x89, 0x03, 0x17, 0x55, 0x4e, 0x61, 0xb8, 0x9c, 0x2d, 0x92, 0xe3,
+	0x71, 0x3c, 0x66, 0x91, 0xde, 0x67, 0x7a, 0x46, 0x6f, 0x91, 0x82, 0x6a, 0xfd, 0x4e, 0x5b, 0x17,
+	0x49, 0xde, 0x23, 0x2d, 0x6d, 0x33, 0x53, 0x2f, 0xfd, 0x9c, 0x14, 0xe0, 0xd4, 0xe5, 0xf8, 0xc8,
+	0xbd, 0xfa, 0xe0, 0x4f, 0x61, 0xcd, 0x1f, 0x49, 0x5e, 0x1f, 0xb9, 0xa0, 0xbf, 0x9a, 0xde, 0x75,
+	0x39, 0x50, 0x58, 0x05, 0x6e, 0xb0, 0x00, 0x6b, 0xf2, 0x36, 0xc4, 0xb7, 0x29, 0x2c, 0x26, 0x7b,
+	0xa1, 0xba, 0xea, 0xa1, 0x07, 0xd7, 0x58, 0xf2, 0x5a, 0xc4, 0x8b, 0xf4, 0xf2, 0x83, 0x24, 0x7b,
+	0xf9, 0x41, 0x62, 0xdc, 0x7d, 0xf1, 0x6a, 0x67, 0xe5, 0x2f, 0x18, 0x2f, 0x5f, 0xed, 0x64, 0xde,
+	0xc0, 0xf8, 0x17, 0xc6, 0x2f, 0xaf, 0x77, 0x32, 0xbf, 0xc1, 0xf8, 0x1d, 0xc6, 0x9f, 0x30, 0x9e,
+	0xc3, 0x78, 0x01, 0xe3, 0x25, 0x8c, 0x7f, 0x5e, 0xef, 0xac, 0xbc, 0x81, 0xdf, 0x7e, 0x4e, 0x6a,
+	0x7e, 0xf1, 0x5f, 0x00, 0x00, 0x00, 0xff, 0xff, 0x20, 0x31, 0x96, 0x21, 0xf2, 0x0b, 0x00, 0x00,
+}

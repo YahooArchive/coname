@@ -4,16 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -27,16 +26,17 @@ var _ = math.Inf
 
 type VerifierConfig struct {
 	ID                   uint64              `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	SigningKeyID         string              `protobuf:"bytes,2,opt,name=signing_key_id,proto3" json:"signing_key_id,omitempty"`
+	SigningKeyID         string              `protobuf:"bytes,2,opt,name=signing_key_id,json=signingKeyId,proto3" json:"signing_key_id,omitempty"`
 	Realm                string              `protobuf:"bytes,3,opt,name=realm,proto3" json:"realm,omitempty"`
 	TLS                  *TLSConfig          `protobuf:"bytes,4,opt,name=tls" json:"tls,omitempty"`
-	KeyserverAddr        string              `protobuf:"bytes,5,opt,name=keyserver_addr,proto3" json:"keyserver_addr,omitempty"`
-	InitialKeyserverAuth AuthorizationPolicy `protobuf:"bytes,6,opt,name=initial_keyserver_auth" json:"initial_keyserver_auth"`
-	TreeNonce            []byte              `protobuf:"bytes,7,opt,name=tree_nonce,proto3" json:"tree_nonce,omitempty"`
+	KeyserverAddr        string              `protobuf:"bytes,5,opt,name=keyserver_addr,json=keyserverAddr,proto3" json:"keyserver_addr,omitempty"`
+	InitialKeyserverAuth AuthorizationPolicy `protobuf:"bytes,6,opt,name=initial_keyserver_auth,json=initialKeyserverAuth" json:"initial_keyserver_auth"`
+	TreeNonce            []byte              `protobuf:"bytes,7,opt,name=tree_nonce,json=treeNonce,proto3" json:"tree_nonce,omitempty"`
 }
 
-func (m *VerifierConfig) Reset()      { *m = VerifierConfig{} }
-func (*VerifierConfig) ProtoMessage() {}
+func (m *VerifierConfig) Reset()                    { *m = VerifierConfig{} }
+func (*VerifierConfig) ProtoMessage()               {}
+func (*VerifierConfig) Descriptor() ([]byte, []int) { return fileDescriptorVerifierconfig, []int{0} }
 
 func (m *VerifierConfig) GetTLS() *TLSConfig {
 	if m != nil {
@@ -52,6 +52,9 @@ func (m *VerifierConfig) GetInitialKeyserverAuth() AuthorizationPolicy {
 	return AuthorizationPolicy{}
 }
 
+func init() {
+	proto1.RegisterType((*VerifierConfig)(nil), "proto.VerifierConfig")
+}
 func (this *VerifierConfig) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -62,7 +65,12 @@ func (this *VerifierConfig) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*VerifierConfig)
 	if !ok {
-		return fmt.Errorf("that is not of type *VerifierConfig")
+		that2, ok := that.(VerifierConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *VerifierConfig")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -70,7 +78,7 @@ func (this *VerifierConfig) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *VerifierConfig but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *VerifierConfigbut is not nil && this == nil")
+		return fmt.Errorf("that is type *VerifierConfig but is not nil && this == nil")
 	}
 	if this.ID != that1.ID {
 		return fmt.Errorf("ID this(%v) Not Equal that(%v)", this.ID, that1.ID)
@@ -105,7 +113,12 @@ func (this *VerifierConfig) Equal(that interface{}) bool {
 
 	that1, ok := that.(*VerifierConfig)
 	if !ok {
-		return false
+		that2, ok := that.(VerifierConfig)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -164,7 +177,7 @@ func valueToGoStringVerifierconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringVerifierconfig(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringVerifierconfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -237,13 +250,11 @@ func (m *VerifierConfig) MarshalTo(data []byte) (int, error) {
 		return 0, err
 	}
 	i += n2
-	if m.TreeNonce != nil {
-		if len(m.TreeNonce) > 0 {
-			data[i] = 0x3a
-			i++
-			i = encodeVarintVerifierconfig(data, i, uint64(len(m.TreeNonce)))
-			i += copy(data[i:], m.TreeNonce)
-		}
+	if len(m.TreeNonce) > 0 {
+		data[i] = 0x3a
+		i++
+		i = encodeVarintVerifierconfig(data, i, uint64(len(m.TreeNonce)))
+		i += copy(data[i:], m.TreeNonce)
 	}
 	return i, nil
 }
@@ -392,11 +403,9 @@ func (m *VerifierConfig) Size() (n int) {
 	}
 	l = m.InitialKeyserverAuth.Size()
 	n += 1 + l + sovVerifierconfig(uint64(l))
-	if m.TreeNonce != nil {
-		l = len(m.TreeNonce)
-		if l > 0 {
-			n += 1 + l + sovVerifierconfig(uint64(l))
-		}
+	l = len(m.TreeNonce)
+	if l > 0 {
+		n += 1 + l + sovVerifierconfig(uint64(l))
 	}
 	return n
 }
@@ -662,7 +671,10 @@ func (m *VerifierConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TreeNonce = append([]byte{}, data[iNdEx:postIndex]...)
+			m.TreeNonce = append(m.TreeNonce[:0], data[iNdEx:postIndex]...)
+			if m.TreeNonce == nil {
+				m.TreeNonce = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -789,3 +801,31 @@ var (
 	ErrInvalidLengthVerifierconfig = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowVerifierconfig   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorVerifierconfig = []byte{
+	// 377 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x90, 0x4f, 0x6b, 0xe2, 0x40,
+	0x18, 0xc6, 0x4d, 0xfc, 0x87, 0xb3, 0x59, 0x57, 0x06, 0x91, 0x10, 0xd8, 0xb8, 0x2c, 0x2c, 0x2c,
+	0x2c, 0xe8, 0xd2, 0x42, 0xe9, 0xd5, 0xb4, 0x97, 0x62, 0x29, 0x25, 0x16, 0xaf, 0x21, 0x26, 0x63,
+	0x1c, 0x1a, 0x67, 0xca, 0x64, 0x2c, 0xa4, 0xa7, 0x7e, 0x9c, 0x7e, 0x84, 0x1e, 0xdb, 0x9b, 0x47,
+	0x8f, 0x3d, 0x89, 0x7a, 0xea, 0xd1, 0x63, 0x8f, 0x7d, 0x33, 0x11, 0xeb, 0xe1, 0x61, 0xf2, 0x3c,
+	0xf3, 0x9b, 0xe7, 0x7d, 0x09, 0x6a, 0xde, 0x13, 0x41, 0xc7, 0x94, 0x88, 0x80, 0xb3, 0x31, 0x8d,
+	0x3a, 0x77, 0x82, 0x4b, 0x8e, 0xcb, 0xea, 0xb0, 0xfe, 0x47, 0x54, 0x4e, 0x66, 0xa3, 0x4e, 0xc0,
+	0xa7, 0xdd, 0xa9, 0x1f, 0x52, 0x99, 0xfa, 0x5d, 0x75, 0x33, 0x9a, 0x8d, 0xbb, 0x11, 0x8f, 0xb8,
+	0x32, 0xea, 0x2b, 0x7f, 0x68, 0xfd, 0x90, 0x71, 0x72, 0xd8, 0x64, 0x19, 0x41, 0x4c, 0x09, 0x93,
+	0xb9, 0xfb, 0xfd, 0xaa, 0xa3, 0xfa, 0x70, 0x37, 0xf0, 0x4c, 0x61, 0xb8, 0x85, 0x74, 0x1a, 0x9a,
+	0xda, 0x2f, 0xed, 0x6f, 0xc9, 0xa9, 0x6c, 0x96, 0x6d, 0xfd, 0xe2, 0xdc, 0x85, 0x04, 0x9f, 0xa0,
+	0x7a, 0x42, 0x23, 0x46, 0x59, 0xe4, 0xdd, 0x92, 0xd4, 0x03, 0x46, 0x07, 0xa6, 0xe6, 0x34, 0x80,
+	0x31, 0x06, 0xf9, 0x4d, 0x9f, 0xa4, 0x40, 0x1b, 0xc9, 0x97, 0x0b, 0x71, 0x13, 0x95, 0x05, 0xf1,
+	0xe3, 0xa9, 0x59, 0xcc, 0x70, 0x37, 0x37, 0xf8, 0x1f, 0x2a, 0xc2, 0x66, 0x66, 0x09, 0xb2, 0x6f,
+	0x47, 0x8d, 0x7c, 0x9b, 0xce, 0xcd, 0xe5, 0x20, 0x5f, 0xc2, 0xa9, 0x42, 0x69, 0x11, 0xac, 0x9b,
+	0x51, 0xf8, 0x0f, 0xaa, 0xc3, 0xc8, 0x84, 0x08, 0xf8, 0x37, 0x9e, 0x1f, 0x86, 0xc2, 0x2c, 0xab,
+	0xae, 0xef, 0xfb, 0xb4, 0x07, 0x21, 0x1e, 0xa2, 0x16, 0x65, 0x54, 0x52, 0x3f, 0xf6, 0x0e, 0xf0,
+	0x99, 0x9c, 0x98, 0x15, 0x35, 0xc6, 0xda, 0x8d, 0xe9, 0x41, 0xc4, 0x05, 0x7d, 0xf0, 0x25, 0xe5,
+	0xec, 0x9a, 0xc7, 0x34, 0x48, 0x9d, 0xd2, 0x7c, 0xd9, 0x2e, 0xb8, 0xcd, 0xdd, 0xfb, 0xfe, 0xbe,
+	0x17, 0x50, 0xfc, 0x13, 0x21, 0x29, 0x08, 0xf1, 0x18, 0x67, 0x01, 0x31, 0xab, 0xd0, 0x65, 0xb8,
+	0xb5, 0x2c, 0xb9, 0xca, 0x02, 0xe7, 0x74, 0xb1, 0xb6, 0x0b, 0x6f, 0xa0, 0xd5, 0xda, 0xd6, 0xb6,
+	0xa0, 0x0f, 0xd0, 0xe3, 0xc6, 0xd6, 0x9e, 0x40, 0xcf, 0xa0, 0x17, 0xd0, 0x1c, 0xb4, 0x00, 0xad,
+	0x40, 0xef, 0x1b, 0xbb, 0xb0, 0x85, 0x73, 0x54, 0x51, 0xfb, 0x1c, 0x7f, 0x06, 0x00, 0x00, 0xff,
+	0xff, 0x11, 0x30, 0x86, 0xb2, 0xf4, 0x01, 0x00, 0x00,
+}

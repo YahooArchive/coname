@@ -4,16 +4,15 @@
 
 package proto
 
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
 import sort "sort"
 import strconv "strconv"
 import reflect "reflect"
@@ -28,15 +27,16 @@ var _ = math.Inf
 // Verifier contains the persistent internal state of a verifier.
 // Additional on-disk state is described in verifier/table.go.
 type VerifierState struct {
-	NextIndex           uint64               `protobuf:"varint,1,opt,name=next_index,proto3" json:"next_index,omitempty"`
-	NextEpoch           uint64               `protobuf:"varint,2,opt,name=next_epoch,proto3" json:"next_epoch,omitempty"`
-	PreviousSummaryHash []byte               `protobuf:"bytes,3,opt,name=previous_summary_hash,proto3" json:"previous_summary_hash,omitempty"`
-	LatestTreeSnapshot  uint64               `protobuf:"varint,4,opt,name=latest_tree_snapshot,proto3" json:"latest_tree_snapshot,omitempty"`
-	KeyserverAuth       *AuthorizationPolicy `protobuf:"bytes,5,opt,name=keyserver_auth" json:"keyserver_auth,omitempty"`
+	NextIndex           uint64               `protobuf:"varint,1,opt,name=next_index,json=nextIndex,proto3" json:"next_index,omitempty"`
+	NextEpoch           uint64               `protobuf:"varint,2,opt,name=next_epoch,json=nextEpoch,proto3" json:"next_epoch,omitempty"`
+	PreviousSummaryHash []byte               `protobuf:"bytes,3,opt,name=previous_summary_hash,json=previousSummaryHash,proto3" json:"previous_summary_hash,omitempty"`
+	LatestTreeSnapshot  uint64               `protobuf:"varint,4,opt,name=latest_tree_snapshot,json=latestTreeSnapshot,proto3" json:"latest_tree_snapshot,omitempty"`
+	KeyserverAuth       *AuthorizationPolicy `protobuf:"bytes,5,opt,name=keyserver_auth,json=keyserverAuth" json:"keyserver_auth,omitempty"`
 }
 
-func (m *VerifierState) Reset()      { *m = VerifierState{} }
-func (*VerifierState) ProtoMessage() {}
+func (m *VerifierState) Reset()                    { *m = VerifierState{} }
+func (*VerifierState) ProtoMessage()               {}
+func (*VerifierState) Descriptor() ([]byte, []int) { return fileDescriptorVerifierlocal, []int{0} }
 
 func (m *VerifierState) GetKeyserverAuth() *AuthorizationPolicy {
 	if m != nil {
@@ -45,6 +45,9 @@ func (m *VerifierState) GetKeyserverAuth() *AuthorizationPolicy {
 	return nil
 }
 
+func init() {
+	proto1.RegisterType((*VerifierState)(nil), "proto.VerifierState")
+}
 func (this *VerifierState) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -55,7 +58,12 @@ func (this *VerifierState) VerboseEqual(that interface{}) error {
 
 	that1, ok := that.(*VerifierState)
 	if !ok {
-		return fmt.Errorf("that is not of type *VerifierState")
+		that2, ok := that.(VerifierState)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *VerifierState")
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -63,7 +71,7 @@ func (this *VerifierState) VerboseEqual(that interface{}) error {
 		}
 		return fmt.Errorf("that is type *VerifierState but is nil && this != nil")
 	} else if this == nil {
-		return fmt.Errorf("that is type *VerifierStatebut is not nil && this == nil")
+		return fmt.Errorf("that is type *VerifierState but is not nil && this == nil")
 	}
 	if this.NextIndex != that1.NextIndex {
 		return fmt.Errorf("NextIndex this(%v) Not Equal that(%v)", this.NextIndex, that1.NextIndex)
@@ -92,7 +100,12 @@ func (this *VerifierState) Equal(that interface{}) bool {
 
 	that1, ok := that.(*VerifierState)
 	if !ok {
-		return false
+		that2, ok := that.(VerifierState)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
 	}
 	if that1 == nil {
 		if this == nil {
@@ -143,7 +156,7 @@ func valueToGoStringVerifierlocal(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringVerifierlocal(e map[int32]github_com_andres_erbsen_protobuf_proto.Extension) string {
+func extensionToGoStringVerifierlocal(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
 	if e == nil {
 		return "nil"
 	}
@@ -185,13 +198,11 @@ func (m *VerifierState) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintVerifierlocal(data, i, uint64(m.NextEpoch))
 	}
-	if m.PreviousSummaryHash != nil {
-		if len(m.PreviousSummaryHash) > 0 {
-			data[i] = 0x1a
-			i++
-			i = encodeVarintVerifierlocal(data, i, uint64(len(m.PreviousSummaryHash)))
-			i += copy(data[i:], m.PreviousSummaryHash)
-		}
+	if len(m.PreviousSummaryHash) > 0 {
+		data[i] = 0x1a
+		i++
+		i = encodeVarintVerifierlocal(data, i, uint64(len(m.PreviousSummaryHash)))
+		i += copy(data[i:], m.PreviousSummaryHash)
 	}
 	if m.LatestTreeSnapshot != 0 {
 		data[i] = 0x20
@@ -248,7 +259,7 @@ func NewPopulatedVerifierState(r randyVerifierlocal, easy bool) *VerifierState {
 		this.PreviousSummaryHash[i] = byte(r.Intn(256))
 	}
 	this.LatestTreeSnapshot = uint64(uint64(r.Uint32()))
-	if r.Intn(10) != 0 {
+	if r.Intn(10) == 0 {
 		this.KeyserverAuth = NewPopulatedAuthorizationPolicy(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -337,11 +348,9 @@ func (m *VerifierState) Size() (n int) {
 	if m.NextEpoch != 0 {
 		n += 1 + sovVerifierlocal(uint64(m.NextEpoch))
 	}
-	if m.PreviousSummaryHash != nil {
-		l = len(m.PreviousSummaryHash)
-		if l > 0 {
-			n += 1 + l + sovVerifierlocal(uint64(l))
-		}
+	l = len(m.PreviousSummaryHash)
+	if l > 0 {
+		n += 1 + l + sovVerifierlocal(uint64(l))
 	}
 	if m.LatestTreeSnapshot != 0 {
 		n += 1 + sovVerifierlocal(uint64(m.LatestTreeSnapshot))
@@ -481,7 +490,10 @@ func (m *VerifierState) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreviousSummaryHash = append([]byte{}, data[iNdEx:postIndex]...)
+			m.PreviousSummaryHash = append(m.PreviousSummaryHash[:0], data[iNdEx:postIndex]...)
+			if m.PreviousSummaryHash == nil {
+				m.PreviousSummaryHash = []byte{}
+			}
 			iNdEx = postIndex
 		case 4:
 			if wireType != 0 {
@@ -660,3 +672,27 @@ var (
 	ErrInvalidLengthVerifierlocal = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowVerifierlocal   = fmt.Errorf("proto: integer overflow")
 )
+
+var fileDescriptorVerifierlocal = []byte{
+	// 318 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x44, 0x90, 0x3f, 0x4f, 0xf2, 0x50,
+	0x14, 0x87, 0xe9, 0xfb, 0x82, 0x89, 0x57, 0x70, 0x28, 0x9a, 0x34, 0x24, 0x36, 0xc6, 0xc9, 0x09,
+	0x08, 0x2e, 0xae, 0x98, 0x98, 0xe8, 0x66, 0xc0, 0xb8, 0x36, 0x97, 0x72, 0xa0, 0x37, 0xb6, 0x3d,
+	0xcd, 0xbd, 0xa7, 0x84, 0x3a, 0xf9, 0x71, 0xfc, 0x08, 0x8e, 0x8e, 0x8e, 0x8c, 0x8e, 0xc0, 0xe4,
+	0xc8, 0x64, 0x1c, 0x3d, 0x6d, 0x11, 0x87, 0x27, 0xb7, 0xf7, 0xf7, 0x9c, 0x3f, 0xe9, 0x15, 0xcd,
+	0x19, 0x68, 0x35, 0x51, 0xa0, 0x43, 0xf4, 0x65, 0xd8, 0x4e, 0x34, 0x12, 0xda, 0xb5, 0xe2, 0x68,
+	0x75, 0xa7, 0x8a, 0x82, 0x74, 0xd4, 0xf6, 0x31, 0xea, 0x44, 0x72, 0xac, 0x28, 0x93, 0x9d, 0xc2,
+	0x8c, 0xd2, 0x49, 0x67, 0x8a, 0x53, 0x2c, 0x2e, 0xc5, 0x57, 0xd9, 0xd8, 0xaa, 0xfb, 0xa1, 0x82,
+	0x98, 0xca, 0xdb, 0xd9, 0x97, 0x25, 0x1a, 0x0f, 0xdb, 0xf1, 0x43, 0x92, 0x04, 0xf6, 0x89, 0x10,
+	0x31, 0xcc, 0xc9, 0x53, 0xf1, 0x18, 0xe6, 0x8e, 0x75, 0x6a, 0x9d, 0x57, 0x07, 0xfb, 0x79, 0x72,
+	0x9b, 0x07, 0x3b, 0x0d, 0x09, 0xfa, 0x81, 0xf3, 0xef, 0x4f, 0x5f, 0xe7, 0x81, 0xdd, 0x13, 0xc7,
+	0x89, 0x86, 0x99, 0xc2, 0xd4, 0x78, 0x26, 0x8d, 0x22, 0xa9, 0x33, 0x2f, 0x90, 0x26, 0x70, 0xfe,
+	0x73, 0x65, 0x7d, 0xd0, 0xfc, 0x95, 0xc3, 0xd2, 0xdd, 0xb0, 0xb2, 0xbb, 0xe2, 0x28, 0xe4, 0xcd,
+	0x86, 0x3c, 0xd2, 0x00, 0x9e, 0x89, 0x65, 0x62, 0x02, 0x24, 0xa7, 0x5a, 0x0c, 0xb7, 0x4b, 0x77,
+	0xcf, 0x6a, 0xb8, 0x35, 0x76, 0x5f, 0x1c, 0x3e, 0x42, 0x66, 0x40, 0xf3, 0xcb, 0x78, 0x32, 0xa5,
+	0xc0, 0xa9, 0x71, 0xed, 0x41, 0xaf, 0x55, 0xfe, 0x55, 0xbb, 0xcf, 0x11, 0x6a, 0xf5, 0x24, 0x49,
+	0x61, 0x7c, 0x87, 0xa1, 0xf2, 0xb3, 0x41, 0x63, 0xd7, 0x91, 0xdb, 0xab, 0xcb, 0xc5, 0xca, 0xad,
+	0x7c, 0x30, 0xcb, 0x95, 0x6b, 0x6d, 0x98, 0x6f, 0xe6, 0x79, 0xed, 0x5a, 0x2f, 0xcc, 0x2b, 0xf3,
+	0xc6, 0xbc, 0x33, 0x0b, 0x66, 0xc9, 0x7c, 0xae, 0xdd, 0xca, 0x86, 0xcf, 0xd1, 0x5e, 0xb1, 0xe3,
+	0xe2, 0x27, 0x00, 0x00, 0xff, 0xff, 0x43, 0x87, 0xb1, 0xc6, 0x97, 0x01, 0x00, 0x00,
+}

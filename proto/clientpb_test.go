@@ -62,14 +62,13 @@ package proto
 import testing "testing"
 import math_rand "math/rand"
 import time "time"
-import github_com_andres_erbsen_protobuf_proto "github.com/andres-erbsen/protobuf/proto"
-import github_com_andres_erbsen_protobuf_jsonpb "github.com/andres-erbsen/protobuf/jsonpb"
+import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
+import github_com_maditya_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
 import fmt "fmt"
 import go_parser "go/parser"
-import proto1 "github.com/andres-erbsen/protobuf/proto"
+import proto1 "github.com/maditya/protobuf/proto"
 import math "math"
-
-// discarding unused import gogoproto "gogoproto"
+import _ "github.com/maditya/protobuf/gogoproto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -80,12 +79,12 @@ func TestLookupRequestProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -106,7 +105,7 @@ func TestLookupRequestProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -124,7 +123,7 @@ func TestLookupRequestMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -147,7 +146,7 @@ func BenchmarkLookupRequestProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -161,7 +160,7 @@ func BenchmarkLookupRequestProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedLookupRequest(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedLookupRequest(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -171,7 +170,7 @@ func BenchmarkLookupRequestProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -182,12 +181,12 @@ func TestUpdateRequestProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &UpdateRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -208,7 +207,7 @@ func TestUpdateRequestProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -226,7 +225,7 @@ func TestUpdateRequestMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &UpdateRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -249,7 +248,7 @@ func BenchmarkUpdateRequestProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -263,7 +262,7 @@ func BenchmarkUpdateRequestProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedUpdateRequest(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedUpdateRequest(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -273,7 +272,7 @@ func BenchmarkUpdateRequestProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -284,12 +283,12 @@ func TestLookupProofProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -310,7 +309,7 @@ func TestLookupProofProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -328,7 +327,7 @@ func TestLookupProofMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -351,7 +350,7 @@ func BenchmarkLookupProofProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -365,7 +364,7 @@ func BenchmarkLookupProofProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedLookupProof(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedLookupProof(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -375,7 +374,7 @@ func BenchmarkLookupProofProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -386,12 +385,12 @@ func TestTreeProofProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TreeProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -412,7 +411,7 @@ func TestTreeProofProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -430,7 +429,7 @@ func TestTreeProofMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TreeProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -453,7 +452,7 @@ func BenchmarkTreeProofProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -467,7 +466,7 @@ func BenchmarkTreeProofProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedTreeProof(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedTreeProof(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -477,7 +476,7 @@ func BenchmarkTreeProofProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -488,12 +487,12 @@ func TestEntryProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Entry{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -514,7 +513,7 @@ func TestEntryProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -532,7 +531,7 @@ func TestEntryMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Entry{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -555,7 +554,7 @@ func BenchmarkEntryProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -569,7 +568,7 @@ func BenchmarkEntryProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedEntry(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEntry(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -579,7 +578,7 @@ func BenchmarkEntryProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -590,12 +589,12 @@ func TestSignedEntryUpdateProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEntryUpdate{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -616,7 +615,7 @@ func TestSignedEntryUpdateProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -634,7 +633,7 @@ func TestSignedEntryUpdateMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEntryUpdate{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -657,7 +656,7 @@ func BenchmarkSignedEntryUpdateProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -671,7 +670,7 @@ func BenchmarkSignedEntryUpdateProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedSignedEntryUpdate(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedSignedEntryUpdate(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -681,7 +680,7 @@ func BenchmarkSignedEntryUpdateProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -692,12 +691,12 @@ func TestProfileProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Profile{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -718,7 +717,7 @@ func TestProfileProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -736,7 +735,7 @@ func TestProfileMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Profile{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -759,7 +758,7 @@ func BenchmarkProfileProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -773,7 +772,7 @@ func BenchmarkProfileProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedProfile(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedProfile(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -783,7 +782,7 @@ func BenchmarkProfileProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -794,12 +793,12 @@ func TestSignedEpochHeadProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -820,7 +819,7 @@ func TestSignedEpochHeadProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -838,7 +837,7 @@ func TestSignedEpochHeadMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -861,7 +860,7 @@ func BenchmarkSignedEpochHeadProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -875,7 +874,7 @@ func BenchmarkSignedEpochHeadProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedSignedEpochHead(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedSignedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -885,7 +884,7 @@ func BenchmarkSignedEpochHeadProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -896,12 +895,12 @@ func TestTimestampedEpochHeadProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TimestampedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -922,7 +921,7 @@ func TestTimestampedEpochHeadProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -940,7 +939,7 @@ func TestTimestampedEpochHeadMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TimestampedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -963,7 +962,7 @@ func BenchmarkTimestampedEpochHeadProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -977,7 +976,7 @@ func BenchmarkTimestampedEpochHeadProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedTimestampedEpochHead(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedTimestampedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -987,7 +986,7 @@ func BenchmarkTimestampedEpochHeadProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -998,12 +997,12 @@ func TestEpochHeadProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -1024,7 +1023,7 @@ func TestEpochHeadProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -1042,7 +1041,7 @@ func TestEpochHeadMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -1065,7 +1064,7 @@ func BenchmarkEpochHeadProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -1079,7 +1078,7 @@ func BenchmarkEpochHeadProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedEpochHead(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEpochHead(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -1089,7 +1088,7 @@ func BenchmarkEpochHeadProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -1100,12 +1099,12 @@ func TestAuthorizationPolicyProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &AuthorizationPolicy{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -1126,7 +1125,7 @@ func TestAuthorizationPolicyProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -1144,7 +1143,7 @@ func TestAuthorizationPolicyMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &AuthorizationPolicy{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -1167,7 +1166,7 @@ func BenchmarkAuthorizationPolicyProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -1181,7 +1180,7 @@ func BenchmarkAuthorizationPolicyProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedAuthorizationPolicy(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedAuthorizationPolicy(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -1191,7 +1190,7 @@ func BenchmarkAuthorizationPolicyProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -1202,12 +1201,12 @@ func TestPublicKeyProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &PublicKey{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -1228,7 +1227,7 @@ func TestPublicKeyProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -1246,7 +1245,7 @@ func TestPublicKeyMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &PublicKey{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -1269,7 +1268,7 @@ func BenchmarkPublicKeyProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -1283,7 +1282,7 @@ func BenchmarkPublicKeyProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedPublicKey(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedPublicKey(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -1293,7 +1292,7 @@ func BenchmarkPublicKeyProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -1304,12 +1303,12 @@ func TestQuorumExprProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &QuorumExpr{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -1330,7 +1329,7 @@ func TestQuorumExprProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -1348,7 +1347,7 @@ func TestQuorumExprMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &QuorumExpr{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -1371,7 +1370,7 @@ func BenchmarkQuorumExprProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -1385,7 +1384,7 @@ func BenchmarkQuorumExprProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedQuorumExpr(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedQuorumExpr(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -1395,7 +1394,7 @@ func BenchmarkQuorumExprProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -1406,12 +1405,12 @@ func TestEmailProofProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	littlefuzz := make([]byte, len(data))
@@ -1432,7 +1431,7 @@ func TestEmailProofProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_andres_erbsen_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -1450,7 +1449,7 @@ func TestEmailProofMarshalTo(t *testing.T) {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	for i := range data {
@@ -1473,7 +1472,7 @@ func BenchmarkEmailProofProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(pops[i%10000])
+		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
@@ -1487,7 +1486,7 @@ func BenchmarkEmailProofProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_andres_erbsen_protobuf_proto.Marshal(NewPopulatedEmailProof(popr, false))
+		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEmailProof(popr, false))
 		if err != nil {
 			panic(err)
 		}
@@ -1497,7 +1496,7 @@ func BenchmarkEmailProofProtoUnmarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -1508,13 +1507,13 @@ func TestLookupRequestJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupRequest{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1529,13 +1528,13 @@ func TestUpdateRequestJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &UpdateRequest{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1550,13 +1549,13 @@ func TestLookupProofJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &LookupProof{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1571,13 +1570,13 @@ func TestTreeProofJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TreeProof{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1592,13 +1591,13 @@ func TestEntryJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Entry{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1613,13 +1612,13 @@ func TestSignedEntryUpdateJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEntryUpdate{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1634,13 +1633,13 @@ func TestProfileJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Profile{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1655,13 +1654,13 @@ func TestSignedEpochHeadJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &SignedEpochHead{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1676,13 +1675,13 @@ func TestTimestampedEpochHeadJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &TimestampedEpochHead{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1697,13 +1696,13 @@ func TestEpochHeadJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EpochHead{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1718,13 +1717,13 @@ func TestAuthorizationPolicyJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &AuthorizationPolicy{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1739,13 +1738,13 @@ func TestPublicKeyJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &PublicKey{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1760,13 +1759,13 @@ func TestQuorumExprJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &QuorumExpr{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1781,13 +1780,13 @@ func TestEmailProofJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
-	marshaler := github_com_andres_erbsen_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProof{}
-	err = github_com_andres_erbsen_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1803,9 +1802,9 @@ func TestLookupRequestProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &LookupRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1821,9 +1820,9 @@ func TestLookupRequestProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &LookupRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1839,9 +1838,9 @@ func TestUpdateRequestProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &UpdateRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1857,9 +1856,9 @@ func TestUpdateRequestProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &UpdateRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1875,9 +1874,9 @@ func TestLookupProofProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &LookupProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1893,9 +1892,9 @@ func TestLookupProofProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &LookupProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1911,9 +1910,9 @@ func TestTreeProofProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &TreeProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1929,9 +1928,9 @@ func TestTreeProofProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &TreeProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1947,9 +1946,9 @@ func TestEntryProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &Entry{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1965,9 +1964,9 @@ func TestEntryProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &Entry{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1983,9 +1982,9 @@ func TestSignedEntryUpdateProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &SignedEntryUpdate{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2001,9 +2000,9 @@ func TestSignedEntryUpdateProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &SignedEntryUpdate{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2019,9 +2018,9 @@ func TestProfileProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &Profile{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2037,9 +2036,9 @@ func TestProfileProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &Profile{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2055,9 +2054,9 @@ func TestSignedEpochHeadProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &SignedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2073,9 +2072,9 @@ func TestSignedEpochHeadProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &SignedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2091,9 +2090,9 @@ func TestTimestampedEpochHeadProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &TimestampedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2109,9 +2108,9 @@ func TestTimestampedEpochHeadProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &TimestampedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2127,9 +2126,9 @@ func TestEpochHeadProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &EpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2145,9 +2144,9 @@ func TestEpochHeadProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &EpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2163,9 +2162,9 @@ func TestAuthorizationPolicyProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &AuthorizationPolicy{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2181,9 +2180,9 @@ func TestAuthorizationPolicyProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &AuthorizationPolicy{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2199,9 +2198,9 @@ func TestPublicKeyProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &PublicKey{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2217,9 +2216,9 @@ func TestPublicKeyProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &PublicKey{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2235,9 +2234,9 @@ func TestQuorumExprProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &QuorumExpr{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2253,9 +2252,9 @@ func TestQuorumExprProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &QuorumExpr{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2271,9 +2270,9 @@ func TestEmailProofProtoText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.MarshalTextString(p)
+	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
 	msg := &EmailProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2289,9 +2288,9 @@ func TestEmailProofProtoCompactText(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
-	data := github_com_andres_erbsen_protobuf_proto.CompactTextString(p)
+	data := github_com_maditya_protobuf_proto.CompactTextString(p)
 	msg := &EmailProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2305,12 +2304,12 @@ func TestEmailProofProtoCompactText(t *testing.T) {
 func TestLookupRequestVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupRequest(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &LookupRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2320,12 +2319,12 @@ func TestLookupRequestVerboseEqual(t *testing.T) {
 func TestUpdateRequestVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedUpdateRequest(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &UpdateRequest{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2335,12 +2334,12 @@ func TestUpdateRequestVerboseEqual(t *testing.T) {
 func TestLookupProofVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedLookupProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &LookupProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2350,12 +2349,12 @@ func TestLookupProofVerboseEqual(t *testing.T) {
 func TestTreeProofVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTreeProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &TreeProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2365,12 +2364,12 @@ func TestTreeProofVerboseEqual(t *testing.T) {
 func TestEntryVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEntry(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Entry{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2380,12 +2379,12 @@ func TestEntryVerboseEqual(t *testing.T) {
 func TestSignedEntryUpdateVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEntryUpdate(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &SignedEntryUpdate{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2395,12 +2394,12 @@ func TestSignedEntryUpdateVerboseEqual(t *testing.T) {
 func TestProfileVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedProfile(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Profile{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2410,12 +2409,12 @@ func TestProfileVerboseEqual(t *testing.T) {
 func TestSignedEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedSignedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &SignedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2425,12 +2424,12 @@ func TestSignedEpochHeadVerboseEqual(t *testing.T) {
 func TestTimestampedEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTimestampedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &TimestampedEpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2440,12 +2439,12 @@ func TestTimestampedEpochHeadVerboseEqual(t *testing.T) {
 func TestEpochHeadVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEpochHead(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EpochHead{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2455,12 +2454,12 @@ func TestEpochHeadVerboseEqual(t *testing.T) {
 func TestAuthorizationPolicyVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedAuthorizationPolicy(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &AuthorizationPolicy{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2470,12 +2469,12 @@ func TestAuthorizationPolicyVerboseEqual(t *testing.T) {
 func TestPublicKeyVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedPublicKey(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &PublicKey{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2485,12 +2484,12 @@ func TestPublicKeyVerboseEqual(t *testing.T) {
 func TestQuorumExprVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedQuorumExpr(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &QuorumExpr{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2500,12 +2499,12 @@ func TestQuorumExprVerboseEqual(t *testing.T) {
 func TestEmailProofVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProof(popr, false)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EmailProof{}
-	if err := github_com_andres_erbsen_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -2698,8 +2697,8 @@ func TestLookupRequestSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2710,7 +2709,7 @@ func TestLookupRequestSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2734,8 +2733,8 @@ func TestUpdateRequestSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2746,7 +2745,7 @@ func TestUpdateRequestSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2770,8 +2769,8 @@ func TestLookupProofSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2782,7 +2781,7 @@ func TestLookupProofSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2806,8 +2805,8 @@ func TestTreeProofSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2818,7 +2817,7 @@ func TestTreeProofSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2842,8 +2841,8 @@ func TestEntrySize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2854,7 +2853,7 @@ func TestEntrySize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2878,8 +2877,8 @@ func TestSignedEntryUpdateSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2890,7 +2889,7 @@ func TestSignedEntryUpdateSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2914,8 +2913,8 @@ func TestProfileSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2926,7 +2925,7 @@ func TestProfileSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2950,8 +2949,8 @@ func TestSignedEpochHeadSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2962,7 +2961,7 @@ func TestSignedEpochHeadSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2986,8 +2985,8 @@ func TestTimestampedEpochHeadSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -2998,7 +2997,7 @@ func TestTimestampedEpochHeadSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3022,8 +3021,8 @@ func TestEpochHeadSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3034,7 +3033,7 @@ func TestEpochHeadSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3058,8 +3057,8 @@ func TestAuthorizationPolicySize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3070,7 +3069,7 @@ func TestAuthorizationPolicySize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3094,8 +3093,8 @@ func TestPublicKeySize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3106,7 +3105,7 @@ func TestPublicKeySize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3130,8 +3129,8 @@ func TestQuorumExprSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3142,7 +3141,7 @@ func TestQuorumExprSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3166,8 +3165,8 @@ func TestEmailProofSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
-	size2 := github_com_andres_erbsen_protobuf_proto.Size(p)
-	data, err := github_com_andres_erbsen_protobuf_proto.Marshal(p)
+	size2 := github_com_maditya_protobuf_proto.Size(p)
+	data, err := github_com_maditya_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -3178,7 +3177,7 @@ func TestEmailProofSize(t *testing.T) {
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_andres_erbsen_protobuf_proto.Size(p)
+	size3 := github_com_maditya_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -3325,4 +3324,4 @@ func TestEmailProofStringer(t *testing.T) {
 	}
 }
 
-//These tests are generated by github.com/andres-erbsen/protobuf/plugin/testgen
+//These tests are generated by github.com/maditya/protobuf/plugin/testgen

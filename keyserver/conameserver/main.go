@@ -19,7 +19,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/andres-erbsen/protobuf/jsonpb"
+	"github.com/maditya/protobuf/jsonpb"
 
 	"github.com/yahoo/coname/keyserver"
 	"github.com/yahoo/coname/proto"
