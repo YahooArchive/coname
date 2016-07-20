@@ -14,9 +14,9 @@ It is generated from these files:
 	replication.proto
 	timestamp.proto
 	tlsconfig.proto
+	verifier.proto
 	verifierconfig.proto
 	verifierlocal.proto
-	verifier.proto
 
 It has these top-level messages:
 	LookupRequest
@@ -51,11 +51,11 @@ It has these top-level messages:
 	Timestamp
 	TLSConfig
 	CertificateAndKeyID
-	VerifierConfig
-	VerifierState
 	VerifierStreamRequest
 	VerifierStep
 	Nothing
+	VerifierConfig
+	VerifierState
 */
 package proto
 

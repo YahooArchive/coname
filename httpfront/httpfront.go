@@ -181,8 +181,8 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
-	marshaler := jsonpb.Marshaler{}
+	// preserve the original field name
+	marshaler := jsonpb.Marshaler{OrigName: true}
 	err = marshaler.Marshal(w, pf)
 	if err != nil {
 		http.Error(w, `Internal server error`, http.StatusInternalServerError)

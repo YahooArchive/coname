@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -46,6 +47,7 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
+	"github.com/maditya/protobuf/jsonpb"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"
@@ -245,9 +247,11 @@ func setupKeyservers(t *testing.T, nReplicas int) (
 			PublicAddr:          "localhost:0",
 			VerifierAddr:        "localhost:0",
 			HKPAddr:             "localhost:0",
+			HTTPFrontAddr:       "localhost:0",
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUEST_CLIENT_CERT},
+			HTTPFrontTLS:        proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUEST_CLIENT_CERT},
 			ClientTimeout:       proto.DurationStamp(time.Hour),
 			LaggingVerifierScan: 1000 * 1000 * 1000,
 		})
@@ -1031,5 +1035,98 @@ func TestKeyserverHKP(t *testing.T) {
 	}
 	if got, want := pgpKey, pgpKeyRef; !bytes.Equal(got, want) {
 		t.Errorf("pgpKey: got %q but wanted %q", got, want)
+	}
+}
+
+func TestKeyserverHTTPFrontLookup(t *testing.T) {
+	kss, caPool, clks, verifiers, ck, clientConfig, teardown := setupRealm(t, 3, 3)
+	ks := kss[0]
+	defer teardown()
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pgpKeyRef := []byte("this-is-alices-pgp-key")
+	_, _, _, profile := doRegister(t, ks, clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+		Nonce: []byte("definitely used only once"),
+		Keys:  map[string][]byte{"25519": pgpKeyRef},
+	})
+
+	url := "https://" + ks.httpFrontListen.Addr().String() + "/lookup"
+
+	lr := &proto.LookupRequest{UserId: alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum()}
+
+	var b bytes.Buffer
+
+	mr := &jsonpb.Marshaler{OrigName: true}
+	err = mr.Marshal(&b, lr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest("POST", url, &b)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	c := &http.Client{Transport: tr}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, e := ioutil.ReadAll(resp.Body)
+	if resp.Status != "200 OK" {
+		t.Fatalf("%s (%s)", body, e)
+	}
+	proof := &proto.LookupProof{}
+
+	err = jsonpb.UnmarshalString(string(body), proof)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
+	if got, want := len(proof.Ratifications), majority(len(kss))+len(verifiers); got < want {
+		t.Errorf("expected at least %d sehs, got %d", got, want)
+	}
+	_, err = coname.VerifyLookup(clientConfig, alice, proof, clks[0].Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// To verify json response preserves the original field names
+	// as specified in https://github.com/yahoo/coname/blob/master/proto/client.proto#L63-L89
+	type lp struct {
+		Entry      string `json:"entry"`
+		Index      string `json:"index"`
+		IndexProof string `json:"index_proof"`
+		Profile    string `json:"profile"`
+		UserId     string `json:"user_id"`
+	}
+	l := &lp{}
+	err = json.Unmarshal(body, &l)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if l.Entry == "" {
+		t.Errorf("entry not found in the response")
+	}
+	if l.Index == "" {
+		t.Errorf("index not found in the response")
+	}
+	if l.IndexProof == "" {
+		t.Errorf("index_proof not found in the response")
+	}
+	if l.Profile == "" {
+		t.Errorf("profile not found in the response")
+	}
+	if l.UserId == "" {
+		t.Errorf("user_id not found in the response")
 	}
 }
