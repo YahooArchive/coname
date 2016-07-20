@@ -1506,6 +1506,8 @@ var (
 	ErrIntOverflowReplication   = fmt.Errorf("proto: integer overflow")
 )
 
+func init() { proto1.RegisterFile("replication.proto", fileDescriptorReplication) }
+
 var fileDescriptorReplication = []byte{
 	// 379 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x90, 0xbf, 0x6f, 0xda, 0x40,

@@ -5192,6 +5192,8 @@ var (
 	ErrIntOverflowKeyserverconfig   = fmt.Errorf("proto: integer overflow")
 )
 
+func init() { proto1.RegisterFile("keyserverconfig.proto", fileDescriptorKeyserverconfig) }
+
 var fileDescriptorKeyserverconfig = []byte{
 	// 1328 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0xcd, 0x6f, 0x1b, 0x45,

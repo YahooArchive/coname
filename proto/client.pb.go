@@ -14,9 +14,9 @@
 		replication.proto
 		timestamp.proto
 		tlsconfig.proto
+		verifier.proto
 		verifierconfig.proto
 		verifierlocal.proto
-		verifier.proto
 
 	It has these top-level messages:
 		LookupRequest
@@ -51,11 +51,11 @@
 		Timestamp
 		TLSConfig
 		CertificateAndKeyID
-		VerifierConfig
-		VerifierState
 		VerifierStreamRequest
 		VerifierStep
 		Nothing
+		VerifierConfig
+		VerifierState
 */
 package proto
 
@@ -6743,6 +6743,8 @@ var (
 	ErrInvalidLengthClient = fmt.Errorf("proto: negative length found during unmarshaling")
 	ErrIntOverflowClient   = fmt.Errorf("proto: integer overflow")
 )
+
+func init() { proto1.RegisterFile("client.proto", fileDescriptorClient) }
 
 var fileDescriptorClient = []byte{
 	// 1257 bytes of a gzipped FileDescriptorProto
