@@ -127,6 +127,7 @@ type Keyserver struct {
 type OIDCConfig struct {
 	allowedDomains map[string]struct{}
 	oidcClient     *oidc.Client
+	scope          string
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -206,7 +207,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 				if err != nil {
 					return nil, err
 				}
-				oc := OIDCConfig{oidcClient: o}
+				oc := OIDCConfig{oidcClient: o, scope: c.Scope}
 				oc.allowedDomains = make(map[string]struct{})
 				for _, d := range c.AllowedDomains {
 					oc.allowedDomains[d] = struct{}{}
@@ -296,7 +297,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation, TLSConfig: httpFrontTLS}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation, TLSConfig: httpFrontTLS, SAMLRequest: ks.SAMLRequest, OIDCRequest: ks.OIDCRequest}
 		defer func() {
 			if !ok {
 				ks.httpFrontListen.Close()

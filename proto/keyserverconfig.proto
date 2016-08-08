@@ -207,6 +207,8 @@ message OIDCConfig {
 	// to accept an OpenID Connect token from the issue time in the token itself.
 	// A zero value means server will only rely on the expiry field in the token.
 	Duration validity = 5	[(gogoproto.nullable) = false];
+	// Scope specifies the OIDC scope
+	string scope = 6;
 }
 
 message Replica {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ type HTTPFront struct {
 	Lookup      func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
 	Update      func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
 	SAMLRequest func() (string, error)
+	OIDCRequest func(string, string) (string, error)
 	InRotation  func() bool
 
 	// this is needed due to https://github.com/golang/go/issues/14374
@@ -109,18 +111,12 @@ func (h *HTTPFront) doLookup(b io.Reader, ctx context.Context) (*proto.LookupPro
 
 }
 
-func (h *HTTPFront) doUpdate(b io.Reader, ctx context.Context, userid string) (*proto.LookupProof, error) {
+func (h *HTTPFront) doUpdate(b io.Reader, ctx context.Context) (*proto.LookupProof, error) {
 	ur := &proto.UpdateRequest{}
 	err := jsonpb.Unmarshal(b, ur)
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: uncomment the check below if we have any user auth at http layer,
-	// else remove this altogether
-	//if useridReq, useridAuth := ur.LookupParameters.UserId, userid; useridReq != useridAuth {
-	//	return nil, errors.New("userid mismatch in request body and auth, " + useridReq + " vs " + useridAuth)
-	//}
 
 	pf, err := h.Update(ctx, ur)
 	if err != nil {
@@ -155,11 +151,24 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, url, http.StatusFound)
 		return
 	}
+	if method == "GET" && path == "/oidc" {
+		u, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			http.Error(w, `error parsing query string`, http.StatusBadRequest)
+			return
+		}
+		d := u.Get("domain")
+		if d == "" {
+			http.Error(w, `domain not found`, http.StatusBadRequest)
+			return
+		}
 
-	userid, err := auth(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		url, err := h.OIDCRequest(d, r.Host+"/oidcsso")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Redirect(w, r, url, http.StatusFound)
 	}
 
 	if method != "POST" || (path != "/lookup" && path != "/update") {
@@ -167,6 +176,7 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pf := &proto.LookupProof{}
+	var err error
 	ctx := context.Background()
 	if path == "/lookup" {
 		pf, err = h.doLookup(r.Body, ctx)
@@ -175,7 +185,7 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else if path == "/update" {
-		pf, err = h.doUpdate(r.Body, ctx, userid)
+		pf, err = h.doUpdate(r.Body, ctx)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
