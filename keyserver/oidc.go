@@ -23,5 +23,5 @@ func (ks *Keyserver) OIDCRequest(domain string, uri string) (string, error) {
 		return oc.oidcClient.Issuer + "/oauth2/request_auth?" + strings.Replace(v.Encode(), "+", "%20", -1), nil
 
 	}
-	return "", fmt.Errorf("domain %q configured for OIDC auth", domain)
+	return "", fmt.Errorf("domain %q NOT configured for OIDC auth", domain)
 }
