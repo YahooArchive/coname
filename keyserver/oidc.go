@@ -3,6 +3,7 @@ package keyserver
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 func (ks *Keyserver) OIDCRequest(domain string, uri string) (string, error) {
@@ -16,7 +17,8 @@ func (ks *Keyserver) OIDCRequest(domain string, uri string) (string, error) {
 		v.Set("response_type", "id_token")
 		v.Set("redirect_uri", uri)
 		v.Set("scope", oc.scope)
-		return oc.oidcClient.Issuer + "/oauth2/request_auth?" + v.Encode(), nil
+		// replace '+' with '%20' due to https://github.com/golang/go/issues/4013
+		return oc.oidcClient.Issuer + "/oauth2/request_auth?" + strings.Replace(v.Encode(), "+", "%20", -1), nil
 
 	}
 	return "", fmt.Errorf("domain %q configured for OIDC auth", domain)
