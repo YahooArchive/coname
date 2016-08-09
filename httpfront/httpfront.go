@@ -163,7 +163,7 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		url, err := h.OIDCRequest(d, r.Host+"/oidcsso")
+		url, err := h.OIDCRequest(d, "https://"+r.Host+"/oidcsso")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
