@@ -188,6 +188,11 @@ message EmailProofBySAML {
 	// ConsumerServiceURL contains the AssertionConsumerServiceURL
 	string consumer_service_url = 4	[(gogoproto.customname) = "ConsumerServiceURL"];
 	TLSConfig service_provider_tls = 5 [(gogoproto.customname) = "ServiceProviderTLS", (gogoproto.nullable) = false];
+	// Validity specifies the maximum amount of time the server is willing
+	// to accept an assertion from the issue time in the assertion itself.
+	// A zero value means server will only rely on the
+        // SubjectConfirmationData.NotOnOrAfter field in the assertion.
+	Duration validity = 6	[(gogoproto.nullable) = false];
 }
 
 // OIDCConfig contains the OpenID Connect client configuration which is used to

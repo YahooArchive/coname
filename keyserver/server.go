@@ -71,6 +71,7 @@ type Keyserver struct {
 	samlProofConsumerServiceURL string
 	samlProofIDPCert            *x509.Certificate
 	samlProofSPKey              crypto.PrivateKey
+	samlProofValidity           time.Duration
 
 	insecureSkipEmailProof bool
 
@@ -225,6 +226,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 			ks.samlProofConsumerServiceURL = t.EmailProofBySAML.ConsumerServiceURL
 			ks.samlProofIDPSSOURL = url
 			ks.samlProofIDPCert = cert
+			ks.samlProofValidity = t.EmailProofBySAML.Validity.Duration()
 			key, err := getKey(t.EmailProofBySAML.ServiceProviderTLS.Certificates[0].KeyID)
 			if err != nil {
 				return nil, err
