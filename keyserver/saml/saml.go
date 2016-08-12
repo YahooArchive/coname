@@ -12,7 +12,7 @@ import (
 	saml "github.com/maditya/go-saml"
 )
 
-func VerifySAMLResponse(payload string, idPCert *x509.Certificate, consumerServiceURL string, attributeName string) (string, error) {
+func VerifySAMLResponse(payload string, idPCert *x509.Certificate, consumerServiceURL string, attributeName string, validity time.Duration) (string, error) {
 	resp, err := saml.ParseEncodedResponse(payload)
 	if err != nil {
 		return "", err
@@ -20,6 +20,7 @@ func VerifySAMLResponse(payload string, idPCert *x509.Certificate, consumerServi
 	err = resp.Validate(&saml.ServiceProviderConfig{
 		IDPCert:                     idPCert,
 		AssertionConsumerServiceURL: consumerServiceURL,
+		AssertionValidity:           validity,
 	})
 	if err != nil {
 		return "", err

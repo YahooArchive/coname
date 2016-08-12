@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/maditya/go-saml"
 )
@@ -63,8 +64,7 @@ func TestSAMLValidResponse(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
-
-	email, err := VerifySAMLResponse(payload, cert, "https://e2esp.yahoo.com", "EmailAddress")
+	email, err := VerifySAMLResponse(payload, cert, "https://e2esp.yahoo.com", "EmailAddress", 10*time.Second)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
