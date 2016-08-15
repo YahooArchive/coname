@@ -17,11 +17,12 @@ import (
 
 // HTTPFront implements a dumb http proxy for the keyserver grpc interface
 type HTTPFront struct {
-	Lookup      func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
-	Update      func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
-	SAMLRequest func() (string, error)
-	OIDCRequest func(string, string) (string, error)
-	InRotation  func() bool
+	Lookup        func(context.Context, *proto.LookupRequest) (*proto.LookupProof, error)
+	Update        func(context.Context, *proto.UpdateRequest) (*proto.LookupProof, error)
+	SAMLRequest   func() (string, error)
+	OIDCRequest   func(string, string) (string, error)
+	InRotation    func() bool
+	IsAuthExpired func(error) bool
 
 	// this is needed due to https://github.com/golang/go/issues/14374
 	TLSConfig *tls.Config
@@ -187,7 +188,11 @@ func (h *HTTPFront) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else if path == "/update" {
 		pf, err = h.doUpdate(r.Body, ctx)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			status := http.StatusBadRequest
+			if h.IsAuthExpired(err) {
+				status = http.StatusUnauthorized
+			}
+			http.Error(w, err.Error(), status)
 			return
 		}
 	}

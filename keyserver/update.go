@@ -24,6 +24,7 @@ import (
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/dkim"
+	"github.com/yahoo/coname/keyserver/oidc"
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/keyserver/saml"
 	"github.com/yahoo/coname/proto"
@@ -98,6 +99,9 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 					found = true
 					email, err := oc.oidcClient.VerifyIDToken(t.OIDCToken)
 					if err != nil {
+						if _, ok := err.(oidc.ErrExpired); ok {
+							return &errExpired{err: err}
+						}
 						return err
 					}
 					if got, want := email, req.LookupParameters.UserId; got != want {
@@ -115,6 +119,9 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 				}
 				email, err := saml.VerifySAMLResponse(t.SAMLResponse, ks.samlProofIDPCert, ks.samlProofConsumerServiceURL, "EmailAddress", ks.samlProofValidity)
 				if err != nil {
+					if _, ok := err.(saml.ErrExpired); ok {
+						return &errExpired{err: err}
+					}
 					return err
 				}
 				if got, want := email, req.LookupParameters.UserId; got != want {

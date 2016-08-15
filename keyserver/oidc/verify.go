@@ -7,6 +7,14 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+type ErrExpired struct {
+	err error
+}
+
+func (e ErrExpired) Error() string {
+	return e.err.Error()
+}
+
 // VerifyIDToken parses and validates the ID token received from the provider
 // Apart from the signature validation, we care about the following fields:
 // exp - token must not be expired
@@ -28,6 +36,11 @@ func (c *Client) VerifyIDToken(token string) (email string, err error) {
 		return c.pubKeys[kid], nil
 	})
 	if err != nil {
+		if ve, ok := err.(*jwt.ValidationError); ok {
+			if ve.Errors&jwt.ValidationErrorExpired != 0 {
+				return "", &ErrExpired{err: err}
+			}
+		}
 		return "", err
 	}
 	if tok.Valid {

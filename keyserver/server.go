@@ -131,6 +131,19 @@ type OIDCConfig struct {
 	scope          string
 }
 
+type errExpired struct {
+	err error
+}
+
+func (e *errExpired) Error() string {
+	return e.err.Error()
+}
+
+func isExpired(err error) bool {
+	_, ok := err.(*errExpired)
+	return ok
+}
+
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
 func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
@@ -299,7 +312,8 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		if err != nil {
 			return nil, err
 		}
-		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation, TLSConfig: httpFrontTLS, SAMLRequest: ks.SAMLRequest, OIDCRequest: ks.OIDCRequest}
+		ks.httpFront = &httpfront.HTTPFront{Lookup: ks.Lookup, Update: ks.Update, InRotation: ks.InRotation,
+			IsAuthExpired: isExpired, TLSConfig: httpFrontTLS, SAMLRequest: ks.SAMLRequest, OIDCRequest: ks.OIDCRequest}
 		defer func() {
 			if !ok {
 				ks.httpFrontListen.Close()

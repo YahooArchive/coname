@@ -12,6 +12,14 @@ import (
 	saml "github.com/maditya/go-saml"
 )
 
+type ErrExpired struct {
+	err error
+}
+
+func (e ErrExpired) Error() string {
+	return e.err.Error()
+}
+
 func VerifySAMLResponse(payload string, idPCert *x509.Certificate, consumerServiceURL string, attributeName string, validity time.Duration) (string, error) {
 	resp, err := saml.ParseEncodedResponse(payload)
 	if err != nil {
@@ -23,6 +31,9 @@ func VerifySAMLResponse(payload string, idPCert *x509.Certificate, consumerServi
 		AssertionValidity:           validity,
 	})
 	if err != nil {
+		if saml.IsExpired(err) {
+			return "", &ErrExpired{err: err}
+		}
 		return "", err
 	}
 	email := resp.GetAttribute(attributeName)
