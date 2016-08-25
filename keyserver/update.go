@@ -99,7 +99,7 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 					found = true
 					email, err := oc.oidcClient.VerifyIDToken(t.OIDCToken)
 					if err != nil {
-						if _, ok := err.(oidc.ErrExpired); ok {
+						if _, ok := err.(*oidc.ErrExpired); ok {
 							return &errExpired{err: err}
 						}
 						return err
@@ -119,7 +119,7 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 				}
 				email, err := saml.VerifySAMLResponse(t.SAMLResponse, ks.samlProofIDPCert, ks.samlProofConsumerServiceURL, "EmailAddress", ks.samlProofValidity)
 				if err != nil {
-					if _, ok := err.(saml.ErrExpired); ok {
+					if _, ok := err.(*saml.ErrExpired); ok {
 						return &errExpired{err: err}
 					}
 					return err
