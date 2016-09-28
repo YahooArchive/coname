@@ -28,4 +28,7 @@ message VerifierConfig {
 	AuthorizationPolicy initial_keyserver_auth = 6 [(gogoproto.nullable) = false];
 
 	bytes tree_nonce = 7;
+	// LevelDBPath specifies the directory in which the database is stored.
+	// Nothing else should use this directory.
+	string leveldb_path = 8 [(gogoproto.customname) = "LevelDBPath"];
 }
