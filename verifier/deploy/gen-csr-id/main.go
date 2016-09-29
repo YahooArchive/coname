@@ -43,7 +43,7 @@ func main() {
 		panic(err)
 	}
 	csrPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})
-	// openssl req -inform der -in csr.der  -noout -text
+	// openssl req -in csr.pem -noout -text
 	err = ioutil.WriteFile("csr.pem", csrPEM, 0644)
 	if err != nil {
 		panic(err)
