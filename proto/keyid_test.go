@@ -1,9 +1,6 @@
 package proto
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
 func TestKeyID(t *testing.T) {
 
