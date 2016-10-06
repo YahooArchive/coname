@@ -1,8 +1,6 @@
 package concurrent
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestSequenceBroadcastSendDoesntBlockButCloses(t *testing.T) {
 	sb := NewSequenceBroadcast(11)
@@ -35,6 +33,25 @@ func TestSequenceBroadcastPastReceiveNil(t *testing.T) {
 	ch := sb.Receive(7, 1<<40)
 	if ch != nil {
 		t.Errorf("NewSequenceBroadcast(13).Receive(7, 1<<40) = %#v, expected nil", ch)
+	}
+}
+
+func TestSequenceBroadcastInvalidLimit(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("NewSequenceBroadcast(13).Receive(7,6) expected to panic, it did not")
+		}
+	}()
+	sb := NewSequenceBroadcast(13)
+	sb.Receive(7, 6)
+	t.Errorf("NewSequenceBroadcast(13).Receive(7,6) expected to panic, it did not")
+}
+
+func TestSequenceBroadcastSameStartLimit(t *testing.T) {
+	sb := NewSequenceBroadcast(13)
+	ch := sb.Receive(7, 7)
+	if _, ok := <-ch; ok {
+		t.Errorf("NewSequenceBroadcast(13).Receive(7,7) did not close ch even though start and limit are same(got a value instead)")
 	}
 }
 
