@@ -467,6 +467,11 @@ func waitForFirstEpoch(ks *Keyserver, quorum *proto.QuorumExpr) {
 	}, 1)
 }
 
+func getLatestEpoch(ks *Keyserver, quorum *proto.QuorumExpr) (uint64, error) {
+	epoch, _, err := ks.findLatestEpochSignedByQuorum(quorum)
+	return epoch, err
+}
+
 func stoppableSyncedClocks(clks []*clock.Mock) chan<- struct{} {
 	done := make(chan struct{})
 	go func() {
@@ -681,6 +686,101 @@ func TestKeyserverUpdate(t *testing.T) {
 		Nonce: []byte("XYZNONCE"),
 		Keys:  map[string][]byte{"abc": []byte{4, 5, 6}, "qwop": []byte("TEST MOOOO")},
 	})
+}
+
+func TestKeyserverLookupSpecificEpoch(t *testing.T) {
+	dieOnCtrlC()
+	kss, caPool, clks, verifiers, ck, clientConfig, teardown := setupRealm(t, 3, 3)
+	defer teardown()
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, profile := doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	epoch, err := getLatestEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := proto.NewE2EKSPublicClient(conn)
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
+		Epoch:             epoch,
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := proof.Profile.Encoding, profile.Encoding; !bytes.Equal(got, want) {
+		t.Errorf("profile didn't roundtrip: %x != %x", got, want)
+	}
+	if got, want := len(proof.Ratifications), majority(len(kss))+len(verifiers); got < want {
+		t.Errorf("expected at least %d sehs, got %d", got, want)
+	}
+	_, err = coname.VerifyLookup(clientConfig, alice, proof, clks[0].Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestKeyserverLookupInvalidEpoch(t *testing.T) {
+	dieOnCtrlC()
+	kss, caPool, clks, _, ck, clientConfig, teardown := setupRealm(t, 3, 3)
+	defer teardown()
+	stop := stoppableSyncedClocks(clks)
+	defer close(stop)
+
+	waitForFirstEpoch(kss[0], clientConfig.Realms[0].VerificationPolicy.GetQuorum())
+
+	clientTLS, err := clientConfig.Realms[0].ClientTLS.Config(ck)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doRegister(t, kss[0], clientConfig, clientTLS, caPool, clks[0].Now(), alice, 0, proto.Profile{
+		Nonce: []byte("noncenoncenonceNONCE"),
+		Keys:  map[string][]byte{"abc": []byte{1, 2, 3}, "xyz": []byte("TEST 456")},
+	})
+
+	conn, err := grpc.Dial(kss[0].publicListen.Addr().String(), grpc.WithTransportCredentials(credentials.NewTLS(clientTLS)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := proto.NewE2EKSPublicClient(conn)
+	proof, err := c.Lookup(context.Background(), &proto.LookupRequest{
+		Epoch:             1, // stale epoch
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proof.Profile != nil {
+		t.Errorf("Expected proof.Profile to be nil, got %v", proof.Profile)
+	}
+
+	_, err = c.Lookup(context.Background(), &proto.LookupRequest{
+		Epoch:             555555, // future epoch
+		UserId:            alice,
+		QuorumRequirement: clientConfig.Realms[0].VerificationPolicy.GetQuorum(),
+	})
+	if err == nil {
+		t.Fatal("Lookup with invalid epoch expected to fail, but succeeded")
+	}
+
 }
 
 // setupVerifier initializes a verifier, but does not start it and does not

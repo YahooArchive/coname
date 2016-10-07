@@ -50,7 +50,10 @@ func GenerateSAMLRequest(spCert *x509.Certificate, spKey crypto.PrivateKey, cons
 		IDPSSOURL:                   idPSSOURL,
 		PrivateKey:                  spKey,
 	}
-	authnRequest := sp.GetAuthnRequest()
+	authnRequest, err := sp.GetAuthnRequest()
+	if err != nil {
+		return "", err
+	}
 	b64SignedXML, err := authnRequest.CompressedEncodedSignedString(sp.PrivateKey)
 	if err != nil {
 		return "", err
