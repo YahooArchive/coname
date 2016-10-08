@@ -63,7 +63,7 @@ func TestSAMLRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := "http://idp.bob?SAMLRequest="
+	p := "https://idp.bob?SAMLRequest="
 	if !strings.HasPrefix(req, p) {
 		t.Errorf("got request url %q, expected it to begin with %q", req, p)
 	}
