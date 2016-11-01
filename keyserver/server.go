@@ -146,7 +146,7 @@ func isExpired(err error) bool {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (ks *Keyserver, err error) {
+func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (*Keyserver, error) {
 	signingKey, err := getKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		return nil, err
 	}
 
-	ks = &Keyserver{
+	ks := &Keyserver{
 		realm:                   cfg.Realm,
 		serverID:                cfg.ServerID,
 		replicaID:               cfg.ReplicaID,
