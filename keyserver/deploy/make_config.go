@@ -175,7 +175,7 @@ func main() {
 				EmailProofByOIDC: &proto.EmailProofByOIDC{
 					OIDCConfig: []*proto.OIDCConfig{
 						&proto.OIDCConfig{AllowedDomains: []string{"yahoo.com"},
-							DiscoveryURL: "https://login.yahoo.com",
+							DiscoveryURL: "https://api.login.yahoo.com/.well-known/openid-configuration",
 							Issuer:       "https://api.login.yahoo.com",
 							ClientID:     "foobar"},
 					},
@@ -209,7 +209,7 @@ func main() {
 			PublicTLS:           proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			VerifierTLS:         proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
 			HKPTLS:              proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
-			HTTPFrontTLS:        proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUIRE_AND_VERIFY_CLIENT_CERT},
+			HTTPFrontTLS:        proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}, ClientCAs: [][]byte{caCert.Raw}, ClientAuth: proto.REQUEST_CLIENT_CERT},
 			RaftTLS:             proto.TLSConfig{Certificates: pcerts, RootCAs: [][]byte{caCert.Raw}},
 			LevelDBPath:         "db", // TODO
 			RaftHeartbeat:       heartbeat,
@@ -254,7 +254,8 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		err = new(jsonpb.Marshaler).Marshal(configF, cfg)
+		m := &jsonpb.Marshaler{Indent: string('\t'), OrigName: true}
+		err = m.Marshal(configF, cfg)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -311,7 +312,8 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	err = new(jsonpb.Marshaler).Marshal(clientConfigF, clientConfig)
+	m := &jsonpb.Marshaler{Indent: string('\t'), OrigName: true}
+	err = m.Marshal(clientConfigF, clientConfig)
 	if err != nil {
 		log.Panic(err)
 	}

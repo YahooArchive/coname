@@ -325,7 +325,7 @@ func (l *raftLog) run() {
 	}
 }
 
-// send synchronouslt accesses l.grpcConnectionCache and then asynchronously
+// send synchronously accesses l.grpcConnectionCache and then asynchronously
 // sends msg to msg.To, reporting an error if necessary.
 func (l *raftLog) send(msg *raftpb.Message) {
 	c, ok := l.grpcClientCache[msg.To]
