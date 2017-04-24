@@ -47,7 +47,7 @@ import (
 	"github.com/agl/ed25519"
 	"github.com/andres-erbsen/clock"
 	"github.com/andres-erbsen/tlstestutil"
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"

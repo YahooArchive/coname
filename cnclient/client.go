@@ -30,7 +30,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

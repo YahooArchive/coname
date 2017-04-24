@@ -25,7 +25,6 @@ function generateEncodedType {
 	sed "s/Thing/$1/g" < encoded.go.template > "$1.pr.go"
 	sed "s/Thing/$1/g" < encoded_test.go.template > "$1pr_test.go"
 }
-
 generateEncodedType Profile
 generateEncodedType Entry
 generateEncodedType SignedEntryUpdate
@@ -49,3 +48,5 @@ awk '{
     if ( f == 1 && $0 ~ /:= r\.Intn\(10\)/) { f = 0; sub(10,2,$0) }
     print($0)
 }' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go
+
+for i in *.pb.go; do sed "s/\(NewPopulatedEncoded[A-Za-z_0-1]*\)(\(.*\))/\1(\2, easy)/" < $i > $i...; mv -f $i... $i; done

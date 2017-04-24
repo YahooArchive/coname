@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"log"
 
 	"golang.org/x/crypto/sha3"
 
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
+	"github.com/yahoo/coname/keyserver/kv"
 )
 
 func CheckCommitment(commitment []byte, profile *proto.EncodedProfile) bool {
@@ -75,6 +77,9 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		}
 		return nil, nil
 	} else {
+		if pf.Entry == nil || pf.Profile == nil {
+			return nil, nil		// empty entry or profile
+		}
 		var entryHash [32]byte
 		sha3.ShakeSum256(entryHash[:], pf.Entry.Encoding)
 		if !bytes.Equal(entryHash[:], verifiedEntryHash) {
@@ -265,4 +270,30 @@ func (n *ReconstructedNode) Index() []byte {
 
 func (n *ReconstructedNode) Value() []byte {
 	return n.value
+}
+
+// getUpdate returns the last update to profile of idx during or before epoch.
+// If there is no such update, (nil, nil) is returned.
+func GetUpdate(db kv.DB, idx []byte, epoch uint64) (*proto.UpdateRequest, error) {
+	// idx: []&const
+	if len(idx) != vrf.Size {
+		log.Panicf("getUpdate: index %x has bad length", idx)
+	}
+	prefixIdxEpoch := TableUpdateRequests(idx, epoch)
+	iter := db.NewIterator(&kv.Range{
+		Start: prefixIdxEpoch[:1+len(idx)],
+		Limit: kv.IncrementKey(prefixIdxEpoch),
+	})
+	defer iter.Release()
+	if !iter.Last() {
+		if iter.Error() != nil {
+			return nil, iter.Error()
+		}
+		return nil, nil
+	}
+	ret := new(proto.UpdateRequest)
+	if err := ret.Unmarshal(iter.Value()); err != nil {
+		return nil, iter.Error()
+	}
+	return ret, nil
 }

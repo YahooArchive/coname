@@ -4,15 +4,12 @@
 
 package proto
 
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import strings "strings"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
@@ -27,7 +24,7 @@ var _ = math.Inf
 // replicating an in-order log of all steps and having each replica reproduce
 // the state from them.
 type KeyserverStep struct {
-	UID uint64 `protobuf:"fixed64,1,opt,name=UID,json=uID,proto3" json:"UID,omitempty"`
+	UID uint64 `protobuf:"fixed64,1,opt,name=UID,proto3" json:"UID,omitempty"`
 	// TODO: should all fields in a oneof have their own types for extensibility?
 	//
 	// Types that are valid to be assigned to Type:
@@ -35,6 +32,7 @@ type KeyserverStep struct {
 	//	*KeyserverStep_EpochDelimiter
 	//	*KeyserverStep_ReplicaSigned
 	//	*KeyserverStep_VerifierSigned
+	//	*KeyserverStep_UpdateEpoch
 	Type isKeyserverStep_Type `protobuf_oneof:"type"`
 }
 
@@ -62,17 +60,28 @@ type KeyserverStep_ReplicaSigned struct {
 type KeyserverStep_VerifierSigned struct {
 	VerifierSigned *SignedEpochHead `protobuf:"bytes,5,opt,name=verifier_signed,json=verifierSigned,oneof"`
 }
+type KeyserverStep_UpdateEpoch struct {
+	UpdateEpoch *EpochUpdate `protobuf:"bytes,6,opt,name=update_epoch,json=updateEpoch,oneof"`
+}
 
 func (*KeyserverStep_Update) isKeyserverStep_Type()         {}
 func (*KeyserverStep_EpochDelimiter) isKeyserverStep_Type() {}
 func (*KeyserverStep_ReplicaSigned) isKeyserverStep_Type()  {}
 func (*KeyserverStep_VerifierSigned) isKeyserverStep_Type() {}
+func (*KeyserverStep_UpdateEpoch) isKeyserverStep_Type()    {}
 
 func (m *KeyserverStep) GetType() isKeyserverStep_Type {
 	if m != nil {
 		return m.Type
 	}
 	return nil
+}
+
+func (m *KeyserverStep) GetUID() uint64 {
+	if m != nil {
+		return m.UID
+	}
+	return 0
 }
 
 func (m *KeyserverStep) GetUpdate() *UpdateRequest {
@@ -103,6 +112,13 @@ func (m *KeyserverStep) GetVerifierSigned() *SignedEpochHead {
 	return nil
 }
 
+func (m *KeyserverStep) GetUpdateEpoch() *EpochUpdate {
+	if x, ok := m.GetType().(*KeyserverStep_UpdateEpoch); ok {
+		return x.UpdateEpoch
+	}
+	return nil
+}
+
 // XXX_OneofFuncs is for the internal use of the proto package.
 func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffer) error, func(msg proto1.Message, tag, wire int, b *proto1.Buffer) (bool, error), func(msg proto1.Message) (n int), []interface{}) {
 	return _KeyserverStep_OneofMarshaler, _KeyserverStep_OneofUnmarshaler, _KeyserverStep_OneofSizer, []interface{}{
@@ -110,6 +126,7 @@ func (*KeyserverStep) XXX_OneofFuncs() (func(msg proto1.Message, b *proto1.Buffe
 		(*KeyserverStep_EpochDelimiter)(nil),
 		(*KeyserverStep_ReplicaSigned)(nil),
 		(*KeyserverStep_VerifierSigned)(nil),
+		(*KeyserverStep_UpdateEpoch)(nil),
 	}
 }
 
@@ -135,6 +152,11 @@ func _KeyserverStep_OneofMarshaler(msg proto1.Message, b *proto1.Buffer) error {
 	case *KeyserverStep_VerifierSigned:
 		_ = b.EncodeVarint(5<<3 | proto1.WireBytes)
 		if err := b.EncodeMessage(x.VerifierSigned); err != nil {
+			return err
+		}
+	case *KeyserverStep_UpdateEpoch:
+		_ = b.EncodeVarint(6<<3 | proto1.WireBytes)
+		if err := b.EncodeMessage(x.UpdateEpoch); err != nil {
 			return err
 		}
 	case nil:
@@ -179,6 +201,14 @@ func _KeyserverStep_OneofUnmarshaler(msg proto1.Message, tag, wire int, b *proto
 		err := b.DecodeMessage(msg)
 		m.Type = &KeyserverStep_VerifierSigned{msg}
 		return true, err
+	case 6: // type.update_epoch
+		if wire != proto1.WireBytes {
+			return true, proto1.ErrInternalBadWireType
+		}
+		msg := new(EpochUpdate)
+		err := b.DecodeMessage(msg)
+		m.Type = &KeyserverStep_UpdateEpoch{msg}
+		return true, err
 	default:
 		return false, nil
 	}
@@ -208,6 +238,11 @@ func _KeyserverStep_OneofSizer(msg proto1.Message) (n int) {
 		n += proto1.SizeVarint(5<<3 | proto1.WireBytes)
 		n += proto1.SizeVarint(uint64(s))
 		n += s
+	case *KeyserverStep_UpdateEpoch:
+		s := proto1.Size(x.UpdateEpoch)
+		n += proto1.SizeVarint(6<<3 | proto1.WireBytes)
+		n += proto1.SizeVarint(uint64(s))
+		n += s
 	case nil:
 	default:
 		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
@@ -224,6 +259,13 @@ func (m *EpochDelimiter) Reset()                    { *m = EpochDelimiter{} }
 func (*EpochDelimiter) ProtoMessage()               {}
 func (*EpochDelimiter) Descriptor() ([]byte, []int) { return fileDescriptorReplication, []int{1} }
 
+func (m *EpochDelimiter) GetEpochNumber() uint64 {
+	if m != nil {
+		return m.EpochNumber
+	}
+	return 0
+}
+
 func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	if m != nil {
 		return m.Timestamp
@@ -231,9 +273,41 @@ func (m *EpochDelimiter) GetTimestamp() Timestamp {
 	return Timestamp{}
 }
 
+type EpochUpdate struct {
+	Delimiter *EpochDelimiter `protobuf:"bytes,1,opt,name=delimiter" json:"delimiter,omitempty"`
+	Update    bool            `protobuf:"varint,2,opt,name=update,proto3" json:"update,omitempty"`
+	UID       uint64          `protobuf:"fixed64,3,opt,name=UID,proto3" json:"UID,omitempty"`
+}
+
+func (m *EpochUpdate) Reset()                    { *m = EpochUpdate{} }
+func (*EpochUpdate) ProtoMessage()               {}
+func (*EpochUpdate) Descriptor() ([]byte, []int) { return fileDescriptorReplication, []int{2} }
+
+func (m *EpochUpdate) GetDelimiter() *EpochDelimiter {
+	if m != nil {
+		return m.Delimiter
+	}
+	return nil
+}
+
+func (m *EpochUpdate) GetUpdate() bool {
+	if m != nil {
+		return m.Update
+	}
+	return false
+}
+
+func (m *EpochUpdate) GetUID() uint64 {
+	if m != nil {
+		return m.UID
+	}
+	return 0
+}
+
 func init() {
 	proto1.RegisterType((*KeyserverStep)(nil), "proto.KeyserverStep")
 	proto1.RegisterType((*EpochDelimiter)(nil), "proto.EpochDelimiter")
+	proto1.RegisterType((*EpochUpdate)(nil), "proto.EpochUpdate")
 }
 func (this *KeyserverStep) VerboseEqual(that interface{}) error {
 	if that == nil {
@@ -391,6 +465,36 @@ func (this *KeyserverStep_VerifierSigned) VerboseEqual(that interface{}) error {
 	}
 	if !this.VerifierSigned.Equal(that1.VerifierSigned) {
 		return fmt.Errorf("VerifierSigned this(%v) Not Equal that(%v)", this.VerifierSigned, that1.VerifierSigned)
+	}
+	return nil
+}
+func (this *KeyserverStep_UpdateEpoch) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*KeyserverStep_UpdateEpoch)
+	if !ok {
+		that2, ok := that.(KeyserverStep_UpdateEpoch)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *KeyserverStep_UpdateEpoch")
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *KeyserverStep_UpdateEpoch but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *KeyserverStep_UpdateEpoch but is not nil && this == nil")
+	}
+	if !this.UpdateEpoch.Equal(that1.UpdateEpoch) {
+		return fmt.Errorf("UpdateEpoch this(%v) Not Equal that(%v)", this.UpdateEpoch, that1.UpdateEpoch)
 	}
 	return nil
 }
@@ -553,6 +657,36 @@ func (this *KeyserverStep_VerifierSigned) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *KeyserverStep_UpdateEpoch) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*KeyserverStep_UpdateEpoch)
+	if !ok {
+		that2, ok := that.(KeyserverStep_UpdateEpoch)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.UpdateEpoch.Equal(that1.UpdateEpoch) {
+		return false
+	}
+	return true
+}
 func (this *EpochDelimiter) VerboseEqual(that interface{}) error {
 	if that == nil {
 		if this == nil {
@@ -619,11 +753,83 @@ func (this *EpochDelimiter) Equal(that interface{}) bool {
 	}
 	return true
 }
+func (this *EpochUpdate) VerboseEqual(that interface{}) error {
+	if that == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that == nil && this != nil")
+	}
+
+	that1, ok := that.(*EpochUpdate)
+	if !ok {
+		that2, ok := that.(EpochUpdate)
+		if ok {
+			that1 = &that2
+		} else {
+			return fmt.Errorf("that is not of type *EpochUpdate")
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return nil
+		}
+		return fmt.Errorf("that is type *EpochUpdate but is nil && this != nil")
+	} else if this == nil {
+		return fmt.Errorf("that is type *EpochUpdate but is not nil && this == nil")
+	}
+	if !this.Delimiter.Equal(that1.Delimiter) {
+		return fmt.Errorf("Delimiter this(%v) Not Equal that(%v)", this.Delimiter, that1.Delimiter)
+	}
+	if this.Update != that1.Update {
+		return fmt.Errorf("Update this(%v) Not Equal that(%v)", this.Update, that1.Update)
+	}
+	if this.UID != that1.UID {
+		return fmt.Errorf("UID this(%v) Not Equal that(%v)", this.UID, that1.UID)
+	}
+	return nil
+}
+func (this *EpochUpdate) Equal(that interface{}) bool {
+	if that == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	}
+
+	that1, ok := that.(*EpochUpdate)
+	if !ok {
+		that2, ok := that.(EpochUpdate)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		if this == nil {
+			return true
+		}
+		return false
+	} else if this == nil {
+		return false
+	}
+	if !this.Delimiter.Equal(that1.Delimiter) {
+		return false
+	}
+	if this.Update != that1.Update {
+		return false
+	}
+	if this.UID != that1.UID {
+		return false
+	}
+	return true
+}
 func (this *KeyserverStep) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 9)
+	s := make([]string, 0, 10)
 	s = append(s, "&proto.KeyserverStep{")
 	s = append(s, "UID: "+fmt.Sprintf("%#v", this.UID)+",\n")
 	if this.Type != nil {
@@ -664,6 +870,14 @@ func (this *KeyserverStep_VerifierSigned) GoString() string {
 		`VerifierSigned:` + fmt.Sprintf("%#v", this.VerifierSigned) + `}`}, ", ")
 	return s
 }
+func (this *KeyserverStep_UpdateEpoch) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&proto.KeyserverStep_UpdateEpoch{` +
+		`UpdateEpoch:` + fmt.Sprintf("%#v", this.UpdateEpoch) + `}`}, ", ")
+	return s
+}
 func (this *EpochDelimiter) GoString() string {
 	if this == nil {
 		return "nil"
@@ -675,6 +889,20 @@ func (this *EpochDelimiter) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
+func (this *EpochUpdate) GoString() string {
+	if this == nil {
+		return "nil"
+	}
+	s := make([]string, 0, 7)
+	s = append(s, "&proto.EpochUpdate{")
+	if this.Delimiter != nil {
+		s = append(s, "Delimiter: "+fmt.Sprintf("%#v", this.Delimiter)+",\n")
+	}
+	s = append(s, "Update: "+fmt.Sprintf("%#v", this.Update)+",\n")
+	s = append(s, "UID: "+fmt.Sprintf("%#v", this.UID)+",\n")
+	s = append(s, "}")
+	return strings.Join(s, "")
+}
 func valueToGoStringReplication(v interface{}, typ string) string {
 	rv := reflect.ValueOf(v)
 	if rv.IsNil() {
@@ -683,45 +911,28 @@ func valueToGoStringReplication(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringReplication(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *KeyserverStep) Marshal() (data []byte, err error) {
+func (m *KeyserverStep) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *KeyserverStep) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverStep) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.UID != 0 {
-		data[i] = 0x9
+		dAtA[i] = 0x9
 		i++
-		i = encodeFixed64Replication(data, i, uint64(m.UID))
+		i = encodeFixed64Replication(dAtA, i, uint64(m.UID))
 	}
 	if m.Type != nil {
-		nn1, err := m.Type.MarshalTo(data[i:])
+		nn1, err := m.Type.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -730,13 +941,13 @@ func (m *KeyserverStep) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *KeyserverStep_Update) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverStep_Update) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.Update != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.Update.Size()))
-		n2, err := m.Update.MarshalTo(data[i:])
+		i = encodeVarintReplication(dAtA, i, uint64(m.Update.Size()))
+		n2, err := m.Update.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -744,13 +955,13 @@ func (m *KeyserverStep_Update) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *KeyserverStep_EpochDelimiter) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverStep_EpochDelimiter) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.EpochDelimiter != nil {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochDelimiter.Size()))
-		n3, err := m.EpochDelimiter.MarshalTo(data[i:])
+		i = encodeVarintReplication(dAtA, i, uint64(m.EpochDelimiter.Size()))
+		n3, err := m.EpochDelimiter.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -758,13 +969,13 @@ func (m *KeyserverStep_EpochDelimiter) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *KeyserverStep_ReplicaSigned) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverStep_ReplicaSigned) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.ReplicaSigned != nil {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.ReplicaSigned.Size()))
-		n4, err := m.ReplicaSigned.MarshalTo(data[i:])
+		i = encodeVarintReplication(dAtA, i, uint64(m.ReplicaSigned.Size()))
+		n4, err := m.ReplicaSigned.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -772,13 +983,13 @@ func (m *KeyserverStep_ReplicaSigned) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *KeyserverStep_VerifierSigned) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverStep_VerifierSigned) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.VerifierSigned != nil {
-		data[i] = 0x2a
+		dAtA[i] = 0x2a
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.VerifierSigned.Size()))
-		n5, err := m.VerifierSigned.MarshalTo(data[i:])
+		i = encodeVarintReplication(dAtA, i, uint64(m.VerifierSigned.Size()))
+		n5, err := m.VerifierSigned.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -786,68 +997,125 @@ func (m *KeyserverStep_VerifierSigned) MarshalTo(data []byte) (int, error) {
 	}
 	return i, nil
 }
-func (m *EpochDelimiter) Marshal() (data []byte, err error) {
+func (m *KeyserverStep_UpdateEpoch) MarshalTo(dAtA []byte) (int, error) {
+	i := 0
+	if m.UpdateEpoch != nil {
+		dAtA[i] = 0x32
+		i++
+		i = encodeVarintReplication(dAtA, i, uint64(m.UpdateEpoch.Size()))
+		n6, err := m.UpdateEpoch.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n6
+	}
+	return i, nil
+}
+func (m *EpochDelimiter) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *EpochDelimiter) MarshalTo(data []byte) (int, error) {
+func (m *EpochDelimiter) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.EpochNumber != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintReplication(data, i, uint64(m.EpochNumber))
+		i = encodeVarintReplication(dAtA, i, uint64(m.EpochNumber))
 	}
-	data[i] = 0x12
+	dAtA[i] = 0x12
 	i++
-	i = encodeVarintReplication(data, i, uint64(m.Timestamp.Size()))
-	n6, err := m.Timestamp.MarshalTo(data[i:])
+	i = encodeVarintReplication(dAtA, i, uint64(m.Timestamp.Size()))
+	n7, err := m.Timestamp.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
-	i += n6
+	i += n7
 	return i, nil
 }
 
-func encodeFixed64Replication(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func (m *EpochUpdate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *EpochUpdate) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Delimiter != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintReplication(dAtA, i, uint64(m.Delimiter.Size()))
+		n8, err := m.Delimiter.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n8
+	}
+	if m.Update {
+		dAtA[i] = 0x10
+		i++
+		if m.Update {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i++
+	}
+	if m.UID != 0 {
+		dAtA[i] = 0x19
+		i++
+		i = encodeFixed64Replication(dAtA, i, uint64(m.UID))
+	}
+	return i, nil
+}
+
+func encodeFixed64Replication(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Replication(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Replication(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintReplication(data []byte, offset int, v uint64) int {
+func encodeVarintReplication(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
 	this := &KeyserverStep{}
 	this.UID = uint64(uint64(r.Uint32()))
-	oneofNumber_Type := []int32{2, 3, 4, 5}[r.Intn(4)]
+	oneofNumber_Type := []int32{2, 3, 4, 5, 6}[r.Intn(5)]
 	switch oneofNumber_Type {
 	case 2:
 		this.Type = NewPopulatedKeyserverStep_Update(r, easy)
@@ -857,6 +1125,8 @@ func NewPopulatedKeyserverStep(r randyReplication, easy bool) *KeyserverStep {
 		this.Type = NewPopulatedKeyserverStep_ReplicaSigned(r, easy)
 	case 5:
 		this.Type = NewPopulatedKeyserverStep_VerifierSigned(r, easy)
+	case 6:
+		this.Type = NewPopulatedKeyserverStep_UpdateEpoch(r, easy)
 	}
 	if !easy && r.Intn(10) != 0 {
 	}
@@ -883,11 +1153,28 @@ func NewPopulatedKeyserverStep_VerifierSigned(r randyReplication, easy bool) *Ke
 	this.VerifierSigned = NewPopulatedSignedEpochHead(r, easy)
 	return this
 }
+func NewPopulatedKeyserverStep_UpdateEpoch(r randyReplication, easy bool) *KeyserverStep_UpdateEpoch {
+	this := &KeyserverStep_UpdateEpoch{}
+	this.UpdateEpoch = NewPopulatedEpochUpdate(r, easy)
+	return this
+}
 func NewPopulatedEpochDelimiter(r randyReplication, easy bool) *EpochDelimiter {
 	this := &EpochDelimiter{}
 	this.EpochNumber = uint64(uint64(r.Uint32()))
 	v1 := NewPopulatedTimestamp(r, easy)
 	this.Timestamp = *v1
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedEpochUpdate(r randyReplication, easy bool) *EpochUpdate {
+	this := &EpochUpdate{}
+	if r.Intn(10) != 0 {
+		this.Delimiter = NewPopulatedEpochDelimiter(r, easy)
+	}
+	this.Update = bool(bool(r.Intn(2) == 0))
+	this.UID = uint64(uint64(r.Uint32()))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -919,7 +1206,7 @@ func randStringReplication(r randyReplication) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedReplication(r randyReplication, maxFieldNumber int) (data []byte) {
+func randUnrecognizedReplication(r randyReplication, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -927,43 +1214,43 @@ func randUnrecognizedReplication(r randyReplication, maxFieldNumber int) (data [
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldReplication(data, r, fieldNumber, wire)
+		dAtA = randFieldReplication(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldReplication(data []byte, r randyReplication, fieldNumber int, wire int) []byte {
+func randFieldReplication(dAtA []byte, r randyReplication, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateReplication(data, uint64(key))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(key))
 		v3 := r.Int63()
 		if r.Intn(2) == 0 {
 			v3 *= -1
 		}
-		data = encodeVarintPopulateReplication(data, uint64(v3))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(v3))
 	case 1:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateReplication(data, uint64(key))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateReplication(data, uint64(ll))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateReplication(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateReplication(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateReplication(data []byte, v uint64) []byte {
+func encodeVarintPopulateReplication(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *KeyserverStep) Size() (n int) {
 	var l int
@@ -1013,6 +1300,15 @@ func (m *KeyserverStep_VerifierSigned) Size() (n int) {
 	}
 	return n
 }
+func (m *KeyserverStep_UpdateEpoch) Size() (n int) {
+	var l int
+	_ = l
+	if m.UpdateEpoch != nil {
+		l = m.UpdateEpoch.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	return n
+}
 func (m *EpochDelimiter) Size() (n int) {
 	var l int
 	_ = l
@@ -1021,6 +1317,22 @@ func (m *EpochDelimiter) Size() (n int) {
 	}
 	l = m.Timestamp.Size()
 	n += 1 + l + sovReplication(uint64(l))
+	return n
+}
+
+func (m *EpochUpdate) Size() (n int) {
+	var l int
+	_ = l
+	if m.Delimiter != nil {
+		l = m.Delimiter.Size()
+		n += 1 + l + sovReplication(uint64(l))
+	}
+	if m.Update {
+		n += 2
+	}
+	if m.UID != 0 {
+		n += 9
+	}
 	return n
 }
 
@@ -1088,6 +1400,16 @@ func (this *KeyserverStep_VerifierSigned) String() string {
 	}, "")
 	return s
 }
+func (this *KeyserverStep_UpdateEpoch) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&KeyserverStep_UpdateEpoch{`,
+		`UpdateEpoch:` + strings.Replace(fmt.Sprintf("%v", this.UpdateEpoch), "EpochUpdate", "EpochUpdate", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
 func (this *EpochDelimiter) String() string {
 	if this == nil {
 		return "nil"
@@ -1095,6 +1417,18 @@ func (this *EpochDelimiter) String() string {
 	s := strings.Join([]string{`&EpochDelimiter{`,
 		`EpochNumber:` + fmt.Sprintf("%v", this.EpochNumber) + `,`,
 		`Timestamp:` + strings.Replace(strings.Replace(this.Timestamp.String(), "Timestamp", "Timestamp", 1), `&`, ``, 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *EpochUpdate) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&EpochUpdate{`,
+		`Delimiter:` + strings.Replace(fmt.Sprintf("%v", this.Delimiter), "EpochDelimiter", "EpochDelimiter", 1) + `,`,
+		`Update:` + fmt.Sprintf("%v", this.Update) + `,`,
+		`UID:` + fmt.Sprintf("%v", this.UID) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -1107,8 +1441,8 @@ func valueToStringReplication(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *KeyserverStep) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *KeyserverStep) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1120,7 +1454,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1145,14 +1479,14 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			iNdEx += 8
-			m.UID = uint64(data[iNdEx-8])
-			m.UID |= uint64(data[iNdEx-7]) << 8
-			m.UID |= uint64(data[iNdEx-6]) << 16
-			m.UID |= uint64(data[iNdEx-5]) << 24
-			m.UID |= uint64(data[iNdEx-4]) << 32
-			m.UID |= uint64(data[iNdEx-3]) << 40
-			m.UID |= uint64(data[iNdEx-2]) << 48
-			m.UID |= uint64(data[iNdEx-1]) << 56
+			m.UID = uint64(dAtA[iNdEx-8])
+			m.UID |= uint64(dAtA[iNdEx-7]) << 8
+			m.UID |= uint64(dAtA[iNdEx-6]) << 16
+			m.UID |= uint64(dAtA[iNdEx-5]) << 24
+			m.UID |= uint64(dAtA[iNdEx-4]) << 32
+			m.UID |= uint64(dAtA[iNdEx-3]) << 40
+			m.UID |= uint64(dAtA[iNdEx-2]) << 48
+			m.UID |= uint64(dAtA[iNdEx-1]) << 56
 		case 2:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
@@ -1165,7 +1499,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1180,7 +1514,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &UpdateRequest{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Type = &KeyserverStep_Update{v}
@@ -1197,7 +1531,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1212,7 +1546,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &EpochDelimiter{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Type = &KeyserverStep_EpochDelimiter{v}
@@ -1229,7 +1563,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1244,7 +1578,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &SignedEpochHead{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Type = &KeyserverStep_ReplicaSigned{v}
@@ -1261,7 +1595,7 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1276,14 +1610,46 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &SignedEpochHead{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.Type = &KeyserverStep_VerifierSigned{v}
 			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UpdateEpoch", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &EpochUpdate{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Type = &KeyserverStep_UpdateEpoch{v}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipReplication(data[iNdEx:])
+			skippy, err := skipReplication(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1302,8 +1668,8 @@ func (m *KeyserverStep) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *EpochDelimiter) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *EpochDelimiter) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1315,7 +1681,7 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1343,7 +1709,7 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.EpochNumber |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1362,7 +1728,7 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1376,13 +1742,13 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Timestamp.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Timestamp.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipReplication(data[iNdEx:])
+			skippy, err := skipReplication(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1401,8 +1767,128 @@ func (m *EpochDelimiter) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipReplication(data []byte) (n int, err error) {
-	l := len(data)
+func (m *EpochUpdate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowReplication
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: EpochUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: EpochUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Delimiter", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthReplication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Delimiter == nil {
+				m.Delimiter = &EpochDelimiter{}
+			}
+			if err := m.Delimiter.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Update", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowReplication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Update = bool(v != 0)
+		case 3:
+			if wireType != 1 {
+				return fmt.Errorf("proto: wrong wireType = %d for field UID", wireType)
+			}
+			m.UID = 0
+			if (iNdEx + 8) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += 8
+			m.UID = uint64(dAtA[iNdEx-8])
+			m.UID |= uint64(dAtA[iNdEx-7]) << 8
+			m.UID |= uint64(dAtA[iNdEx-6]) << 16
+			m.UID |= uint64(dAtA[iNdEx-5]) << 24
+			m.UID |= uint64(dAtA[iNdEx-4]) << 32
+			m.UID |= uint64(dAtA[iNdEx-3]) << 40
+			m.UID |= uint64(dAtA[iNdEx-2]) << 48
+			m.UID |= uint64(dAtA[iNdEx-1]) << 56
+		default:
+			iNdEx = preIndex
+			skippy, err := skipReplication(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthReplication
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func skipReplication(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -1413,7 +1899,7 @@ func skipReplication(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1431,7 +1917,7 @@ func skipReplication(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -1448,7 +1934,7 @@ func skipReplication(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1471,7 +1957,7 @@ func skipReplication(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -1482,7 +1968,7 @@ func skipReplication(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipReplication(data[start:])
+				next, err := skipReplication(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -1509,30 +1995,33 @@ var (
 func init() { proto1.RegisterFile("replication.proto", fileDescriptorReplication) }
 
 var fileDescriptorReplication = []byte{
-	// 387 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x90, 0x3f, 0xaf, 0xd3, 0x30,
-	0x14, 0xc5, 0xe3, 0xd7, 0xbc, 0x48, 0xf8, 0xb5, 0x69, 0xb1, 0x00, 0x45, 0x1d, 0x4c, 0xe9, 0xd4,
-	0x29, 0x45, 0xc0, 0xc0, 0x06, 0x54, 0x45, 0x4a, 0x85, 0xc4, 0x90, 0xd2, 0xb9, 0xca, 0x9f, 0xdb,
-	0xd4, 0x52, 0xf3, 0x07, 0xc7, 0xa9, 0xd4, 0x8d, 0x6f, 0xc2, 0xca, 0x47, 0x60, 0x64, 0xec, 0xd8,
-	0x91, 0x09, 0x35, 0x9e, 0x18, 0x3b, 0x32, 0x22, 0x1c, 0x07, 0xd4, 0x89, 0x29, 0xb9, 0xbf, 0x73,
-	0xcf, 0xb1, 0x7d, 0xf0, 0x7d, 0x0e, 0xc5, 0x8e, 0x45, 0x81, 0x60, 0x79, 0xe6, 0x16, 0x3c, 0x17,
-	0x39, 0xb9, 0x55, 0x9f, 0xe1, 0xd3, 0x84, 0x89, 0x6d, 0x15, 0xba, 0x51, 0x9e, 0x4e, 0xd3, 0x20,
-	0x66, 0xe2, 0x10, 0x4c, 0x95, 0x12, 0x56, 0x9b, 0x69, 0x92, 0x27, 0xb9, 0x1a, 0xd4, 0x5f, 0x63,
-	0x1c, 0x76, 0xa3, 0x1d, 0x83, 0x4c, 0xe8, 0xa9, 0x2f, 0x58, 0x0a, 0xa5, 0x08, 0xd2, 0xa2, 0x01,
-	0xe3, 0xcf, 0x37, 0xb8, 0xf7, 0x0e, 0x0e, 0x25, 0xf0, 0x3d, 0xf0, 0xa5, 0x80, 0x82, 0x0c, 0x70,
-	0x67, 0xb5, 0x98, 0x3b, 0x68, 0x84, 0x26, 0x96, 0xdf, 0xa9, 0x16, 0x73, 0xe2, 0x62, 0xab, 0x2a,
-	0xe2, 0x40, 0x80, 0x73, 0x33, 0x42, 0x93, 0xbb, 0x67, 0x0f, 0x1a, 0xaf, 0xbb, 0x52, 0xd0, 0x87,
-	0x8f, 0x15, 0x94, 0xc2, 0x33, 0x7c, 0xbd, 0x45, 0x5e, 0xe3, 0x3e, 0x14, 0x79, 0xb4, 0x5d, 0xc7,
-	0xb0, 0x63, 0x29, 0x13, 0xc0, 0x9d, 0x8e, 0x32, 0x3e, 0xd4, 0xc6, 0xb7, 0x7f, 0xd4, 0x79, 0x2b,
-	0x7a, 0x86, 0x6f, 0xc3, 0x15, 0x21, 0xaf, 0xb0, 0xad, 0x2b, 0x58, 0x97, 0x2c, 0xc9, 0x20, 0x76,
-	0x4c, 0x15, 0xf0, 0x48, 0x07, 0x2c, 0x15, 0x54, 0x31, 0x1e, 0x04, 0xb1, 0x67, 0xf8, 0x3d, 0xbd,
-	0xdf, 0x28, 0xe4, 0x0d, 0xee, 0xef, 0x81, 0xb3, 0x0d, 0x03, 0xde, 0x26, 0xdc, 0xfe, 0x27, 0xc1,
-	0x6e, 0x0d, 0x8d, 0x34, 0xb3, 0xb0, 0x29, 0x0e, 0x05, 0x8c, 0x19, 0xb6, 0xaf, 0xef, 0x4b, 0x9e,
-	0xe0, 0x6e, 0xf3, 0xbe, 0xac, 0x4a, 0x43, 0xe0, 0xaa, 0x2a, 0xd3, 0xbf, 0x53, 0xec, 0xbd, 0x42,
-	0xe4, 0x05, 0xbe, 0xf7, 0xb7, 0x69, 0xdd, 0xda, 0x40, 0x9f, 0xfc, 0xa1, 0xe5, 0x33, 0xf3, 0xf8,
-	0xe3, 0xb1, 0xe1, 0xff, 0x5b, 0x9c, 0xbd, 0x3c, 0xd5, 0xd4, 0xf8, 0x5e, 0x53, 0xe3, 0x5c, 0x53,
-	0x74, 0xa9, 0x29, 0xfa, 0x55, 0x53, 0xf4, 0x49, 0x52, 0xf4, 0x45, 0x52, 0xf4, 0x55, 0x52, 0xf4,
-	0x4d, 0x52, 0x74, 0x94, 0x14, 0x9d, 0x24, 0x45, 0x67, 0x49, 0xd1, 0x4f, 0x49, 0x8d, 0x8b, 0xa4,
-	0x28, 0xb4, 0x54, 0xf6, 0xf3, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x86, 0x63, 0x1f, 0x2e, 0x3a,
-	0x02, 0x00, 0x00,
+	// 436 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x52, 0xbf, 0x6f, 0x13, 0x31,
+	0x14, 0xb6, 0x9b, 0xf4, 0x44, 0x9d, 0x34, 0x29, 0x16, 0x54, 0xa7, 0x0e, 0xa6, 0x64, 0xea, 0x42,
+	0x2a, 0x51, 0x24, 0xd8, 0x80, 0xa8, 0x48, 0x87, 0x90, 0x18, 0x5c, 0x3a, 0x47, 0x49, 0xee, 0xf5,
+	0x6a, 0xe9, 0x7e, 0xe1, 0xf3, 0x55, 0xea, 0xc6, 0x9f, 0xc3, 0x9f, 0xc0, 0xc8, 0xd8, 0xb1, 0x63,
+	0x27, 0xd4, 0xf3, 0xc4, 0xd8, 0x91, 0x11, 0xf5, 0xd9, 0x97, 0x34, 0x0b, 0x4c, 0x67, 0x7f, 0xef,
+	0xfb, 0xbe, 0x7b, 0xef, 0x7b, 0x66, 0x8f, 0x35, 0x94, 0xa9, 0x5a, 0xcc, 0x8c, 0x2a, 0xf2, 0x71,
+	0xa9, 0x0b, 0x53, 0xf0, 0x4d, 0xfc, 0xec, 0xbd, 0x48, 0x94, 0x39, 0xaf, 0xe7, 0xe3, 0x45, 0x91,
+	0x1d, 0x26, 0x45, 0x52, 0x1c, 0x22, 0x3c, 0xaf, 0xcf, 0xf0, 0x86, 0x17, 0x3c, 0x39, 0xd5, 0x5e,
+	0x7f, 0x91, 0x2a, 0xc8, 0x8d, 0xbf, 0x0d, 0x8d, 0xca, 0xa0, 0x32, 0xb3, 0xac, 0x74, 0xc0, 0xe8,
+	0x66, 0x83, 0x6d, 0x7f, 0x82, 0xcb, 0x0a, 0xf4, 0x05, 0xe8, 0x13, 0x03, 0x25, 0xdf, 0x61, 0x9d,
+	0xd3, 0x8f, 0xc7, 0x21, 0xdd, 0xa7, 0x07, 0x81, 0xbc, 0x3f, 0xf2, 0x31, 0x0b, 0xea, 0x32, 0x9e,
+	0x19, 0x08, 0x37, 0xf6, 0xe9, 0x41, 0xef, 0xe5, 0x13, 0xa7, 0x1d, 0x9f, 0x22, 0x28, 0xe1, 0x6b,
+	0x0d, 0x95, 0x89, 0x88, 0xf4, 0x2c, 0xfe, 0x8e, 0x0d, 0xa1, 0x2c, 0x16, 0xe7, 0xd3, 0x18, 0x52,
+	0x95, 0x29, 0x03, 0x3a, 0xec, 0xa0, 0xf0, 0xa9, 0x17, 0x7e, 0xb8, 0xaf, 0x1e, 0xb7, 0xc5, 0x88,
+	0xc8, 0x01, 0xac, 0x21, 0xfc, 0x2d, 0x1b, 0xf8, 0xf9, 0xa7, 0x95, 0x4a, 0x72, 0x88, 0xc3, 0x2e,
+	0x1a, 0xec, 0x7a, 0x83, 0x13, 0x04, 0xd1, 0x26, 0x82, 0x59, 0x1c, 0x11, 0xb9, 0xed, 0xf9, 0xae,
+	0xc2, 0xdf, 0xb3, 0xe1, 0x05, 0x68, 0x75, 0xa6, 0x40, 0xb7, 0x0e, 0x9b, 0xff, 0x71, 0x18, 0xb4,
+	0x02, 0x6f, 0xf1, 0x9a, 0xf5, 0xdd, 0x3c, 0x53, 0x6c, 0x2e, 0x0c, 0x50, 0xcf, 0x1f, 0x8e, 0xe0,
+	0x02, 0x88, 0x88, 0xec, 0x39, 0x26, 0x82, 0x93, 0x80, 0x75, 0xcd, 0x65, 0x09, 0x23, 0xc5, 0x06,
+	0xeb, 0x83, 0xf2, 0xe7, 0xac, 0xef, 0x82, 0xc9, 0xeb, 0x6c, 0x0e, 0x1a, 0x33, 0xee, 0xca, 0x1e,
+	0x62, 0x9f, 0x11, 0xe2, 0xaf, 0xd8, 0xd6, 0x72, 0x45, 0x3e, 0xee, 0x1d, 0xff, 0xcb, 0x2f, 0x2d,
+	0x3e, 0xe9, 0x5e, 0xfd, 0x7a, 0x46, 0xe4, 0x8a, 0x38, 0x4a, 0x59, 0xef, 0x41, 0x43, 0xfc, 0x88,
+	0x6d, 0xad, 0xa2, 0xa7, 0xff, 0x88, 0x5e, 0xae, 0x78, 0x7c, 0x77, 0x6d, 0xcb, 0x8f, 0x96, 0xdb,
+	0xf4, 0xef, 0xa1, 0xb3, 0x7c, 0x0f, 0x93, 0x37, 0xd7, 0x8d, 0x20, 0x37, 0x8d, 0x20, 0xb7, 0x8d,
+	0xa0, 0x77, 0x8d, 0xa0, 0x7f, 0x1a, 0x41, 0xbf, 0x59, 0x41, 0xbf, 0x5b, 0x41, 0x7f, 0x58, 0x41,
+	0x7f, 0x5a, 0x41, 0xaf, 0xac, 0xa0, 0xd7, 0x56, 0xd0, 0x5b, 0x2b, 0xe8, 0x6f, 0x2b, 0xc8, 0x9d,
+	0x15, 0x74, 0x1e, 0x60, 0x13, 0x47, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x69, 0x19, 0xa2, 0x19,
+	0xde, 0x02, 0x00, 0x00,
 }

@@ -75,7 +75,7 @@ type Keyserver struct {
 
 	insecureSkipEmailProof bool
 
-	db  kv.DB
+	db  kv.DB	// local or shared
 	log replication.LogReplicator
 	rs  proto.ReplicaState
 
@@ -124,6 +124,18 @@ type Keyserver struct {
 	inRotationMu sync.Mutex
 }
 
+type KeyserverParameters struct {
+	DB kv.DB	// DB, local or shared
+	Log replication.LogReplicator	// replica
+	Policy *proto.AuthorizationPolicy
+	Clk clock.Clock
+	WR *concurrent.OneShotPubSub
+	PS *concurrent.PublishSubscribe
+	Merkletree *merkletree.MerkleTree
+	GetKey func(string) (crypto.PrivateKey, error)
+	LookupTXT func(string) ([]string, error)
+}
+
 // OIDCConfig manages an OpenID Connect object
 type OIDCConfig struct {
 	allowedDomains map[string]struct{}
@@ -146,29 +158,29 @@ func isExpired(err error) bool {
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
 // binds to the specified ports. It does not handle input: requests will block.
-func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (*Keyserver, error) {
-	signingKey, err := getKey(cfg.SigningKeyID)
+func Open(cfg *proto.ReplicaConfig, kp *KeyserverParameters) (*Keyserver, error) {
+	signingKey, err := kp.GetKey(cfg.SigningKeyID)
 	if err != nil {
 		return nil, err
 	}
-	vrfKey, err := getKey(cfg.VRFKeyID)
+	vrfKey, err := kp.GetKey(cfg.VRFKeyID)
 	if err != nil {
 		return nil, err
 	}
-	publicTLS, err := cfg.PublicTLS.Config(getKey)
+	publicTLS, err := cfg.PublicTLS.Config(kp.GetKey)
 	if err != nil {
 		return nil, err
 	}
-	verifierTLS, err := cfg.VerifierTLS.Config(getKey)
+	verifierTLS, err := cfg.VerifierTLS.Config(kp.GetKey)
 	if err != nil {
 		return nil, err
 	}
-	hkpTLS, err := cfg.HKPTLS.Config(getKey)
+	hkpTLS, err := cfg.HKPTLS.Config(kp.GetKey)
 	if err != nil {
 		return nil, err
 	}
 
-	httpFrontTLS, err := cfg.HTTPFrontTLS.Config(getKey)
+	httpFrontTLS, err := cfg.HTTPFrontTLS.Config(kp.GetKey)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +189,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		realm:                   cfg.Realm,
 		serverID:                cfg.ServerID,
 		replicaID:               cfg.ReplicaID,
-		serverAuthorized:        initialAuthorizationPolicy,
+		serverAuthorized:        kp.Policy,
 		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
 		laggingVerifierScan:     cfg.LaggingVerifierScan,
@@ -189,20 +201,22 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		oidcProofConfig:         make([]OIDCConfig, 0),
 		samlProofAllowedDomains: make(map[string]struct{}),
 
-		db:                 db,
-		log:                log,
+		db:                 kp.DB,
+		log:                kp.Log,
 		stop:               make(chan struct{}),
 		stopped:            make(chan struct{}),
-		wr:                 concurrent.NewOneShotPubSub(),
-		signatureBroadcast: concurrent.NewPublishSubscribe(),
+		wr:                 kp.WR,
+		signatureBroadcast: kp.PS,
+
+		merkletree:         kp.Merkletree,
 
 		leaderHint: true,
 		inRotation: true,
 
-		clk:                   clk,
-		lookupTXT:             LookupTXT,
-		minEpochIntervalTimer: clk.Timer(0),
-		maxEpochIntervalTimer: clk.Timer(0),
+		clk:                   kp.Clk,
+		lookupTXT:             kp.LookupTXT,
+		minEpochIntervalTimer: kp.Clk.Timer(0),
+		maxEpochIntervalTimer: kp.Clk.Timer(0),
 	}
 
 	for _, p := range cfg.RegistrationPolicy {
@@ -240,7 +254,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 			ks.samlProofIDPSSOURL = url
 			ks.samlProofIDPCert = cert
 			ks.samlProofValidity = t.EmailProofBySAML.Validity.Duration()
-			key, err := getKey(t.EmailProofBySAML.ServiceProviderTLS.Certificates[0].KeyID)
+			key, err := kp.GetKey(t.EmailProofBySAML.ServiceProviderTLS.Certificates[0].KeyID)
 			if err != nil {
 				return nil, err
 			}
@@ -252,7 +266,7 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 		}
 	}
 
-	switch replicaStateBytes, err := db.Get(tableReplicaState); err {
+	switch replicaStateBytes, err := ks.db.Get(coname.TableReplicaState); err {
 	case ks.db.ErrNotFound():
 		// ReplicaState zero value is valid initialization
 	case nil:
@@ -319,10 +333,6 @@ func Open(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, ini
 				ks.httpFrontListen.Close()
 			}
 		}()
-	}
-	ks.merkletree, err = merkletree.AccessMerkleTree(ks.db, []byte{tableMerkleTreePrefix}, nil)
-	if err != nil {
-		return nil, err
 	}
 
 	ok = true
@@ -410,7 +420,7 @@ func (ks *Keyserver) run() {
 			// (pipelining). Maybe this would be better implemented at the log level?
 			deferredIO := ks.step(&step, &ks.rs, wb)
 			ks.rs.NextIndexLog++
-			wb.Put(tableReplicaState, proto.MustMarshal(&ks.rs))
+			wb.Put(coname.TableReplicaState, proto.MustMarshal(&ks.rs))
 			if err := ks.db.Write(wb); err != nil {
 				log.Panicf("sync step to db: %s", err)
 			}
@@ -479,7 +489,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
-		wb.Put(tableUpdateRequests(index, epochNr), proto.MustMarshal(step.GetUpdate()))
+		wb.Put(coname.TableUpdateRequests(index, epochNr), proto.MustMarshal(step.GetUpdate()))
 		ks.wr.Notify(step.UID, updateOutput{Epoch: epochNr})
 
 		rs.PendingUpdates = true
@@ -488,7 +498,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		if rs.LastEpochNeedsRatification {
 			// We need to wait for the last epoch to appear in the verifier log before
 			// inserting this update.
-			wb.Put(tableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.GetUpdate().Update))
+			wb.Put(coname.TableUpdatesPendingRatification(rs.NextIndexLog), proto.MustMarshal(step.GetUpdate().Update))
 		} else {
 			// We can deliver the update to verifiers right away.
 			return ks.verifierLogAppend(&proto.VerifierStep{Type: &proto.VerifierStep_Update{Update: step.GetUpdate().Update}}, rs, wb)
@@ -516,10 +526,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		ks.updateEpochProposer()
 		deferredIO = ks.updateSignatureProposer
 
-		snapshotNumberBytes := make([]byte, 8)
-		binary.BigEndian.PutUint64(snapshotNumberBytes, rs.LatestTreeSnapshot)
-		wb.Put(tableMerkleTreeSnapshot(step.GetEpochDelimiter().EpochNumber), snapshotNumberBytes)
-
+		ks.merkletree.SaveSnapshotWithEpoch(step.GetEpochDelimiter().EpochNumber, rs.LatestTreeSnapshot, wb)
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
 		rootHash, err := latestTree.GetRootHash()
 		if err != nil {
@@ -542,15 +549,15 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		}
 		sha3.ShakeSum256(rs.PreviousSummaryHash[:], teh.Head.Encoding)
 
-		wb.Put(tableEpochHeads(step.GetEpochDelimiter().EpochNumber), proto.MustMarshal(teh))
+		wb.Put(coname.TableEpochHeads(step.GetEpochDelimiter().EpochNumber), proto.MustMarshal(teh))
 
 	case *proto.KeyserverStep_ReplicaSigned:
 		newSEH := step.GetReplicaSigned()
 		epochNr := newSEH.Head.Head.Epoch
 		// get epoch head
-		tehBytes, err := ks.db.Get(tableEpochHeads(epochNr))
+		tehBytes, err := ks.db.Get(coname.TableEpochHeads(epochNr))
 		if err != nil {
-			log.Panicf("get tableEpochHeads(%d): %s", epochNr, err)
+			log.Panicf("get TableEpochHeads(%d): %s", epochNr, err)
 		}
 		// compare epoch head to signed epoch head
 		if got, want := tehBytes, newSEH.Head.Encoding; !bytes.Equal(got, want) {
@@ -563,7 +570,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		for id := range newSEH.Signatures {
 			// the entry might already exist in the DB (if the proposals got
 			// duplicated), but it doesn't matter
-			wb.Put(tableRatifications(epochNr, id), newSehBytes)
+			wb.Put(coname.TableRatifications(epochNr, id), newSehBytes)
 		}
 
 		deferredIO = func() {
@@ -627,7 +634,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		oldDeferredIO := deferredIO
 		deferredSendEpoch := ks.verifierLogAppend(&proto.VerifierStep{Type: &proto.VerifierStep_Epoch{Epoch: allSignaturesSEH}}, rs, wb)
 		deferredSendUpdates := []func(){}
-		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableUpdatesPendingRatificationPrefix}))
+		iter := ks.db.NewIterator(kv.BytesPrefix([]byte{coname.TableUpdatesPendingRatificationPrefix}))
 		defer iter.Release()
 		for iter.Next() {
 			update := &proto.SignedEntryUpdate{}
@@ -654,7 +661,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			// Note: The signature *must* have been authenticated before being inserted
 			// into the log, or else verifiers could just trample over everyone else's
 			// signatures, including our own.
-			dbkey := tableRatifications(rNew.Head.Head.Epoch, id)
+			dbkey := coname.TableRatifications(rNew.Head.Head.Epoch, id)
 			wb.Put(dbkey, proto.MustMarshal(rNew))
 		}
 		ks.wr.Notify(step.UID, nil)
@@ -662,6 +669,18 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 			// As above, first write to DB, *then* notify subscribers.
 			ks.signatureBroadcast.Publish(rNew.Head.Head.Epoch, rNew)
 		}
+
+	case *proto.KeyserverStep_UpdateEpoch:
+		if rs.LastEpochDelimiter.EpochNumber < step.GetUpdateEpoch().Delimiter.EpochNumber {
+			rs.LastEpochDelimiter = *step.GetUpdateEpoch().Delimiter
+		}
+		if step.GetUpdateEpoch().UID != 0 {
+			ks.wr.Notify(step.GetUpdateEpoch().UID, updateOutput{Epoch: rs.LastEpochDelimiter.EpochNumber})
+		}
+		rs.PendingUpdates = step.GetUpdateEpoch().Update
+		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
+		ks.updateEpochProposer()
+
 	default:
 		log.Panicf("unknown step pb in replicated log: %#v", step)
 	}
@@ -790,13 +809,13 @@ func (ks *Keyserver) updateSignatureProposer() {
 
 	switch want {
 	case true:
-		tehBytes, err := ks.db.Get(tableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber))
+		tehBytes, err := ks.db.Get(coname.TableEpochHeads(ks.rs.LastEpochDelimiter.EpochNumber))
 		if err != nil {
 			log.Panicf("ThisReplicaNeedsToSignLastEpoch but no TEH for last epoch in db: %s", err)
 		}
 		var teh proto.EncodedTimestampedEpochHead
 		if err := teh.Unmarshal(tehBytes); err != nil {
-			log.Panicf("tableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
+			log.Panicf("TableEpochHeads(%d) invalid: %s", ks.rs.LastEpochDelimiter.EpochNumber, err)
 		}
 		seh := &proto.SignedEpochHead{
 			Head:       teh,
@@ -819,7 +838,7 @@ func (ks *Keyserver) resetEpochTimers(t time.Time) {
 }
 
 func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64]*proto.SignedEpochHead, error) {
-	iter := ks.db.NewIterator(&kv.Range{Start: tableRatifications(epoch, 0), Limit: tableRatifications(epoch+1, 0)})
+	iter := ks.db.NewIterator(&kv.Range{Start: coname.TableRatifications(epoch, 0), Limit: coname.TableRatifications(epoch+1, 0)})
 	defer iter.Release()
 	sehs := make(map[uint64]*proto.SignedEpochHead)
 	for iter.Next() {
@@ -827,7 +846,7 @@ func (ks *Keyserver) allRatificationsForEpoch(epoch uint64) (map[uint64]*proto.S
 		seh := new(proto.SignedEpochHead)
 		err := seh.Unmarshal(iter.Value())
 		if err != nil {
-			log.Panicf("tableRatifications(%d, %d) invalid: %s", epoch, id, err)
+			log.Panicf("TableRatifications(%d, %d) invalid: %s", epoch, id, err)
 		}
 		sehs[id] = seh
 	}

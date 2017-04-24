@@ -37,11 +37,16 @@ import (
 	"github.com/andres-erbsen/clock"
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/yahoo/coname"
+	"github.com/yahoo/coname/concurrent"
+	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/kv/leveldbkv"
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
+	"github.com/yahoo/coname/keyserver/merkletree"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
+	"github.com/yahoo/coname/keyserver/replication"
 )
 
 func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
@@ -128,50 +133,74 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 		ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions = append(ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions, replicaExpr)
 	}
 
-	leveldb, err := leveldb.OpenFile(cfg.LevelDBPath, nil)
-	if err != nil {
-		log.Fatalf("Couldn't open DB in directory %s: %s", cfg.LevelDBPath, err)
-	}
-	db := leveldbkv.Wrap(leveldb)
-
 	clk := clock.New()
+	wr := concurrent.NewOneShotPubSub()
+	ps := concurrent.NewPublishSubscribe()
 
-	raftListener, err := net.Listen("tcp", cfg.RaftAddr)
-	if err != nil {
-		log.Fatalf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
-	}
-	defer raftListener.Close()
-	raftTLS, err := cfg.RaftTLS.Config(getKey)
-	if err != nil {
-		log.Fatalf("Bad Raft TLS configuration: %s", err)
-	}
-	raftCreds := credentials.NewTLS(raftTLS)
-	raftServer := grpc.NewServer(grpc.Creds(raftCreds))
-	go raftServer.Serve(raftListener)
-	defer raftServer.Stop()
-
-	dialRaftPeer := func(id uint64) raftproto.RaftClient {
-		// TODO use current, not initial, config
-		for _, replica := range cfg.KeyserverConfig.InitialReplicas {
-			if replica.ID == id {
-				conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs})))
-				if err != nil {
-					log.Panicf("Raft GRPC dial failed: %s", err)
-				}
-				return raftproto.NewRaftClient(conn)
-			}
+	var db kv.DB
+	var replica replication.LogReplicator
+	var tree *merkletree.MerkleTree
+	if cfg.RaftAddr != "" {
+		leveldb, err := leveldb.OpenFile(cfg.LevelDBPath, nil)
+		if err != nil {
+			log.Fatalf("Couldn't open DB in directory %s: %s", cfg.LevelDBPath, err)
 		}
-		log.Panicf("No raft peer %x in configuration", id)
-		return nil
+		db = leveldbkv.Wrap(leveldb)
+
+		raftListener, err := net.Listen("tcp", cfg.RaftAddr)
+		if err != nil {
+			log.Fatalf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
+		}
+		defer raftListener.Close()
+		raftTLS, err := cfg.RaftTLS.Config(getKey)
+		if err != nil {
+			log.Fatalf("Bad Raft TLS configuration: %s", err)
+		}
+		raftCreds := credentials.NewTLS(raftTLS)
+		raftServer := grpc.NewServer(grpc.Creds(raftCreds))
+		go raftServer.Serve(raftListener)
+		defer raftServer.Stop()
+
+		dialRaftPeer := func(id uint64) raftproto.RaftClient {
+			// TODO use current, not initial, config
+			for _, replica := range cfg.KeyserverConfig.InitialReplicas {
+				if replica.ID == id {
+					conn, err := grpc.Dial(replica.RaftAddr, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{RootCAs: raftTLS.RootCAs})))
+					if err != nil {
+						log.Panicf("Raft GRPC dial failed: %s", err)
+					}
+					return raftproto.NewRaftClient(conn)
+				}
+			}
+			log.Panicf("No raft peer %x in configuration", id)
+			return nil
+		}
+
+		raft := raftlog.New(
+			cfg.ReplicaID, replicaIDs, db, []byte{coname.TableReplicationLogPrefix},
+			clk, cfg.RaftHeartbeat.Duration(), raftServer, dialRaftPeer,
+		)
+		defer raft.Stop()
+		replica = raft
+		tree, err = merkletree.AccessMerkleTree(db, []byte{coname.TableMerkleTreePrefix}, nil)
+		if err != nil {
+			log.Fatalf("Couldn't make an instance of Merkle tree: %s", err)
+		}
+	} else {
+		log.Panicf("No configuration")
 	}
 
-	raft := raftlog.New(
-		cfg.ReplicaID, replicaIDs, db, []byte{tableReplicationLogPrefix},
-		clk, cfg.RaftHeartbeat.Duration(), raftServer, dialRaftPeer,
-	)
-	defer raft.Stop()
-
-	server, err := Open(cfg, db, raft, ratificationPolicy, clk, getKey, net.LookupTXT)
+	server, err := Open(cfg, &KeyserverParameters{
+		DB: db,
+		Log: replica,
+		Policy: ratificationPolicy,
+		Clk: clk,
+		WR: wr,
+		PS: ps,
+		Merkletree: tree,
+		GetKey: getKey,
+		LookupTXT: net.LookupTXT,
+	})
 	if err != nil {
 		log.Fatalf("Failed to initialize keyserver: %s", err)
 	}

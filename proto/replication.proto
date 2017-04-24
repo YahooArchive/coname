@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/maditya/protobuf/gogoproto/gogo.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "client.proto";
 import "timestamp.proto";
 
@@ -53,10 +53,18 @@ message KeyserverStep {
 		// from a verifier; these are used to provide proof of verification to
 		// clients.
 		SignedEpochHead verifier_signed = 5;
+		// Do nothing but running epoch
+		EpochUpdate update_epoch = 6;
 	}
 }
 
 message EpochDelimiter {
 	uint64 epoch_number = 1; // epoch numbering starts at 1
 	Timestamp timestamp = 2 [(gogoproto.nullable) = false];
+}
+
+message EpochUpdate {
+	EpochDelimiter delimiter = 1;
+	bool update = 2;
+	fixed64 UID = 3;
 }

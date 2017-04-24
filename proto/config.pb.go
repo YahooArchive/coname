@@ -4,17 +4,14 @@
 
 package proto
 
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
@@ -42,7 +39,7 @@ func (m *Config) GetRealms() []*RealmConfig {
 type RealmConfig struct {
 	// RealmName is the canonical name of the realm. It is signed by the
 	// verifiers as a part of the epoch head.
-	RealmName string `protobuf:"bytes,1,opt,name=RealmName,json=realmName,proto3" json:"RealmName,omitempty"`
+	RealmName string `protobuf:"bytes,1,opt,name=RealmName,proto3" json:"RealmName,omitempty"`
 	// Domains specifies a list of domains that belong to this realm.
 	// Configuring one domain to belong to multiple realms is considered an
 	// error.
@@ -52,12 +49,12 @@ type RealmConfig struct {
 	Addr string `protobuf:"bytes,3,opt,name=addr,proto3" json:"addr,omitempty"`
 	// URL is the location of the secondary, HTTP-based interface to the
 	// keyserver. It is not necessarily on the same host as addr.
-	URL string `protobuf:"bytes,4,opt,name=URL,json=uRL,proto3" json:"URL,omitempty"`
+	URL string `protobuf:"bytes,4,opt,name=URL,proto3" json:"URL,omitempty"`
 	// VRFPublic is the public key of the verifiable random function used for
 	// user id privacy. Here it is used to check that the anti-spam obfuscation
 	// layer is properly used as a one-to-one mapping between real and
 	// obfuscated usernames.
-	VRFPublic []byte `protobuf:"bytes,5,opt,name=VRFPublic,json=vRFPublic,proto3" json:"VRFPublic,omitempty"`
+	VRFPublic []byte `protobuf:"bytes,5,opt,name=VRFPublic,proto3" json:"VRFPublic,omitempty"`
 	// VerificationPolicy specifies the conditions on how a lookup must be
 	// verified for it to be accepted. Each verifier in VerificationPolicy MUST
 	// have a NoOlderThan entry.
@@ -75,6 +72,41 @@ func (m *RealmConfig) Reset()                    { *m = RealmConfig{} }
 func (*RealmConfig) ProtoMessage()               {}
 func (*RealmConfig) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{1} }
 
+func (m *RealmConfig) GetRealmName() string {
+	if m != nil {
+		return m.RealmName
+	}
+	return ""
+}
+
+func (m *RealmConfig) GetDomains() []string {
+	if m != nil {
+		return m.Domains
+	}
+	return nil
+}
+
+func (m *RealmConfig) GetAddr() string {
+	if m != nil {
+		return m.Addr
+	}
+	return ""
+}
+
+func (m *RealmConfig) GetURL() string {
+	if m != nil {
+		return m.URL
+	}
+	return ""
+}
+
+func (m *RealmConfig) GetVRFPublic() []byte {
+	if m != nil {
+		return m.VRFPublic
+	}
+	return nil
+}
+
 func (m *RealmConfig) GetVerificationPolicy() *AuthorizationPolicy {
 	if m != nil {
 		return m.VerificationPolicy
@@ -87,6 +119,13 @@ func (m *RealmConfig) GetEpochTimeToLive() Duration {
 		return m.EpochTimeToLive
 	}
 	return Duration{}
+}
+
+func (m *RealmConfig) GetTreeNonce() []byte {
+	if m != nil {
+		return m.TreeNonce
+	}
+	return nil
 }
 
 func (m *RealmConfig) GetClientTLS() *TLSConfig {
@@ -330,44 +369,27 @@ func valueToGoStringConfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringConfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *Config) Marshal() (data []byte, err error) {
+func (m *Config) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Config) MarshalTo(data []byte) (int, error) {
+func (m *Config) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Realms) > 0 {
 		for _, msg := range m.Realms {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintConfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintConfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -377,89 +399,89 @@ func (m *Config) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RealmConfig) Marshal() (data []byte, err error) {
+func (m *RealmConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
+func (m *RealmConfig) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.RealmName) > 0 {
-		data[i] = 0xa
+		dAtA[i] = 0xa
 		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.RealmName)))
-		i += copy(data[i:], m.RealmName)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.RealmName)))
+		i += copy(dAtA[i:], m.RealmName)
 	}
 	if len(m.Domains) > 0 {
 		for _, s := range m.Domains {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.Addr) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.Addr)))
-		i += copy(data[i:], m.Addr)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.Addr)))
+		i += copy(dAtA[i:], m.Addr)
 	}
 	if len(m.URL) > 0 {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.URL)))
-		i += copy(data[i:], m.URL)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.URL)))
+		i += copy(dAtA[i:], m.URL)
 	}
 	if len(m.VRFPublic) > 0 {
-		data[i] = 0x2a
+		dAtA[i] = 0x2a
 		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.VRFPublic)))
-		i += copy(data[i:], m.VRFPublic)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.VRFPublic)))
+		i += copy(dAtA[i:], m.VRFPublic)
 	}
 	if m.VerificationPolicy != nil {
-		data[i] = 0x32
+		dAtA[i] = 0x32
 		i++
-		i = encodeVarintConfig(data, i, uint64(m.VerificationPolicy.Size()))
-		n1, err := m.VerificationPolicy.MarshalTo(data[i:])
+		i = encodeVarintConfig(dAtA, i, uint64(m.VerificationPolicy.Size()))
+		n1, err := m.VerificationPolicy.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
 	}
-	data[i] = 0x3a
+	dAtA[i] = 0x3a
 	i++
-	i = encodeVarintConfig(data, i, uint64(m.EpochTimeToLive.Size()))
-	n2, err := m.EpochTimeToLive.MarshalTo(data[i:])
+	i = encodeVarintConfig(dAtA, i, uint64(m.EpochTimeToLive.Size()))
+	n2, err := m.EpochTimeToLive.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n2
 	if len(m.TreeNonce) > 0 {
-		data[i] = 0x42
+		dAtA[i] = 0x42
 		i++
-		i = encodeVarintConfig(data, i, uint64(len(m.TreeNonce)))
-		i += copy(data[i:], m.TreeNonce)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.TreeNonce)))
+		i += copy(dAtA[i:], m.TreeNonce)
 	}
 	if m.ClientTLS != nil {
-		data[i] = 0x4a
+		dAtA[i] = 0x4a
 		i++
-		i = encodeVarintConfig(data, i, uint64(m.ClientTLS.Size()))
-		n3, err := m.ClientTLS.MarshalTo(data[i:])
+		i = encodeVarintConfig(dAtA, i, uint64(m.ClientTLS.Size()))
+		n3, err := m.ClientTLS.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -468,31 +490,31 @@ func (m *RealmConfig) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Config(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Config(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Config(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Config(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintConfig(data []byte, offset int, v uint64) int {
+func encodeVarintConfig(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func NewPopulatedConfig(r randyConfig, easy bool) *Config {
@@ -511,14 +533,14 @@ func NewPopulatedConfig(r randyConfig, easy bool) *Config {
 
 func NewPopulatedRealmConfig(r randyConfig, easy bool) *RealmConfig {
 	this := &RealmConfig{}
-	this.RealmName = randStringConfig(r)
+	this.RealmName = string(randStringConfig(r))
 	v2 := r.Intn(10)
 	this.Domains = make([]string, v2)
 	for i := 0; i < v2; i++ {
-		this.Domains[i] = randStringConfig(r)
+		this.Domains[i] = string(randStringConfig(r))
 	}
-	this.Addr = randStringConfig(r)
-	this.URL = randStringConfig(r)
+	this.Addr = string(randStringConfig(r))
+	this.URL = string(randStringConfig(r))
 	v3 := r.Intn(100)
 	this.VRFPublic = make([]byte, v3)
 	for i := 0; i < v3; i++ {
@@ -568,7 +590,7 @@ func randStringConfig(r randyConfig) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedConfig(r randyConfig, maxFieldNumber int) (data []byte) {
+func randUnrecognizedConfig(r randyConfig, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -576,43 +598,43 @@ func randUnrecognizedConfig(r randyConfig, maxFieldNumber int) (data []byte) {
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldConfig(data, r, fieldNumber, wire)
+		dAtA = randFieldConfig(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldConfig(data []byte, r randyConfig, fieldNumber int, wire int) []byte {
+func randFieldConfig(dAtA []byte, r randyConfig, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateConfig(data, uint64(key))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(key))
 		v7 := r.Int63()
 		if r.Intn(2) == 0 {
 			v7 *= -1
 		}
-		data = encodeVarintPopulateConfig(data, uint64(v7))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(v7))
 	case 1:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateConfig(data, uint64(key))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateConfig(data, uint64(ll))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateConfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateConfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateConfig(data []byte, v uint64) []byte {
+func encodeVarintPopulateConfig(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *Config) Size() (n int) {
 	var l int
@@ -717,8 +739,8 @@ func valueToStringConfig(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *Config) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Config) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -730,7 +752,7 @@ func (m *Config) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -758,7 +780,7 @@ func (m *Config) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -773,13 +795,13 @@ func (m *Config) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Realms = append(m.Realms, &RealmConfig{})
-			if err := m.Realms[len(m.Realms)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Realms[len(m.Realms)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipConfig(data[iNdEx:])
+			skippy, err := skipConfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -798,8 +820,8 @@ func (m *Config) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RealmConfig) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *RealmConfig) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -811,7 +833,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -839,7 +861,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -854,7 +876,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RealmName = string(data[iNdEx:postIndex])
+			m.RealmName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -868,7 +890,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -883,7 +905,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Domains = append(m.Domains, string(data[iNdEx:postIndex]))
+			m.Domains = append(m.Domains, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -897,7 +919,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -912,7 +934,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Addr = string(data[iNdEx:postIndex])
+			m.Addr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -926,7 +948,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -941,7 +963,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.URL = string(data[iNdEx:postIndex])
+			m.URL = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -955,7 +977,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -969,7 +991,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.VRFPublic = append(m.VRFPublic[:0], data[iNdEx:postIndex]...)
+			m.VRFPublic = append(m.VRFPublic[:0], dAtA[iNdEx:postIndex]...)
 			if m.VRFPublic == nil {
 				m.VRFPublic = []byte{}
 			}
@@ -986,7 +1008,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1003,7 +1025,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if m.VerificationPolicy == nil {
 				m.VerificationPolicy = &AuthorizationPolicy{}
 			}
-			if err := m.VerificationPolicy.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.VerificationPolicy.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1019,7 +1041,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1033,7 +1055,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.EpochTimeToLive.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.EpochTimeToLive.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1049,7 +1071,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1063,7 +1085,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.TreeNonce = append(m.TreeNonce[:0], data[iNdEx:postIndex]...)
+			m.TreeNonce = append(m.TreeNonce[:0], dAtA[iNdEx:postIndex]...)
 			if m.TreeNonce == nil {
 				m.TreeNonce = []byte{}
 			}
@@ -1080,7 +1102,7 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1097,13 +1119,13 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 			if m.ClientTLS == nil {
 				m.ClientTLS = &TLSConfig{}
 			}
-			if err := m.ClientTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ClientTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipConfig(data[iNdEx:])
+			skippy, err := skipConfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1122,8 +1144,8 @@ func (m *RealmConfig) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipConfig(data []byte) (n int, err error) {
-	l := len(data)
+func skipConfig(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -1134,7 +1156,7 @@ func skipConfig(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1152,7 +1174,7 @@ func skipConfig(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -1169,7 +1191,7 @@ func skipConfig(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1192,7 +1214,7 @@ func skipConfig(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -1203,7 +1225,7 @@ func skipConfig(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipConfig(data[start:])
+				next, err := skipConfig(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -1230,33 +1252,33 @@ var (
 func init() { proto1.RegisterFile("config.proto", fileDescriptorConfig) }
 
 var fileDescriptorConfig = []byte{
-	// 442 bytes of a gzipped FileDescriptorProto
+	// 433 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x91, 0xb1, 0x6f, 0xd3, 0x40,
-	0x18, 0xc5, 0x73, 0x75, 0x9a, 0xe2, 0x4b, 0x20, 0xd5, 0xb1, 0x9c, 0x22, 0xb8, 0x5a, 0x9d, 0x2c,
-	0x86, 0x04, 0x15, 0x06, 0x26, 0x24, 0x52, 0xc4, 0x82, 0x55, 0x55, 0x57, 0xc3, 0x6a, 0x39, 0xf6,
-	0x25, 0x39, 0xc9, 0xf6, 0x45, 0xf6, 0x39, 0x52, 0x99, 0xf8, 0x73, 0xf8, 0x13, 0x18, 0x19, 0x3b,
-	0x76, 0x64, 0xaa, 0xea, 0x9b, 0x18, 0x33, 0xc2, 0x86, 0xfc, 0x9d, 0x23, 0x65, 0xf2, 0xbd, 0x9f,
-	0xdf, 0x7b, 0xe7, 0xef, 0x33, 0x1e, 0x25, 0xaa, 0x58, 0xca, 0xd5, 0x74, 0x53, 0x2a, 0xad, 0xc8,
-	0x31, 0x3c, 0x26, 0xaf, 0x57, 0x52, 0xaf, 0xeb, 0xc5, 0x34, 0x51, 0xf9, 0x2c, 0x8f, 0x53, 0xa9,
-	0x6f, 0xe3, 0x19, 0xbc, 0x59, 0xd4, 0xcb, 0xd9, 0x4a, 0xad, 0x14, 0x08, 0x38, 0xd9, 0xe0, 0x64,
-	0x94, 0x64, 0x52, 0x14, 0xba, 0x53, 0xcf, 0xd2, 0xba, 0x8c, 0xb5, 0x54, 0x45, 0xa7, 0xc7, 0x3a,
-	0xab, 0x0e, 0xef, 0x39, 0x7f, 0x8b, 0x07, 0x97, 0xa0, 0xc9, 0x2b, 0x3c, 0x28, 0x45, 0x9c, 0xe5,
-	0x15, 0x45, 0x9e, 0xe3, 0x0f, 0x2f, 0x88, 0x75, 0x4c, 0x79, 0x0b, 0xad, 0x87, 0x77, 0x8e, 0xf3,
-	0x7f, 0x47, 0x78, 0x78, 0xc0, 0xc9, 0x0b, 0xec, 0x82, 0xbc, 0x8a, 0x73, 0x41, 0x91, 0x87, 0x7c,
-	0x97, 0xbb, 0xe5, 0x1e, 0x10, 0x8a, 0x4f, 0x52, 0x95, 0xc7, 0xb2, 0xa8, 0xe8, 0x91, 0xe7, 0xf8,
-	0x2e, 0xdf, 0x4b, 0x42, 0x70, 0x3f, 0x4e, 0xd3, 0x92, 0x3a, 0x10, 0x81, 0x33, 0x39, 0xc5, 0xce,
-	0x17, 0x1e, 0xd0, 0x3e, 0x20, 0xa7, 0xe6, 0x41, 0xdb, 0xfe, 0x95, 0x7f, 0xba, 0xae, 0x17, 0x99,
-	0x4c, 0xe8, 0xb1, 0x87, 0xfc, 0x11, 0x77, 0xb7, 0x7b, 0x40, 0x3e, 0xe3, 0xe7, 0x5b, 0x51, 0xca,
-	0xa5, 0x4c, 0x60, 0xd0, 0x68, 0xa3, 0x32, 0x99, 0xdc, 0xd2, 0x81, 0x87, 0xfc, 0xe1, 0xc5, 0xa4,
-	0x1b, 0xe2, 0x43, 0xad, 0xd7, 0xaa, 0x94, 0xdf, 0xc0, 0x72, 0x0d, 0x0e, 0x4e, 0x0e, 0x63, 0x96,
-	0x91, 0x39, 0x26, 0x62, 0xa3, 0x92, 0x75, 0xa4, 0x65, 0x2e, 0x22, 0xad, 0xa2, 0x4c, 0x6e, 0x05,
-	0x3d, 0x81, 0xae, 0x71, 0xd7, 0xf5, 0xb1, 0x5b, 0xe9, 0xbc, 0x7f, 0xf7, 0x70, 0xd6, 0xe3, 0x63,
-	0x08, 0x84, 0x32, 0x17, 0xa1, 0x0a, 0xe4, 0x56, 0x90, 0x97, 0x18, 0xeb, 0x52, 0x88, 0xa8, 0x50,
-	0x45, 0x22, 0xe8, 0x13, 0xfb, 0xbd, 0x2d, 0xb9, 0x6a, 0x01, 0x79, 0x8f, 0xb1, 0xfd, 0x45, 0x91,
-	0xce, 0x2a, 0xea, 0x42, 0xf5, 0x69, 0x57, 0x1d, 0x06, 0x37, 0x76, 0xa3, 0xf3, 0xa7, 0xe6, 0xe1,
-	0xcc, 0xbd, 0x04, 0x5f, 0x18, 0xdc, 0x70, 0xd7, 0x46, 0xc2, 0xac, 0x9a, 0xbf, 0xbb, 0x6f, 0x58,
-	0xef, 0x77, 0xc3, 0x7a, 0x8f, 0x0d, 0x43, 0xbb, 0x86, 0xa1, 0xbf, 0x0d, 0x43, 0xdf, 0x0d, 0x43,
-	0x3f, 0x0c, 0x43, 0x3f, 0x0d, 0x43, 0xbf, 0x0c, 0x43, 0x77, 0x86, 0xa1, 0x7b, 0xc3, 0xd0, 0xa3,
-	0x61, 0xe8, 0x8f, 0x61, 0xbd, 0x9d, 0x61, 0x68, 0x31, 0x80, 0x4b, 0xde, 0xfc, 0x0f, 0x00, 0x00,
-	0xff, 0xff, 0xdc, 0xed, 0x4e, 0x79, 0x6a, 0x02, 0x00, 0x00,
+	0x14, 0xc6, 0xf3, 0x9a, 0x34, 0xc5, 0x97, 0x40, 0xaa, 0x63, 0x39, 0x45, 0x70, 0xb5, 0x3a, 0x59,
+	0x48, 0xa4, 0x52, 0x61, 0x60, 0x42, 0x22, 0x45, 0x2c, 0x44, 0x55, 0x75, 0x35, 0xac, 0x96, 0xe3,
+	0x5c, 0x92, 0x93, 0x6c, 0x5f, 0x64, 0x9f, 0x23, 0xc1, 0xc4, 0x9f, 0xc3, 0x9f, 0xc0, 0xc8, 0xd8,
+	0xb1, 0x23, 0x53, 0x55, 0xdf, 0xc4, 0xd8, 0x11, 0x36, 0xe4, 0x77, 0x46, 0xc9, 0xe4, 0xf7, 0xfd,
+	0xf4, 0x7d, 0xdf, 0xf9, 0xde, 0x91, 0x61, 0xa2, 0xf3, 0xa5, 0x5a, 0x4d, 0x36, 0x85, 0x36, 0x9a,
+	0x1e, 0xe2, 0x67, 0xfc, 0x72, 0xa5, 0xcc, 0xba, 0x9a, 0x4f, 0x12, 0x9d, 0x9d, 0xad, 0xf4, 0x4a,
+	0x9f, 0x21, 0x9e, 0x57, 0x4b, 0x54, 0x28, 0x70, 0x72, 0xa9, 0xf1, 0x30, 0x49, 0x95, 0xcc, 0x4d,
+	0xab, 0x9e, 0x2c, 0xaa, 0x22, 0x36, 0x4a, 0xe7, 0xad, 0x1e, 0x99, 0xb4, 0xdc, 0x3f, 0xe4, 0xf4,
+	0x35, 0xe9, 0x5f, 0xa0, 0xa6, 0x2f, 0x48, 0xbf, 0x90, 0x71, 0x9a, 0x95, 0x0c, 0xfc, 0x6e, 0x30,
+	0x38, 0xa7, 0xce, 0x31, 0x11, 0x0d, 0x74, 0x1e, 0xd1, 0x3a, 0x4e, 0xff, 0x1e, 0x90, 0xc1, 0x1e,
+	0xa7, 0xcf, 0x88, 0x87, 0xf2, 0x32, 0xce, 0x24, 0x03, 0x1f, 0x02, 0x4f, 0xec, 0x00, 0x65, 0xe4,
+	0x68, 0xa1, 0xb3, 0x58, 0xe5, 0x25, 0x3b, 0xf0, 0xbb, 0x81, 0x27, 0xfe, 0x4b, 0x4a, 0x49, 0x2f,
+	0x5e, 0x2c, 0x0a, 0xd6, 0xc5, 0x08, 0xce, 0xf4, 0x98, 0x74, 0x3f, 0x89, 0x19, 0xeb, 0x21, 0x6a,
+	0xc6, 0xa6, 0xfd, 0xb3, 0xf8, 0x70, 0x55, 0xcd, 0x53, 0x95, 0xb0, 0x43, 0x1f, 0x82, 0xa1, 0xd8,
+	0x01, 0xfa, 0x91, 0x3c, 0xdd, 0xca, 0x42, 0x2d, 0x55, 0x82, 0x17, 0x8d, 0x36, 0x3a, 0x55, 0xc9,
+	0x17, 0xd6, 0xf7, 0x21, 0x18, 0x9c, 0x8f, 0xdb, 0x4b, 0xbc, 0xab, 0xcc, 0x5a, 0x17, 0xea, 0x2b,
+	0x5a, 0xae, 0xd0, 0x21, 0xe8, 0x7e, 0xcc, 0x31, 0x3a, 0x25, 0x54, 0x6e, 0x74, 0xb2, 0x8e, 0x8c,
+	0xca, 0x64, 0x64, 0x74, 0x94, 0xaa, 0xad, 0x64, 0x47, 0xd8, 0x35, 0x6a, 0xbb, 0xde, 0xb7, 0x2b,
+	0x9d, 0xf6, 0x6e, 0xee, 0x4e, 0x3a, 0x62, 0x84, 0x81, 0x50, 0x65, 0x32, 0xd4, 0x33, 0xb5, 0x95,
+	0xf4, 0x39, 0x21, 0xa6, 0x90, 0x32, 0xca, 0x75, 0x9e, 0x48, 0xf6, 0xc8, 0xfd, 0x6f, 0x43, 0x2e,
+	0x1b, 0x40, 0xdf, 0x12, 0xe2, 0x9e, 0x28, 0x32, 0x69, 0xc9, 0x3c, 0xac, 0x3e, 0x6e, 0xab, 0xc3,
+	0xd9, 0xb5, 0xdb, 0xe8, 0xf4, 0xb1, 0xbd, 0x3b, 0xf1, 0x2e, 0xd0, 0x17, 0xce, 0xae, 0x85, 0xe7,
+	0x22, 0x61, 0x5a, 0x4e, 0xdf, 0xdc, 0xd6, 0xbc, 0xf3, 0xab, 0xe6, 0x9d, 0xfb, 0x9a, 0xc3, 0x43,
+	0xcd, 0xe1, 0x4f, 0xcd, 0xe1, 0x9b, 0xe5, 0xf0, 0xdd, 0x72, 0xf8, 0x61, 0x39, 0xfc, 0xb4, 0x1c,
+	0x6e, 0x2c, 0x87, 0x5b, 0xcb, 0xe1, 0xde, 0x72, 0xf8, 0x6d, 0x79, 0xe7, 0xc1, 0x72, 0x98, 0xf7,
+	0xf1, 0x90, 0x57, 0xff, 0x02, 0x00, 0x00, 0xff, 0xff, 0xe6, 0xb9, 0x73, 0x88, 0x67, 0x02, 0x00,
+	0x00,
 }

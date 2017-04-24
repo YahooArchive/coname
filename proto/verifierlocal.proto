@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/maditya/protobuf/gogoproto/gogo.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "client.proto";
 
 // Verifier contains the persistent internal state of a verifier.

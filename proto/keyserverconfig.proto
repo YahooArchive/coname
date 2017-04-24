@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 package proto;
-import "github.com/maditya/protobuf/gogoproto/gogo.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "tlsconfig.proto";
 import "duration.proto";
 import "client.proto";
@@ -72,6 +72,13 @@ message ReplicaConfig {
 	// to allow from the start of a client request to until it is handled. The
 	// zero value means no limit.
 	Duration client_timeout = 17 [(gogoproto.nullable) = false];
+
+	// SherpaURL is the URL assigned to your DB.
+	// SherpaAppId is to get YCA to access sherpa.
+	// SherpaTable is the table name you created on sherpa.
+	string sherpa_url = 18;
+	string sherpa_app_id = 19;
+	string sherpa_log_table = 20;
 }
 
 // KeyserverConfig describes the keyserver-wide configuration. All replicas

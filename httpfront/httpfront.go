@@ -9,8 +9,9 @@ import (
 	"net/url"
 	"sync"
 	"time"
+	"fmt"
 
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/yahoo/coname/proto"
 	"golang.org/x/net/context"
 )
@@ -103,6 +104,7 @@ func (h *HTTPFront) doLookup(b io.Reader, ctx context.Context) (*proto.LookupPro
 	if err != nil {
 		return nil, err
 	}
+fmt.Printf("lookup: %v\n", lr);
 
 	pf, err := h.Lookup(ctx, lr)
 	if err != nil {
