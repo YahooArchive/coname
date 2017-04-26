@@ -77,8 +77,11 @@ func VerifyLookup(cfg *proto.Config, user string, pf *proto.LookupProof, now tim
 		}
 		return nil, nil
 	} else {
-		if pf.Entry == nil || pf.Profile == nil {
-			return nil, nil		// empty entry or profile
+		if pf.Entry == nil {
+			return nil, fmt.Errorf("VerifyLookup: empty entry did not match verified lookup result <non nil>")
+		}
+		if pf.Profile == nil {
+			return nil, fmt.Errorf("VerifyLookup: empty profile did not match verified lookup result <non nil>")
 		}
 		var entryHash [32]byte
 		sha3.ShakeSum256(entryHash[:], pf.Entry.Encoding)
@@ -272,12 +275,12 @@ func (n *ReconstructedNode) Value() []byte {
 	return n.value
 }
 
-// getUpdate returns the last update to profile of idx during or before epoch.
+// GetUpdate returns the last update to profile of idx during or before epoch.
 // If there is no such update, (nil, nil) is returned.
 func GetUpdate(db kv.DB, idx []byte, epoch uint64) (*proto.UpdateRequest, error) {
 	// idx: []&const
 	if len(idx) != vrf.Size {
-		log.Panicf("getUpdate: index %x has bad length", idx)
+		log.Panicf("GetUpdate: index %x has bad length", idx)
 	}
 	prefixIdxEpoch := TableUpdateRequests(idx, epoch)
 	iter := db.NewIterator(&kv.Range{
