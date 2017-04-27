@@ -56,10 +56,12 @@ import (
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/keyserver/replication/raftlog"
 	"github.com/yahoo/coname/keyserver/replication/raftlog/nettestutil"
+	"github.com/yahoo/coname/keyserver/merkletree"
 	raftproto "github.com/yahoo/coname/keyserver/replication/raftlog/proto"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/verifier"
 	"github.com/yahoo/coname/vrf"
+	"github.com/yahoo/coname/concurrent"
 )
 
 const (
@@ -288,7 +290,7 @@ func testKeyserverStartStop(t *testing.T, nReplicas int) {
 	defer teardown2()
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -317,7 +319,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 	for i := 0; i < nReplicas; i++ {
 		var closeOnce sync.Once
 		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
-			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != coname.TableRatificationsPrefix {
 				return
 			}
 			epoch := binary.BigEndian.Uint64(update.Key[1 : 1+8])
@@ -326,7 +328,7 @@ func TestKeyserverStartProgressStop(t *testing.T) {
 			}
 		})
 
-		ks, err := Open(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], ccfg.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -500,7 +502,7 @@ func TestKeyserverAbsentLookup(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -549,7 +551,7 @@ func TestKeyserverRoundtrip(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -604,7 +606,7 @@ func TestKeyserverUpdateFailsWithoutVersionIncrease(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -658,7 +660,7 @@ func TestKeyserverUpdate(t *testing.T) {
 
 	kss := []*Keyserver{}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -846,7 +848,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 		dbs[i] = tracekv.WithSimpleTracing(dbs[i], func(update tracekv.Update) {
 			// We are waiting for an epoch to be ratified (in case there are no
 			// verifiers, blocking on them does not help).
-			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != tableVerifierLogPrefix {
+			if update.IsDeletion || len(update.Key) < 1 || update.Key[0] != coname.TableVerifierLogPrefix {
 				return
 			}
 			ksDoneOnce.Do(func() { ksDone.Done() })
@@ -869,7 +871,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 			// We are waiting for epoch 1 to be ratified by the verifier and
 			// reach the client because before that lookups requiring this
 			// verifier will immediately fail.
-			if len(update.Key) < 1 || update.Key[0] != tableRatificationsPrefix {
+			if len(update.Key) < 1 || update.Key[0] != coname.TableRatificationsPrefix {
 				return
 			}
 			<-vrBarrier
@@ -895,7 +897,7 @@ func setupRealm(t *testing.T, nReplicas, nVerifiers int) (
 		}(i)
 	}
 	for i := range cfgs {
-		ks, err := Open(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
+		ks, err := OpenRaft(cfgs[i], dbs[i], logs[i], clientConfig.Realms[0].VerificationPolicy, clks[i], gks[i], nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1203,18 +1205,18 @@ func TestKeyserverHTTPFrontLookup(t *testing.T) {
 	// To verify json response preserves the original field names
 	// as specified in https://github.com/yahoo/coname/blob/master/proto/client.proto#L63-L89
 	type lp struct {
-		Entry      string `json:"entry"`
+		Entry      json.RawMessage `json:"entry"`
 		Index      string `json:"index"`
 		IndexProof string `json:"index_proof"`
-		Profile    string `json:"profile"`
+		Profile    json.RawMessage `json:"profile"`
 		UserId     string `json:"user_id"`
 	}
 	l := &lp{}
 	err = json.Unmarshal(body, &l)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("json.Unmarshal(%s): %s", body, err)
 	}
-	if l.Entry == "" {
+	if l.Entry == nil {
 		t.Errorf("entry not found in the response")
 	}
 	if l.Index == "" {
@@ -1223,10 +1225,25 @@ func TestKeyserverHTTPFrontLookup(t *testing.T) {
 	if l.IndexProof == "" {
 		t.Errorf("index_proof not found in the response")
 	}
-	if l.Profile == "" {
+	if l.Profile == nil {
 		t.Errorf("profile not found in the response")
 	}
 	if l.UserId == "" {
 		t.Errorf("user_id not found in the response")
 	}
+}
+
+func OpenRaft(cfg *proto.ReplicaConfig, db kv.DB, log replication.LogReplicator, initialAuthorizationPolicy *proto.AuthorizationPolicy, clk clock.Clock, getKey func(string) (crypto.PrivateKey, error), LookupTXT func(string) ([]string, error)) (*Keyserver, error) {
+	tree, _ := merkletree.AccessMerkleTree(db, []byte{coname.TableMerkleTreePrefix}, nil)
+	return Open(cfg, &KeyserverParameters{
+		DB: db,
+		Log: log,
+		Policy: initialAuthorizationPolicy,
+		Clk: clk,
+		WR: concurrent.NewOneShotPubSub(),
+		PS: concurrent.NewPublishSubscribe(),
+		Merkletree: tree,
+		GetKey: getKey,
+		LookupTXT: net.LookupTXT,
+	})
 }
