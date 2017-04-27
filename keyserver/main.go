@@ -71,7 +71,7 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 
 // This getKey interprets key IDs as paths, and loads private keys from the
 // specified file
-func getKey(keyid string) (crypto.PrivateKey, error) {
+func GetKey(keyid string) (crypto.PrivateKey, error) {
 	fileContents, err := ioutil.ReadFile(keyid)
 	if err != nil {
 		return nil, err
@@ -106,33 +106,7 @@ func getKey(keyid string) (crypto.PrivateKey, error) {
 	}
 }
 
-func majority(nReplicas int) int {
-	return nReplicas/2 + 1
-}
-
 func RunWithConfig(cfg *proto.ReplicaConfig) {
-	// TODO: since we only want to support precisely this ratification policy,
-	// this should be moved into server.go
-	ratificationPolicy := &proto.AuthorizationPolicy{
-		PublicKeys: make(map[uint64]*proto.PublicKey),
-		PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
-			Threshold: uint32(majority(len(cfg.KeyserverConfig.InitialReplicas)))},
-		},
-	}
-	replicaIDs := []uint64{}
-	for _, replica := range cfg.KeyserverConfig.InitialReplicas {
-		replicaIDs = append(replicaIDs, replica.ID)
-		replicaExpr := &proto.QuorumExpr{
-			Threshold: 1,
-		}
-		for _, pk := range replica.PublicKeys {
-			pkid := proto.KeyID(pk)
-			ratificationPolicy.PublicKeys[pkid] = pk
-			replicaExpr.Candidates = append(replicaExpr.Candidates, pkid)
-		}
-		ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions = append(ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions, replicaExpr)
-	}
-
 	clk := clock.New()
 	wr := concurrent.NewOneShotPubSub()
 	ps := concurrent.NewPublishSubscribe()
@@ -152,7 +126,7 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 			log.Fatalf("Couldn't bind to Raft node address %s: %s", cfg.RaftAddr, err)
 		}
 		defer raftListener.Close()
-		raftTLS, err := cfg.RaftTLS.Config(getKey)
+		raftTLS, err := cfg.RaftTLS.Config(GetKey)
 		if err != nil {
 			log.Fatalf("Bad Raft TLS configuration: %s", err)
 		}
@@ -176,6 +150,11 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 			return nil
 		}
 
+		replicaIDs := []uint64{}
+		for _, replica := range cfg.KeyserverConfig.InitialReplicas {
+			replicaIDs = append(replicaIDs, replica.ID)
+		}
+
 		raft := raftlog.New(
 			cfg.ReplicaID, replicaIDs, db, []byte{coname.TableReplicationLogPrefix},
 			clk, cfg.RaftHeartbeat.Duration(), raftServer, dialRaftPeer,
@@ -193,12 +172,11 @@ func RunWithConfig(cfg *proto.ReplicaConfig) {
 	server, err := Open(cfg, &KeyserverParameters{
 		DB: db,
 		Log: replica,
-		Policy: ratificationPolicy,
 		Clk: clk,
 		WR: wr,
 		PS: ps,
 		Merkletree: tree,
-		GetKey: getKey,
+		GetKey: GetKey,
 		LookupTXT: net.LookupTXT,
 	})
 	if err != nil {

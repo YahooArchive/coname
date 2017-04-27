@@ -127,13 +127,13 @@ type Keyserver struct {
 type KeyserverParameters struct {
 	DB kv.DB	// DB, local or shared
 	Log replication.LogReplicator	// replica
-	Policy *proto.AuthorizationPolicy
 	Clk clock.Clock
 	WR *concurrent.OneShotPubSub
 	PS *concurrent.PublishSubscribe
 	Merkletree *merkletree.MerkleTree
 	GetKey func(string) (crypto.PrivateKey, error)
 	LookupTXT func(string) ([]string, error)
+	Policy *proto.AuthorizationPolicy
 }
 
 // OIDCConfig manages an OpenID Connect object
@@ -154,6 +154,33 @@ func (e *errExpired) Error() string {
 func isExpired(err error) bool {
 	_, ok := err.(*errExpired)
 	return ok
+}
+
+func majority(nReplicas int) int {
+	return nReplicas/2 + 1
+}
+
+func ratificationPolicy(cfg *proto.ReplicaConfig) *proto.AuthorizationPolicy {
+	// TODO: since we only want to support precisely this ratification policy,
+	// this should be moved into server.go
+	ratificationPolicy := &proto.AuthorizationPolicy{
+		PublicKeys: make(map[uint64]*proto.PublicKey),
+		PolicyType: &proto.AuthorizationPolicy_Quorum{Quorum: &proto.QuorumExpr{
+			Threshold: uint32(majority(len(cfg.KeyserverConfig.InitialReplicas)))},
+		},
+	}
+	for _, replica := range cfg.KeyserverConfig.InitialReplicas {
+		replicaExpr := &proto.QuorumExpr{
+			Threshold: 1,
+		}
+		for _, pk := range replica.PublicKeys {
+			pkid := proto.KeyID(pk)
+			ratificationPolicy.PublicKeys[pkid] = pk
+			replicaExpr.Candidates = append(replicaExpr.Candidates, pkid)
+		}
+		ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions = append(ratificationPolicy.PolicyType.(*proto.AuthorizationPolicy_Quorum).Quorum.Subexpressions, replicaExpr)
+	}
+	return ratificationPolicy
 }
 
 // Open initializes a new keyserver based on cfg, reads the persistent state and
@@ -185,11 +212,16 @@ func Open(cfg *proto.ReplicaConfig, kp *KeyserverParameters) (*Keyserver, error)
 		return nil, err
 	}
 
+	policy := kp.Policy
+	if policy == nil {
+		policy = ratificationPolicy(cfg)
+	}
+
 	ks := &Keyserver{
 		realm:                   cfg.Realm,
 		serverID:                cfg.ServerID,
 		replicaID:               cfg.ReplicaID,
-		serverAuthorized:        kp.Policy,
+		serverAuthorized:        policy,
 		sehKey:                  signingKey.(*[ed25519.PrivateKeySize]byte),
 		vrfSecret:               vrfKey.(*[vrf.SecretKeySize]byte),
 		laggingVerifierScan:     cfg.LaggingVerifierScan,
