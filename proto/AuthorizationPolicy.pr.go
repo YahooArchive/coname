@@ -15,15 +15,20 @@
 package proto
 
 import (
-	"encoding/base64"
+//	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/maditya/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
 )
 
 type EncodedAuthorizationPolicy struct {
 	AuthorizationPolicy
 	Encoding []byte
+}
+
+type EncodedAuthorizationPolicyProto struct {
+	AuthorizationPolicy json.RawMessage
 }
 
 func (m *EncodedAuthorizationPolicy) UpdateEncoding() {
@@ -98,23 +103,30 @@ func (this *EncodedAuthorizationPolicy) String() string {
 }
 
 func (m *EncodedAuthorizationPolicy) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
-	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
-	ret[len(ret)-1] = '"'
-	return ret, nil
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(&m.AuthorizationPolicy)
+	if err != nil {
+		return nil, err
+	}
+	t := json.RawMessage(jsondata)
+	c := struct {
+		AuthorizationPolicy *json.RawMessage
+	}{AuthorizationPolicy: &t}
+	return json.Marshal(&c)
 }
 
 func (m *EncodedAuthorizationPolicy) UnmarshalJSON(s []byte) error {
-	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return fmt.Errorf("not a JSON quoted string: %q", s)
-	}
-	b := make([]byte, base64.StdEncoding.DecodedLen(len(s)-2))
-	n, err := base64.StdEncoding.Decode(b, s[1:len(s)-1])
+	var stuff EncodedAuthorizationPolicyProto
+	err := json.Unmarshal(s, &stuff)
 	if err != nil {
 		return err
 	}
-	return m.Unmarshal(b[:n])
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(string(stuff.AuthorizationPolicy), &m.AuthorizationPolicy)
+	if err != nil {
+		return err
+	}
+	m.UpdateEncoding()
+	return err
 }
 
 var _ json.Marshaler = (*EncodedAuthorizationPolicy)(nil)

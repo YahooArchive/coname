@@ -369,6 +369,7 @@ func TestCertificateAndKeyIDVerboseEqual(t *testing.T) {
 	}
 }
 func TestTLSConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTLSConfig(popr, false)
 	s1 := p.GoString()
@@ -382,6 +383,7 @@ func TestTLSConfigGoString(t *testing.T) {
 	}
 }
 func TestCertificateAndKeyIDGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedCertificateAndKeyID(popr, false)
 	s1 := p.GoString()
@@ -467,6 +469,7 @@ func BenchmarkCertificateAndKeyIDSize(b *testing.B) {
 }
 
 func TestTLSConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedTLSConfig(popr, false)
 	s1 := p.String()
@@ -476,6 +479,7 @@ func TestTLSConfigStringer(t *testing.T) {
 	}
 }
 func TestCertificateAndKeyIDStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedCertificateAndKeyID(popr, false)
 	s1 := p.String()

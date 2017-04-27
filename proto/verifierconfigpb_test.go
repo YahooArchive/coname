@@ -195,6 +195,7 @@ func TestVerifierConfigVerboseEqual(t *testing.T) {
 	}
 }
 func TestVerifierConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierConfig(popr, false)
 	s1 := p.GoString()
@@ -244,6 +245,7 @@ func BenchmarkVerifierConfigSize(b *testing.B) {
 }
 
 func TestVerifierConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedVerifierConfig(popr, false)
 	s1 := p.String()

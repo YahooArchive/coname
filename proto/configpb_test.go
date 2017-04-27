@@ -369,6 +369,7 @@ func TestRealmConfigVerboseEqual(t *testing.T) {
 	}
 }
 func TestConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, false)
 	s1 := p.GoString()
@@ -382,6 +383,7 @@ func TestConfigGoString(t *testing.T) {
 	}
 }
 func TestRealmConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, false)
 	s1 := p.GoString()
@@ -467,6 +469,7 @@ func BenchmarkRealmConfigSize(b *testing.B) {
 }
 
 func TestConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedConfig(popr, false)
 	s1 := p.String()
@@ -476,6 +479,7 @@ func TestConfigStringer(t *testing.T) {
 	}
 }
 func TestRealmConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRealmConfig(popr, false)
 	s1 := p.String()

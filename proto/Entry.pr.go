@@ -15,15 +15,20 @@
 package proto
 
 import (
-	"encoding/base64"
+//	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/maditya/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
 )
 
 type EncodedEntry struct {
 	Entry
 	Encoding []byte
+}
+
+type EncodedEntryProto struct {
+	Entry json.RawMessage
 }
 
 func (m *EncodedEntry) UpdateEncoding() {
@@ -98,23 +103,30 @@ func (this *EncodedEntry) String() string {
 }
 
 func (m *EncodedEntry) MarshalJSON() ([]byte, error) {
-	ret := make([]byte, base64.StdEncoding.EncodedLen(len(m.Encoding))+2)
-	ret[0] = '"'
-	base64.StdEncoding.Encode(ret[1:len(ret)-1], m.Encoding)
-	ret[len(ret)-1] = '"'
-	return ret, nil
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
+	jsondata, err := marshaler.MarshalToString(&m.Entry)
+	if err != nil {
+		return nil, err
+	}
+	t := json.RawMessage(jsondata)
+	c := struct {
+		Entry *json.RawMessage
+	}{Entry: &t}
+	return json.Marshal(&c)
 }
 
 func (m *EncodedEntry) UnmarshalJSON(s []byte) error {
-	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
-		return fmt.Errorf("not a JSON quoted string: %q", s)
-	}
-	b := make([]byte, base64.StdEncoding.DecodedLen(len(s)-2))
-	n, err := base64.StdEncoding.Decode(b, s[1:len(s)-1])
+	var stuff EncodedEntryProto
+	err := json.Unmarshal(s, &stuff)
 	if err != nil {
 		return err
 	}
-	return m.Unmarshal(b[:n])
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(string(stuff.Entry), &m.Entry)
+	if err != nil {
+		return err
+	}
+	m.UpdateEncoding()
+	return err
 }
 
 var _ json.Marshaler = (*EncodedEntry)(nil)

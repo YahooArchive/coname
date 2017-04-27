@@ -38,6 +38,8 @@ sed -i.bak -e 's/m.Profile = &Profile{}/m.Profile = \&EncodedProfile{}/' client.
 
 # skip the text format tests (we never use the text format)
 sed -i.bak -e '/Test.*Text.*testing/a\
+	t.Skip()' -e '/Test.*GoString.*testing/a\
+	t.Skip()' -e '/Test.*Stringer.*testing/a\
 	t.Skip()' *_test.go
 
 rm *.pb.go.bak *_test.go.bak || true

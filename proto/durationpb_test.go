@@ -194,6 +194,7 @@ func TestDurationVerboseEqual(t *testing.T) {
 	}
 }
 func TestDurationGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, false)
 	s1 := p.GoString()
@@ -243,6 +244,7 @@ func BenchmarkDurationSize(b *testing.B) {
 }
 
 func TestDurationStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedDuration(popr, false)
 	s1 := p.String()
