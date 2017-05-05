@@ -17,7 +17,6 @@ package proto;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "tlsconfig.proto";
 import "client.proto";
-import "duration.proto";
 
 message VerifierConfig {
 	uint64 id = 1 [(gogoproto.customname) = "ID"];
@@ -32,13 +31,4 @@ message VerifierConfig {
 	// LevelDBPath specifies the directory in which the database is stored.
 	// Nothing else should use this directory.
 	string leveldb_path = 8 [(gogoproto.customname) = "LevelDBPath"];
-
-	Duration step_interval = 9;
-
-	// SherpaURL is the URL assigned to your DB.
-	// SherpaAppId is to get YCA to access sherpa.
-	// SherpaTable is the table name you created on sherpa.
-	string sherpa_url = 10;
-	string sherpa_app_id = 11;
-	string sherpa_log_table = 12;
 }

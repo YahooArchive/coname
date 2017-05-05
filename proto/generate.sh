@@ -51,4 +51,5 @@ awk '{
     print($0)
 }' < client.pb.go > client.pb.go.tmp && mv client.pb.go.tmp client.pb.go
 
-for i in *.pb.go; do sed "s/\(NewPopulatedEncoded[A-Za-z_0-1]*\)(\(.*\))/\1(\2, easy)/" < $i > $i...; mv -f $i... $i; done
+# to match the parameters of a function generated above
+for i in *.pb.go; do sed "s/\(NewPopulatedEncoded[A-Za-z_0-9]*\)(\(.*\))/\1(\2, easy)/" < $i > $i...; mv -f $i... $i; done
