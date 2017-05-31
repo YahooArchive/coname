@@ -24,7 +24,7 @@ import (
 
 type EncodedEntry struct {
 	Entry
-	Encoding []byte
+	Encoding []byte `json:"omitempty"`
 }
 
 type EncodedEntryProto struct {

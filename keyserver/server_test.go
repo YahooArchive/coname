@@ -406,8 +406,7 @@ func doUpdate(
 		Profile: profileContents,
 	}
 	profile.UpdateEncoding()
-	var commitment [64]byte
-	sha3.ShakeSum256(commitment[:], profile.Encoding)
+	commitment := coname.CalculateCommitment(&profile)
 	entry := proto.EncodedEntry{
 		Entry: proto.Entry{
 			Index:   index,
@@ -420,7 +419,7 @@ func doUpdate(
 					Subexpressions: []*proto.QuorumExpr{},
 				},
 				}},
-			ProfileCommitment: commitment[:],
+			ProfileCommitment: commitment,
 		},
 	}
 	entry.UpdateEncoding()

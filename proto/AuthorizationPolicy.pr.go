@@ -24,7 +24,7 @@ import (
 
 type EncodedAuthorizationPolicy struct {
 	AuthorizationPolicy
-	Encoding []byte
+	Encoding []byte `json:"omitempty"`
 }
 
 type EncodedAuthorizationPolicyProto struct {

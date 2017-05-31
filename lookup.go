@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"sort"
 	"log"
 
 	"golang.org/x/crypto/sha3"
@@ -14,12 +15,29 @@ import (
 	"github.com/yahoo/coname/keyserver/kv"
 )
 
+func CalculateCommitment(profile *proto.EncodedProfile) []byte {
+	var commitmentCheck [64]byte
+	h := sha3.NewShake256()
+	h.Write(profile.Profile.Nonce)
+	// Keys has to be sorted the same way the client does
+	keys := make([]string, 0, len(profile.Profile.Keys))
+	for k := range(profile.Profile.Keys) {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for i := 0; i < len(keys); i++ {
+		k := keys[i]
+		h.Write([]byte(k))
+		h.Write(profile.Profile.Keys[k])
+	}
+	h.Read(commitmentCheck[:])
+	return commitmentCheck[:]
+}
+
 func CheckCommitment(commitment []byte, profile *proto.EncodedProfile) bool {
 	// The hash used here is modeled as a random oracle. This means that SHA3
 	// is fine but SHA2 is not (consider HMAC-SHA2 instead).
-	var commitmentCheck [64]byte
-	sha3.ShakeSum256(commitmentCheck[:], profile.Encoding) // the profile includes a nonce
-	return bytes.Equal(commitment[:], commitmentCheck[:])
+	return bytes.Equal(commitment[:], CalculateCommitment(profile))
 }
 
 func GetRealmByDomain(cfg *proto.Config, domain string) (ret *proto.RealmConfig, err error) {
@@ -104,6 +122,7 @@ func VerifyConsensus(rcg *proto.RealmConfig, ratifications []*proto.SignedEpochH
 	// check that all the SEHs have the same head
 	for i := 1; i < len(ratifications); i++ {
 		if want, got := ratifications[0].Head.Head.Encoding, ratifications[i].Head.Head.Encoding; !bytes.Equal(want, got) {
+			// @@ should not return an error immediately! Just one (benign) failure can mess up the whole thing!!
 			return nil, fmt.Errorf("VerifyConsensus: epoch heads don't match: %x vs %x", want, got)
 		}
 	}

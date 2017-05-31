@@ -24,7 +24,7 @@ import (
 
 type EncodedProfile struct {
 	Profile
-	Encoding []byte
+	Encoding []byte `json:"omitempty"`
 }
 
 type EncodedProfileProto struct {

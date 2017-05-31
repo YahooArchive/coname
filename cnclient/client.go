@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
-	"golang.org/x/crypto/sha3"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -145,7 +144,7 @@ func main() {
 	if keys == nil {
 		fmt.Printf("not present\n")
 	} else {
-		fmt.Printf("keys: %s\n", keys)
+		fmt.Printf("keys: %v\n", keys)
 	}
 	index := lookup.Index
 
@@ -159,15 +158,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	pgp, err := ioutil.ReadFile("dmz.pgp")
+	if err != nil {
+		pgp = []byte("sample pgp...")
+	}
 	profile := proto.EncodedProfile{
 		Profile: proto.Profile{
 			Nonce: nonce,
-			Keys:  map[string][]byte{"abc": []byte("foo bar"), "xyz": []byte("TEST 456")},
+//			Keys:  map[string][]byte{"abc": []byte("foo bar"), "xyz": []byte("TEST 456")},
+			Keys:  map[string][]byte{"pgp": pgp},
 		},
 	}
 	profile.UpdateEncoding()
-	var commitment [64]byte
-	sha3.ShakeSum256(commitment[:], profile.Encoding)
+	commitment := coname.CalculateCommitment(&profile)
 	var version uint64
 	if lookup.Entry != nil {
 		version = lookup.Entry.Version + 1
@@ -186,12 +189,10 @@ func main() {
 					},
 				},
 			},
-			ProfileCommitment: commitment[:],
+			ProfileCommitment: commitment,
 		},
 	}
 	entry.UpdateEncoding()
-	var entryHash [32]byte
-	sha3.ShakeSum256(entryHash[:], entry.Encoding)
 
 	fmt.Printf("updating profile:\n")
 	proof, err := publicC.Update(context.Background(), &proto.UpdateRequest{

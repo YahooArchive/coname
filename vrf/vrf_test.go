@@ -3,7 +3,8 @@ package vrf
 import (
 	"bytes"
 	"testing"
-	// "fmt"
+//	"fmt"
+	"encoding/hex"
 )
 
 func TestHonestComplete(t *testing.T) {
@@ -47,7 +48,11 @@ func TestFlipBitForgery(t *testing.T) {
 	}
 }
 
-func sampleVectorTest(pk, aliceVRF, aliceProof []byte, t *testing.T) {
+func sampleVectorTest(pks, aliceVRFs, aliceProofs string, t *testing.T) {
+	pk, _ := hex.DecodeString(pks)
+	aliceVRF, _ := hex.DecodeString(aliceVRFs)
+	aliceProof, _ := hex.DecodeString(aliceProofs)
+
 	alice := []byte{97, 108, 105, 99, 101}
 
 	// Positive test case
@@ -83,25 +88,25 @@ func sampleVectorTest(pk, aliceVRF, aliceProof []byte, t *testing.T) {
 
 func TestSampleVectorSets(t *testing.T) {
 
-	var pk, aliceVRF, aliceProof []byte
+	var pk, aliceVRF, aliceProof string
 
 	// Following sets of test vectors are collected from TestHonestComplete(),
 	// and are used for testing the JS implementation of vrf.verify()
 	// Reference: https://github.com/yahoo/end-to-end/pull/58
 
-	pk = []byte{194, 191, 96, 139, 106, 249, 24, 253, 198, 131, 88, 169, 100, 231, 7, 211, 70, 171, 171, 207, 24, 30, 150, 114, 77, 124, 240, 123, 191, 14, 29, 111}
-	aliceVRF = []byte{68, 98, 55, 78, 153, 189, 11, 15, 8, 238, 132, 5, 53, 28, 232, 22, 222, 98, 21, 139, 89, 67, 111, 197, 213, 75, 86, 226, 178, 71, 245, 159}
-	aliceProof = []byte{49, 128, 4, 253, 103, 241, 164, 51, 21, 45, 168, 55, 18, 103, 22, 233, 245, 136, 242, 238, 113, 218, 160, 122, 129, 89, 72, 103, 250, 222, 3, 3, 239, 235, 93, 98, 173, 115, 168, 24, 222, 165, 186, 224, 138, 76, 201, 237, 130, 201, 47, 18, 191, 24, 61, 80, 113, 139, 246, 233, 23, 94, 177, 12, 193, 106, 38, 172, 66, 192, 22, 188, 177, 14, 144, 100, 38, 179, 96, 70, 55, 157, 80, 139, 145, 62, 94, 195, 181, 224, 183, 42, 64, 66, 145, 162}
+	pk = "7855A75D36787990CB7A35457FAECC045CDBA7D15ADB9A0C6EAED44E1EB1A572"
+	aliceVRF = "6A0B14896F14BA6D99B51B20EB4DEEA9640D560C0EEBA1436428C3E9441637FE"
+	aliceProof = "036A0B14896F14BA6D99B51B20EB4DEEA9640D560C0EEBA1436428C3E9441637FEF122A17978903A614548C87D79FDC4C20DB8DFF7FBC7A3D9BA7FD7BAD09BA38BBA670E7316415FE3068E7ED88B6446BD"
 	sampleVectorTest(pk, aliceVRF, aliceProof, t)
 
-	pk = []byte{133, 36, 180, 21, 60, 103, 35, 92, 204, 245, 236, 174, 242, 50, 212, 69, 124, 230, 1, 106, 94, 95, 201, 55, 208, 252, 195, 13, 12, 96, 87, 170}
-	aliceVRF = []byte{35, 127, 188, 177, 246, 242, 213, 46, 16, 72, 1, 196, 69, 181, 160, 204, 69, 230, 17, 147, 251, 207, 203, 184, 154, 122, 118, 10, 144, 76, 229, 234}
-	aliceProof = []byte{253, 33, 80, 241, 250, 172, 198, 28, 16, 171, 161, 194, 110, 175, 158, 233, 250, 89, 35, 174, 221, 101, 98, 136, 32, 191, 82, 127, 92, 208, 199, 10, 123, 46, 70, 95, 56, 102, 63, 137, 53, 160, 128, 216, 134, 152, 87, 58, 19, 244, 167, 108, 144, 13, 97, 232, 207, 75, 107, 57, 193, 124, 231, 5, 242, 122, 182, 247, 155, 187, 86, 165, 114, 46, 188, 52, 21, 121, 238, 100, 85, 32, 119, 116, 250, 208, 32, 60, 145, 53, 145, 76, 84, 153, 185, 28}
+	pk = "F40DEF436C6FE4606E2973DC54420A4F99E45386DA2D8941E0DD5043E7DFBB1D"
+	aliceVRF = "C976FBCB13CAC508FD23CE28E531E6CCF76E42659189BE9CA65AF5B7B513137A"
+	aliceProof = "02C976FBCB13CAC508FD23CE28E531E6CCF76E42659189BE9CA65AF5B7B513137A899C57441ADAD75C7C10F4820D2D69110B26A276654946A9B4C8FBA790F279FF61D08956739F2FC471FD00D5AB122B47"
 	sampleVectorTest(pk, aliceVRF, aliceProof, t)
 
-	pk = []byte{85, 126, 176, 228, 114, 43, 110, 223, 111, 129, 204, 38, 215, 110, 165, 148, 223, 232, 79, 254, 150, 107, 61, 29, 216, 14, 238, 104, 55, 163, 121, 185}
-	aliceVRF = []byte{171, 240, 42, 215, 128, 5, 247, 64, 164, 154, 198, 231, 6, 174, 207, 10, 95, 231, 117, 189, 88, 103, 72, 229, 43, 218, 184, 162, 44, 183, 196, 159}
-	aliceProof = []byte{99, 103, 243, 119, 251, 30, 21, 57, 69, 162, 192, 80, 7, 49, 244, 136, 13, 252, 150, 165, 215, 181, 55, 203, 141, 124, 197, 36, 20, 183, 239, 14, 238, 213, 240, 96, 181, 187, 24, 137, 152, 152, 38, 186, 80, 141, 72, 15, 209, 178, 60, 205, 22, 31, 101, 185, 225, 159, 22, 118, 84, 179, 95, 0, 124, 140, 237, 187, 8, 77, 233, 213, 207, 211, 251, 153, 71, 112, 61, 89, 53, 26, 195, 167, 254, 73, 218, 135, 145, 89, 12, 4, 16, 255, 63, 89}
+	pk = "366A13953268020F3A7A95129148B94CBCA1B211B47FD73CE662FBA6779E2E4D"
+	aliceVRF = "48CECDE0BE4B7B7F7E97E5002830AE23060BCF1122D816FE1D05EC73D58C9DA1"
+	aliceProof = "0348CECDE0BE4B7B7F7E97E5002830AE23060BCF1122D816FE1D05EC73D58C9DA147650233F751728843AFC69B6F71EC1C0B23B9FEFEB19AEC951D42144625CBACA03A624579263430AA15BE249B73C383"
 	sampleVectorTest(pk, aliceVRF, aliceProof, t)
 
 }

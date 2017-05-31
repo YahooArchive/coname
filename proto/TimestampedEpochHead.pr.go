@@ -24,7 +24,7 @@ import (
 
 type EncodedTimestampedEpochHead struct {
 	TimestampedEpochHead
-	Encoding []byte
+	Encoding []byte `json:"omitempty"`
 }
 
 type EncodedTimestampedEpochHeadProto struct {
