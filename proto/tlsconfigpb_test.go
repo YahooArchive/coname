@@ -267,7 +267,7 @@ func TestCertificateAndKeyIDJSON(t *testing.T) {
 	}
 }
 func TestTLSConfigProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTLSConfig(popr, true)
@@ -285,7 +285,7 @@ func TestTLSConfigProtoText(t *testing.T) {
 }
 
 func TestTLSConfigProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTLSConfig(popr, true)
@@ -303,7 +303,7 @@ func TestTLSConfigProtoCompactText(t *testing.T) {
 }
 
 func TestCertificateAndKeyIDProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedCertificateAndKeyID(popr, true)
@@ -321,7 +321,7 @@ func TestCertificateAndKeyIDProtoText(t *testing.T) {
 }
 
 func TestCertificateAndKeyIDProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedCertificateAndKeyID(popr, true)

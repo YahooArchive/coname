@@ -187,11 +187,12 @@ func valueToGoStringVerifierconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringVerifierconfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
+func extensionToGoStringVerifierconfig(m github_com_maditya_protobuf_proto.Message) string {
+	e := github_com_maditya_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -201,7 +202,7 @@ func extensionToGoStringVerifierconfig(e map[int32]github_com_maditya_protobuf_p
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 func (m *VerifierConfig) Marshal() (data []byte, err error) {
@@ -857,7 +858,7 @@ func init() { proto1.RegisterFile("verifierconfig.proto", fileDescriptorVerifier
 
 var fileDescriptorVerifierconfig = []byte{
 	// 433 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x4c, 0x90, 0xcf, 0x6b, 0xdb, 0x30,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xcf, 0x6b, 0xdb, 0x30,
 	0x14, 0xc7, 0xa3, 0xfc, 0xea, 0xaa, 0x78, 0x69, 0x11, 0xa1, 0x98, 0xc0, 0xe4, 0x30, 0x18, 0x04,
 	0x06, 0xc9, 0xe8, 0x60, 0xec, 0x5a, 0x2f, 0x97, 0xd2, 0x30, 0x8a, 0x53, 0x7a, 0x35, 0x8e, 0xa5,
 	0xd8, 0x8f, 0x3a, 0x56, 0x91, 0xe5, 0x80, 0x77, 0xda, 0x9f, 0xb3, 0x3f, 0x61, 0xc7, 0x1d, 0x7b,

@@ -1935,11 +1935,12 @@ func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringKeyserverconfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
+func extensionToGoStringKeyserverconfig(m github_com_maditya_protobuf_proto.Message) string {
+	e := github_com_maditya_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -1949,7 +1950,7 @@ func extensionToGoStringKeyserverconfig(e map[int32]github_com_maditya_protobuf_
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 func (m *ReplicaConfig) Marshal() (data []byte, err error) {
@@ -5308,7 +5309,7 @@ func init() { proto1.RegisterFile("keyserverconfig.proto", fileDescriptorKeyserv
 
 var fileDescriptorKeyserverconfig = []byte{
 	// 1386 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0x4b, 0x6f, 0x1b, 0xd5,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0x4b, 0x6f, 0x1b, 0xd5,
 	0x17, 0xcf, 0xe4, 0xe1, 0xc7, 0xf1, 0x33, 0x37, 0x69, 0xea, 0xe6, 0xaf, 0xbf, 0x1d, 0x19, 0x01,
 	0x01, 0xa1, 0x96, 0x06, 0x81, 0x5a, 0xd1, 0x4d, 0x27, 0x6e, 0x65, 0xe3, 0x44, 0xb5, 0xc6, 0xa1,
 	0x0b, 0x90, 0x3a, 0xba, 0x9e, 0xb9, 0xb6, 0x2f, 0x1e, 0xcf, 0x0c, 0x77, 0xae, 0x4d, 0x2d, 0x36,

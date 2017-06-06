@@ -390,7 +390,7 @@ func TestNothingJSON(t *testing.T) {
 	}
 }
 func TestVerifierStreamRequestProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
@@ -408,7 +408,7 @@ func TestVerifierStreamRequestProtoText(t *testing.T) {
 }
 
 func TestVerifierStreamRequestProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierStreamRequest(popr, true)
@@ -426,7 +426,7 @@ func TestVerifierStreamRequestProtoCompactText(t *testing.T) {
 }
 
 func TestVerifierStepProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierStep(popr, true)
@@ -444,7 +444,7 @@ func TestVerifierStepProtoText(t *testing.T) {
 }
 
 func TestVerifierStepProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierStep(popr, true)
@@ -462,7 +462,7 @@ func TestVerifierStepProtoCompactText(t *testing.T) {
 }
 
 func TestNothingProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedNothing(popr, true)
@@ -480,7 +480,7 @@ func TestNothingProtoText(t *testing.T) {
 }
 
 func TestNothingProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedNothing(popr, true)

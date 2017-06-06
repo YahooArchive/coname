@@ -15,8 +15,8 @@
 package proto
 
 import (
-	github_com_gogo_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
 	github_com_gogo_protobuf_proto "github.com/maditya/protobuf/proto"
+	github_com_gogo_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
 	math_rand "math/rand"
 	"testing"
 	"time"

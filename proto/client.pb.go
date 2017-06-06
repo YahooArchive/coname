@@ -78,8 +78,6 @@ import (
 	grpc "google.golang.org/grpc"
 )
 
-import errors "errors"
-
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -89,7 +87,9 @@ var _ = math.Inf
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
-const _ = proto1.GoGoProtoPackageIsVersion1
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto1.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type LookupRequest struct {
 	// Epoch as of which to perform the lookup ("latest" if not specified)
@@ -648,7 +648,7 @@ func _PublicKey_OneofSizer(msg proto1.Message) (n int) {
 // note: expr.eval(a) \wedge expr.eval(b) -> expr.eval(a \cup b)
 type QuorumExpr struct {
 	Threshold  uint32   `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
-	Candidates []uint64 `protobuf:"fixed64,2,rep,name=candidates" json:"candidates,omitempty"`
+	Candidates []uint64 `protobuf:"fixed64,2,rep,packed,name=candidates" json:"candidates,omitempty"`
 	// QuorumExpr allows expressing contitions of the form "two out of these
 	// and three out of those".
 	// If an implementation chooses to ban recursive thresholding, it can do so
@@ -2557,11 +2557,12 @@ func valueToGoStringClient(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringClient(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
+func extensionToGoStringClient(m github_com_maditya_protobuf_proto.Message) string {
+	e := github_com_maditya_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -2571,7 +2572,7 @@ func extensionToGoStringClient(e map[int32]github_com_maditya_protobuf_proto.Ext
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 
@@ -2966,15 +2967,21 @@ func (m *SignedEntryUpdate) MarshalTo(data []byte) (int, error) {
 			data[i] = 0x12
 			i++
 			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			byteSize := 0
+			if len(v) > 0 {
+				byteSize = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapSize := 1 + 8 + byteSize
 			i = encodeVarintClient(data, i, uint64(mapSize))
 			data[i] = 0x9
 			i++
 			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
+			if len(v) > 0 {
+				data[i] = 0x12
+				i++
+				i = encodeVarintClient(data, i, uint64(len(v)))
+				i += copy(data[i:], v)
+			}
 		}
 	}
 	return i, nil
@@ -3006,16 +3013,22 @@ func (m *Profile) MarshalTo(data []byte) (int, error) {
 			data[i] = 0x12
 			i++
 			v := m.Keys[k]
-			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			byteSize := 0
+			if len(v) > 0 {
+				byteSize = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapSize := 1 + len(k) + sovClient(uint64(len(k))) + byteSize
 			i = encodeVarintClient(data, i, uint64(mapSize))
 			data[i] = 0xa
 			i++
 			i = encodeVarintClient(data, i, uint64(len(k)))
 			i += copy(data[i:], k)
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
+			if len(v) > 0 {
+				data[i] = 0x12
+				i++
+				i = encodeVarintClient(data, i, uint64(len(v)))
+				i += copy(data[i:], v)
+			}
 		}
 	}
 	return i, nil
@@ -3049,15 +3062,21 @@ func (m *SignedEpochHead) MarshalTo(data []byte) (int, error) {
 			data[i] = 0x12
 			i++
 			v := m.Signatures[k]
-			mapSize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			byteSize := 0
+			if len(v) > 0 {
+				byteSize = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapSize := 1 + 8 + byteSize
 			i = encodeVarintClient(data, i, uint64(mapSize))
 			data[i] = 0x9
 			i++
 			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(len(v)))
-			i += copy(data[i:], v)
+			if len(v) > 0 {
+				data[i] = 0x12
+				i++
+				i = encodeVarintClient(data, i, uint64(len(v)))
+				i += copy(data[i:], v)
+			}
 		}
 	}
 	return i, nil
@@ -3174,23 +3193,26 @@ func (m *AuthorizationPolicy) MarshalTo(data []byte) (int, error) {
 			data[i] = 0xa
 			i++
 			v := m.PublicKeys[k]
-			if v == nil {
-				return 0, errors.New("proto: map has nil element")
+			msgSize := 0
+			if v != nil {
+				msgSize = v.Size()
+				msgSize += 1 + sovClient(uint64(msgSize))
 			}
-			msgSize := v.Size()
-			mapSize := 1 + 8 + 1 + msgSize + sovClient(uint64(msgSize))
+			mapSize := 1 + 8 + msgSize
 			i = encodeVarintClient(data, i, uint64(mapSize))
 			data[i] = 0x9
 			i++
 			i = encodeFixed64Client(data, i, uint64(k))
-			data[i] = 0x12
-			i++
-			i = encodeVarintClient(data, i, uint64(v.Size()))
-			n16, err := v.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
+			if v != nil {
+				data[i] = 0x12
+				i++
+				i = encodeVarintClient(data, i, uint64(v.Size()))
+				n16, err := v.MarshalTo(data[i:])
+				if err != nil {
+					return 0, err
+				}
+				i += n16
 			}
-			i += n16
 		}
 	}
 	if m.PolicyType != nil {
@@ -3273,9 +3295,10 @@ func (m *QuorumExpr) MarshalTo(data []byte) (int, error) {
 		i = encodeVarintClient(data, i, uint64(m.Threshold))
 	}
 	if len(m.Candidates) > 0 {
+		data[i] = 0x12
+		i++
+		i = encodeVarintClient(data, i, uint64(len(m.Candidates)*8))
 		for _, num := range m.Candidates {
-			data[i] = 0x11
-			i++
 			data[i] = uint8(num)
 			i++
 			data[i] = uint8(num >> 8)
@@ -3894,7 +3917,11 @@ func (m *SignedEntryUpdate) Size() (n int) {
 		for k, v := range m.Signatures {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			l = 0
+			if len(v) > 0 {
+				l = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapEntrySize := 1 + 8 + l
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -3912,7 +3939,11 @@ func (m *Profile) Size() (n int) {
 		for k, v := range m.Keys {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + 1 + len(v) + sovClient(uint64(len(v)))
+			l = 0
+			if len(v) > 0 {
+				l = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapEntrySize := 1 + len(k) + sovClient(uint64(len(k))) + l
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -3928,7 +3959,11 @@ func (m *SignedEpochHead) Size() (n int) {
 		for k, v := range m.Signatures {
 			_ = k
 			_ = v
-			mapEntrySize := 1 + 8 + 1 + len(v) + sovClient(uint64(len(v)))
+			l = 0
+			if len(v) > 0 {
+				l = 1 + len(v) + sovClient(uint64(len(v)))
+			}
+			mapEntrySize := 1 + 8 + l
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -3980,8 +4015,9 @@ func (m *AuthorizationPolicy) Size() (n int) {
 			l = 0
 			if v != nil {
 				l = v.Size()
+				l += 1 + sovClient(uint64(l))
 			}
-			mapEntrySize := 1 + 8 + 1 + l + sovClient(uint64(l))
+			mapEntrySize := 1 + 8 + l
 			n += mapEntrySize + 1 + sovClient(uint64(mapEntrySize))
 		}
 	}
@@ -4025,7 +4061,7 @@ func (m *QuorumExpr) Size() (n int) {
 		n += 1 + sovClient(uint64(m.Threshold))
 	}
 	if len(m.Candidates) > 0 {
-		n += 9 * len(m.Candidates)
+		n += 1 + sovClient(uint64(len(m.Candidates)*8)) + len(m.Candidates)*8
 	}
 	if len(m.Subexpressions) > 0 {
 		for _, e := range m.Subexpressions {
@@ -5347,51 +5383,56 @@ func (m *SignedEntryUpdate) Unmarshal(data []byte) error {
 			mapkey |= uint64(data[iNdEx-3]) << 40
 			mapkey |= uint64(data[iNdEx-2]) << 48
 			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intMapbyteLen := int(mapbyteLen)
-			if intMapbyteLen < 0 {
-				return ErrInvalidLengthClient
-			}
-			postbytesIndex := iNdEx + intMapbyteLen
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
 			if m.Signatures == nil {
 				m.Signatures = make(map[uint64][]byte)
 			}
-			m.Signatures[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var mapbyteLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					mapbyteLen |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intMapbyteLen := int(mapbyteLen)
+				if intMapbyteLen < 0 {
+					return ErrInvalidLengthClient
+				}
+				postbytesIndex := iNdEx + intMapbyteLen
+				if postbytesIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := make([]byte, mapbyteLen)
+				copy(mapvalue, data[iNdEx:postbytesIndex])
+				iNdEx = postbytesIndex
+				m.Signatures[mapkey] = mapvalue
+			} else {
+				var mapvalue []byte
+				m.Signatures[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5540,51 +5581,56 @@ func (m *Profile) Unmarshal(data []byte) error {
 			}
 			mapkey := string(data[iNdEx:postStringIndexmapkey])
 			iNdEx = postStringIndexmapkey
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intMapbyteLen := int(mapbyteLen)
-			if intMapbyteLen < 0 {
-				return ErrInvalidLengthClient
-			}
-			postbytesIndex := iNdEx + intMapbyteLen
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
 			if m.Keys == nil {
 				m.Keys = make(map[string][]byte)
 			}
-			m.Keys[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var mapbyteLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					mapbyteLen |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intMapbyteLen := int(mapbyteLen)
+				if intMapbyteLen < 0 {
+					return ErrInvalidLengthClient
+				}
+				postbytesIndex := iNdEx + intMapbyteLen
+				if postbytesIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := make([]byte, mapbyteLen)
+				copy(mapvalue, data[iNdEx:postbytesIndex])
+				iNdEx = postbytesIndex
+				m.Keys[mapkey] = mapvalue
+			} else {
+				var mapvalue []byte
+				m.Keys[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -5720,51 +5766,56 @@ func (m *SignedEpochHead) Unmarshal(data []byte) error {
 			mapkey |= uint64(data[iNdEx-3]) << 40
 			mapkey |= uint64(data[iNdEx-2]) << 48
 			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapbyteLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapbyteLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intMapbyteLen := int(mapbyteLen)
-			if intMapbyteLen < 0 {
-				return ErrInvalidLengthClient
-			}
-			postbytesIndex := iNdEx + intMapbyteLen
-			if postbytesIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := make([]byte, mapbyteLen)
-			copy(mapvalue, data[iNdEx:postbytesIndex])
-			iNdEx = postbytesIndex
 			if m.Signatures == nil {
 				m.Signatures = make(map[uint64][]byte)
 			}
-			m.Signatures[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var mapbyteLen uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					mapbyteLen |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				intMapbyteLen := int(mapbyteLen)
+				if intMapbyteLen < 0 {
+					return ErrInvalidLengthClient
+				}
+				postbytesIndex := iNdEx + intMapbyteLen
+				if postbytesIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := make([]byte, mapbyteLen)
+				copy(mapvalue, data[iNdEx:postbytesIndex])
+				iNdEx = postbytesIndex
+				m.Signatures[mapkey] = mapvalue
+			} else {
+				var mapvalue []byte
+				m.Signatures[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -6200,55 +6251,60 @@ func (m *AuthorizationPolicy) Unmarshal(data []byte) error {
 			mapkey |= uint64(data[iNdEx-3]) << 40
 			mapkey |= uint64(data[iNdEx-2]) << 48
 			mapkey |= uint64(data[iNdEx-1]) << 56
-			var valuekey uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				valuekey |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			var mapmsglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowClient
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				mapmsglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if mapmsglen < 0 {
-				return ErrInvalidLengthClient
-			}
-			postmsgIndex := iNdEx + mapmsglen
-			if mapmsglen < 0 {
-				return ErrInvalidLengthClient
-			}
-			if postmsgIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			mapvalue := &PublicKey{}
-			if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
-				return err
-			}
-			iNdEx = postmsgIndex
 			if m.PublicKeys == nil {
 				m.PublicKeys = make(map[uint64]*PublicKey)
 			}
-			m.PublicKeys[mapkey] = mapvalue
+			if iNdEx < postIndex {
+				var valuekey uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					valuekey |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				var mapmsglen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					mapmsglen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if mapmsglen < 0 {
+					return ErrInvalidLengthClient
+				}
+				postmsgIndex := iNdEx + mapmsglen
+				if mapmsglen < 0 {
+					return ErrInvalidLengthClient
+				}
+				if postmsgIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				mapvalue := &PublicKey{}
+				if err := mapvalue.Unmarshal(data[iNdEx:postmsgIndex]); err != nil {
+					return err
+				}
+				iNdEx = postmsgIndex
+				m.PublicKeys[mapkey] = mapvalue
+			} else {
+				var mapvalue *PublicKey
+				m.PublicKeys[mapkey] = mapvalue
+			}
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -6432,23 +6488,63 @@ func (m *QuorumExpr) Unmarshal(data []byte) error {
 				}
 			}
 		case 2:
-			if wireType != 1 {
+			if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowClient
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := data[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthClient
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				for iNdEx < postIndex {
+					var v uint64
+					if (iNdEx + 8) > l {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += 8
+					v = uint64(data[iNdEx-8])
+					v |= uint64(data[iNdEx-7]) << 8
+					v |= uint64(data[iNdEx-6]) << 16
+					v |= uint64(data[iNdEx-5]) << 24
+					v |= uint64(data[iNdEx-4]) << 32
+					v |= uint64(data[iNdEx-3]) << 40
+					v |= uint64(data[iNdEx-2]) << 48
+					v |= uint64(data[iNdEx-1]) << 56
+					m.Candidates = append(m.Candidates, v)
+				}
+			} else if wireType == 1 {
+				var v uint64
+				if (iNdEx + 8) > l {
+					return io.ErrUnexpectedEOF
+				}
+				iNdEx += 8
+				v = uint64(data[iNdEx-8])
+				v |= uint64(data[iNdEx-7]) << 8
+				v |= uint64(data[iNdEx-6]) << 16
+				v |= uint64(data[iNdEx-5]) << 24
+				v |= uint64(data[iNdEx-4]) << 32
+				v |= uint64(data[iNdEx-3]) << 40
+				v |= uint64(data[iNdEx-2]) << 48
+				v |= uint64(data[iNdEx-1]) << 56
+				m.Candidates = append(m.Candidates, v)
+			} else {
 				return fmt.Errorf("proto: wrong wireType = %d for field Candidates", wireType)
 			}
-			var v uint64
-			if (iNdEx + 8) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += 8
-			v = uint64(data[iNdEx-8])
-			v |= uint64(data[iNdEx-7]) << 8
-			v |= uint64(data[iNdEx-6]) << 16
-			v |= uint64(data[iNdEx-5]) << 24
-			v |= uint64(data[iNdEx-4]) << 32
-			v |= uint64(data[iNdEx-3]) << 40
-			v |= uint64(data[iNdEx-2]) << 48
-			v |= uint64(data[iNdEx-1]) << 56
-			m.Candidates = append(m.Candidates, v)
 		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Subexpressions", wireType)
@@ -6748,7 +6844,7 @@ func init() { proto1.RegisterFile("client.proto", fileDescriptorClient) }
 
 var fileDescriptorClient = []byte{
 	// 1285 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x56, 0xcd, 0x6f, 0x1b, 0x45,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xcd, 0x6f, 0x1b, 0x45,
 	0x14, 0xf7, 0x24, 0xfe, 0xe8, 0x3e, 0xdb, 0x49, 0x3c, 0x0d, 0x65, 0xe5, 0xa2, 0x75, 0x64, 0x44,
 	0x15, 0xf1, 0xe1, 0x14, 0x97, 0xd2, 0x16, 0x01, 0x6d, 0xdd, 0x06, 0x39, 0x4a, 0xab, 0x86, 0x49,
 	0x39, 0xaf, 0xd6, 0xde, 0x89, 0x3d, 0x8a, 0x77, 0x67, 0xbb, 0x1f, 0x69, 0xc2, 0xa9, 0x17, 0x38,

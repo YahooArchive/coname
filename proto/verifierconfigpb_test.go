@@ -144,7 +144,7 @@ func TestVerifierConfigJSON(t *testing.T) {
 	}
 }
 func TestVerifierConfigProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierConfig(popr, true)
@@ -162,7 +162,7 @@ func TestVerifierConfigProtoText(t *testing.T) {
 }
 
 func TestVerifierConfigProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierConfig(popr, true)

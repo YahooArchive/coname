@@ -144,7 +144,7 @@ func TestReplicaStateJSON(t *testing.T) {
 	}
 }
 func TestReplicaStateProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaState(popr, true)
@@ -162,7 +162,7 @@ func TestReplicaStateProtoText(t *testing.T) {
 }
 
 func TestReplicaStateProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaState(popr, true)

@@ -267,7 +267,7 @@ func TestEpochDelimiterJSON(t *testing.T) {
 	}
 }
 func TestKeyserverStepProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverStep(popr, true)
@@ -285,7 +285,7 @@ func TestKeyserverStepProtoText(t *testing.T) {
 }
 
 func TestKeyserverStepProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverStep(popr, true)
@@ -303,7 +303,7 @@ func TestKeyserverStepProtoCompactText(t *testing.T) {
 }
 
 func TestEpochDelimiterProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochDelimiter(popr, true)
@@ -321,7 +321,7 @@ func TestEpochDelimiterProtoText(t *testing.T) {
 }
 
 func TestEpochDelimiterProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochDelimiter(popr, true)
