@@ -26,7 +26,7 @@ import (
 	"fmt"
 
 	"golang.org/x/crypto/ed25519"
-	ed1 "github.com/yahoo/coname/vrf/vrf_ed25519/golang_x_crypt_ed25519_internal/edwards25519"
+	ed1 "github.com/r2ishiguro/vrf/go/vrf_ed25519/edwards25519"
 	ed2 "github.com/yahoo/coname/ed25519/edwards25519"
 )
 
@@ -212,4 +212,20 @@ func TestECVRFOnce(t *testing.T) {
 
 	h := ECVRF_hash_to_curve(m, pk)
 	fmt.Printf("h: %s\n", hex.EncodeToString(ECP2OS(h)))
+}
+
+func TestHashToCurve(t *testing.T) {
+	var m [32]byte
+	pk, _ := hex.DecodeString(pks)
+	for i := 0; i < 1000; i++ {
+		io.ReadFull(rand.Reader, m[:])
+		P := ECVRF_hash_to_curve(m[:], pk)
+		// test P on curve by P^order = infinity
+		var infs [32]byte
+		inf := GeScalarMult(P, IP2F(q))
+		inf.ToBytes(&infs)
+		if infs != [32]byte{1} {
+			t.Fatalf("OS2ECP: not valid curve")
+		}
+	}
 }
