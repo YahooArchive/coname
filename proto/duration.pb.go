@@ -167,11 +167,12 @@ func valueToGoStringDuration(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringDuration(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
+func extensionToGoStringDuration(m github_com_maditya_protobuf_proto.Message) string {
+	e := github_com_maditya_protobuf_proto.GetUnsafeExtensionsMap(m)
 	if e == nil {
 		return "nil"
 	}
-	s := "map[int32]proto.Extension{"
+	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
 	keys := make([]int, 0, len(e))
 	for k := range e {
 		keys = append(keys, int(k))
@@ -181,7 +182,7 @@ func extensionToGoStringDuration(e map[int32]github_com_maditya_protobuf_proto.E
 	for _, k := range keys {
 		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
 	}
-	s += strings.Join(ss, ",") + "}"
+	s += strings.Join(ss, ",") + "})"
 	return s
 }
 func (m *Duration) Marshal() (data []byte, err error) {
@@ -567,7 +568,7 @@ func init() { proto1.RegisterFile("duration.proto", fileDescriptorDuration) }
 
 var fileDescriptorDuration = []byte{
 	// 155 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x4b, 0x29, 0x2d, 0x4a,
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4b, 0x29, 0x2d, 0x4a,
 	0x2c, 0xc9, 0xcc, 0xcf, 0xd3, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0x53, 0x4a, 0x56,
 	0x5c, 0x1c, 0x2e, 0x50, 0x09, 0x21, 0x09, 0x2e, 0xf6, 0xe2, 0xd4, 0xe4, 0xfc, 0xbc, 0x94, 0x62,
 	0x09, 0x46, 0x05, 0x46, 0x0d, 0xe6, 0x20, 0x18, 0x57, 0x48, 0x84, 0x8b, 0x35, 0x2f, 0x31, 0x2f,

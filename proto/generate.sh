@@ -19,7 +19,7 @@ cd "$DIR"
 
 # go install ./protoc-gen-coname
 
-protoc --coname_out=plugins=grpc:. --proto_path=.:${GOPATH}/src *.proto
+protoc --coname_out=plugins=grpc:. --proto_path=.:${GOPATH}/src *.proto 
 
 function generateEncodedType {
 	sed "s/Thing/$1/g" < encoded.go.template > "$1.pr.go"
