@@ -267,7 +267,7 @@ func TestRealmConfigJSON(t *testing.T) {
 	}
 }
 func TestConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedConfig(popr, true)
@@ -285,7 +285,7 @@ t.Skip()
 }
 
 func TestConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedConfig(popr, true)
@@ -303,7 +303,7 @@ t.Skip()
 }
 
 func TestRealmConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRealmConfig(popr, true)
@@ -321,7 +321,7 @@ t.Skip()
 }
 
 func TestRealmConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRealmConfig(popr, true)

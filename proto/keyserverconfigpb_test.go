@@ -1128,7 +1128,7 @@ func TestReplicaJSON(t *testing.T) {
 	}
 }
 func TestReplicaConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
@@ -1146,7 +1146,7 @@ t.Skip()
 }
 
 func TestReplicaConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
@@ -1164,7 +1164,7 @@ t.Skip()
 }
 
 func TestKeyserverConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
@@ -1182,7 +1182,7 @@ t.Skip()
 }
 
 func TestKeyserverConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
@@ -1200,7 +1200,7 @@ t.Skip()
 }
 
 func TestRegistrationPolicyProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
@@ -1218,7 +1218,7 @@ t.Skip()
 }
 
 func TestRegistrationPolicyProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
@@ -1236,7 +1236,7 @@ t.Skip()
 }
 
 func TestEmailProofByDKIMProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
@@ -1254,7 +1254,7 @@ t.Skip()
 }
 
 func TestEmailProofByDKIMProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
@@ -1272,7 +1272,7 @@ t.Skip()
 }
 
 func TestEmailProofByClientCertProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
@@ -1290,7 +1290,7 @@ t.Skip()
 }
 
 func TestEmailProofByClientCertProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
@@ -1308,7 +1308,7 @@ t.Skip()
 }
 
 func TestEmailProofByOIDCProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
@@ -1326,7 +1326,7 @@ t.Skip()
 }
 
 func TestEmailProofByOIDCProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
@@ -1344,7 +1344,7 @@ t.Skip()
 }
 
 func TestEmailProofBySAMLProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
@@ -1362,7 +1362,7 @@ t.Skip()
 }
 
 func TestEmailProofBySAMLProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
@@ -1380,7 +1380,7 @@ t.Skip()
 }
 
 func TestOIDCConfigProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
@@ -1398,7 +1398,7 @@ t.Skip()
 }
 
 func TestOIDCConfigProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
@@ -1416,7 +1416,7 @@ t.Skip()
 }
 
 func TestReplicaProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)
@@ -1434,7 +1434,7 @@ t.Skip()
 }
 
 func TestReplicaProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)

@@ -143,7 +143,7 @@ func TestTimestampJSON(t *testing.T) {
 	}
 }
 func TestTimestampProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)
@@ -161,7 +161,7 @@ t.Skip()
 }
 
 func TestTimestampProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestamp(popr, true)

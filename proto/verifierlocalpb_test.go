@@ -144,7 +144,7 @@ func TestVerifierStateJSON(t *testing.T) {
 	}
 }
 func TestVerifierStateProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierState(popr, true)
@@ -162,7 +162,7 @@ t.Skip()
 }
 
 func TestVerifierStateProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedVerifierState(popr, true)

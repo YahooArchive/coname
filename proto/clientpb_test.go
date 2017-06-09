@@ -1798,7 +1798,7 @@ func TestEmailProofJSON(t *testing.T) {
 	}
 }
 func TestLookupRequestProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
@@ -1816,7 +1816,7 @@ t.Skip()
 }
 
 func TestLookupRequestProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupRequest(popr, true)
@@ -1834,7 +1834,7 @@ t.Skip()
 }
 
 func TestUpdateRequestProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
@@ -1852,7 +1852,7 @@ t.Skip()
 }
 
 func TestUpdateRequestProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedUpdateRequest(popr, true)
@@ -1870,7 +1870,7 @@ t.Skip()
 }
 
 func TestLookupProofProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
@@ -1888,7 +1888,7 @@ t.Skip()
 }
 
 func TestLookupProofProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedLookupProof(popr, true)
@@ -1906,7 +1906,7 @@ t.Skip()
 }
 
 func TestTreeProofProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
@@ -1924,7 +1924,7 @@ t.Skip()
 }
 
 func TestTreeProofProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTreeProof(popr, true)
@@ -1942,7 +1942,7 @@ t.Skip()
 }
 
 func TestEntryProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
@@ -1960,7 +1960,7 @@ t.Skip()
 }
 
 func TestEntryProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEntry(popr, true)
@@ -1978,7 +1978,7 @@ t.Skip()
 }
 
 func TestSignedEntryUpdateProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
@@ -1996,7 +1996,7 @@ t.Skip()
 }
 
 func TestSignedEntryUpdateProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEntryUpdate(popr, true)
@@ -2014,7 +2014,7 @@ t.Skip()
 }
 
 func TestProfileProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
@@ -2032,7 +2032,7 @@ t.Skip()
 }
 
 func TestProfileProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedProfile(popr, true)
@@ -2050,7 +2050,7 @@ t.Skip()
 }
 
 func TestSignedEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
@@ -2068,7 +2068,7 @@ t.Skip()
 }
 
 func TestSignedEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedSignedEpochHead(popr, true)
@@ -2086,7 +2086,7 @@ t.Skip()
 }
 
 func TestTimestampedEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
@@ -2104,7 +2104,7 @@ t.Skip()
 }
 
 func TestTimestampedEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedTimestampedEpochHead(popr, true)
@@ -2122,7 +2122,7 @@ t.Skip()
 }
 
 func TestEpochHeadProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
@@ -2140,7 +2140,7 @@ t.Skip()
 }
 
 func TestEpochHeadProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEpochHead(popr, true)
@@ -2158,7 +2158,7 @@ t.Skip()
 }
 
 func TestAuthorizationPolicyProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
@@ -2176,7 +2176,7 @@ t.Skip()
 }
 
 func TestAuthorizationPolicyProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedAuthorizationPolicy(popr, true)
@@ -2194,7 +2194,7 @@ t.Skip()
 }
 
 func TestPublicKeyProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
@@ -2212,7 +2212,7 @@ t.Skip()
 }
 
 func TestPublicKeyProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedPublicKey(popr, true)
@@ -2230,7 +2230,7 @@ t.Skip()
 }
 
 func TestQuorumExprProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
@@ -2248,7 +2248,7 @@ t.Skip()
 }
 
 func TestQuorumExprProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedQuorumExpr(popr, true)
@@ -2266,7 +2266,7 @@ t.Skip()
 }
 
 func TestEmailProofProtoText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
@@ -2284,7 +2284,7 @@ t.Skip()
 }
 
 func TestEmailProofProtoCompactText(t *testing.T) {
-t.Skip()
+	t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProof(popr, true)
