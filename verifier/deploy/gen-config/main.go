@@ -9,7 +9,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/yahoo/coname/proto"
 )
 

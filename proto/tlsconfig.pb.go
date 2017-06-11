@@ -4,18 +4,16 @@
 
 package proto
 
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import strconv "strconv"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import sort "sort"
 import reflect "reflect"
 
 import io "io"
@@ -83,53 +81,68 @@ type CipherSuite int32
 
 const (
 	CipherSuite_UNSPECIFIED                 CipherSuite = 0
-	TLS_RSA_WITH_RC4_128_SHA                CipherSuite = 5
-	TLS_RSA_WITH_3DES_EDE_CBC_SHA           CipherSuite = 10
+	TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   CipherSuite = 49199
+	TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384   CipherSuite = 49200
+	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256   CipherSuite = 49191
+	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA      CipherSuite = 49171
+	TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA      CipherSuite = 49172
+	TLS_RSA_WITH_AES_128_GCM_SHA256         CipherSuite = 156
+	TLS_RSA_WITH_AES_256_GCM_SHA384         CipherSuite = 157
+	TLS_RSA_WITH_AES_128_CBC_SHA256         CipherSuite = 60
 	TLS_RSA_WITH_AES_128_CBC_SHA            CipherSuite = 47
 	TLS_RSA_WITH_AES_256_CBC_SHA            CipherSuite = 53
+	TLS_RSA_WITH_RC4_128_SHA                CipherSuite = 5
+	TLS_RSA_WITH_3DES_EDE_CBC_SHA           CipherSuite = 10
 	TLS_ECDHE_ECDSA_WITH_RC4_128_SHA        CipherSuite = 49159
 	TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA    CipherSuite = 49161
 	TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA    CipherSuite = 49162
 	TLS_ECDHE_RSA_WITH_RC4_128_SHA          CipherSuite = 49169
 	TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA     CipherSuite = 49170
-	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA      CipherSuite = 49171
-	TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA      CipherSuite = 49172
-	TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   CipherSuite = 49199
 	TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 CipherSuite = 49195
 	TLS_FALLBACK_SCSV                       CipherSuite = 22016
 )
 
 var CipherSuite_name = map[int32]string{
 	0:     "CipherSuite_UNSPECIFIED",
-	5:     "TLS_RSA_WITH_RC4_128_SHA",
-	10:    "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+	49199: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+	49200: "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+	49191: "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+	49171: "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+	49172: "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+	156:   "TLS_RSA_WITH_AES_128_GCM_SHA256",
+	157:   "TLS_RSA_WITH_AES_256_GCM_SHA384",
+	60:    "TLS_RSA_WITH_AES_128_CBC_SHA256",
 	47:    "TLS_RSA_WITH_AES_128_CBC_SHA",
 	53:    "TLS_RSA_WITH_AES_256_CBC_SHA",
+	5:     "TLS_RSA_WITH_RC4_128_SHA",
+	10:    "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
 	49159: "TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
 	49161: "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
 	49162: "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
 	49169: "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
 	49170: "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
-	49171: "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
-	49172: "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
-	49199: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 	49195: "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
 	22016: "TLS_FALLBACK_SCSV",
 }
 var CipherSuite_value = map[string]int32{
 	"CipherSuite_UNSPECIFIED":                 0,
-	"TLS_RSA_WITH_RC4_128_SHA":                5,
-	"TLS_RSA_WITH_3DES_EDE_CBC_SHA":           10,
+	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":   49199,
+	"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":   49200,
+	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":   49191,
+	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":      49171,
+	"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":      49172,
+	"TLS_RSA_WITH_AES_128_GCM_SHA256":         156,
+	"TLS_RSA_WITH_AES_256_GCM_SHA384":         157,
+	"TLS_RSA_WITH_AES_128_CBC_SHA256":         60,
 	"TLS_RSA_WITH_AES_128_CBC_SHA":            47,
 	"TLS_RSA_WITH_AES_256_CBC_SHA":            53,
+	"TLS_RSA_WITH_RC4_128_SHA":                5,
+	"TLS_RSA_WITH_3DES_EDE_CBC_SHA":           10,
 	"TLS_ECDHE_ECDSA_WITH_RC4_128_SHA":        49159,
 	"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA":    49161,
 	"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA":    49162,
 	"TLS_ECDHE_RSA_WITH_RC4_128_SHA":          49169,
 	"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA":     49170,
-	"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":      49171,
-	"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":      49172,
-	"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":   49199,
 	"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256": 49195,
 	"TLS_FALLBACK_SCSV":                       22016,
 }
@@ -186,7 +199,7 @@ type TLSConfig struct {
 	ClientCAs [][]byte `protobuf:"bytes,7,rep,name=client_cas,json=clientCas" json:"client_cas,omitempty"`
 	// CipherSuites is a list of supported cipher suites. If CipherSuites
 	// is nil, TLS uses a list of suites supported by the implementation.
-	CipherSuites []CipherSuite `protobuf:"varint,8,rep,name=cipher_suites,json=cipherSuites,enum=proto.CipherSuite" json:"cipher_suites,omitempty"`
+	CipherSuites []CipherSuite `protobuf:"varint,8,rep,packed,name=cipher_suites,json=cipherSuites,enum=proto.CipherSuite" json:"cipher_suites,omitempty"`
 	// PreferServerCipherSuites controls whether the server selects the
 	// client's most preferred ciphersuite, or the server's most preferred
 	// ciphersuite. If true then the server's preference, as expressed in
@@ -216,7 +229,7 @@ type TLSConfig struct {
 	// CurvePreferences contains the elliptic curves that will be used in
 	// an ECDHE handshake, in preference order. If empty, the default will
 	// be used.
-	CurvePreferences []CurveID `protobuf:"varint,14,rep,name=curve_preferences,json=curvePreferences,enum=proto.CurveID" json:"curve_preferences,omitempty"`
+	CurvePreferences []CurveID `protobuf:"varint,14,rep,packed,name=curve_preferences,json=curvePreferences,enum=proto.CurveID" json:"curve_preferences,omitempty"`
 }
 
 func (m *TLSConfig) Reset()                    { *m = TLSConfig{} }
@@ -230,16 +243,121 @@ func (m *TLSConfig) GetCertificates() []*CertificateAndKeyID {
 	return nil
 }
 
+func (m *TLSConfig) GetRootCAs() [][]byte {
+	if m != nil {
+		return m.RootCAs
+	}
+	return nil
+}
+
+func (m *TLSConfig) GetNextProtos() []string {
+	if m != nil {
+		return m.NextProtos
+	}
+	return nil
+}
+
+func (m *TLSConfig) GetServerName() string {
+	if m != nil {
+		return m.ServerName
+	}
+	return ""
+}
+
+func (m *TLSConfig) GetClientAuth() ClientAuthType {
+	if m != nil {
+		return m.ClientAuth
+	}
+	return NO_CLIENT_CERT
+}
+
+func (m *TLSConfig) GetClientCAs() [][]byte {
+	if m != nil {
+		return m.ClientCAs
+	}
+	return nil
+}
+
+func (m *TLSConfig) GetCipherSuites() []CipherSuite {
+	if m != nil {
+		return m.CipherSuites
+	}
+	return nil
+}
+
+func (m *TLSConfig) GetPreferServerCipherSuites() bool {
+	if m != nil {
+		return m.PreferServerCipherSuites
+	}
+	return false
+}
+
+func (m *TLSConfig) GetSessionTicketsEnabled() bool {
+	if m != nil {
+		return m.SessionTicketsEnabled
+	}
+	return false
+}
+
+func (m *TLSConfig) GetSessionTicketKeyID() string {
+	if m != nil {
+		return m.SessionTicketKeyID
+	}
+	return ""
+}
+
+func (m *TLSConfig) GetMinVersion() TLSVersion {
+	if m != nil {
+		return m.MinVersion
+	}
+	return TLSVersion_UNSPECIFIED
+}
+
+func (m *TLSConfig) GetMaxVersion() TLSVersion {
+	if m != nil {
+		return m.MaxVersion
+	}
+	return TLSVersion_UNSPECIFIED
+}
+
+func (m *TLSConfig) GetCurvePreferences() []CurveID {
+	if m != nil {
+		return m.CurvePreferences
+	}
+	return nil
+}
+
 type CertificateAndKeyID struct {
 	// Certificate contains the public certificates in DER format, leaf first.
 	Certificate [][]byte `protobuf:"bytes,1,rep,name=certificate" json:"certificate,omitempty"`
 	KeyID       string   `protobuf:"bytes,2,opt,name=key_id,json=keyId,proto3" json:"key_id,omitempty"`
-	OCSPStaple  []byte   `protobuf:"bytes,3,opt,name=OCSP_staple,json=oCSPStaple,proto3" json:"OCSP_staple,omitempty"`
+	OCSPStaple  []byte   `protobuf:"bytes,3,opt,name=OCSP_staple,json=OCSPStaple,proto3" json:"OCSP_staple,omitempty"`
 }
 
 func (m *CertificateAndKeyID) Reset()                    { *m = CertificateAndKeyID{} }
 func (*CertificateAndKeyID) ProtoMessage()               {}
 func (*CertificateAndKeyID) Descriptor() ([]byte, []int) { return fileDescriptorTlsconfig, []int{1} }
+
+func (m *CertificateAndKeyID) GetCertificate() [][]byte {
+	if m != nil {
+		return m.Certificate
+	}
+	return nil
+}
+
+func (m *CertificateAndKeyID) GetKeyID() string {
+	if m != nil {
+		return m.KeyID
+	}
+	return ""
+}
+
+func (m *CertificateAndKeyID) GetOCSPStaple() []byte {
+	if m != nil {
+		return m.OCSPStaple
+	}
+	return nil
+}
 
 func init() {
 	proto1.RegisterType((*TLSConfig)(nil), "proto.TLSConfig")
@@ -595,44 +713,27 @@ func valueToGoStringTlsconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringTlsconfig(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *TLSConfig) Marshal() (data []byte, err error) {
+func (m *TLSConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *TLSConfig) MarshalTo(data []byte) (int, error) {
+func (m *TLSConfig) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Certificates) > 0 {
 		for _, msg := range m.Certificates {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintTlsconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintTlsconfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -641,162 +742,182 @@ func (m *TLSConfig) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.RootCAs) > 0 {
 		for _, b := range m.RootCAs {
-			data[i] = 0x1a
+			dAtA[i] = 0x1a
 			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
+			i = encodeVarintTlsconfig(dAtA, i, uint64(len(b)))
+			i += copy(dAtA[i:], b)
 		}
 	}
 	if len(m.NextProtos) > 0 {
 		for _, s := range m.NextProtos {
-			data[i] = 0x22
+			dAtA[i] = 0x22
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.ServerName) > 0 {
-		data[i] = 0x2a
+		dAtA[i] = 0x2a
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.ServerName)))
-		i += copy(data[i:], m.ServerName)
+		i = encodeVarintTlsconfig(dAtA, i, uint64(len(m.ServerName)))
+		i += copy(dAtA[i:], m.ServerName)
 	}
 	if m.ClientAuth != 0 {
-		data[i] = 0x30
+		dAtA[i] = 0x30
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.ClientAuth))
+		i = encodeVarintTlsconfig(dAtA, i, uint64(m.ClientAuth))
 	}
 	if len(m.ClientCAs) > 0 {
 		for _, b := range m.ClientCAs {
-			data[i] = 0x3a
+			dAtA[i] = 0x3a
 			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
+			i = encodeVarintTlsconfig(dAtA, i, uint64(len(b)))
+			i += copy(dAtA[i:], b)
 		}
 	}
 	if len(m.CipherSuites) > 0 {
+		dAtA2 := make([]byte, len(m.CipherSuites)*10)
+		var j1 int
 		for _, num := range m.CipherSuites {
-			data[i] = 0x40
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(num))
+			for num >= 1<<7 {
+				dAtA2[j1] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j1++
+			}
+			dAtA2[j1] = uint8(num)
+			j1++
 		}
+		dAtA[i] = 0x42
+		i++
+		i = encodeVarintTlsconfig(dAtA, i, uint64(j1))
+		i += copy(dAtA[i:], dAtA2[:j1])
 	}
 	if m.PreferServerCipherSuites {
-		data[i] = 0x48
+		dAtA[i] = 0x48
 		i++
 		if m.PreferServerCipherSuites {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.SessionTicketsEnabled {
-		data[i] = 0x50
+		dAtA[i] = 0x50
 		i++
 		if m.SessionTicketsEnabled {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if len(m.SessionTicketKeyID) > 0 {
-		data[i] = 0x5a
+		dAtA[i] = 0x5a
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.SessionTicketKeyID)))
-		i += copy(data[i:], m.SessionTicketKeyID)
+		i = encodeVarintTlsconfig(dAtA, i, uint64(len(m.SessionTicketKeyID)))
+		i += copy(dAtA[i:], m.SessionTicketKeyID)
 	}
 	if m.MinVersion != 0 {
-		data[i] = 0x60
+		dAtA[i] = 0x60
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.MinVersion))
+		i = encodeVarintTlsconfig(dAtA, i, uint64(m.MinVersion))
 	}
 	if m.MaxVersion != 0 {
-		data[i] = 0x68
+		dAtA[i] = 0x68
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(m.MaxVersion))
+		i = encodeVarintTlsconfig(dAtA, i, uint64(m.MaxVersion))
 	}
 	if len(m.CurvePreferences) > 0 {
+		dAtA4 := make([]byte, len(m.CurvePreferences)*10)
+		var j3 int
 		for _, num := range m.CurvePreferences {
-			data[i] = 0x70
-			i++
-			i = encodeVarintTlsconfig(data, i, uint64(num))
+			for num >= 1<<7 {
+				dAtA4[j3] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j3++
+			}
+			dAtA4[j3] = uint8(num)
+			j3++
 		}
+		dAtA[i] = 0x72
+		i++
+		i = encodeVarintTlsconfig(dAtA, i, uint64(j3))
+		i += copy(dAtA[i:], dAtA4[:j3])
 	}
 	return i, nil
 }
 
-func (m *CertificateAndKeyID) Marshal() (data []byte, err error) {
+func (m *CertificateAndKeyID) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *CertificateAndKeyID) MarshalTo(data []byte) (int, error) {
+func (m *CertificateAndKeyID) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.Certificate) > 0 {
 		for _, b := range m.Certificate {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintTlsconfig(data, i, uint64(len(b)))
-			i += copy(data[i:], b)
+			i = encodeVarintTlsconfig(dAtA, i, uint64(len(b)))
+			i += copy(dAtA[i:], b)
 		}
 	}
 	if len(m.KeyID) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.KeyID)))
-		i += copy(data[i:], m.KeyID)
+		i = encodeVarintTlsconfig(dAtA, i, uint64(len(m.KeyID)))
+		i += copy(dAtA[i:], m.KeyID)
 	}
 	if len(m.OCSPStaple) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintTlsconfig(data, i, uint64(len(m.OCSPStaple)))
-		i += copy(data[i:], m.OCSPStaple)
+		i = encodeVarintTlsconfig(dAtA, i, uint64(len(m.OCSPStaple)))
+		i += copy(dAtA[i:], m.OCSPStaple)
 	}
 	return i, nil
 }
 
-func encodeFixed64Tlsconfig(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Tlsconfig(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Tlsconfig(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Tlsconfig(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintTlsconfig(data []byte, offset int, v uint64) int {
+func encodeVarintTlsconfig(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func NewPopulatedTLSConfig(r randyTlsconfig, easy bool) *TLSConfig {
@@ -820,9 +941,9 @@ func NewPopulatedTLSConfig(r randyTlsconfig, easy bool) *TLSConfig {
 	v4 := r.Intn(10)
 	this.NextProtos = make([]string, v4)
 	for i := 0; i < v4; i++ {
-		this.NextProtos[i] = randStringTlsconfig(r)
+		this.NextProtos[i] = string(randStringTlsconfig(r))
 	}
-	this.ServerName = randStringTlsconfig(r)
+	this.ServerName = string(randStringTlsconfig(r))
 	this.ClientAuth = ClientAuthType([]int32{0, 1, 2, 3, 4}[r.Intn(5)])
 	v5 := r.Intn(10)
 	this.ClientCAs = make([][]byte, v5)
@@ -836,11 +957,11 @@ func NewPopulatedTLSConfig(r randyTlsconfig, easy bool) *TLSConfig {
 	v7 := r.Intn(10)
 	this.CipherSuites = make([]CipherSuite, v7)
 	for i := 0; i < v7; i++ {
-		this.CipherSuites[i] = CipherSuite([]int32{0, 5, 10, 47, 53, 49159, 49161, 49162, 49169, 49170, 49171, 49172, 49199, 49195, 22016}[r.Intn(15)])
+		this.CipherSuites[i] = CipherSuite([]int32{0, 49199, 49200, 49191, 49171, 49172, 156, 157, 60, 47, 53, 5, 10, 49159, 49161, 49162, 49169, 49170, 49195, 22016}[r.Intn(20)])
 	}
 	this.PreferServerCipherSuites = bool(bool(r.Intn(2) == 0))
 	this.SessionTicketsEnabled = bool(bool(r.Intn(2) == 0))
-	this.SessionTicketKeyID = randStringTlsconfig(r)
+	this.SessionTicketKeyID = string(randStringTlsconfig(r))
 	this.MinVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
 	this.MaxVersion = TLSVersion([]int32{0, 768, 769, 770, 771}[r.Intn(5)])
 	v8 := r.Intn(10)
@@ -864,7 +985,7 @@ func NewPopulatedCertificateAndKeyID(r randyTlsconfig, easy bool) *CertificateAn
 			this.Certificate[i][j] = byte(r.Intn(256))
 		}
 	}
-	this.KeyID = randStringTlsconfig(r)
+	this.KeyID = string(randStringTlsconfig(r))
 	v11 := r.Intn(100)
 	this.OCSPStaple = make([]byte, v11)
 	for i := 0; i < v11; i++ {
@@ -901,7 +1022,7 @@ func randStringTlsconfig(r randyTlsconfig) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedTlsconfig(r randyTlsconfig, maxFieldNumber int) (data []byte) {
+func randUnrecognizedTlsconfig(r randyTlsconfig, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -909,43 +1030,43 @@ func randUnrecognizedTlsconfig(r randyTlsconfig, maxFieldNumber int) (data []byt
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldTlsconfig(data, r, fieldNumber, wire)
+		dAtA = randFieldTlsconfig(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldTlsconfig(data []byte, r randyTlsconfig, fieldNumber int, wire int) []byte {
+func randFieldTlsconfig(dAtA []byte, r randyTlsconfig, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(key))
 		v13 := r.Int63()
 		if r.Intn(2) == 0 {
 			v13 *= -1
 		}
-		data = encodeVarintPopulateTlsconfig(data, uint64(v13))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(v13))
 	case 1:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateTlsconfig(data, uint64(ll))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateTlsconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateTlsconfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateTlsconfig(data []byte, v uint64) []byte {
+func encodeVarintPopulateTlsconfig(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *TLSConfig) Size() (n int) {
 	var l int
@@ -982,9 +1103,11 @@ func (m *TLSConfig) Size() (n int) {
 		}
 	}
 	if len(m.CipherSuites) > 0 {
+		l = 0
 		for _, e := range m.CipherSuites {
-			n += 1 + sovTlsconfig(uint64(e))
+			l += sovTlsconfig(uint64(e))
 		}
+		n += 1 + sovTlsconfig(uint64(l)) + l
 	}
 	if m.PreferServerCipherSuites {
 		n += 2
@@ -1003,9 +1126,11 @@ func (m *TLSConfig) Size() (n int) {
 		n += 1 + sovTlsconfig(uint64(m.MaxVersion))
 	}
 	if len(m.CurvePreferences) > 0 {
+		l = 0
 		for _, e := range m.CurvePreferences {
-			n += 1 + sovTlsconfig(uint64(e))
+			l += sovTlsconfig(uint64(e))
 		}
+		n += 1 + sovTlsconfig(uint64(l)) + l
 	}
 	return n
 }
@@ -1085,8 +1210,8 @@ func valueToStringTlsconfig(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *TLSConfig) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *TLSConfig) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1098,7 +1223,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1126,7 +1251,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1141,7 +1266,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Certificates = append(m.Certificates, &CertificateAndKeyID{})
-			if err := m.Certificates[len(m.Certificates)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Certificates[len(m.Certificates)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1157,7 +1282,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1172,7 +1297,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.RootCAs = append(m.RootCAs, make([]byte, postIndex-iNdEx))
-			copy(m.RootCAs[len(m.RootCAs)-1], data[iNdEx:postIndex])
+			copy(m.RootCAs[len(m.RootCAs)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -1186,7 +1311,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1201,7 +1326,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.NextProtos = append(m.NextProtos, string(data[iNdEx:postIndex]))
+			m.NextProtos = append(m.NextProtos, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -1215,7 +1340,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1230,7 +1355,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ServerName = string(data[iNdEx:postIndex])
+			m.ServerName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 6:
 			if wireType != 0 {
@@ -1244,7 +1369,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ClientAuth |= (ClientAuthType(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1263,7 +1388,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1278,28 +1403,70 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.ClientCAs = append(m.ClientCAs, make([]byte, postIndex-iNdEx))
-			copy(m.ClientCAs[len(m.ClientCAs)-1], data[iNdEx:postIndex])
+			copy(m.ClientCAs[len(m.ClientCAs)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 8:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CipherSuites", wireType)
-			}
-			var v CipherSuite
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTlsconfig
+			if wireType == 0 {
+				var v CipherSuite
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowTlsconfig
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (CipherSuite(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				m.CipherSuites = append(m.CipherSuites, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowTlsconfig
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthTlsconfig
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (CipherSuite(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				for iNdEx < postIndex {
+					var v CipherSuite
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowTlsconfig
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (CipherSuite(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.CipherSuites = append(m.CipherSuites, v)
 				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field CipherSuites", wireType)
 			}
-			m.CipherSuites = append(m.CipherSuites, v)
 		case 9:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field PreferServerCipherSuites", wireType)
@@ -1312,7 +1479,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1332,7 +1499,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1352,7 +1519,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1367,7 +1534,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SessionTicketKeyID = string(data[iNdEx:postIndex])
+			m.SessionTicketKeyID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 12:
 			if wireType != 0 {
@@ -1381,7 +1548,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MinVersion |= (TLSVersion(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1400,7 +1567,7 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.MaxVersion |= (TLSVersion(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1408,28 +1575,70 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 				}
 			}
 		case 14:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field CurvePreferences", wireType)
-			}
-			var v CurveID
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowTlsconfig
+			if wireType == 0 {
+				var v CurveID
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowTlsconfig
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= (CurveID(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
 				}
-				if iNdEx >= l {
+				m.CurvePreferences = append(m.CurvePreferences, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowTlsconfig
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= (int(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthTlsconfig
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex > l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
-				iNdEx++
-				v |= (CurveID(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
+				for iNdEx < postIndex {
+					var v CurveID
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowTlsconfig
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= (CurveID(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.CurvePreferences = append(m.CurvePreferences, v)
 				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field CurvePreferences", wireType)
 			}
-			m.CurvePreferences = append(m.CurvePreferences, v)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipTlsconfig(data[iNdEx:])
+			skippy, err := skipTlsconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1448,8 +1657,8 @@ func (m *TLSConfig) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *CertificateAndKeyID) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -1461,7 +1670,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1489,7 +1698,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1504,7 +1713,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Certificate = append(m.Certificate, make([]byte, postIndex-iNdEx))
-			copy(m.Certificate[len(m.Certificate)-1], data[iNdEx:postIndex])
+			copy(m.Certificate[len(m.Certificate)-1], dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -1518,7 +1727,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1533,7 +1742,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.KeyID = string(data[iNdEx:postIndex])
+			m.KeyID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -1547,7 +1756,7 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1561,14 +1770,14 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.OCSPStaple = append(m.OCSPStaple[:0], data[iNdEx:postIndex]...)
+			m.OCSPStaple = append(m.OCSPStaple[:0], dAtA[iNdEx:postIndex]...)
 			if m.OCSPStaple == nil {
 				m.OCSPStaple = []byte{}
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipTlsconfig(data[iNdEx:])
+			skippy, err := skipTlsconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -1587,8 +1796,8 @@ func (m *CertificateAndKeyID) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipTlsconfig(data []byte) (n int, err error) {
-	l := len(data)
+func skipTlsconfig(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -1599,7 +1808,7 @@ func skipTlsconfig(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -1617,7 +1826,7 @@ func skipTlsconfig(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -1634,7 +1843,7 @@ func skipTlsconfig(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -1657,7 +1866,7 @@ func skipTlsconfig(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -1668,7 +1877,7 @@ func skipTlsconfig(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipTlsconfig(data[start:])
+				next, err := skipTlsconfig(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -1695,66 +1904,69 @@ var (
 func init() { proto1.RegisterFile("tlsconfig.proto", fileDescriptorTlsconfig) }
 
 var fileDescriptorTlsconfig = []byte{
-	// 976 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x94, 0x4d, 0x6c, 0xe3, 0xc4,
-	0x1b, 0xc6, 0xeb, 0x75, 0xd3, 0x36, 0x6f, 0xd2, 0xfc, 0xdd, 0x59, 0x75, 0xeb, 0x7f, 0xbb, 0x38,
-	0xa6, 0x2c, 0x4b, 0x28, 0xd0, 0x8f, 0x74, 0x5b, 0x2a, 0x21, 0x10, 0xa9, 0xe3, 0x6e, 0xad, 0x0d,
-	0x69, 0xf0, 0x78, 0x8b, 0x38, 0x8d, 0x5c, 0x77, 0xda, 0x5a, 0x6d, 0xec, 0x2a, 0x76, 0xaa, 0x96,
-	0x93, 0x81, 0x03, 0x82, 0x1b, 0x1f, 0x77, 0xae, 0x48, 0x20, 0x71, 0x45, 0xe2, 0xc2, 0x11, 0x6e,
-	0x7b, 0xe4, 0x54, 0x6d, 0x7d, 0xe2, 0xb8, 0x47, 0x8e, 0x68, 0xc6, 0x49, 0xe3, 0xa4, 0xa1, 0x5c,
-	0xda, 0x99, 0xf7, 0xf9, 0x3d, 0x33, 0xef, 0x3c, 0x79, 0x65, 0xf8, 0x5f, 0x78, 0x12, 0x38, 0xbe,
-	0x77, 0xe0, 0x1e, 0x2e, 0x9e, 0xb6, 0xfc, 0xd0, 0x47, 0x19, 0xfe, 0x6f, 0x76, 0xf9, 0xd0, 0x0d,
-	0x8f, 0xda, 0x7b, 0x8b, 0x8e, 0xdf, 0x5c, 0x6a, 0xda, 0xfb, 0x6e, 0x78, 0x61, 0x2f, 0x71, 0x65,
-	0xaf, 0x7d, 0xb0, 0x74, 0xe8, 0x1f, 0xfa, 0x7c, 0xc3, 0x57, 0x89, 0x71, 0xfe, 0xd7, 0x0c, 0x64,
-	0xad, 0x1a, 0xd6, 0xf8, 0x61, 0xe8, 0x3d, 0xc8, 0x3b, 0xb4, 0x15, 0xba, 0x07, 0xae, 0x63, 0x87,
-	0x34, 0x90, 0x05, 0x55, 0x2c, 0xe5, 0xca, 0xb3, 0x09, 0xbb, 0xa8, 0xf5, 0xa4, 0x8a, 0xb7, 0xff,
-	0x84, 0x5e, 0x18, 0x55, 0xb3, 0x8f, 0x47, 0x0f, 0x61, 0xa2, 0xe5, 0xfb, 0x21, 0x71, 0xec, 0x40,
-	0x16, 0x55, 0xb1, 0x94, 0xdf, 0xcc, 0xc5, 0x97, 0xc5, 0x71, 0xd3, 0xf7, 0x43, 0xad, 0x12, 0x98,
-	0xe3, 0x4c, 0xd4, 0xec, 0x00, 0x15, 0x21, 0xe7, 0xd1, 0xf3, 0x90, 0xf0, 0x73, 0x03, 0x79, 0x54,
-	0x15, 0x4b, 0x59, 0x13, 0x58, 0xa9, 0xc1, 0x2b, 0x0c, 0x08, 0x68, 0xeb, 0x8c, 0xb6, 0x88, 0x67,
-	0x37, 0xa9, 0x9c, 0x51, 0x05, 0x06, 0x24, 0xa5, 0xba, 0xdd, 0xa4, 0x68, 0x1d, 0x72, 0xce, 0x89,
-	0x4b, 0xbd, 0x90, 0xd8, 0xed, 0xf0, 0x48, 0x1e, 0x53, 0x85, 0x52, 0xa1, 0x3c, 0xdd, 0x6d, 0x94,
-	0x2b, 0x95, 0x76, 0x78, 0x64, 0x5d, 0x9c, 0x52, 0x13, 0x9c, 0xeb, 0x3d, 0x7a, 0x13, 0x3a, 0x3b,
-	0xde, 0xe3, 0x38, 0xef, 0x71, 0x32, 0xbe, 0x2c, 0x66, 0x13, 0x0f, 0xeb, 0x32, 0x9b, 0x00, 0xac,
-	0xcf, 0xb7, 0x61, 0xd2, 0x71, 0x4f, 0x8f, 0x68, 0x8b, 0x04, 0x6d, 0x97, 0x05, 0x32, 0xa1, 0x8a,
-	0xa5, 0x42, 0x19, 0x75, 0xef, 0xe1, 0x1a, 0x66, 0x92, 0x99, 0x77, 0x7a, 0x9b, 0x00, 0xbd, 0x0b,
-	0x73, 0xa7, 0x2d, 0x7a, 0xc0, 0x8c, 0xc9, 0x33, 0xfa, 0x8f, 0xc9, 0xaa, 0x42, 0x69, 0xc2, 0x94,
-	0x13, 0x04, 0x73, 0x42, 0x4b, 0xdb, 0xd7, 0x61, 0x26, 0xa0, 0x41, 0xe0, 0xfa, 0x1e, 0x09, 0x5d,
-	0xe7, 0x98, 0x86, 0x01, 0xa1, 0x9e, 0xbd, 0x77, 0x42, 0xf7, 0x65, 0xe0, 0xd6, 0xe9, 0x8e, 0x6c,
-	0x25, 0xaa, 0x9e, 0x88, 0xc8, 0x80, 0xe9, 0x7e, 0x1f, 0x39, 0xa6, 0x17, 0xc4, 0xdd, 0x97, 0x73,
-	0x2c, 0xc0, 0xcd, 0x7b, 0xf1, 0x65, 0x11, 0xe1, 0xb4, 0x33, 0xf9, 0x11, 0x51, 0x30, 0x58, 0xdb,
-	0x47, 0x65, 0xc8, 0x35, 0x5d, 0x8f, 0x9c, 0xd1, 0x16, 0x53, 0xe4, 0x3c, 0x0f, 0x78, 0xaa, 0xf3,
-	0x70, 0xab, 0x86, 0x77, 0x13, 0xc1, 0x84, 0xa6, 0xeb, 0x75, 0xd6, 0xdc, 0x63, 0x9f, 0x5f, 0x7b,
-	0x26, 0xff, 0xdd, 0x63, 0x9f, 0x77, 0x3d, 0xef, 0xc0, 0x94, 0xd3, 0x6e, 0x9d, 0x51, 0x92, 0x84,
-	0x41, 0x3d, 0x87, 0x06, 0x72, 0x81, 0xc7, 0x5c, 0xe8, 0xc6, 0xcc, 0x74, 0xa3, 0x6a, 0x4a, 0x1c,
-	0x6c, 0xf4, 0xb8, 0xf9, 0x4f, 0xe0, 0xee, 0x90, 0xa1, 0x44, 0x2a, 0xe4, 0x52, 0x63, 0xc9, 0xa7,
-	0x38, 0x6f, 0xa6, 0x4b, 0x48, 0x85, 0xb1, 0x4e, 0x32, 0x77, 0x78, 0x32, 0xd9, 0xf8, 0xb2, 0x98,
-	0x49, 0xc2, 0xc8, 0x1c, 0xf3, 0xf7, 0x17, 0x21, 0xb7, 0xa3, 0xe1, 0x06, 0x09, 0x42, 0xfb, 0xf4,
-	0x84, 0xca, 0xa2, 0x2a, 0x94, 0xf2, 0x26, 0xf8, 0x1a, 0x6e, 0x60, 0x5e, 0x59, 0x38, 0x07, 0xe8,
-	0x3d, 0x09, 0xcd, 0xc2, 0xbd, 0xde, 0x8e, 0x3c, 0xad, 0xe3, 0x86, 0xae, 0x19, 0x5b, 0x86, 0x5e,
-	0x95, 0x46, 0x10, 0x82, 0xc9, 0x5d, 0xdd, 0xc4, 0xc6, 0x4e, 0x9d, 0x60, 0x5c, 0x5b, 0x5d, 0x96,
-	0xa2, 0xb1, 0x74, 0xcd, 0xaa, 0xe1, 0x95, 0x65, 0xe9, 0xd3, 0x1b, 0xb5, 0x15, 0xe9, 0xb3, 0x1b,
-	0xb5, 0xb2, 0xf4, 0xf9, 0xd8, 0xc2, 0xf7, 0x02, 0x14, 0xfa, 0x47, 0x1c, 0x21, 0x28, 0xd4, 0x77,
-	0x88, 0x56, 0x33, 0xf4, 0xba, 0x45, 0x34, 0xdd, 0xb4, 0xa4, 0x11, 0x34, 0x03, 0x77, 0x4d, 0xfd,
-	0xc3, 0xa7, 0x3a, 0xb6, 0xfa, 0x04, 0x01, 0xcd, 0xc1, 0x0c, 0x13, 0x0c, 0x53, 0x27, 0x95, 0xfa,
-	0xc7, 0x7d, 0xe2, 0x1d, 0x54, 0x84, 0xb9, 0x5d, 0xdd, 0x34, 0xb6, 0xfa, 0xea, 0xc4, 0xd8, 0x22,
-	0x8f, 0x8d, 0x5d, 0xbd, 0x2e, 0x89, 0x68, 0x1e, 0x94, 0x9e, 0xbb, 0x4a, 0x6e, 0xc2, 0xd2, 0xe8,
-	0xc2, 0x1f, 0xa3, 0x90, 0x4b, 0x0d, 0x34, 0xbb, 0x31, 0xb5, 0x1d, 0x88, 0xe7, 0x3e, 0xc8, 0x56,
-	0x0d, 0x13, 0x13, 0x57, 0xc8, 0x47, 0x86, 0xb5, 0x4d, 0x4c, 0xed, 0x11, 0x59, 0x29, 0x6f, 0x10,
-	0xbc, 0x5d, 0x91, 0x32, 0xe8, 0x65, 0x78, 0xa9, 0x4f, 0x5d, 0xad, 0xea, 0x98, 0xe8, 0x55, 0x9d,
-	0x68, 0x9b, 0x1a, 0x47, 0x00, 0xa9, 0x70, 0xbf, 0x0f, 0xa9, 0xe8, 0x98, 0x1f, 0xd0, 0x25, 0x96,
-	0x86, 0x12, 0xe5, 0xb5, 0xf5, 0x6b, 0x62, 0x0d, 0x3d, 0x04, 0x95, 0x11, 0xba, 0x56, 0xdd, 0xd6,
-	0xd9, 0xdf, 0x61, 0xcd, 0x7c, 0x11, 0x89, 0x68, 0x01, 0x1e, 0x0c, 0xe5, 0x06, 0xef, 0xfc, 0xf2,
-	0x3f, 0xd8, 0xf4, 0xed, 0x5f, 0x45, 0x22, 0x7a, 0x00, 0x4a, 0x8f, 0x1d, 0x1a, 0xc5, 0xd7, 0x91,
-	0x88, 0x5e, 0x87, 0x57, 0x86, 0x50, 0x37, 0x22, 0xf9, 0x26, 0x12, 0x51, 0x09, 0xe6, 0x87, 0xa0,
-	0x83, 0x6d, 0x7e, 0x7b, 0x2b, 0x99, 0x6e, 0xf2, 0xbb, 0x48, 0x44, 0x6f, 0xc0, 0xab, 0xb7, 0x9c,
-	0xf9, 0x58, 0xfb, 0x80, 0x91, 0xe5, 0xb5, 0x75, 0xe9, 0xe7, 0x48, 0x44, 0x6f, 0xc1, 0x6b, 0xb7,
-	0x26, 0x95, 0xc2, 0x7f, 0x8c, 0x44, 0x34, 0x03, 0x53, 0x0c, 0xdf, 0xaa, 0xd4, 0x6a, 0x9b, 0x15,
-	0xed, 0x09, 0xc1, 0x1a, 0xde, 0x95, 0xa2, 0x9f, 0x84, 0x85, 0xf7, 0x61, 0xbc, 0xf3, 0x01, 0x60,
-	0x13, 0xdd, 0x59, 0x0e, 0x8c, 0xd0, 0x04, 0x8c, 0x36, 0xd8, 0x41, 0x33, 0x7c, 0xb5, 0xba, 0xf1,
-	0x48, 0x92, 0xf9, 0x6a, 0xad, 0xbc, 0x22, 0xfd, 0x7f, 0x73, 0xe3, 0xd9, 0x95, 0x32, 0xf2, 0xe7,
-	0x95, 0x32, 0xf2, 0xfc, 0x4a, 0x11, 0x5e, 0x5c, 0x29, 0xc2, 0xdf, 0x57, 0x8a, 0x10, 0xc5, 0x8a,
-	0xf0, 0x43, 0xac, 0x08, 0xbf, 0xc4, 0x8a, 0xf0, 0x5b, 0xac, 0x08, 0xbf, 0xc7, 0x8a, 0xf0, 0x2c,
-	0x56, 0x84, 0xe7, 0xb1, 0x22, 0xfc, 0x15, 0x2b, 0x23, 0x2f, 0x62, 0x45, 0xd8, 0x1b, 0xe3, 0x1f,
-	0xa0, 0xd5, 0x7f, 0x02, 0x00, 0x00, 0xff, 0xff, 0x6e, 0x63, 0xdf, 0xfc, 0x70, 0x07, 0x00, 0x00,
+	// 1010 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x94, 0x4f, 0x50, 0x23, 0x45,
+	0x14, 0xc6, 0xe9, 0x1d, 0x12, 0xc8, 0x4b, 0x88, 0x43, 0x6f, 0xb1, 0x8c, 0xb0, 0x4e, 0x46, 0x76,
+	0x5d, 0x23, 0xba, 0xb0, 0x84, 0x05, 0xa9, 0xf2, 0x4f, 0x19, 0x26, 0xc3, 0x32, 0xb5, 0x31, 0xe0,
+	0x74, 0x16, 0xcb, 0x53, 0x57, 0x18, 0x1a, 0x98, 0x02, 0x32, 0x54, 0x66, 0x42, 0x81, 0xa7, 0x51,
+	0x0f, 0x96, 0xde, 0xd4, 0x3d, 0x6a, 0x79, 0xd4, 0x2a, 0xad, 0xd2, 0xa3, 0x55, 0x5e, 0x3c, 0x7a,
+	0xdc, 0xa3, 0x27, 0x6a, 0x99, 0x93, 0xc7, 0x3d, 0x7a, 0xb4, 0xba, 0x27, 0x21, 0x93, 0x90, 0xcd,
+	0x9e, 0xd2, 0xef, 0x7d, 0xbf, 0xf7, 0xe6, 0xbd, 0x6f, 0x3a, 0x03, 0x2f, 0xf9, 0x87, 0x9e, 0xed,
+	0xd6, 0x77, 0x9d, 0xbd, 0xb9, 0xe3, 0x86, 0xeb, 0xbb, 0x38, 0x21, 0x7e, 0xa6, 0xee, 0xee, 0x39,
+	0xfe, 0x7e, 0x73, 0x7b, 0xce, 0x76, 0x8f, 0xe6, 0xf7, 0xdc, 0x3d, 0x77, 0x5e, 0xa4, 0xb7, 0x9b,
+	0xbb, 0x22, 0x12, 0x81, 0x38, 0x45, 0x55, 0x33, 0x7f, 0x26, 0x20, 0x55, 0x2d, 0x13, 0x5d, 0x74,
+	0xc2, 0xef, 0x43, 0xc6, 0x66, 0x0d, 0xdf, 0xd9, 0x75, 0xec, 0x9a, 0xcf, 0x3c, 0x05, 0x69, 0x52,
+	0x3e, 0x5d, 0x98, 0x8a, 0xd8, 0x39, 0xbd, 0x23, 0x15, 0xeb, 0x3b, 0x0f, 0xd9, 0x99, 0x59, 0xb2,
+	0xba, 0x78, 0x7c, 0x07, 0x46, 0x1b, 0xae, 0xeb, 0x53, 0xbb, 0xe6, 0x29, 0x92, 0x26, 0xe5, 0x33,
+	0xab, 0xe9, 0xf0, 0x3c, 0x37, 0x62, 0xb9, 0xae, 0xaf, 0x17, 0x3d, 0x6b, 0x84, 0x8b, 0x7a, 0xcd,
+	0xc3, 0x39, 0x48, 0xd7, 0xd9, 0xa9, 0x4f, 0x45, 0x5f, 0x4f, 0x19, 0xd6, 0xa4, 0x7c, 0xca, 0x02,
+	0x9e, 0xda, 0x14, 0x19, 0x0e, 0x78, 0xac, 0x71, 0xc2, 0x1a, 0xb4, 0x5e, 0x3b, 0x62, 0x4a, 0x42,
+	0x43, 0x1c, 0x88, 0x52, 0x95, 0xda, 0x11, 0xc3, 0xcb, 0x90, 0xb6, 0x0f, 0x1d, 0x56, 0xf7, 0x69,
+	0xad, 0xe9, 0xef, 0x2b, 0x49, 0x0d, 0xe5, 0xb3, 0x85, 0x89, 0xf6, 0xa0, 0x42, 0x29, 0x36, 0xfd,
+	0xfd, 0xea, 0xd9, 0x31, 0xb3, 0xc0, 0xbe, 0x8c, 0xf1, 0x5b, 0xd0, 0x8a, 0xc4, 0x8c, 0x23, 0x62,
+	0xc6, 0xb1, 0xf0, 0x3c, 0x97, 0x8a, 0x6a, 0xf8, 0x94, 0xa9, 0x08, 0xe0, 0x73, 0xbe, 0x0d, 0x63,
+	0xb6, 0x73, 0xbc, 0xcf, 0x1a, 0xd4, 0x6b, 0x3a, 0xdc, 0x90, 0x51, 0x4d, 0xca, 0x67, 0x0b, 0xb8,
+	0xfd, 0x1c, 0xa1, 0x11, 0x2e, 0x59, 0x19, 0xbb, 0x13, 0x78, 0xf8, 0x3d, 0x98, 0x3e, 0x6e, 0xb0,
+	0x5d, 0x5e, 0x18, 0xad, 0xd1, 0xdd, 0x26, 0xa5, 0xa1, 0xfc, 0xa8, 0xa5, 0x44, 0x08, 0x11, 0x84,
+	0x1e, 0x2f, 0x5f, 0x86, 0x49, 0x8f, 0x79, 0x9e, 0xe3, 0xd6, 0xa9, 0xef, 0xd8, 0x07, 0xcc, 0xf7,
+	0x28, 0xab, 0xd7, 0xb6, 0x0f, 0xd9, 0x8e, 0x02, 0xa2, 0x74, 0xa2, 0x25, 0x57, 0x23, 0xd5, 0x88,
+	0x44, 0x6c, 0xc2, 0x44, 0x77, 0x1d, 0x3d, 0x60, 0x67, 0xd4, 0xd9, 0x51, 0xd2, 0xdc, 0xc0, 0xd5,
+	0x1b, 0xe1, 0x79, 0x0e, 0x93, 0x78, 0x65, 0xf4, 0x12, 0xb1, 0xd7, 0x9b, 0xdb, 0xc1, 0x05, 0x48,
+	0x1f, 0x39, 0x75, 0x7a, 0xc2, 0x1a, 0x5c, 0x51, 0x32, 0xc2, 0xe0, 0xf1, 0xd6, 0xe2, 0xd5, 0x32,
+	0xd9, 0x8a, 0x04, 0x0b, 0x8e, 0x9c, 0x7a, 0xeb, 0x2c, 0x6a, 0x6a, 0xa7, 0x97, 0x35, 0x63, 0xcf,
+	0xaf, 0xa9, 0x9d, 0xb6, 0x6b, 0xde, 0x81, 0x71, 0xbb, 0xd9, 0x38, 0x61, 0x34, 0x32, 0x83, 0xd5,
+	0x6d, 0xe6, 0x29, 0x59, 0x61, 0x73, 0xb6, 0x6d, 0x33, 0xd7, 0xcd, 0x92, 0x25, 0x0b, 0x70, 0xb3,
+	0xc3, 0xcd, 0x7c, 0x0a, 0xd7, 0xfb, 0x5c, 0x4a, 0xac, 0x41, 0x3a, 0x76, 0x2d, 0xc5, 0x2d, 0xce,
+	0x58, 0xf1, 0x14, 0xd6, 0x20, 0xd9, 0x72, 0xe6, 0x9a, 0x70, 0x26, 0x15, 0x9e, 0xe7, 0x12, 0x91,
+	0x19, 0x89, 0x03, 0xb1, 0x7f, 0x0e, 0xd2, 0x1b, 0x3a, 0xd9, 0xa4, 0x9e, 0x5f, 0x3b, 0x3e, 0x64,
+	0x8a, 0xa4, 0xa1, 0x7c, 0xc6, 0x02, 0x9e, 0x22, 0x22, 0x33, 0x7b, 0x0a, 0xd0, 0x59, 0x09, 0x4f,
+	0xc1, 0x8d, 0x4e, 0x44, 0x1f, 0x55, 0xc8, 0xa6, 0xa1, 0x9b, 0x6b, 0xa6, 0x51, 0x92, 0x87, 0x30,
+	0x86, 0xb1, 0x2d, 0xc3, 0x22, 0xe6, 0x46, 0x85, 0x12, 0x52, 0x5e, 0xbc, 0x27, 0x07, 0xc9, 0x78,
+	0xae, 0x5a, 0x26, 0x0b, 0xf7, 0xe4, 0xcf, 0xae, 0xe4, 0x16, 0xe4, 0xcf, 0xaf, 0xe4, 0x0a, 0xf2,
+	0x17, 0xc9, 0xd9, 0x1f, 0x11, 0x64, 0xbb, 0xaf, 0x38, 0xc6, 0x90, 0xad, 0x6c, 0x50, 0xbd, 0x6c,
+	0x1a, 0x95, 0x2a, 0xd5, 0x0d, 0xab, 0x2a, 0x0f, 0xe1, 0x49, 0xb8, 0x6e, 0x19, 0x1f, 0x3d, 0x32,
+	0x48, 0xb5, 0x4b, 0x40, 0x78, 0x1a, 0x26, 0xb9, 0x60, 0x5a, 0x06, 0x2d, 0x56, 0x3e, 0xe9, 0x12,
+	0xaf, 0xe1, 0x1c, 0x4c, 0x6f, 0x19, 0x96, 0xb9, 0xd6, 0x95, 0xa7, 0xe6, 0x1a, 0x7d, 0x60, 0x6e,
+	0x19, 0x15, 0x59, 0xc2, 0x33, 0xa0, 0x76, 0xaa, 0x4b, 0xf4, 0x2a, 0x2c, 0x0f, 0xcf, 0x3e, 0x4e,
+	0x42, 0x3a, 0x76, 0xa1, 0xf9, 0x13, 0x63, 0x61, 0x8f, 0x3d, 0x6f, 0xc2, 0x6b, 0xd5, 0x32, 0xa1,
+	0x86, 0x5e, 0x5a, 0x37, 0xa8, 0x45, 0x8a, 0xf4, 0x63, 0xb3, 0xba, 0x4e, 0x8b, 0x06, 0xa1, 0x0b,
+	0x85, 0x15, 0xfa, 0x40, 0xff, 0x90, 0x92, 0xf5, 0x62, 0x61, 0x69, 0x59, 0xfe, 0x2d, 0x90, 0x06,
+	0xc0, 0x85, 0xa5, 0xe5, 0x36, 0xbc, 0xb8, 0x72, 0x5f, 0xfe, 0x7d, 0x20, 0xcc, 0x3b, 0xeb, 0xab,
+	0x7a, 0xbb, 0xf3, 0x4f, 0x81, 0x84, 0xf3, 0x30, 0xf3, 0x62, 0x58, 0xfe, 0x6e, 0x20, 0xc9, 0x67,
+	0x68, 0x93, 0x8f, 0x03, 0x09, 0xdf, 0x86, 0x1c, 0x27, 0x07, 0x2d, 0xf5, 0x3d, 0xea, 0x4b, 0xf5,
+	0x6c, 0xf3, 0x03, 0xc2, 0xb7, 0x9e, 0xd3, 0x2b, 0xb6, 0xc6, 0xbb, 0x58, 0x83, 0x9b, 0x83, 0x20,
+	0x79, 0xbe, 0x2f, 0x11, 0x1f, 0x7b, 0x09, 0xdf, 0x04, 0xa5, 0x8b, 0xb0, 0xf4, 0xfb, 0xa2, 0x07,
+	0x57, 0x13, 0xf8, 0x55, 0x78, 0xa5, 0x4b, 0x5d, 0x2c, 0x19, 0x84, 0x1a, 0x25, 0xe3, 0xb2, 0x01,
+	0xe0, 0x3b, 0xa0, 0x75, 0xfc, 0x31, 0xf4, 0x52, 0xbf, 0x46, 0x5f, 0x06, 0x12, 0x9e, 0x85, 0xdb,
+	0x7d, 0xb9, 0xde, 0xa1, 0xbf, 0x7a, 0x01, 0x1b, 0x1f, 0xff, 0x6b, 0xe1, 0xba, 0xda, 0xe7, 0xfd,
+	0xc4, 0x9f, 0xfe, 0x4d, 0x20, 0xe1, 0x37, 0xe0, 0x56, 0x1f, 0xea, 0xca, 0x3a, 0xdf, 0x06, 0x12,
+	0xbe, 0x0b, 0xaf, 0x0f, 0x1c, 0x34, 0xf6, 0x3a, 0x7f, 0x09, 0x24, 0x3c, 0x09, 0xe3, 0x1c, 0x5f,
+	0x2b, 0x96, 0xcb, 0xab, 0x45, 0xfd, 0x21, 0x25, 0x3a, 0xd9, 0x92, 0x83, 0x5f, 0xd1, 0xec, 0x07,
+	0x30, 0xd2, 0xfa, 0x96, 0xf1, 0x3f, 0x67, 0xeb, 0xd8, 0xf3, 0x6f, 0x18, 0x85, 0xe1, 0x4d, 0xde,
+	0x68, 0x52, 0x9c, 0xf8, 0xbb, 0x57, 0xc4, 0x69, 0xa9, 0xb0, 0x20, 0xbf, 0xbc, 0xba, 0xf2, 0xe4,
+	0x42, 0x1d, 0xfa, 0xe7, 0x42, 0x1d, 0x7a, 0x7a, 0xa1, 0xa2, 0x67, 0x17, 0x2a, 0xfa, 0xef, 0x42,
+	0x45, 0x41, 0xa8, 0xa2, 0x9f, 0x43, 0x15, 0xfd, 0x11, 0xaa, 0xe8, 0xaf, 0x50, 0x45, 0x7f, 0x87,
+	0x2a, 0x7a, 0x12, 0xaa, 0xe8, 0x69, 0xa8, 0xa2, 0x7f, 0x43, 0x75, 0xe8, 0x59, 0xa8, 0xa2, 0xed,
+	0xa4, 0xf8, 0x96, 0x2e, 0xfe, 0x1f, 0x00, 0x00, 0xff, 0xff, 0xf9, 0xd3, 0x16, 0x41, 0x38, 0x08,
+	0x00, 0x00,
 }
