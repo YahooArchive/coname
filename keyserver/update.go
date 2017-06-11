@@ -136,11 +136,6 @@ func (ks *Keyserver) verifyUpdateEdge(req *proto.UpdateRequest) error {
 	return ks.verifyUpdateDeterministic(prevUpdate, req)
 }
 
-type updateOutput struct {
-	Epoch uint64 // which epoch the update will appear in
-	Error error
-}
-
 // Update implements proto.E2EKS.UpdateServer
 func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*proto.LookupProof, error) {
 	ctx, _ = context.WithTimeout(ctx, ks.clientTimeout)
@@ -159,7 +154,7 @@ func (ks *Keyserver) Update(ctx context.Context, req *proto.UpdateRequest) (*pro
 		ks.wr.Notify(uid, nil)
 		return nil, ctx.Err()
 	case v := <-ch:
-		out := v.(updateOutput)
+		out := v.(coname.UpdateOutput)
 		if out.Error != nil {
 			return nil, out.Error
 		}

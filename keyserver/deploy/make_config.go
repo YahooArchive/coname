@@ -36,7 +36,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/agl/ed25519"
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 )
@@ -164,22 +164,8 @@ func main() {
 
 		InitialReplicas: replicas,
 		RegistrationPolicy: []*proto.RegistrationPolicy{
-			&proto.RegistrationPolicy{PolicyType: &proto.RegistrationPolicy_EmailProofByDKIM{
-				EmailProofByDKIM: &proto.EmailProofByDKIM{
-					AllowedDomains: []string{dkimProofDomain},
-					ToAddr:         "TODO@example.com",
-					SubjectPrefix:  dkimProofPrefix},
-			},
-			},
-			&proto.RegistrationPolicy{PolicyType: &proto.RegistrationPolicy_EmailProofByOIDC{
-				EmailProofByOIDC: &proto.EmailProofByOIDC{
-					OIDCConfig: []*proto.OIDCConfig{
-						&proto.OIDCConfig{AllowedDomains: []string{"yahoo.com"},
-							DiscoveryURL: "https://api.login.yahoo.com/.well-known/openid-configuration",
-							Issuer:       "https://api.login.yahoo.com",
-							ClientID:     "foobar"},
-					},
-				},
+			&proto.RegistrationPolicy{PolicyType: &proto.RegistrationPolicy_InsecureSkipEmailProof{
+				InsecureSkipEmailProof: true,
 			},
 			},
 		},

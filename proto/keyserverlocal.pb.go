@@ -4,17 +4,14 @@
 
 package proto
 
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
@@ -43,11 +40,60 @@ func (m *ReplicaState) Reset()                    { *m = ReplicaState{} }
 func (*ReplicaState) ProtoMessage()               {}
 func (*ReplicaState) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverlocal, []int{0} }
 
+func (m *ReplicaState) GetNextIndexLog() uint64 {
+	if m != nil {
+		return m.NextIndexLog
+	}
+	return 0
+}
+
+func (m *ReplicaState) GetNextIndexVerifier() uint64 {
+	if m != nil {
+		return m.NextIndexVerifier
+	}
+	return 0
+}
+
+func (m *ReplicaState) GetPreviousSummaryHash() []byte {
+	if m != nil {
+		return m.PreviousSummaryHash
+	}
+	return nil
+}
+
 func (m *ReplicaState) GetLastEpochDelimiter() EpochDelimiter {
 	if m != nil {
 		return m.LastEpochDelimiter
 	}
 	return EpochDelimiter{}
+}
+
+func (m *ReplicaState) GetThisReplicaNeedsToSignLastEpoch() bool {
+	if m != nil {
+		return m.ThisReplicaNeedsToSignLastEpoch
+	}
+	return false
+}
+
+func (m *ReplicaState) GetPendingUpdates() bool {
+	if m != nil {
+		return m.PendingUpdates
+	}
+	return false
+}
+
+func (m *ReplicaState) GetLatestTreeSnapshot() uint64 {
+	if m != nil {
+		return m.LatestTreeSnapshot
+	}
+	return 0
+}
+
+func (m *ReplicaState) GetLastEpochNeedsRatification() bool {
+	if m != nil {
+		return m.LastEpochNeedsRatification
+	}
+	return false
 }
 
 func init() {
@@ -180,125 +226,108 @@ func valueToGoStringKeyserverlocal(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringKeyserverlocal(e map[int32]github_com_maditya_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
-func (m *ReplicaState) Marshal() (data []byte, err error) {
+func (m *ReplicaState) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *ReplicaState) MarshalTo(data []byte) (int, error) {
+func (m *ReplicaState) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.NextIndexLog != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintKeyserverlocal(data, i, uint64(m.NextIndexLog))
+		i = encodeVarintKeyserverlocal(dAtA, i, uint64(m.NextIndexLog))
 	}
 	if m.NextIndexVerifier != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintKeyserverlocal(data, i, uint64(m.NextIndexVerifier))
+		i = encodeVarintKeyserverlocal(dAtA, i, uint64(m.NextIndexVerifier))
 	}
 	if len(m.PreviousSummaryHash) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverlocal(data, i, uint64(len(m.PreviousSummaryHash)))
-		i += copy(data[i:], m.PreviousSummaryHash)
+		i = encodeVarintKeyserverlocal(dAtA, i, uint64(len(m.PreviousSummaryHash)))
+		i += copy(dAtA[i:], m.PreviousSummaryHash)
 	}
-	data[i] = 0x22
+	dAtA[i] = 0x22
 	i++
-	i = encodeVarintKeyserverlocal(data, i, uint64(m.LastEpochDelimiter.Size()))
-	n1, err := m.LastEpochDelimiter.MarshalTo(data[i:])
+	i = encodeVarintKeyserverlocal(dAtA, i, uint64(m.LastEpochDelimiter.Size()))
+	n1, err := m.LastEpochDelimiter.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n1
 	if m.ThisReplicaNeedsToSignLastEpoch {
-		data[i] = 0x28
+		dAtA[i] = 0x28
 		i++
 		if m.ThisReplicaNeedsToSignLastEpoch {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.PendingUpdates {
-		data[i] = 0x30
+		dAtA[i] = 0x30
 		i++
 		if m.PendingUpdates {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	if m.LatestTreeSnapshot != 0 {
-		data[i] = 0x38
+		dAtA[i] = 0x38
 		i++
-		i = encodeVarintKeyserverlocal(data, i, uint64(m.LatestTreeSnapshot))
+		i = encodeVarintKeyserverlocal(dAtA, i, uint64(m.LatestTreeSnapshot))
 	}
 	if m.LastEpochNeedsRatification {
-		data[i] = 0x40
+		dAtA[i] = 0x40
 		i++
 		if m.LastEpochNeedsRatification {
-			data[i] = 1
+			dAtA[i] = 1
 		} else {
-			data[i] = 0
+			dAtA[i] = 0
 		}
 		i++
 	}
 	return i, nil
 }
 
-func encodeFixed64Keyserverlocal(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Keyserverlocal(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Keyserverlocal(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Keyserverlocal(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintKeyserverlocal(data []byte, offset int, v uint64) int {
+func encodeVarintKeyserverlocal(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func NewPopulatedReplicaState(r randyKeyserverlocal, easy bool) *ReplicaState {
@@ -347,7 +376,7 @@ func randStringKeyserverlocal(r randyKeyserverlocal) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedKeyserverlocal(r randyKeyserverlocal, maxFieldNumber int) (data []byte) {
+func randUnrecognizedKeyserverlocal(r randyKeyserverlocal, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -355,43 +384,43 @@ func randUnrecognizedKeyserverlocal(r randyKeyserverlocal, maxFieldNumber int) (
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldKeyserverlocal(data, r, fieldNumber, wire)
+		dAtA = randFieldKeyserverlocal(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldKeyserverlocal(data []byte, r randyKeyserverlocal, fieldNumber int, wire int) []byte {
+func randFieldKeyserverlocal(dAtA []byte, r randyKeyserverlocal, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(key))
 		v4 := r.Int63()
 		if r.Intn(2) == 0 {
 			v4 *= -1
 		}
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(v4))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(v4))
 	case 1:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(ll))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateKeyserverlocal(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateKeyserverlocal(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateKeyserverlocal(data []byte, v uint64) []byte {
+func encodeVarintPopulateKeyserverlocal(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *ReplicaState) Size() (n int) {
 	var l int
@@ -461,8 +490,8 @@ func valueToStringKeyserverlocal(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *ReplicaState) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ReplicaState) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -474,7 +503,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -502,7 +531,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.NextIndexLog |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -521,7 +550,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.NextIndexVerifier |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -540,7 +569,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -554,7 +583,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreviousSummaryHash = append(m.PreviousSummaryHash[:0], data[iNdEx:postIndex]...)
+			m.PreviousSummaryHash = append(m.PreviousSummaryHash[:0], dAtA[iNdEx:postIndex]...)
 			if m.PreviousSummaryHash == nil {
 				m.PreviousSummaryHash = []byte{}
 			}
@@ -571,7 +600,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -585,7 +614,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.LastEpochDelimiter.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.LastEpochDelimiter.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -601,7 +630,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -621,7 +650,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -641,7 +670,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.LatestTreeSnapshot |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -660,7 +689,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -670,7 +699,7 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 			m.LastEpochNeedsRatification = bool(v != 0)
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverlocal(data[iNdEx:])
+			skippy, err := skipKeyserverlocal(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -689,8 +718,8 @@ func (m *ReplicaState) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipKeyserverlocal(data []byte) (n int, err error) {
-	l := len(data)
+func skipKeyserverlocal(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -701,7 +730,7 @@ func skipKeyserverlocal(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -719,7 +748,7 @@ func skipKeyserverlocal(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -736,7 +765,7 @@ func skipKeyserverlocal(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -759,7 +788,7 @@ func skipKeyserverlocal(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -770,7 +799,7 @@ func skipKeyserverlocal(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipKeyserverlocal(data[start:])
+				next, err := skipKeyserverlocal(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -797,33 +826,33 @@ var (
 func init() { proto1.RegisterFile("keyserverlocal.proto", fileDescriptorKeyserverlocal) }
 
 var fileDescriptorKeyserverlocal = []byte{
-	// 447 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x54, 0x91, 0xb1, 0x6f, 0xd3, 0x40,
-	0x14, 0xc6, 0x73, 0x34, 0x2d, 0xd5, 0x11, 0x15, 0xf5, 0xda, 0x4a, 0x56, 0x24, 0xae, 0x11, 0x02,
-	0x91, 0x29, 0xa9, 0xca, 0xc2, 0x4a, 0x05, 0x12, 0x48, 0xa5, 0x83, 0x53, 0x58, 0x4f, 0x97, 0xf8,
-	0xc5, 0x3e, 0xe1, 0xdc, 0x59, 0x77, 0xcf, 0x51, 0xb3, 0xf1, 0xe7, 0xf0, 0x27, 0x30, 0x32, 0x76,
-	0xec, 0x82, 0xc4, 0x84, 0xea, 0x9b, 0x18, 0x3b, 0x32, 0x22, 0x9f, 0x9d, 0x12, 0x26, 0xdb, 0xdf,
-	0xef, 0x7b, 0xbe, 0xf7, 0x7d, 0x47, 0x0f, 0x3f, 0xc3, 0xca, 0x81, 0x5d, 0x82, 0xcd, 0xcd, 0x4c,
-	0xe6, 0xa3, 0xc2, 0x1a, 0x34, 0x6c, 0x3b, 0x3c, 0xfa, 0x27, 0xa9, 0xc2, 0xac, 0x9c, 0x8e, 0x66,
-	0x66, 0x31, 0x5e, 0xc8, 0x44, 0xe1, 0x4a, 0x8e, 0x03, 0x99, 0x96, 0xf3, 0x71, 0x6a, 0x52, 0x13,
-	0x3e, 0xc2, 0x5b, 0x33, 0xd8, 0xdf, 0xb7, 0x50, 0xe4, 0x6a, 0x26, 0x51, 0x19, 0xdd, 0x48, 0x4f,
-	0x7f, 0x6c, 0xd1, 0x5e, 0xdc, 0xa8, 0x13, 0x94, 0x08, 0xec, 0x19, 0xdd, 0xd3, 0x70, 0x85, 0x42,
-	0xe9, 0x04, 0xae, 0x44, 0x6e, 0xd2, 0x88, 0x0c, 0xc8, 0xb0, 0x1b, 0xf7, 0x6a, 0xf5, 0x7d, 0x2d,
-	0x9e, 0x9b, 0x94, 0x8d, 0xe8, 0xc1, 0x86, 0x6b, 0x09, 0x56, 0xcd, 0x15, 0xd8, 0xe8, 0x41, 0xb0,
-	0xee, 0xdf, 0x5b, 0x3f, 0xb5, 0x80, 0x9d, 0xd2, 0xa3, 0xc2, 0xc2, 0x52, 0x99, 0xd2, 0x09, 0x57,
-	0x2e, 0x16, 0xd2, 0xae, 0x44, 0x26, 0x5d, 0x16, 0x6d, 0x0d, 0xc8, 0xb0, 0x17, 0x1f, 0xac, 0xe1,
-	0xa4, 0x61, 0xef, 0xa4, 0xcb, 0xd8, 0x07, 0x7a, 0x98, 0x4b, 0x87, 0x02, 0x0a, 0x33, 0xcb, 0x44,
-	0x02, 0xb9, 0x5a, 0x28, 0x04, 0x1b, 0x75, 0x07, 0x64, 0xf8, 0xe8, 0xf4, 0xa8, 0x09, 0x30, 0x7a,
-	0x5b, 0xd3, 0x37, 0x6b, 0x78, 0xd6, 0xbd, 0xfe, 0x75, 0xdc, 0x89, 0x59, 0x3d, 0xf8, 0x3f, 0x61,
-	0x17, 0xf4, 0x39, 0x66, 0xca, 0x89, 0xb6, 0x03, 0xa1, 0x01, 0x12, 0x27, 0xd0, 0x08, 0xa7, 0x52,
-	0x2d, 0xfe, 0x9d, 0x14, 0x6d, 0x0f, 0xc8, 0x70, 0x37, 0x3e, 0xae, 0xcd, 0x6d, 0x33, 0x17, 0xb5,
-	0xf5, 0xd2, 0x4c, 0x54, 0xaa, 0xcf, 0xd7, 0x3f, 0x66, 0x2f, 0xe8, 0xe3, 0x02, 0x74, 0xa2, 0x74,
-	0x2a, 0xca, 0x22, 0x91, 0x08, 0x2e, 0xda, 0x09, 0x93, 0x7b, 0xad, 0xfc, 0xb1, 0x51, 0xd9, 0x49,
-	0x9d, 0x03, 0xc1, 0xa1, 0x40, 0x0b, 0x20, 0x9c, 0x96, 0x85, 0xcb, 0x0c, 0x46, 0x0f, 0x43, 0x59,
-	0xac, 0x61, 0x97, 0x16, 0x60, 0xd2, 0x12, 0xf6, 0x9a, 0x3e, 0xd9, 0x48, 0xde, 0x2c, 0x6a, 0x25,
-	0xaa, 0x79, 0x7b, 0x77, 0xd1, 0x6e, 0x38, 0xa8, 0x7f, 0x9f, 0x32, 0x2c, 0x18, 0x6f, 0x38, 0xce,
-	0x5e, 0xdd, 0x54, 0xbc, 0xf3, 0xb3, 0xe2, 0x9d, 0xdb, 0x8a, 0x93, 0xbb, 0x8a, 0x93, 0x3f, 0x15,
-	0x27, 0x5f, 0x3c, 0x27, 0x5f, 0x3d, 0x27, 0xdf, 0x3c, 0x27, 0xdf, 0x3d, 0x27, 0xd7, 0x9e, 0x93,
-	0x1b, 0xcf, 0xc9, 0xad, 0xe7, 0xe4, 0xb7, 0xe7, 0x9d, 0x3b, 0xcf, 0xc9, 0x74, 0x27, 0xf4, 0xfa,
-	0xf2, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf4, 0x94, 0xcf, 0xd3, 0x7c, 0x02, 0x00, 0x00,
+	// 443 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x54, 0x91, 0xb1, 0x6f, 0xd4, 0x30,
+	0x14, 0xc6, 0xcf, 0xf4, 0x5a, 0x2a, 0x73, 0x2a, 0xaa, 0xdb, 0x4a, 0xd1, 0x49, 0xb8, 0x27, 0x04,
+	0xe2, 0x16, 0xae, 0xa8, 0x2c, 0xac, 0x54, 0x20, 0x81, 0x54, 0x3a, 0xe4, 0x0a, 0xab, 0xe5, 0xbb,
+	0xbc, 0x4b, 0x2c, 0x12, 0x3b, 0xb2, 0x5f, 0x4e, 0xed, 0xc6, 0x9f, 0xc3, 0x9f, 0xc0, 0xc8, 0xd8,
+	0xb1, 0x0b, 0x12, 0x13, 0x6a, 0x3c, 0x31, 0x76, 0x64, 0x44, 0x71, 0x72, 0xe5, 0x98, 0x12, 0x7f,
+	0xbf, 0xef, 0xc5, 0xef, 0xfb, 0x42, 0xf7, 0x3f, 0xc3, 0xa5, 0x03, 0xbb, 0x04, 0x9b, 0x9b, 0xb9,
+	0xcc, 0x27, 0xa5, 0x35, 0x68, 0xd8, 0x66, 0x78, 0x0c, 0x9f, 0xa7, 0x0a, 0xb3, 0x6a, 0x36, 0x99,
+	0x9b, 0xe2, 0x28, 0x35, 0xa9, 0x39, 0x0a, 0xf2, 0xac, 0x5a, 0x84, 0x53, 0x38, 0x84, 0xb7, 0x76,
+	0x6a, 0xb8, 0x6b, 0xa1, 0xcc, 0xd5, 0x5c, 0xa2, 0x32, 0xba, 0x95, 0x1e, 0xff, 0xd8, 0xa0, 0x83,
+	0xb8, 0x55, 0xa7, 0x28, 0x11, 0xd8, 0x13, 0xba, 0xa3, 0xe1, 0x02, 0x85, 0xd2, 0x09, 0x5c, 0x88,
+	0xdc, 0xa4, 0x11, 0x19, 0x91, 0x71, 0x3f, 0x1e, 0x34, 0xea, 0xfb, 0x46, 0x3c, 0x35, 0x29, 0x9b,
+	0xd0, 0xbd, 0x35, 0xd7, 0x12, 0xac, 0x5a, 0x28, 0xb0, 0xd1, 0xbd, 0x60, 0xdd, 0xbd, 0xb3, 0x7e,
+	0xea, 0x00, 0x3b, 0xa6, 0x07, 0xa5, 0x85, 0xa5, 0x32, 0x95, 0x13, 0xae, 0x2a, 0x0a, 0x69, 0x2f,
+	0x45, 0x26, 0x5d, 0x16, 0x6d, 0x8c, 0xc8, 0x78, 0x10, 0xef, 0xad, 0xe0, 0xb4, 0x65, 0xef, 0xa4,
+	0xcb, 0xd8, 0x07, 0xba, 0x9f, 0x4b, 0x87, 0x02, 0x4a, 0x33, 0xcf, 0x44, 0x02, 0xb9, 0x2a, 0x14,
+	0x82, 0x8d, 0xfa, 0x23, 0x32, 0x7e, 0x70, 0x7c, 0xd0, 0x06, 0x98, 0xbc, 0x6d, 0xe8, 0x9b, 0x15,
+	0x3c, 0xe9, 0x5f, 0xfd, 0x3a, 0xec, 0xc5, 0xac, 0x19, 0xfc, 0x9f, 0xb0, 0x33, 0xfa, 0x14, 0x33,
+	0xe5, 0x44, 0xd7, 0x81, 0xd0, 0x00, 0x89, 0x13, 0x68, 0x84, 0x53, 0xa9, 0x16, 0xff, 0x6e, 0x8a,
+	0x36, 0x47, 0x64, 0xbc, 0x1d, 0x1f, 0x36, 0xe6, 0xae, 0x99, 0xb3, 0xc6, 0x7a, 0x6e, 0xa6, 0x2a,
+	0xd5, 0xa7, 0xab, 0x0f, 0xb3, 0x67, 0xf4, 0x61, 0x09, 0x3a, 0x51, 0x3a, 0x15, 0x55, 0x99, 0x48,
+	0x04, 0x17, 0x6d, 0x85, 0xc9, 0x9d, 0x4e, 0xfe, 0xd8, 0xaa, 0xec, 0x45, 0x93, 0x03, 0xc1, 0xa1,
+	0x40, 0x0b, 0x20, 0x9c, 0x96, 0xa5, 0xcb, 0x0c, 0x46, 0xf7, 0x43, 0x59, 0xac, 0x65, 0xe7, 0x16,
+	0x60, 0xda, 0x11, 0xf6, 0x9a, 0x3e, 0x5a, 0x4b, 0xde, 0x2e, 0x6a, 0x25, 0xaa, 0x45, 0xf7, 0xef,
+	0xa2, 0xed, 0x70, 0xd1, 0xf0, 0x2e, 0x65, 0x58, 0x30, 0x5e, 0x73, 0x9c, 0xbc, 0xba, 0xae, 0x79,
+	0xef, 0x67, 0xcd, 0x7b, 0x37, 0x35, 0x27, 0xb7, 0x35, 0x27, 0x7f, 0x6a, 0x4e, 0xbe, 0x78, 0x4e,
+	0xbe, 0x7a, 0x4e, 0xbe, 0x79, 0x4e, 0xbe, 0x7b, 0x4e, 0xae, 0x3c, 0x27, 0xd7, 0x9e, 0x93, 0x1b,
+	0xcf, 0xc9, 0x6f, 0xcf, 0x7b, 0xb7, 0x9e, 0x93, 0xd9, 0x56, 0xe8, 0xf5, 0xe5, 0xdf, 0x00, 0x00,
+	0x00, 0xff, 0xff, 0xa9, 0x7c, 0xcf, 0x99, 0x79, 0x02, 0x00, 0x00,
 }

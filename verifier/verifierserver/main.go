@@ -16,7 +16,7 @@ import (
 	"strings"
 
 	"github.com/agl/ed25519"
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/yahoo/coname/keyserver/kv/leveldbkv"

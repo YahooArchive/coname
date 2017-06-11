@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/maditya/protobuf/jsonpb"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/yahoo/coname/proto"
 	"golang.org/x/net/context"
 )
