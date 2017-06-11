@@ -15,8 +15,8 @@
 package proto
 
 import (
-	github_com_gogo_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
-	github_com_gogo_protobuf_proto "github.com/maditya/protobuf/proto"
+	github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+	github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
 	math_rand "math/rand"
 	"testing"
 	"time"
@@ -53,7 +53,7 @@ func TestEncodedSignedEntryUpdateJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	msg := &EncodedSignedEntryUpdate{}
-	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(string(jsondata), msg)
 	if err != nil {
 		t.Fatal(err)
 	}
