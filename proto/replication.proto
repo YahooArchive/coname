@@ -66,5 +66,4 @@ message EpochDelimiter {
 message EpochUpdate {
 	EpochDelimiter delimiter = 1; // the proposed EpochDelimiter
 	bool update = 2;	// a flag to update the epoch immediately
-	fixed64 UID = 3;	// UID of the proposed message
 }

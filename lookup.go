@@ -319,3 +319,8 @@ func GetUpdate(db kv.DB, idx []byte, epoch uint64) (*proto.UpdateRequest, error)
 	}
 	return ret, nil
 }
+
+type UpdateOutput struct {
+	Epoch uint64 // which epoch the update will appear in
+	Error error
+}

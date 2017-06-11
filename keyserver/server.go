@@ -433,6 +433,7 @@ func (ks *Keyserver) run() {
 	defer close(ks.stopped)
 	var step proto.KeyserverStep
 	wb := ks.db.NewBatch()
+	// @@ this loop may yield a busy loop and block commitments if the process takes up more than minEpochInternval
 	for {
 		select {
 		case <-ks.stop:
@@ -483,11 +484,11 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		prevUpdate, err := ks.getUpdate(index, math.MaxUint64)
 		if err != nil {
 			log.Printf("getUpdate: %s", err)
-			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			ks.wr.Notify(step.UID, coname.UpdateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		if err := ks.verifyUpdateDeterministic(prevUpdate, step.GetUpdate()); err != nil {
-			ks.wr.Notify(step.UID, updateOutput{Error: err})
+			ks.wr.Notify(step.UID, coname.UpdateOutput{Error: err})
 			return
 		}
 		latestTree := ks.merkletree.GetSnapshot(rs.LatestTreeSnapshot)
@@ -495,7 +496,7 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		// sanity check: compare previous version in Merkle tree vs in updates table
 		prevEntryHashTree, _, err := latestTree.Lookup(index)
 		if err != nil {
-			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			ks.wr.Notify(step.UID, coname.UpdateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		var prevEntryHash []byte
@@ -511,18 +512,18 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 		sha3.ShakeSum256(entryHash[:], step.GetUpdate().Update.NewEntry.Encoding)
 		newTree, err := latestTree.BeginModification()
 		if err != nil {
-			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			ks.wr.Notify(step.UID, coname.UpdateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		if err := newTree.Set(index, entryHash[:]); err != nil {
 			log.Printf("setting index '%x' gave error: %s", index, err)
-			ks.wr.Notify(step.UID, updateOutput{Error: fmt.Errorf("internal error")})
+			ks.wr.Notify(step.UID, coname.UpdateOutput{Error: fmt.Errorf("internal error")})
 			return
 		}
 		rs.LatestTreeSnapshot = newTree.Flush(wb).Nr
 		epochNr := rs.LastEpochDelimiter.EpochNumber + 1
 		wb.Put(coname.TableUpdateRequests(index, epochNr), proto.MustMarshal(step.GetUpdate()))
-		ks.wr.Notify(step.UID, updateOutput{Epoch: epochNr})
+		ks.wr.Notify(step.UID, coname.UpdateOutput{Epoch: epochNr})
 
 		rs.PendingUpdates = true
 		ks.updateEpochProposer()
@@ -705,9 +706,6 @@ func (ks *Keyserver) step(step *proto.KeyserverStep, rs *proto.ReplicaState, wb 
 	case *proto.KeyserverStep_UpdateEpoch:
 		if rs.LastEpochDelimiter.EpochNumber < step.GetUpdateEpoch().Delimiter.EpochNumber {
 			rs.LastEpochDelimiter = *step.GetUpdateEpoch().Delimiter
-		}
-		if step.GetUpdateEpoch().UID != 0 {
-			ks.wr.Notify(step.GetUpdateEpoch().UID, updateOutput{Epoch: rs.LastEpochDelimiter.EpochNumber})
 		}
 		rs.PendingUpdates = step.GetUpdateEpoch().Update
 		ks.resetEpochTimers(rs.LastEpochDelimiter.Timestamp.Time())
