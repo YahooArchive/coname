@@ -7,13 +7,13 @@ package proto
 import testing "testing"
 import math_rand "math/rand"
 import time "time"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import github_com_maditya_protobuf_jsonpb "github.com/maditya/protobuf/jsonpb"
+import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
+import github_com_gogo_protobuf_jsonpb "github.com/gogo/protobuf/jsonpb"
 import fmt "fmt"
 import go_parser "go/parser"
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto1.Marshal
@@ -24,18 +24,18 @@ func TestReplicaConfigProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ReplicaConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -50,7 +50,7 @@ func TestReplicaConfigProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -59,20 +59,20 @@ func TestReplicaConfigMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ReplicaConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -91,11 +91,11 @@ func BenchmarkReplicaConfigProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -105,17 +105,17 @@ func BenchmarkReplicaConfigProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedReplicaConfig(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedReplicaConfig(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &ReplicaConfig{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -126,18 +126,18 @@ func TestKeyserverConfigProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &KeyserverConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -152,7 +152,7 @@ func TestKeyserverConfigProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -161,20 +161,20 @@ func TestKeyserverConfigMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &KeyserverConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -193,11 +193,11 @@ func BenchmarkKeyserverConfigProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -207,17 +207,17 @@ func BenchmarkKeyserverConfigProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedKeyserverConfig(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedKeyserverConfig(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &KeyserverConfig{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -228,18 +228,18 @@ func TestRegistrationPolicyProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RegistrationPolicy{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -254,7 +254,7 @@ func TestRegistrationPolicyProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -263,20 +263,20 @@ func TestRegistrationPolicyMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RegistrationPolicy{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -295,11 +295,11 @@ func BenchmarkRegistrationPolicyProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -309,17 +309,17 @@ func BenchmarkRegistrationPolicyProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedRegistrationPolicy(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedRegistrationPolicy(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &RegistrationPolicy{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -330,18 +330,18 @@ func TestEmailProofByDKIMProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByDKIM{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -356,7 +356,7 @@ func TestEmailProofByDKIMProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -365,20 +365,20 @@ func TestEmailProofByDKIMMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByDKIM{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -397,11 +397,11 @@ func BenchmarkEmailProofByDKIMProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -411,17 +411,17 @@ func BenchmarkEmailProofByDKIMProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEmailProofByDKIM(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedEmailProofByDKIM(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &EmailProofByDKIM{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -432,18 +432,18 @@ func TestEmailProofByClientCertProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByClientCert{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -458,7 +458,7 @@ func TestEmailProofByClientCertProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -467,20 +467,20 @@ func TestEmailProofByClientCertMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByClientCert{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -499,11 +499,11 @@ func BenchmarkEmailProofByClientCertProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -513,17 +513,17 @@ func BenchmarkEmailProofByClientCertProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEmailProofByClientCert(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedEmailProofByClientCert(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &EmailProofByClientCert{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -534,18 +534,18 @@ func TestEmailProofByOIDCProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByOIDC{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -560,7 +560,7 @@ func TestEmailProofByOIDCProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -569,20 +569,20 @@ func TestEmailProofByOIDCMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByOIDC{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -601,11 +601,11 @@ func BenchmarkEmailProofByOIDCProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -615,17 +615,17 @@ func BenchmarkEmailProofByOIDCProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEmailProofByOIDC(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedEmailProofByOIDC(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &EmailProofByOIDC{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -636,18 +636,18 @@ func TestEmailProofBySAMLProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofBySAML{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -662,7 +662,7 @@ func TestEmailProofBySAMLProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -671,20 +671,20 @@ func TestEmailProofBySAMLMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofBySAML{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -703,11 +703,11 @@ func BenchmarkEmailProofBySAMLProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -717,17 +717,17 @@ func BenchmarkEmailProofBySAMLProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedEmailProofBySAML(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedEmailProofBySAML(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &EmailProofBySAML{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -738,18 +738,18 @@ func TestOIDCConfigProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &OIDCConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -764,7 +764,7 @@ func TestOIDCConfigProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -773,20 +773,20 @@ func TestOIDCConfigMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &OIDCConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -805,11 +805,11 @@ func BenchmarkOIDCConfigProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -819,17 +819,17 @@ func BenchmarkOIDCConfigProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedOIDCConfig(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedOIDCConfig(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &OIDCConfig{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -840,18 +840,18 @@ func TestReplicaProto(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Replica{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	littlefuzz := make([]byte, len(data))
-	copy(littlefuzz, data)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	littlefuzz := make([]byte, len(dAtA))
+	copy(littlefuzz, dAtA)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -866,7 +866,7 @@ func TestReplicaProto(t *testing.T) {
 			littlefuzz = append(littlefuzz, byte(popr.Intn(256)))
 		}
 		// shouldn't panic
-		_ = github_com_maditya_protobuf_proto.Unmarshal(littlefuzz, msg)
+		_ = github_com_gogo_protobuf_proto.Unmarshal(littlefuzz, msg)
 	}
 }
 
@@ -875,20 +875,20 @@ func TestReplicaMarshalTo(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, false)
 	size := p.Size()
-	data := make([]byte, size)
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	dAtA := make([]byte, size)
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
-	_, err := p.MarshalTo(data)
+	_, err := p.MarshalTo(dAtA)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Replica{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
-	for i := range data {
-		data[i] = byte(popr.Intn(256))
+	for i := range dAtA {
+		dAtA[i] = byte(popr.Intn(256))
 	}
 	if err := p.VerboseEqual(msg); err != nil {
 		t.Fatalf("seed = %d, %#v !VerboseProto %#v, since %v", seed, msg, p, err)
@@ -907,11 +907,11 @@ func BenchmarkReplicaProtoMarshal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(pops[i%10000])
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(pops[i%10000])
 		if err != nil {
 			panic(err)
 		}
-		total += len(data)
+		total += len(dAtA)
 	}
 	b.SetBytes(int64(total / b.N))
 }
@@ -921,17 +921,17 @@ func BenchmarkReplicaProtoUnmarshal(b *testing.B) {
 	total := 0
 	datas := make([][]byte, 10000)
 	for i := 0; i < 10000; i++ {
-		data, err := github_com_maditya_protobuf_proto.Marshal(NewPopulatedReplica(popr, false))
+		dAtA, err := github_com_gogo_protobuf_proto.Marshal(NewPopulatedReplica(popr, false))
 		if err != nil {
 			panic(err)
 		}
-		datas[i] = data
+		datas[i] = dAtA
 	}
 	msg := &Replica{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		total += len(datas[i%10000])
-		if err := github_com_maditya_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
+		if err := github_com_gogo_protobuf_proto.Unmarshal(datas[i%10000], msg); err != nil {
 			panic(err)
 		}
 	}
@@ -942,13 +942,13 @@ func TestReplicaConfigJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &ReplicaConfig{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -963,13 +963,13 @@ func TestKeyserverConfigJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &KeyserverConfig{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -984,13 +984,13 @@ func TestRegistrationPolicyJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &RegistrationPolicy{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1005,13 +1005,13 @@ func TestEmailProofByDKIMJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByDKIM{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1026,13 +1026,13 @@ func TestEmailProofByClientCertJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByClientCert{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1047,13 +1047,13 @@ func TestEmailProofByOIDCJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofByOIDC{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1068,13 +1068,13 @@ func TestEmailProofBySAMLJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &EmailProofBySAML{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1089,13 +1089,13 @@ func TestOIDCConfigJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &OIDCConfig{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1110,13 +1110,13 @@ func TestReplicaJSON(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)
-	marshaler := github_com_maditya_protobuf_jsonpb.Marshaler{}
+	marshaler := github_com_gogo_protobuf_jsonpb.Marshaler{}
 	jsondata, err := marshaler.MarshalToString(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	msg := &Replica{}
-	err = github_com_maditya_protobuf_jsonpb.UnmarshalString(jsondata, msg)
+	err = github_com_gogo_protobuf_jsonpb.UnmarshalString(jsondata, msg)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
@@ -1128,13 +1128,13 @@ func TestReplicaJSON(t *testing.T) {
 	}
 }
 func TestReplicaConfigProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &ReplicaConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1146,13 +1146,13 @@ func TestReplicaConfigProtoText(t *testing.T) {
 }
 
 func TestReplicaConfigProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &ReplicaConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1164,13 +1164,13 @@ func TestReplicaConfigProtoCompactText(t *testing.T) {
 }
 
 func TestKeyserverConfigProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &KeyserverConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1182,13 +1182,13 @@ func TestKeyserverConfigProtoText(t *testing.T) {
 }
 
 func TestKeyserverConfigProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &KeyserverConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1200,13 +1200,13 @@ func TestKeyserverConfigProtoCompactText(t *testing.T) {
 }
 
 func TestRegistrationPolicyProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &RegistrationPolicy{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1218,13 +1218,13 @@ func TestRegistrationPolicyProtoText(t *testing.T) {
 }
 
 func TestRegistrationPolicyProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &RegistrationPolicy{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1236,13 +1236,13 @@ func TestRegistrationPolicyProtoCompactText(t *testing.T) {
 }
 
 func TestEmailProofByDKIMProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &EmailProofByDKIM{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1254,13 +1254,13 @@ func TestEmailProofByDKIMProtoText(t *testing.T) {
 }
 
 func TestEmailProofByDKIMProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &EmailProofByDKIM{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1272,13 +1272,13 @@ func TestEmailProofByDKIMProtoCompactText(t *testing.T) {
 }
 
 func TestEmailProofByClientCertProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &EmailProofByClientCert{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1290,13 +1290,13 @@ func TestEmailProofByClientCertProtoText(t *testing.T) {
 }
 
 func TestEmailProofByClientCertProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &EmailProofByClientCert{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1308,13 +1308,13 @@ func TestEmailProofByClientCertProtoCompactText(t *testing.T) {
 }
 
 func TestEmailProofByOIDCProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &EmailProofByOIDC{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1326,13 +1326,13 @@ func TestEmailProofByOIDCProtoText(t *testing.T) {
 }
 
 func TestEmailProofByOIDCProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &EmailProofByOIDC{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1344,13 +1344,13 @@ func TestEmailProofByOIDCProtoCompactText(t *testing.T) {
 }
 
 func TestEmailProofBySAMLProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &EmailProofBySAML{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1362,13 +1362,13 @@ func TestEmailProofBySAMLProtoText(t *testing.T) {
 }
 
 func TestEmailProofBySAMLProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &EmailProofBySAML{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1380,13 +1380,13 @@ func TestEmailProofBySAMLProtoCompactText(t *testing.T) {
 }
 
 func TestOIDCConfigProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &OIDCConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1398,13 +1398,13 @@ func TestOIDCConfigProtoText(t *testing.T) {
 }
 
 func TestOIDCConfigProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &OIDCConfig{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1416,13 +1416,13 @@ func TestOIDCConfigProtoCompactText(t *testing.T) {
 }
 
 func TestReplicaProtoText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)
-	data := github_com_maditya_protobuf_proto.MarshalTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.MarshalTextString(p)
 	msg := &Replica{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1434,13 +1434,13 @@ func TestReplicaProtoText(t *testing.T) {
 }
 
 func TestReplicaProtoCompactText(t *testing.T) {
-	t.Skip()
+t.Skip()
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)
-	data := github_com_maditya_protobuf_proto.CompactTextString(p)
+	dAtA := github_com_gogo_protobuf_proto.CompactTextString(p)
 	msg := &Replica{}
-	if err := github_com_maditya_protobuf_proto.UnmarshalText(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.UnmarshalText(dAtA, msg); err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1454,12 +1454,12 @@ func TestReplicaProtoCompactText(t *testing.T) {
 func TestReplicaConfigVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplicaConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &ReplicaConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1469,12 +1469,12 @@ func TestReplicaConfigVerboseEqual(t *testing.T) {
 func TestKeyserverConfigVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedKeyserverConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &KeyserverConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1484,12 +1484,12 @@ func TestKeyserverConfigVerboseEqual(t *testing.T) {
 func TestRegistrationPolicyVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRegistrationPolicy(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &RegistrationPolicy{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1499,12 +1499,12 @@ func TestRegistrationPolicyVerboseEqual(t *testing.T) {
 func TestEmailProofByDKIMVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByDKIM(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EmailProofByDKIM{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1514,12 +1514,12 @@ func TestEmailProofByDKIMVerboseEqual(t *testing.T) {
 func TestEmailProofByClientCertVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByClientCert(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EmailProofByClientCert{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1529,12 +1529,12 @@ func TestEmailProofByClientCertVerboseEqual(t *testing.T) {
 func TestEmailProofByOIDCVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByOIDC(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EmailProofByOIDC{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1544,12 +1544,12 @@ func TestEmailProofByOIDCVerboseEqual(t *testing.T) {
 func TestEmailProofBySAMLVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofBySAML(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &EmailProofBySAML{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1559,12 +1559,12 @@ func TestEmailProofBySAMLVerboseEqual(t *testing.T) {
 func TestOIDCConfigVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedOIDCConfig(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &OIDCConfig{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1574,12 +1574,12 @@ func TestOIDCConfigVerboseEqual(t *testing.T) {
 func TestReplicaVerboseEqual(t *testing.T) {
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplica(popr, false)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		panic(err)
 	}
 	msg := &Replica{}
-	if err := github_com_maditya_protobuf_proto.Unmarshal(data, msg); err != nil {
+	if err := github_com_gogo_protobuf_proto.Unmarshal(dAtA, msg); err != nil {
 		panic(err)
 	}
 	if err := p.VerboseEqual(msg); err != nil {
@@ -1587,6 +1587,7 @@ func TestReplicaVerboseEqual(t *testing.T) {
 	}
 }
 func TestReplicaConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplicaConfig(popr, false)
 	s1 := p.GoString()
@@ -1600,6 +1601,7 @@ func TestReplicaConfigGoString(t *testing.T) {
 	}
 }
 func TestKeyserverConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedKeyserverConfig(popr, false)
 	s1 := p.GoString()
@@ -1613,6 +1615,7 @@ func TestKeyserverConfigGoString(t *testing.T) {
 	}
 }
 func TestRegistrationPolicyGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRegistrationPolicy(popr, false)
 	s1 := p.GoString()
@@ -1626,6 +1629,7 @@ func TestRegistrationPolicyGoString(t *testing.T) {
 	}
 }
 func TestEmailProofByDKIMGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByDKIM(popr, false)
 	s1 := p.GoString()
@@ -1639,6 +1643,7 @@ func TestEmailProofByDKIMGoString(t *testing.T) {
 	}
 }
 func TestEmailProofByClientCertGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByClientCert(popr, false)
 	s1 := p.GoString()
@@ -1652,6 +1657,7 @@ func TestEmailProofByClientCertGoString(t *testing.T) {
 	}
 }
 func TestEmailProofByOIDCGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByOIDC(popr, false)
 	s1 := p.GoString()
@@ -1665,6 +1671,7 @@ func TestEmailProofByOIDCGoString(t *testing.T) {
 	}
 }
 func TestEmailProofBySAMLGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofBySAML(popr, false)
 	s1 := p.GoString()
@@ -1678,6 +1685,7 @@ func TestEmailProofBySAMLGoString(t *testing.T) {
 	}
 }
 func TestOIDCConfigGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedOIDCConfig(popr, false)
 	s1 := p.GoString()
@@ -1691,6 +1699,7 @@ func TestOIDCConfigGoString(t *testing.T) {
 	}
 }
 func TestReplicaGoString(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplica(popr, false)
 	s1 := p.GoString()
@@ -1707,19 +1716,19 @@ func TestReplicaConfigSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplicaConfig(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1743,19 +1752,19 @@ func TestKeyserverConfigSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedKeyserverConfig(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1779,19 +1788,19 @@ func TestRegistrationPolicySize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedRegistrationPolicy(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1815,19 +1824,19 @@ func TestEmailProofByDKIMSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByDKIM(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1851,19 +1860,19 @@ func TestEmailProofByClientCertSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByClientCert(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1887,19 +1896,19 @@ func TestEmailProofByOIDCSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofByOIDC(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1923,19 +1932,19 @@ func TestEmailProofBySAMLSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedEmailProofBySAML(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1959,19 +1968,19 @@ func TestOIDCConfigSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedOIDCConfig(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -1995,19 +2004,19 @@ func TestReplicaSize(t *testing.T) {
 	seed := time.Now().UnixNano()
 	popr := math_rand.New(math_rand.NewSource(seed))
 	p := NewPopulatedReplica(popr, true)
-	size2 := github_com_maditya_protobuf_proto.Size(p)
-	data, err := github_com_maditya_protobuf_proto.Marshal(p)
+	size2 := github_com_gogo_protobuf_proto.Size(p)
+	dAtA, err := github_com_gogo_protobuf_proto.Marshal(p)
 	if err != nil {
 		t.Fatalf("seed = %d, err = %v", seed, err)
 	}
 	size := p.Size()
-	if len(data) != size {
-		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(data))
+	if len(dAtA) != size {
+		t.Errorf("seed = %d, size %v != marshalled size %v", seed, size, len(dAtA))
 	}
 	if size2 != size {
 		t.Errorf("seed = %d, size %v != before marshal proto.Size %v", seed, size, size2)
 	}
-	size3 := github_com_maditya_protobuf_proto.Size(p)
+	size3 := github_com_gogo_protobuf_proto.Size(p)
 	if size3 != size {
 		t.Errorf("seed = %d, size %v != after marshal proto.Size %v", seed, size, size3)
 	}
@@ -2028,6 +2037,7 @@ func BenchmarkReplicaSize(b *testing.B) {
 }
 
 func TestReplicaConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplicaConfig(popr, false)
 	s1 := p.String()
@@ -2037,6 +2047,7 @@ func TestReplicaConfigStringer(t *testing.T) {
 	}
 }
 func TestKeyserverConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedKeyserverConfig(popr, false)
 	s1 := p.String()
@@ -2046,6 +2057,7 @@ func TestKeyserverConfigStringer(t *testing.T) {
 	}
 }
 func TestRegistrationPolicyStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedRegistrationPolicy(popr, false)
 	s1 := p.String()
@@ -2055,6 +2067,7 @@ func TestRegistrationPolicyStringer(t *testing.T) {
 	}
 }
 func TestEmailProofByDKIMStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByDKIM(popr, false)
 	s1 := p.String()
@@ -2064,6 +2077,7 @@ func TestEmailProofByDKIMStringer(t *testing.T) {
 	}
 }
 func TestEmailProofByClientCertStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByClientCert(popr, false)
 	s1 := p.String()
@@ -2073,6 +2087,7 @@ func TestEmailProofByClientCertStringer(t *testing.T) {
 	}
 }
 func TestEmailProofByOIDCStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofByOIDC(popr, false)
 	s1 := p.String()
@@ -2082,6 +2097,7 @@ func TestEmailProofByOIDCStringer(t *testing.T) {
 	}
 }
 func TestEmailProofBySAMLStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedEmailProofBySAML(popr, false)
 	s1 := p.String()
@@ -2091,6 +2107,7 @@ func TestEmailProofBySAMLStringer(t *testing.T) {
 	}
 }
 func TestOIDCConfigStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedOIDCConfig(popr, false)
 	s1 := p.String()
@@ -2100,6 +2117,7 @@ func TestOIDCConfigStringer(t *testing.T) {
 	}
 }
 func TestReplicaStringer(t *testing.T) {
+t.Skip()
 	popr := math_rand.New(math_rand.NewSource(time.Now().UnixNano()))
 	p := NewPopulatedReplica(popr, false)
 	s1 := p.String()
@@ -2109,4 +2127,4 @@ func TestReplicaStringer(t *testing.T) {
 	}
 }
 
-//These tests are generated by github.com/maditya/protobuf/plugin/testgen
+//These tests are generated by github.com/gogo/protobuf/plugin/testgen

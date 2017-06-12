@@ -16,12 +16,11 @@ package keyserver
 
 import (
 	"encoding/binary"
-	"fmt"
 	"log"
+	"fmt"
 
 	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"
-	"github.com/yahoo/coname/keyserver/merkletree"
 	"github.com/yahoo/coname/proto"
 	"github.com/yahoo/coname/vrf"
 	"golang.org/x/net/context"
@@ -37,7 +36,7 @@ func (ks *Keyserver) findRatificationsForEpoch(epoch uint64, desiredVerifiers ma
 	ratifications = []*proto.SignedEpochHead{}
 	haveVerifiers = make(map[uint64]struct{})
 	for verifier := range desiredVerifiers {
-		sehBytes, err := ks.db.Get(tableRatifications(epoch, verifier))
+		sehBytes, err := ks.db.Get(coname.TableRatifications(epoch, verifier))
 		switch err {
 		case nil:
 		case ks.db.ErrNotFound():
@@ -91,7 +90,7 @@ func (ks *Keyserver) assembleLookupProof(req *proto.LookupRequest, lookupEpoch u
 	ret := &proto.LookupProof{UserId: req.UserId}
 	ret.Index, ret.IndexProof = vrf.Prove([]byte(req.UserId), ks.vrfSecret)
 	ret.Ratifications = ratifications
-	tree, err := ks.merkletreeForEpoch(lookupEpoch)
+	tree, err := ks.merkletree.MerkletreeForEpoch(lookupEpoch)
 	if err != nil {
 		log.Printf("ERROR: couldn't get merkle tree for epoch %d: %s", lookupEpoch, err)
 		return nil, fmt.Errorf("internal error")
@@ -172,25 +171,9 @@ func (ks *Keyserver) blockingLookup(ctx context.Context, req *proto.LookupReques
 	return ks.assembleLookupProof(req, epoch, ratifications)
 }
 
-func (ks *Keyserver) merkletreeForEpoch(epoch uint64) (*merkletree.Snapshot, error) {
-	if epoch == 0 {
-		// Special-case epoch 0: It is always empty
-		return ks.merkletree.GetSnapshot(0), nil
-	}
-	snapshotNrBytes, err := ks.db.Get(tableMerkleTreeSnapshot(epoch))
-	if err != nil {
-		return nil, err
-	}
-	if len(snapshotNrBytes) != 8 {
-		return nil, fmt.Errorf("bad snapshot number for epoch %d: %x", epoch, snapshotNrBytes)
-	}
-	snapshotNr := binary.BigEndian.Uint64(snapshotNrBytes)
-	return ks.merkletree.GetSnapshot(snapshotNr), nil
-}
-
 // lastSignedEpoch returns the last epoch for which we have any signature.
 func (ks *Keyserver) lastSignedEpoch() uint64 {
-	iter := ks.db.NewIterator(kv.BytesPrefix([]byte{tableRatificationsPrefix}))
+	iter := ks.db.NewIterator(kv.BytesPrefix([]byte{coname.TableRatificationsPrefix}))
 	defer iter.Release()
 	if !iter.Last() {
 		return 0
@@ -206,28 +189,5 @@ func (ks *Keyserver) lastSignedEpoch() uint64 {
 // getUpdate returns the last update to profile of idx during or before epoch.
 // If there is no such update, (nil, nil) is returned.
 func (ks *Keyserver) getUpdate(idx []byte, epoch uint64) (*proto.UpdateRequest, error) {
-	// idx: []&const
-	if len(idx) != vrf.Size {
-		log.Panicf("getUpdate: index %x has bad length", idx)
-	}
-	prefixIdxEpoch := make([]byte, 1+vrf.Size+8)
-	prefixIdxEpoch[0] = tableUpdateRequestsPrefix
-	copy(prefixIdxEpoch[1:], idx)
-	binary.BigEndian.PutUint64(prefixIdxEpoch[1+len(idx):], epoch)
-	iter := ks.db.NewIterator(&kv.Range{
-		Start: prefixIdxEpoch[:1+len(idx)],
-		Limit: kv.IncrementKey(prefixIdxEpoch),
-	})
-	defer iter.Release()
-	if !iter.Last() {
-		if iter.Error() != nil {
-			return nil, iter.Error()
-		}
-		return nil, nil
-	}
-	ret := new(proto.UpdateRequest)
-	if err := ret.Unmarshal(iter.Value()); err != nil {
-		return nil, iter.Error()
-	}
-	return ret, nil
+	return coname.GetUpdate(ks.db, idx, epoch)
 }

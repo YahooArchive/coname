@@ -4,17 +4,14 @@
 
 package proto
 
-import proto1 "github.com/maditya/protobuf/proto"
+import proto1 "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import _ "github.com/maditya/protobuf/gogoproto"
+import _ "github.com/gogo/protobuf/gogoproto"
 
 import bytes "bytes"
 
 import strings "strings"
-import github_com_maditya_protobuf_proto "github.com/maditya/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
 import reflect "reflect"
 
 import io "io"
@@ -74,11 +71,39 @@ func (m *ReplicaConfig) Reset()                    { *m = ReplicaConfig{} }
 func (*ReplicaConfig) ProtoMessage()               {}
 func (*ReplicaConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{0} }
 
+func (m *ReplicaConfig) GetReplicaID() uint64 {
+	if m != nil {
+		return m.ReplicaID
+	}
+	return 0
+}
+
+func (m *ReplicaConfig) GetSigningKeyID() string {
+	if m != nil {
+		return m.SigningKeyID
+	}
+	return ""
+}
+
+func (m *ReplicaConfig) GetPublicAddr() string {
+	if m != nil {
+		return m.PublicAddr
+	}
+	return ""
+}
+
 func (m *ReplicaConfig) GetPublicTLS() TLSConfig {
 	if m != nil {
 		return m.PublicTLS
 	}
 	return TLSConfig{}
+}
+
+func (m *ReplicaConfig) GetVerifierAddr() string {
+	if m != nil {
+		return m.VerifierAddr
+	}
+	return ""
 }
 
 func (m *ReplicaConfig) GetVerifierTLS() TLSConfig {
@@ -88,11 +113,25 @@ func (m *ReplicaConfig) GetVerifierTLS() TLSConfig {
 	return TLSConfig{}
 }
 
+func (m *ReplicaConfig) GetHKPAddr() string {
+	if m != nil {
+		return m.HKPAddr
+	}
+	return ""
+}
+
 func (m *ReplicaConfig) GetHKPTLS() TLSConfig {
 	if m != nil {
 		return m.HKPTLS
 	}
 	return TLSConfig{}
+}
+
+func (m *ReplicaConfig) GetHTTPFrontAddr() string {
+	if m != nil {
+		return m.HTTPFrontAddr
+	}
+	return ""
 }
 
 func (m *ReplicaConfig) GetHTTPFrontTLS() TLSConfig {
@@ -102,6 +141,13 @@ func (m *ReplicaConfig) GetHTTPFrontTLS() TLSConfig {
 	return TLSConfig{}
 }
 
+func (m *ReplicaConfig) GetRaftAddr() string {
+	if m != nil {
+		return m.RaftAddr
+	}
+	return ""
+}
+
 func (m *ReplicaConfig) GetRaftTLS() TLSConfig {
 	if m != nil {
 		return m.RaftTLS
@@ -109,11 +155,25 @@ func (m *ReplicaConfig) GetRaftTLS() TLSConfig {
 	return TLSConfig{}
 }
 
+func (m *ReplicaConfig) GetLevelDBPath() string {
+	if m != nil {
+		return m.LevelDBPath
+	}
+	return ""
+}
+
 func (m *ReplicaConfig) GetRaftHeartbeat() Duration {
 	if m != nil {
 		return m.RaftHeartbeat
 	}
 	return Duration{}
+}
+
+func (m *ReplicaConfig) GetLaggingVerifierScan() uint64 {
+	if m != nil {
+		return m.LaggingVerifierScan
+	}
+	return 0
 }
 
 func (m *ReplicaConfig) GetClientTimeout() Duration {
@@ -173,6 +233,27 @@ type KeyserverConfig struct {
 func (m *KeyserverConfig) Reset()                    { *m = KeyserverConfig{} }
 func (*KeyserverConfig) ProtoMessage()               {}
 func (*KeyserverConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{1} }
+
+func (m *KeyserverConfig) GetServerID() uint64 {
+	if m != nil {
+		return m.ServerID
+	}
+	return 0
+}
+
+func (m *KeyserverConfig) GetRealm() string {
+	if m != nil {
+		return m.Realm
+	}
+	return ""
+}
+
+func (m *KeyserverConfig) GetVRFKeyID() string {
+	if m != nil {
+		return m.VRFKeyID
+	}
+	return ""
+}
 
 func (m *KeyserverConfig) GetMinEpochInterval() Duration {
 	if m != nil {
@@ -451,6 +532,27 @@ func (m *EmailProofByDKIM) Reset()                    { *m = EmailProofByDKIM{} 
 func (*EmailProofByDKIM) ProtoMessage()               {}
 func (*EmailProofByDKIM) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{3} }
 
+func (m *EmailProofByDKIM) GetAllowedDomains() []string {
+	if m != nil {
+		return m.AllowedDomains
+	}
+	return nil
+}
+
+func (m *EmailProofByDKIM) GetToAddr() string {
+	if m != nil {
+		return m.ToAddr
+	}
+	return ""
+}
+
+func (m *EmailProofByDKIM) GetSubjectPrefix() string {
+	if m != nil {
+		return m.SubjectPrefix
+	}
+	return ""
+}
+
 // EmailProofByClientCert accepts a certificate signed by an authority trusted
 // with handling registration as sufficient confirmation of ownership of an
 // email address. The emailAddress value in the certificate's DistinguishedName
@@ -468,6 +570,20 @@ func (m *EmailProofByClientCert) Reset()      { *m = EmailProofByClientCert{} }
 func (*EmailProofByClientCert) ProtoMessage() {}
 func (*EmailProofByClientCert) Descriptor() ([]byte, []int) {
 	return fileDescriptorKeyserverconfig, []int{4}
+}
+
+func (m *EmailProofByClientCert) GetAllowedDomains() []string {
+	if m != nil {
+		return m.AllowedDomains
+	}
+	return nil
+}
+
+func (m *EmailProofByClientCert) GetCaCert() []byte {
+	if m != nil {
+		return m.CaCert
+	}
+	return nil
 }
 
 // EmailProofByOIDC accepts an ID token fetched from an OpenID Connect provider
@@ -513,6 +629,27 @@ func (m *EmailProofBySAML) Reset()                    { *m = EmailProofBySAML{} 
 func (*EmailProofBySAML) ProtoMessage()               {}
 func (*EmailProofBySAML) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{6} }
 
+func (m *EmailProofBySAML) GetAllowedDomains() []string {
+	if m != nil {
+		return m.AllowedDomains
+	}
+	return nil
+}
+
+func (m *EmailProofBySAML) GetIDPMetadataURL() string {
+	if m != nil {
+		return m.IDPMetadataURL
+	}
+	return ""
+}
+
+func (m *EmailProofBySAML) GetConsumerServiceURL() string {
+	if m != nil {
+		return m.ConsumerServiceURL
+	}
+	return ""
+}
+
 func (m *EmailProofBySAML) GetServiceProviderTLS() TLSConfig {
 	if m != nil {
 		return m.ServiceProviderTLS
@@ -552,11 +689,46 @@ func (m *OIDCConfig) Reset()                    { *m = OIDCConfig{} }
 func (*OIDCConfig) ProtoMessage()               {}
 func (*OIDCConfig) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{7} }
 
+func (m *OIDCConfig) GetAllowedDomains() []string {
+	if m != nil {
+		return m.AllowedDomains
+	}
+	return nil
+}
+
+func (m *OIDCConfig) GetDiscoveryURL() string {
+	if m != nil {
+		return m.DiscoveryURL
+	}
+	return ""
+}
+
+func (m *OIDCConfig) GetIssuer() string {
+	if m != nil {
+		return m.Issuer
+	}
+	return ""
+}
+
+func (m *OIDCConfig) GetClientID() string {
+	if m != nil {
+		return m.ClientID
+	}
+	return ""
+}
+
 func (m *OIDCConfig) GetValidity() Duration {
 	if m != nil {
 		return m.Validity
 	}
 	return Duration{}
+}
+
+func (m *OIDCConfig) GetScope() string {
+	if m != nil {
+		return m.Scope
+	}
+	return ""
 }
 
 type Replica struct {
@@ -578,11 +750,25 @@ func (m *Replica) Reset()                    { *m = Replica{} }
 func (*Replica) ProtoMessage()               {}
 func (*Replica) Descriptor() ([]byte, []int) { return fileDescriptorKeyserverconfig, []int{8} }
 
+func (m *Replica) GetID() uint64 {
+	if m != nil {
+		return m.ID
+	}
+	return 0
+}
+
 func (m *Replica) GetPublicKeys() []*PublicKey {
 	if m != nil {
 		return m.PublicKeys
 	}
 	return nil
+}
+
+func (m *Replica) GetRaftAddr() string {
+	if m != nil {
+		return m.RaftAddr
+	}
+	return ""
 }
 
 func init() {
@@ -1935,155 +2121,137 @@ func valueToGoStringKeyserverconfig(v interface{}, typ string) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
 }
-func extensionToGoStringKeyserverconfig(m github_com_maditya_protobuf_proto.Message) string {
-	e := github_com_maditya_protobuf_proto.GetUnsafeExtensionsMap(m)
-	if e == nil {
-		return "nil"
-	}
-	s := "proto.NewUnsafeXXX_InternalExtensions(map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "})"
-	return s
-}
-func (m *ReplicaConfig) Marshal() (data []byte, err error) {
+func (m *ReplicaConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
+func (m *ReplicaConfig) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
-	data[i] = 0xa
+	dAtA[i] = 0xa
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.KeyserverConfig.Size()))
-	n1, err := m.KeyserverConfig.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.KeyserverConfig.Size()))
+	n1, err := m.KeyserverConfig.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n1
 	if m.ReplicaID != 0 {
-		data[i] = 0x10
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ReplicaID))
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ReplicaID))
 	}
 	if len(m.SigningKeyID) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.SigningKeyID)))
-		i += copy(data[i:], m.SigningKeyID)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.SigningKeyID)))
+		i += copy(dAtA[i:], m.SigningKeyID)
 	}
 	if len(m.PublicAddr) > 0 {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.PublicAddr)))
-		i += copy(data[i:], m.PublicAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.PublicAddr)))
+		i += copy(dAtA[i:], m.PublicAddr)
 	}
-	data[i] = 0x2a
+	dAtA[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.PublicTLS.Size()))
-	n2, err := m.PublicTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.PublicTLS.Size()))
+	n2, err := m.PublicTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n2
 	if len(m.VerifierAddr) > 0 {
-		data[i] = 0x32
+		dAtA[i] = 0x32
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VerifierAddr)))
-		i += copy(data[i:], m.VerifierAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.VerifierAddr)))
+		i += copy(dAtA[i:], m.VerifierAddr)
 	}
-	data[i] = 0x3a
+	dAtA[i] = 0x3a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.VerifierTLS.Size()))
-	n3, err := m.VerifierTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.VerifierTLS.Size()))
+	n3, err := m.VerifierTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n3
 	if len(m.HKPAddr) > 0 {
-		data[i] = 0x42
+		dAtA[i] = 0x42
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HKPAddr)))
-		i += copy(data[i:], m.HKPAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.HKPAddr)))
+		i += copy(dAtA[i:], m.HKPAddr)
 	}
-	data[i] = 0x4a
+	dAtA[i] = 0x4a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.HKPTLS.Size()))
-	n4, err := m.HKPTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.HKPTLS.Size()))
+	n4, err := m.HKPTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n4
 	if len(m.HTTPFrontAddr) > 0 {
-		data[i] = 0x52
+		dAtA[i] = 0x52
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.HTTPFrontAddr)))
-		i += copy(data[i:], m.HTTPFrontAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.HTTPFrontAddr)))
+		i += copy(dAtA[i:], m.HTTPFrontAddr)
 	}
-	data[i] = 0x5a
+	dAtA[i] = 0x5a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.HTTPFrontTLS.Size()))
-	n5, err := m.HTTPFrontTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.HTTPFrontTLS.Size()))
+	n5, err := m.HTTPFrontTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n5
 	if len(m.RaftAddr) > 0 {
-		data[i] = 0x62
+		dAtA[i] = 0x62
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
-		i += copy(data[i:], m.RaftAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.RaftAddr)))
+		i += copy(dAtA[i:], m.RaftAddr)
 	}
-	data[i] = 0x6a
+	dAtA[i] = 0x6a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftTLS.Size()))
-	n6, err := m.RaftTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.RaftTLS.Size()))
+	n6, err := m.RaftTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n6
 	if len(m.LevelDBPath) > 0 {
-		data[i] = 0x72
+		dAtA[i] = 0x72
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.LevelDBPath)))
-		i += copy(data[i:], m.LevelDBPath)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.LevelDBPath)))
+		i += copy(dAtA[i:], m.LevelDBPath)
 	}
-	data[i] = 0x7a
+	dAtA[i] = 0x7a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.RaftHeartbeat.Size()))
-	n7, err := m.RaftHeartbeat.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.RaftHeartbeat.Size()))
+	n7, err := m.RaftHeartbeat.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n7
 	if m.LaggingVerifierScan != 0 {
-		data[i] = 0x80
+		dAtA[i] = 0x80
 		i++
-		data[i] = 0x1
+		dAtA[i] = 0x1
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.LaggingVerifierScan))
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.LaggingVerifierScan))
 	}
-	data[i] = 0x8a
+	dAtA[i] = 0x8a
 	i++
-	data[i] = 0x1
+	dAtA[i] = 0x1
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ClientTimeout.Size()))
-	n8, err := m.ClientTimeout.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ClientTimeout.Size()))
+	n8, err := m.ClientTimeout.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -2091,68 +2259,68 @@ func (m *ReplicaConfig) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *KeyserverConfig) Marshal() (data []byte, err error) {
+func (m *KeyserverConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
+func (m *KeyserverConfig) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ServerID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ServerID))
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ServerID))
 	}
 	if len(m.Realm) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Realm)))
-		i += copy(data[i:], m.Realm)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.Realm)))
+		i += copy(dAtA[i:], m.Realm)
 	}
 	if len(m.VRFKeyID) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.VRFKeyID)))
-		i += copy(data[i:], m.VRFKeyID)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.VRFKeyID)))
+		i += copy(dAtA[i:], m.VRFKeyID)
 	}
-	data[i] = 0x22
+	dAtA[i] = 0x22
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MinEpochInterval.Size()))
-	n9, err := m.MinEpochInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.MinEpochInterval.Size()))
+	n9, err := m.MinEpochInterval.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n9
-	data[i] = 0x2a
+	dAtA[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.MaxEpochInterval.Size()))
-	n10, err := m.MaxEpochInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.MaxEpochInterval.Size()))
+	n10, err := m.MaxEpochInterval.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n10
-	data[i] = 0x32
+	dAtA[i] = 0x32
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ProposalRetryInterval.Size()))
-	n11, err := m.ProposalRetryInterval.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ProposalRetryInterval.Size()))
+	n11, err := m.ProposalRetryInterval.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n11
 	if len(m.InitialReplicas) > 0 {
 		for _, msg := range m.InitialReplicas {
-			data[i] = 0x3a
+			dAtA[i] = 0x3a
 			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintKeyserverconfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -2161,10 +2329,10 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.RegistrationPolicy) > 0 {
 		for _, msg := range m.RegistrationPolicy {
-			data[i] = 0x42
+			dAtA[i] = 0x42
 			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintKeyserverconfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -2174,23 +2342,23 @@ func (m *KeyserverConfig) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RegistrationPolicy) Marshal() (data []byte, err error) {
+func (m *RegistrationPolicy) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *RegistrationPolicy) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.PolicyType != nil {
-		nn12, err := m.PolicyType.MarshalTo(data[i:])
+		nn12, err := m.PolicyType.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2199,25 +2367,25 @@ func (m *RegistrationPolicy) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *RegistrationPolicy_InsecureSkipEmailProof) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy_InsecureSkipEmailProof) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
-	data[i] = 0x8
+	dAtA[i] = 0x8
 	i++
 	if m.InsecureSkipEmailProof {
-		data[i] = 1
+		dAtA[i] = 1
 	} else {
-		data[i] = 0
+		dAtA[i] = 0
 	}
 	i++
 	return i, nil
 }
-func (m *RegistrationPolicy_EmailProofByDKIM) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy_EmailProofByDKIM) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.EmailProofByDKIM != nil {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.EmailProofByDKIM.Size()))
-		n13, err := m.EmailProofByDKIM.MarshalTo(data[i:])
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.EmailProofByDKIM.Size()))
+		n13, err := m.EmailProofByDKIM.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2225,13 +2393,13 @@ func (m *RegistrationPolicy_EmailProofByDKIM) MarshalTo(data []byte) (int, error
 	}
 	return i, nil
 }
-func (m *RegistrationPolicy_EmailProofByClientCert) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy_EmailProofByClientCert) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.EmailProofByClientCert != nil {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.EmailProofByClientCert.Size()))
-		n14, err := m.EmailProofByClientCert.MarshalTo(data[i:])
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.EmailProofByClientCert.Size()))
+		n14, err := m.EmailProofByClientCert.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2239,13 +2407,13 @@ func (m *RegistrationPolicy_EmailProofByClientCert) MarshalTo(data []byte) (int,
 	}
 	return i, nil
 }
-func (m *RegistrationPolicy_EmailProofByOIDC) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy_EmailProofByOIDC) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.EmailProofByOIDC != nil {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.EmailProofByOIDC.Size()))
-		n15, err := m.EmailProofByOIDC.MarshalTo(data[i:])
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.EmailProofByOIDC.Size()))
+		n15, err := m.EmailProofByOIDC.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2253,13 +2421,13 @@ func (m *RegistrationPolicy_EmailProofByOIDC) MarshalTo(data []byte) (int, error
 	}
 	return i, nil
 }
-func (m *RegistrationPolicy_EmailProofBySAML) MarshalTo(data []byte) (int, error) {
+func (m *RegistrationPolicy_EmailProofBySAML) MarshalTo(dAtA []byte) (int, error) {
 	i := 0
 	if m.EmailProofBySAML != nil {
-		data[i] = 0x2a
+		dAtA[i] = 0x2a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.EmailProofBySAML.Size()))
-		n16, err := m.EmailProofBySAML.MarshalTo(data[i:])
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.EmailProofBySAML.Size()))
+		n16, err := m.EmailProofBySAML.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
@@ -2267,111 +2435,111 @@ func (m *RegistrationPolicy_EmailProofBySAML) MarshalTo(data []byte) (int, error
 	}
 	return i, nil
 }
-func (m *EmailProofByDKIM) Marshal() (data []byte, err error) {
+func (m *EmailProofByDKIM) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *EmailProofByDKIM) MarshalTo(data []byte) (int, error) {
+func (m *EmailProofByDKIM) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.AllowedDomains) > 0 {
 		for _, s := range m.AllowedDomains {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.ToAddr) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.ToAddr)))
-		i += copy(data[i:], m.ToAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.ToAddr)))
+		i += copy(dAtA[i:], m.ToAddr)
 	}
 	if len(m.SubjectPrefix) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.SubjectPrefix)))
-		i += copy(data[i:], m.SubjectPrefix)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.SubjectPrefix)))
+		i += copy(dAtA[i:], m.SubjectPrefix)
 	}
 	return i, nil
 }
 
-func (m *EmailProofByClientCert) Marshal() (data []byte, err error) {
+func (m *EmailProofByClientCert) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *EmailProofByClientCert) MarshalTo(data []byte) (int, error) {
+func (m *EmailProofByClientCert) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.AllowedDomains) > 0 {
 		for _, s := range m.AllowedDomains {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.CaCert) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.CaCert)))
-		i += copy(data[i:], m.CaCert)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.CaCert)))
+		i += copy(dAtA[i:], m.CaCert)
 	}
 	return i, nil
 }
 
-func (m *EmailProofByOIDC) Marshal() (data []byte, err error) {
+func (m *EmailProofByOIDC) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *EmailProofByOIDC) MarshalTo(data []byte) (int, error) {
+func (m *EmailProofByOIDC) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.OIDCConfig) > 0 {
 		for _, msg := range m.OIDCConfig {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintKeyserverconfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -2381,60 +2549,60 @@ func (m *EmailProofByOIDC) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *EmailProofBySAML) Marshal() (data []byte, err error) {
+func (m *EmailProofBySAML) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *EmailProofBySAML) MarshalTo(data []byte) (int, error) {
+func (m *EmailProofBySAML) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.AllowedDomains) > 0 {
 		for _, s := range m.AllowedDomains {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.IDPMetadataURL) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.IDPMetadataURL)))
-		i += copy(data[i:], m.IDPMetadataURL)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.IDPMetadataURL)))
+		i += copy(dAtA[i:], m.IDPMetadataURL)
 	}
 	if len(m.ConsumerServiceURL) > 0 {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.ConsumerServiceURL)))
-		i += copy(data[i:], m.ConsumerServiceURL)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.ConsumerServiceURL)))
+		i += copy(dAtA[i:], m.ConsumerServiceURL)
 	}
-	data[i] = 0x2a
+	dAtA[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.ServiceProviderTLS.Size()))
-	n17, err := m.ServiceProviderTLS.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ServiceProviderTLS.Size()))
+	n17, err := m.ServiceProviderTLS.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n17
-	data[i] = 0x32
+	dAtA[i] = 0x32
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.Validity.Size()))
-	n18, err := m.Validity.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.Validity.Size()))
+	n18, err := m.Validity.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
@@ -2442,97 +2610,97 @@ func (m *EmailProofBySAML) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func (m *OIDCConfig) Marshal() (data []byte, err error) {
+func (m *OIDCConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *OIDCConfig) MarshalTo(data []byte) (int, error) {
+func (m *OIDCConfig) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if len(m.AllowedDomains) > 0 {
 		for _, s := range m.AllowedDomains {
-			data[i] = 0xa
+			dAtA[i] = 0xa
 			i++
 			l = len(s)
 			for l >= 1<<7 {
-				data[i] = uint8(uint64(l)&0x7f | 0x80)
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
 				l >>= 7
 				i++
 			}
-			data[i] = uint8(l)
+			dAtA[i] = uint8(l)
 			i++
-			i += copy(data[i:], s)
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.DiscoveryURL) > 0 {
-		data[i] = 0x12
+		dAtA[i] = 0x12
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.DiscoveryURL)))
-		i += copy(data[i:], m.DiscoveryURL)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.DiscoveryURL)))
+		i += copy(dAtA[i:], m.DiscoveryURL)
 	}
 	if len(m.Issuer) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Issuer)))
-		i += copy(data[i:], m.Issuer)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.Issuer)))
+		i += copy(dAtA[i:], m.Issuer)
 	}
 	if len(m.ClientID) > 0 {
-		data[i] = 0x22
+		dAtA[i] = 0x22
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.ClientID)))
-		i += copy(data[i:], m.ClientID)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.ClientID)))
+		i += copy(dAtA[i:], m.ClientID)
 	}
-	data[i] = 0x2a
+	dAtA[i] = 0x2a
 	i++
-	i = encodeVarintKeyserverconfig(data, i, uint64(m.Validity.Size()))
-	n19, err := m.Validity.MarshalTo(data[i:])
+	i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.Validity.Size()))
+	n19, err := m.Validity.MarshalTo(dAtA[i:])
 	if err != nil {
 		return 0, err
 	}
 	i += n19
 	if len(m.Scope) > 0 {
-		data[i] = 0x32
+		dAtA[i] = 0x32
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.Scope)))
-		i += copy(data[i:], m.Scope)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.Scope)))
+		i += copy(dAtA[i:], m.Scope)
 	}
 	return i, nil
 }
 
-func (m *Replica) Marshal() (data []byte, err error) {
+func (m *Replica) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
-	data = make([]byte, size)
-	n, err := m.MarshalTo(data)
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
-	return data[:n], nil
+	return dAtA[:n], nil
 }
 
-func (m *Replica) MarshalTo(data []byte) (int, error) {
+func (m *Replica) MarshalTo(dAtA []byte) (int, error) {
 	var i int
 	_ = i
 	var l int
 	_ = l
 	if m.ID != 0 {
-		data[i] = 0x8
+		dAtA[i] = 0x8
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(m.ID))
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(m.ID))
 	}
 	if len(m.PublicKeys) > 0 {
 		for _, msg := range m.PublicKeys {
-			data[i] = 0x12
+			dAtA[i] = 0x12
 			i++
-			i = encodeVarintKeyserverconfig(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
+			i = encodeVarintKeyserverconfig(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
 			if err != nil {
 				return 0, err
 			}
@@ -2540,39 +2708,39 @@ func (m *Replica) MarshalTo(data []byte) (int, error) {
 		}
 	}
 	if len(m.RaftAddr) > 0 {
-		data[i] = 0x1a
+		dAtA[i] = 0x1a
 		i++
-		i = encodeVarintKeyserverconfig(data, i, uint64(len(m.RaftAddr)))
-		i += copy(data[i:], m.RaftAddr)
+		i = encodeVarintKeyserverconfig(dAtA, i, uint64(len(m.RaftAddr)))
+		i += copy(dAtA[i:], m.RaftAddr)
 	}
 	return i, nil
 }
 
-func encodeFixed64Keyserverconfig(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
+func encodeFixed64Keyserverconfig(dAtA []byte, offset int, v uint64) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
+	dAtA[offset+4] = uint8(v >> 32)
+	dAtA[offset+5] = uint8(v >> 40)
+	dAtA[offset+6] = uint8(v >> 48)
+	dAtA[offset+7] = uint8(v >> 56)
 	return offset + 8
 }
-func encodeFixed32Keyserverconfig(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
+func encodeFixed32Keyserverconfig(dAtA []byte, offset int, v uint32) int {
+	dAtA[offset] = uint8(v)
+	dAtA[offset+1] = uint8(v >> 8)
+	dAtA[offset+2] = uint8(v >> 16)
+	dAtA[offset+3] = uint8(v >> 24)
 	return offset + 4
 }
-func encodeVarintKeyserverconfig(data []byte, offset int, v uint64) int {
+func encodeVarintKeyserverconfig(dAtA []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
-		data[offset] = uint8(v&0x7f | 0x80)
+		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
-	data[offset] = uint8(v)
+	dAtA[offset] = uint8(v)
 	return offset + 1
 }
 func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig {
@@ -2580,23 +2748,23 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 	v1 := NewPopulatedKeyserverConfig(r, easy)
 	this.KeyserverConfig = *v1
 	this.ReplicaID = uint64(uint64(r.Uint32()))
-	this.SigningKeyID = randStringKeyserverconfig(r)
-	this.PublicAddr = randStringKeyserverconfig(r)
+	this.SigningKeyID = string(randStringKeyserverconfig(r))
+	this.PublicAddr = string(randStringKeyserverconfig(r))
 	v2 := NewPopulatedTLSConfig(r, easy)
 	this.PublicTLS = *v2
-	this.VerifierAddr = randStringKeyserverconfig(r)
+	this.VerifierAddr = string(randStringKeyserverconfig(r))
 	v3 := NewPopulatedTLSConfig(r, easy)
 	this.VerifierTLS = *v3
-	this.HKPAddr = randStringKeyserverconfig(r)
+	this.HKPAddr = string(randStringKeyserverconfig(r))
 	v4 := NewPopulatedTLSConfig(r, easy)
 	this.HKPTLS = *v4
-	this.HTTPFrontAddr = randStringKeyserverconfig(r)
+	this.HTTPFrontAddr = string(randStringKeyserverconfig(r))
 	v5 := NewPopulatedTLSConfig(r, easy)
 	this.HTTPFrontTLS = *v5
-	this.RaftAddr = randStringKeyserverconfig(r)
+	this.RaftAddr = string(randStringKeyserverconfig(r))
 	v6 := NewPopulatedTLSConfig(r, easy)
 	this.RaftTLS = *v6
-	this.LevelDBPath = randStringKeyserverconfig(r)
+	this.LevelDBPath = string(randStringKeyserverconfig(r))
 	v7 := NewPopulatedDuration(r, easy)
 	this.RaftHeartbeat = *v7
 	this.LaggingVerifierScan = uint64(uint64(r.Uint32()))
@@ -2610,8 +2778,8 @@ func NewPopulatedReplicaConfig(r randyKeyserverconfig, easy bool) *ReplicaConfig
 func NewPopulatedKeyserverConfig(r randyKeyserverconfig, easy bool) *KeyserverConfig {
 	this := &KeyserverConfig{}
 	this.ServerID = uint64(uint64(r.Uint32()))
-	this.Realm = randStringKeyserverconfig(r)
-	this.VRFKeyID = randStringKeyserverconfig(r)
+	this.Realm = string(randStringKeyserverconfig(r))
+	this.VRFKeyID = string(randStringKeyserverconfig(r))
 	v9 := NewPopulatedDuration(r, easy)
 	this.MinEpochInterval = *v9
 	v10 := NewPopulatedDuration(r, easy)
@@ -2687,10 +2855,10 @@ func NewPopulatedEmailProofByDKIM(r randyKeyserverconfig, easy bool) *EmailProof
 	v14 := r.Intn(10)
 	this.AllowedDomains = make([]string, v14)
 	for i := 0; i < v14; i++ {
-		this.AllowedDomains[i] = randStringKeyserverconfig(r)
+		this.AllowedDomains[i] = string(randStringKeyserverconfig(r))
 	}
-	this.ToAddr = randStringKeyserverconfig(r)
-	this.SubjectPrefix = randStringKeyserverconfig(r)
+	this.ToAddr = string(randStringKeyserverconfig(r))
+	this.SubjectPrefix = string(randStringKeyserverconfig(r))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2701,7 +2869,7 @@ func NewPopulatedEmailProofByClientCert(r randyKeyserverconfig, easy bool) *Emai
 	v15 := r.Intn(10)
 	this.AllowedDomains = make([]string, v15)
 	for i := 0; i < v15; i++ {
-		this.AllowedDomains[i] = randStringKeyserverconfig(r)
+		this.AllowedDomains[i] = string(randStringKeyserverconfig(r))
 	}
 	v16 := r.Intn(100)
 	this.CaCert = make([]byte, v16)
@@ -2732,10 +2900,10 @@ func NewPopulatedEmailProofBySAML(r randyKeyserverconfig, easy bool) *EmailProof
 	v18 := r.Intn(10)
 	this.AllowedDomains = make([]string, v18)
 	for i := 0; i < v18; i++ {
-		this.AllowedDomains[i] = randStringKeyserverconfig(r)
+		this.AllowedDomains[i] = string(randStringKeyserverconfig(r))
 	}
-	this.IDPMetadataURL = randStringKeyserverconfig(r)
-	this.ConsumerServiceURL = randStringKeyserverconfig(r)
+	this.IDPMetadataURL = string(randStringKeyserverconfig(r))
+	this.ConsumerServiceURL = string(randStringKeyserverconfig(r))
 	v19 := NewPopulatedTLSConfig(r, easy)
 	this.ServiceProviderTLS = *v19
 	v20 := NewPopulatedDuration(r, easy)
@@ -2750,14 +2918,14 @@ func NewPopulatedOIDCConfig(r randyKeyserverconfig, easy bool) *OIDCConfig {
 	v21 := r.Intn(10)
 	this.AllowedDomains = make([]string, v21)
 	for i := 0; i < v21; i++ {
-		this.AllowedDomains[i] = randStringKeyserverconfig(r)
+		this.AllowedDomains[i] = string(randStringKeyserverconfig(r))
 	}
-	this.DiscoveryURL = randStringKeyserverconfig(r)
-	this.Issuer = randStringKeyserverconfig(r)
-	this.ClientID = randStringKeyserverconfig(r)
+	this.DiscoveryURL = string(randStringKeyserverconfig(r))
+	this.Issuer = string(randStringKeyserverconfig(r))
+	this.ClientID = string(randStringKeyserverconfig(r))
 	v22 := NewPopulatedDuration(r, easy)
 	this.Validity = *v22
-	this.Scope = randStringKeyserverconfig(r)
+	this.Scope = string(randStringKeyserverconfig(r))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2773,7 +2941,7 @@ func NewPopulatedReplica(r randyKeyserverconfig, easy bool) *Replica {
 			this.PublicKeys[i] = NewPopulatedPublicKey(r, easy)
 		}
 	}
-	this.RaftAddr = randStringKeyserverconfig(r)
+	this.RaftAddr = string(randStringKeyserverconfig(r))
 	if !easy && r.Intn(10) != 0 {
 	}
 	return this
@@ -2805,7 +2973,7 @@ func randStringKeyserverconfig(r randyKeyserverconfig) string {
 	}
 	return string(tmps)
 }
-func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (data []byte) {
+func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int) (dAtA []byte) {
 	l := r.Intn(5)
 	for i := 0; i < l; i++ {
 		wire := r.Intn(4)
@@ -2813,43 +2981,43 @@ func randUnrecognizedKeyserverconfig(r randyKeyserverconfig, maxFieldNumber int)
 			wire = 5
 		}
 		fieldNumber := maxFieldNumber + r.Intn(100)
-		data = randFieldKeyserverconfig(data, r, fieldNumber, wire)
+		dAtA = randFieldKeyserverconfig(dAtA, r, fieldNumber, wire)
 	}
-	return data
+	return dAtA
 }
-func randFieldKeyserverconfig(data []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
+func randFieldKeyserverconfig(dAtA []byte, r randyKeyserverconfig, fieldNumber int, wire int) []byte {
 	key := uint32(fieldNumber)<<3 | uint32(wire)
 	switch wire {
 	case 0:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(key))
 		v25 := r.Int63()
 		if r.Intn(2) == 0 {
 			v25 *= -1
 		}
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(v25))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(v25))
 	case 1:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	case 2:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(key))
 		ll := r.Intn(100)
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(ll))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(ll))
 		for j := 0; j < ll; j++ {
-			data = append(data, byte(r.Intn(256)))
+			dAtA = append(dAtA, byte(r.Intn(256)))
 		}
 	default:
-		data = encodeVarintPopulateKeyserverconfig(data, uint64(key))
-		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+		dAtA = encodeVarintPopulateKeyserverconfig(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
 	}
-	return data
+	return dAtA
 }
-func encodeVarintPopulateKeyserverconfig(data []byte, v uint64) []byte {
+func encodeVarintPopulateKeyserverconfig(dAtA []byte, v uint64) []byte {
 	for v >= 1<<7 {
-		data = append(data, uint8(uint64(v)&0x7f|0x80))
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
 		v >>= 7
 	}
-	data = append(data, uint8(v))
-	return data
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *ReplicaConfig) Size() (n int) {
 	var l int
@@ -3312,8 +3480,8 @@ func valueToStringKeyserverconfig(v interface{}) string {
 	pv := reflect.Indirect(rv).Interface()
 	return fmt.Sprintf("*%v", pv)
 }
-func (m *ReplicaConfig) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *ReplicaConfig) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3325,7 +3493,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3353,7 +3521,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3367,7 +3535,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.KeyserverConfig.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.KeyserverConfig.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3383,7 +3551,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ReplicaID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3402,7 +3570,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3417,7 +3585,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SigningKeyID = string(data[iNdEx:postIndex])
+			m.SigningKeyID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -3431,7 +3599,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3446,7 +3614,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PublicAddr = string(data[iNdEx:postIndex])
+			m.PublicAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -3460,7 +3628,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3474,7 +3642,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.PublicTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.PublicTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3490,7 +3658,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3505,7 +3673,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.VerifierAddr = string(data[iNdEx:postIndex])
+			m.VerifierAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
@@ -3519,7 +3687,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3533,7 +3701,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.VerifierTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.VerifierTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3549,7 +3717,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3564,7 +3732,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.HKPAddr = string(data[iNdEx:postIndex])
+			m.HKPAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 9:
 			if wireType != 2 {
@@ -3578,7 +3746,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3592,7 +3760,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.HKPTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.HKPTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3608,7 +3776,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3623,7 +3791,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.HTTPFrontAddr = string(data[iNdEx:postIndex])
+			m.HTTPFrontAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 11:
 			if wireType != 2 {
@@ -3637,7 +3805,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3651,7 +3819,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.HTTPFrontTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.HTTPFrontTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3667,7 +3835,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3682,7 +3850,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RaftAddr = string(data[iNdEx:postIndex])
+			m.RaftAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 13:
 			if wireType != 2 {
@@ -3696,7 +3864,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3710,7 +3878,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.RaftTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.RaftTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3726,7 +3894,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3741,7 +3909,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.LevelDBPath = string(data[iNdEx:postIndex])
+			m.LevelDBPath = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 15:
 			if wireType != 2 {
@@ -3755,7 +3923,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3769,7 +3937,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.RaftHeartbeat.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.RaftHeartbeat.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3785,7 +3953,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.LaggingVerifierScan |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3804,7 +3972,7 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3818,13 +3986,13 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.ClientTimeout.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ClientTimeout.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -3843,8 +4011,8 @@ func (m *ReplicaConfig) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *KeyserverConfig) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *KeyserverConfig) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -3856,7 +4024,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -3884,7 +4052,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ServerID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3903,7 +4071,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3918,7 +4086,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Realm = string(data[iNdEx:postIndex])
+			m.Realm = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -3932,7 +4100,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3947,7 +4115,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.VRFKeyID = string(data[iNdEx:postIndex])
+			m.VRFKeyID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -3961,7 +4129,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -3975,7 +4143,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.MinEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.MinEpochInterval.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3991,7 +4159,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4005,7 +4173,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.MaxEpochInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.MaxEpochInterval.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4021,7 +4189,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4035,7 +4203,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.ProposalRetryInterval.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ProposalRetryInterval.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4051,7 +4219,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4066,7 +4234,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.InitialReplicas = append(m.InitialReplicas, &Replica{})
-			if err := m.InitialReplicas[len(m.InitialReplicas)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.InitialReplicas[len(m.InitialReplicas)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4082,7 +4250,7 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4097,13 +4265,13 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.RegistrationPolicy = append(m.RegistrationPolicy, &RegistrationPolicy{})
-			if err := m.RegistrationPolicy[len(m.RegistrationPolicy)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.RegistrationPolicy[len(m.RegistrationPolicy)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4122,8 +4290,8 @@ func (m *KeyserverConfig) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *RegistrationPolicy) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *RegistrationPolicy) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4135,7 +4303,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4163,7 +4331,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				v |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4184,7 +4352,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4199,7 +4367,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &EmailProofByDKIM{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.PolicyType = &RegistrationPolicy_EmailProofByDKIM{v}
@@ -4216,7 +4384,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4231,7 +4399,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &EmailProofByClientCert{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.PolicyType = &RegistrationPolicy_EmailProofByClientCert{v}
@@ -4248,7 +4416,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4263,7 +4431,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &EmailProofByOIDC{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.PolicyType = &RegistrationPolicy_EmailProofByOIDC{v}
@@ -4280,7 +4448,7 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4295,14 +4463,14 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			v := &EmailProofBySAML{}
-			if err := v.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			m.PolicyType = &RegistrationPolicy_EmailProofBySAML{v}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4321,8 +4489,8 @@ func (m *RegistrationPolicy) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *EmailProofByDKIM) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4334,7 +4502,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4362,7 +4530,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4377,7 +4545,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AllowedDomains = append(m.AllowedDomains, string(data[iNdEx:postIndex]))
+			m.AllowedDomains = append(m.AllowedDomains, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4391,7 +4559,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4406,7 +4574,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ToAddr = string(data[iNdEx:postIndex])
+			m.ToAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -4420,7 +4588,7 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4435,11 +4603,11 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.SubjectPrefix = string(data[iNdEx:postIndex])
+			m.SubjectPrefix = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4458,8 +4626,8 @@ func (m *EmailProofByDKIM) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *EmailProofByClientCert) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4471,7 +4639,7 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4499,7 +4667,7 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4514,7 +4682,7 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AllowedDomains = append(m.AllowedDomains, string(data[iNdEx:postIndex]))
+			m.AllowedDomains = append(m.AllowedDomains, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4528,7 +4696,7 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				byteLen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4542,14 +4710,14 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.CaCert = append(m.CaCert[:0], data[iNdEx:postIndex]...)
+			m.CaCert = append(m.CaCert[:0], dAtA[iNdEx:postIndex]...)
 			if m.CaCert == nil {
 				m.CaCert = []byte{}
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4568,8 +4736,8 @@ func (m *EmailProofByClientCert) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *EmailProofByOIDC) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *EmailProofByOIDC) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4581,7 +4749,7 @@ func (m *EmailProofByOIDC) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4609,7 +4777,7 @@ func (m *EmailProofByOIDC) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4624,13 +4792,13 @@ func (m *EmailProofByOIDC) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.OIDCConfig = append(m.OIDCConfig, &OIDCConfig{})
-			if err := m.OIDCConfig[len(m.OIDCConfig)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.OIDCConfig[len(m.OIDCConfig)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4649,8 +4817,8 @@ func (m *EmailProofByOIDC) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *EmailProofBySAML) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *EmailProofBySAML) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4662,7 +4830,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4690,7 +4858,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4705,7 +4873,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AllowedDomains = append(m.AllowedDomains, string(data[iNdEx:postIndex]))
+			m.AllowedDomains = append(m.AllowedDomains, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4719,7 +4887,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4734,7 +4902,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.IDPMetadataURL = string(data[iNdEx:postIndex])
+			m.IDPMetadataURL = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -4748,7 +4916,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4763,7 +4931,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ConsumerServiceURL = string(data[iNdEx:postIndex])
+			m.ConsumerServiceURL = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -4777,7 +4945,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4791,7 +4959,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.ServiceProviderTLS.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.ServiceProviderTLS.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4807,7 +4975,7 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4821,13 +4989,13 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Validity.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Validity.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -4846,8 +5014,8 @@ func (m *EmailProofBySAML) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *OIDCConfig) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *OIDCConfig) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -4859,7 +5027,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -4887,7 +5055,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4902,7 +5070,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.AllowedDomains = append(m.AllowedDomains, string(data[iNdEx:postIndex]))
+			m.AllowedDomains = append(m.AllowedDomains, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -4916,7 +5084,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4931,7 +5099,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.DiscoveryURL = string(data[iNdEx:postIndex])
+			m.DiscoveryURL = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 3:
 			if wireType != 2 {
@@ -4945,7 +5113,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4960,7 +5128,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Issuer = string(data[iNdEx:postIndex])
+			m.Issuer = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 4:
 			if wireType != 2 {
@@ -4974,7 +5142,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -4989,7 +5157,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ClientID = string(data[iNdEx:postIndex])
+			m.ClientID = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
@@ -5003,7 +5171,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5017,7 +5185,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if err := m.Validity.Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.Validity.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5033,7 +5201,7 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5048,11 +5216,11 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Scope = string(data[iNdEx:postIndex])
+			m.Scope = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -5071,8 +5239,8 @@ func (m *OIDCConfig) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func (m *Replica) Unmarshal(data []byte) error {
-	l := len(data)
+func (m *Replica) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
@@ -5084,7 +5252,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 			if iNdEx >= l {
 				return io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -5112,7 +5280,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				m.ID |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5131,7 +5299,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				msglen |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5146,7 +5314,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.PublicKeys = append(m.PublicKeys, &PublicKey{})
-			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
+			if err := m.PublicKeys[len(m.PublicKeys)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5162,7 +5330,7 @@ func (m *Replica) Unmarshal(data []byte) error {
 				if iNdEx >= l {
 					return io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				stringLen |= (uint64(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5177,11 +5345,11 @@ func (m *Replica) Unmarshal(data []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.RaftAddr = string(data[iNdEx:postIndex])
+			m.RaftAddr = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
-			skippy, err := skipKeyserverconfig(data[iNdEx:])
+			skippy, err := skipKeyserverconfig(dAtA[iNdEx:])
 			if err != nil {
 				return err
 			}
@@ -5200,8 +5368,8 @@ func (m *Replica) Unmarshal(data []byte) error {
 	}
 	return nil
 }
-func skipKeyserverconfig(data []byte) (n int, err error) {
-	l := len(data)
+func skipKeyserverconfig(dAtA []byte) (n int, err error) {
+	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
 		var wire uint64
@@ -5212,7 +5380,7 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 			if iNdEx >= l {
 				return 0, io.ErrUnexpectedEOF
 			}
-			b := data[iNdEx]
+			b := dAtA[iNdEx]
 			iNdEx++
 			wire |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
@@ -5230,7 +5398,7 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 					return 0, io.ErrUnexpectedEOF
 				}
 				iNdEx++
-				if data[iNdEx-1] < 0x80 {
+				if dAtA[iNdEx-1] < 0x80 {
 					break
 				}
 			}
@@ -5247,7 +5415,7 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 				if iNdEx >= l {
 					return 0, io.ErrUnexpectedEOF
 				}
-				b := data[iNdEx]
+				b := dAtA[iNdEx]
 				iNdEx++
 				length |= (int(b) & 0x7F) << shift
 				if b < 0x80 {
@@ -5270,7 +5438,7 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 					if iNdEx >= l {
 						return 0, io.ErrUnexpectedEOF
 					}
-					b := data[iNdEx]
+					b := dAtA[iNdEx]
 					iNdEx++
 					innerWire |= (uint64(b) & 0x7F) << shift
 					if b < 0x80 {
@@ -5281,7 +5449,7 @@ func skipKeyserverconfig(data []byte) (n int, err error) {
 				if innerWireType == 4 {
 					break
 				}
-				next, err := skipKeyserverconfig(data[start:])
+				next, err := skipKeyserverconfig(dAtA[start:])
 				if err != nil {
 					return 0, err
 				}
@@ -5308,92 +5476,92 @@ var (
 func init() { proto1.RegisterFile("keyserverconfig.proto", fileDescriptorKeyserverconfig) }
 
 var fileDescriptorKeyserverconfig = []byte{
-	// 1386 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0x4b, 0x6f, 0x1b, 0xd5,
-	0x17, 0xcf, 0xe4, 0xe1, 0xc7, 0xf1, 0x33, 0x37, 0x69, 0xea, 0xe6, 0xaf, 0xbf, 0x1d, 0x19, 0x01,
-	0x01, 0xa1, 0x96, 0x06, 0x81, 0x5a, 0xd1, 0x4d, 0x27, 0x6e, 0x65, 0xe3, 0x44, 0xb5, 0xc6, 0xa1,
-	0x0b, 0x90, 0x3a, 0xba, 0x9e, 0xb9, 0xb6, 0x2f, 0x1e, 0xcf, 0x0c, 0x77, 0xae, 0x4d, 0x2d, 0x36,
-	0x7c, 0x1c, 0x3e, 0x02, 0x3b, 0x58, 0x76, 0xd9, 0x15, 0x62, 0x83, 0xd5, 0xcc, 0x8a, 0x65, 0x77,
-	0xb0, 0x44, 0xf7, 0xe1, 0x49, 0xe2, 0x3c, 0x54, 0x56, 0xf6, 0x79, 0xfd, 0x7e, 0xe7, 0x9e, 0x39,
-	0xe7, 0xde, 0x03, 0xb7, 0x46, 0x64, 0x16, 0x11, 0x36, 0x25, 0xcc, 0x09, 0xfc, 0x3e, 0x1d, 0xdc,
-	0x0d, 0x59, 0xc0, 0x03, 0xb4, 0x21, 0x7f, 0x76, 0x3f, 0x1d, 0x50, 0x3e, 0x9c, 0xf4, 0xee, 0x3a,
-	0xc1, 0xf8, 0xde, 0x18, 0xbb, 0x94, 0xcf, 0xf0, 0x3d, 0x69, 0xe9, 0x4d, 0xfa, 0xf7, 0x06, 0xc1,
-	0x20, 0x90, 0x82, 0xfc, 0xa7, 0x02, 0x77, 0x4b, 0xdc, 0x8b, 0xce, 0x23, 0xed, 0x16, 0xdd, 0x09,
-	0xc3, 0x9c, 0x06, 0xbe, 0x96, 0xf3, 0x8e, 0x47, 0x89, 0xcf, 0x95, 0x54, 0xff, 0x35, 0x0d, 0x05,
-	0x8b, 0x84, 0x1e, 0x75, 0xf0, 0xa1, 0x8c, 0x42, 0x6d, 0x28, 0x27, 0x29, 0xd9, 0x0a, 0xa9, 0x62,
-	0xec, 0x19, 0xfb, 0xb9, 0x83, 0x1d, 0x15, 0x73, 0xb7, 0xbd, 0x30, 0xab, 0x08, 0x33, 0xf3, 0x6a,
-	0x5e, 0x5b, 0x79, 0x3d, 0xaf, 0x19, 0x56, 0x69, 0x74, 0xd1, 0x84, 0x3e, 0x01, 0x60, 0x0a, 0xdd,
-	0xa6, 0x6e, 0x65, 0x75, 0xcf, 0xd8, 0x5f, 0x37, 0x0b, 0xf1, 0xbc, 0x96, 0xd5, 0x9c, 0xad, 0x86,
-	0x95, 0xd5, 0x0e, 0x2d, 0x17, 0x7d, 0x01, 0xc5, 0x88, 0x0e, 0x7c, 0xea, 0x0f, 0xec, 0x11, 0x99,
-	0x89, 0x88, 0xb5, 0x3d, 0x63, 0x3f, 0x6b, 0x96, 0xe3, 0x79, 0x2d, 0xdf, 0x55, 0x96, 0x36, 0x99,
-	0xb5, 0x1a, 0x56, 0x3e, 0x3a, 0x93, 0x5c, 0x54, 0x83, 0x5c, 0x38, 0xe9, 0x79, 0xd4, 0xb1, 0xb1,
-	0xeb, 0xb2, 0xca, 0xba, 0x08, 0xb2, 0x40, 0xa9, 0x1e, 0xbb, 0x2e, 0x43, 0x26, 0x68, 0xc9, 0xe6,
-	0x5e, 0x54, 0xd9, 0x90, 0xa7, 0x29, 0xeb, 0xd3, 0x9c, 0x1c, 0x75, 0xf5, 0x39, 0x36, 0xc5, 0x39,
-	0x44, 0x72, 0x1d, 0xe9, 0x7b, 0x72, 0xd4, 0xb5, 0xb2, 0x2a, 0xec, 0xc4, 0x8b, 0xd0, 0x7b, 0x50,
-	0x98, 0x12, 0x46, 0xfb, 0x94, 0x30, 0x45, 0x93, 0x92, 0x34, 0xf9, 0x85, 0x52, 0x12, 0x35, 0x21,
-	0x91, 0x25, 0x55, 0xfa, 0x1a, 0xaa, 0x2d, 0x4d, 0x95, 0x7b, 0xae, 0xbd, 0x05, 0x59, 0x6e, 0x11,
-	0x2a, 0xe8, 0x3e, 0x80, 0xcc, 0x70, 0x14, 0x2a, 0xa6, 0x8c, 0xac, 0x42, 0x2e, 0x9e, 0xd7, 0xd2,
-	0xcd, 0x76, 0x47, 0x10, 0x59, 0xe9, 0xe1, 0x28, 0x94, 0x8c, 0x0f, 0x41, 0xfc, 0x95, 0x64, 0xd9,
-	0x6b, 0xc8, 0x8a, 0x9a, 0x2c, 0xd5, 0x6c, 0x77, 0x04, 0x4f, 0x6a, 0x38, 0x0a, 0x05, 0xc5, 0x03,
-	0x28, 0x0e, 0x39, 0x0f, 0xfb, 0x2c, 0xf0, 0xb9, 0x22, 0x02, 0x49, 0xb4, 0x19, 0xcf, 0x6b, 0x85,
-	0xe6, 0xc9, 0x49, 0xe7, 0xa9, 0xb0, 0x48, 0xba, 0x42, 0xe2, 0x28, 0x49, 0xdb, 0x70, 0xa6, 0x90,
-	0xd4, 0xb9, 0x6b, 0xa8, 0xb7, 0x35, 0x75, 0x3e, 0x81, 0x13, 0x09, 0xe4, 0x93, 0x60, 0x91, 0xc6,
-	0xff, 0x20, 0xcb, 0x70, 0x5f, 0x67, 0x90, 0x97, 0x45, 0xcd, 0x08, 0x85, 0x64, 0x7a, 0x04, 0xf2,
-	0xbf, 0x24, 0x29, 0x5c, 0x43, 0x52, 0xd2, 0x24, 0x69, 0x0b, 0xf7, 0x25, 0x7e, 0x5a, 0x84, 0x08,
-	0xe8, 0x03, 0xc8, 0x7b, 0x64, 0x4a, 0x3c, 0xb7, 0x67, 0x87, 0x98, 0x0f, 0x2b, 0x45, 0x79, 0xbe,
-	0x92, 0x28, 0xfc, 0x91, 0xd0, 0x37, 0xcc, 0x0e, 0xe6, 0x43, 0x2b, 0xa7, 0x9d, 0x84, 0x80, 0x1e,
-	0x41, 0x51, 0x32, 0x0e, 0x09, 0x66, 0xbc, 0x47, 0x30, 0xaf, 0x94, 0x24, 0x6f, 0x49, 0xf3, 0x36,
-	0xf4, 0x38, 0x99, 0xeb, 0x82, 0xd6, 0x2a, 0x08, 0xe7, 0xe6, 0xc2, 0x17, 0x1d, 0xc0, 0x2d, 0x0f,
-	0x0f, 0x06, 0xa2, 0x85, 0x93, 0x46, 0x88, 0x1c, 0xec, 0x57, 0xca, 0xa2, 0xf7, 0xad, 0x2d, 0x6d,
-	0x5c, 0x7c, 0xf6, 0xae, 0x83, 0x7d, 0xc1, 0xa8, 0x66, 0xd2, 0xe6, 0x74, 0x4c, 0x82, 0x09, 0xaf,
-	0x6c, 0xde, 0xc8, 0xa8, 0x9c, 0x4f, 0x94, 0x6f, 0x7d, 0xbe, 0x06, 0xa5, 0xa5, 0x89, 0x44, 0x1f,
-	0x41, 0x56, 0x0f, 0x30, 0x75, 0xe5, 0xf0, 0xae, 0x9b, 0xf9, 0x78, 0x5e, 0xcb, 0x74, 0xa5, 0xb2,
-	0xd5, 0xb0, 0x32, 0xca, 0xdc, 0x72, 0xd1, 0x36, 0x6c, 0x30, 0x82, 0xbd, 0xb1, 0x1c, 0xce, 0xac,
-	0xa5, 0x04, 0xf4, 0x31, 0xc0, 0x94, 0xf5, 0x2f, 0x4e, 0xa1, 0x44, 0x78, 0x6e, 0x3d, 0x55, 0x13,
-	0x98, 0x99, 0xb2, 0xbe, 0x9a, 0xbe, 0x43, 0x40, 0x63, 0xea, 0xdb, 0x24, 0x0c, 0x9c, 0xa1, 0x4d,
-	0x7d, 0x4e, 0xd8, 0x14, 0x7b, 0x72, 0x08, 0xaf, 0x3d, 0x42, 0x79, 0x4c, 0xfd, 0x27, 0xc2, 0xbf,
-	0xa5, 0xdd, 0x25, 0x08, 0x7e, 0xb9, 0x0c, 0xb2, 0x71, 0x33, 0x08, 0x7e, 0x79, 0x11, 0xe4, 0x18,
-	0x6e, 0x87, 0x2c, 0x08, 0x83, 0x08, 0x7b, 0x36, 0x23, 0x9c, 0xcd, 0xce, 0x90, 0x52, 0x37, 0x21,
-	0xdd, 0x5a, 0x44, 0x59, 0x22, 0x28, 0x81, 0x7b, 0x08, 0x65, 0xea, 0x53, 0x4e, 0x25, 0x9a, 0xbc,
-	0xa3, 0xc4, 0x40, 0xaf, 0xed, 0xe7, 0x0e, 0x8a, 0x1a, 0x47, 0xdf, 0x62, 0x56, 0x49, 0xfb, 0x69,
-	0x39, 0x42, 0x5f, 0xc1, 0x16, 0x23, 0x03, 0x1a, 0x71, 0xc5, 0x63, 0x87, 0x81, 0x47, 0x9d, 0x59,
-	0x25, 0x23, 0xa3, 0xef, 0x24, 0xd1, 0x67, 0x1e, 0x1d, 0xe9, 0x60, 0x21, 0x76, 0x49, 0x57, 0xff,
-	0x73, 0x0d, 0xd0, 0x65, 0x57, 0xf4, 0x25, 0xdc, 0xa1, 0x7e, 0x44, 0x9c, 0x09, 0x23, 0x76, 0x34,
-	0xa2, 0xa1, 0x4d, 0xc6, 0x98, 0x7a, 0x76, 0xc8, 0x82, 0xa0, 0x2f, 0xbf, 0x79, 0xa6, 0xb9, 0x62,
-	0xed, 0x2c, 0x5c, 0xba, 0x23, 0x1a, 0x3e, 0x11, 0x0e, 0x1d, 0x61, 0x47, 0x2f, 0x60, 0xeb, 0x9c,
-	0xbb, 0xdd, 0x9b, 0xd9, 0xee, 0x88, 0xaa, 0x1e, 0xc8, 0x1d, 0xdc, 0xd6, 0xf9, 0x9d, 0xf9, 0x9b,
-	0xb3, 0x46, 0xbb, 0x75, 0x6c, 0x6e, 0xc7, 0xf3, 0x5a, 0x79, 0x59, 0xdb, 0x5c, 0xb1, 0xca, 0xe4,
-	0xbc, 0x6e, 0x44, 0xc7, 0xe8, 0x5b, 0xd8, 0x5d, 0xc2, 0xd7, 0x1d, 0xee, 0x10, 0xc6, 0x65, 0x3f,
-	0xe5, 0x0e, 0xfe, 0x7f, 0x05, 0xcd, 0xa1, 0xf4, 0x3a, 0x24, 0x8c, 0x8b, 0xe4, 0xc9, 0x95, 0x96,
-	0x2b, 0x92, 0x0f, 0xa8, 0xeb, 0xe8, 0x8e, 0xbb, 0x2a, 0xf9, 0x67, 0xad, 0xc6, 0xe1, 0xe5, 0xe4,
-	0x85, 0x76, 0x39, 0xf9, 0x67, 0xd4, 0x75, 0xae, 0xc0, 0x8f, 0xf0, 0x78, 0xd1, 0x8c, 0x57, 0xe1,
-	0x77, 0x1f, 0x1f, 0x1f, 0x5d, 0xc6, 0x17, 0xda, 0x65, 0xfc, 0x2e, 0x1e, 0x7b, 0x66, 0x01, 0x72,
-	0xaa, 0x1f, 0x6c, 0x3e, 0x0b, 0x49, 0xfd, 0x47, 0xb8, 0x54, 0x53, 0xf4, 0x21, 0x94, 0xb0, 0xe7,
-	0x05, 0x3f, 0x10, 0xd7, 0x76, 0x83, 0x31, 0xa6, 0x7e, 0x54, 0x31, 0xf6, 0xd6, 0xf6, 0xb3, 0x56,
-	0x51, 0xab, 0x1b, 0x4a, 0x8b, 0x6e, 0x43, 0x9a, 0x07, 0xea, 0xea, 0x54, 0x03, 0x9c, 0xe2, 0x81,
-	0xbc, 0x38, 0xdf, 0x87, 0x62, 0x34, 0xe9, 0x7d, 0x47, 0x1c, 0x6e, 0x87, 0x8c, 0xf4, 0xe9, 0x4b,
-	0x35, 0xc5, 0x56, 0x41, 0x6b, 0x3b, 0x52, 0x59, 0xff, 0x06, 0x76, 0xae, 0xae, 0xff, 0x7f, 0x4a,
-	0xc1, 0xc1, 0xea, 0xc3, 0x8a, 0x14, 0xf2, 0x56, 0xca, 0xc1, 0x02, 0xa1, 0xfe, 0x1c, 0x2e, 0xd5,
-	0x1b, 0x99, 0x90, 0x13, 0x1f, 0xeb, 0x6c, 0xb1, 0x10, 0x03, 0xb1, 0xa9, 0x6b, 0x2a, 0x3c, 0x16,
-	0x6f, 0x56, 0x3c, 0xaf, 0xc1, 0x99, 0x6c, 0x81, 0x88, 0x52, 0xff, 0xeb, 0xbf, 0xaf, 0xc2, 0xa5,
-	0x42, 0xbf, 0x7b, 0xba, 0x8f, 0xa0, 0x4c, 0xdd, 0xd0, 0x1e, 0x13, 0x8e, 0x5d, 0xcc, 0xb1, 0x3d,
-	0x61, 0x9e, 0x2a, 0x9d, 0x89, 0xe2, 0x79, 0xad, 0xd8, 0x6a, 0x74, 0x8e, 0xb5, 0xe9, 0x6b, 0xeb,
-	0xc8, 0x2a, 0x52, 0x37, 0x4c, 0x64, 0xe6, 0xa1, 0x26, 0x6c, 0x3b, 0x81, 0x1f, 0x4d, 0xc6, 0xe2,
-	0x5e, 0x27, 0x6c, 0x4a, 0x1d, 0x22, 0x11, 0xe4, 0xce, 0x61, 0xee, 0xc4, 0xf3, 0x1a, 0x3a, 0xd4,
-	0xf6, 0xae, 0x32, 0x0b, 0x14, 0xe4, 0x2c, 0xe9, 0x98, 0x87, 0x5e, 0xc0, 0xf6, 0x02, 0x20, 0x64,
-	0xc1, 0x94, 0xba, 0x7a, 0x65, 0xb8, 0x6e, 0x3b, 0xd9, 0xd5, 0xaf, 0x1c, 0xd2, 0x18, 0x1d, 0x1d,
-	0x24, 0x1e, 0x3c, 0x14, 0x2d, 0xe9, 0xbc, 0x08, 0xdd, 0x87, 0xcc, 0x14, 0x7b, 0x54, 0xec, 0x8c,
-	0x37, 0xdf, 0x7e, 0x89, 0x5b, 0xfd, 0x6f, 0x03, 0xce, 0xd5, 0xfc, 0xdd, 0x4b, 0xfa, 0x39, 0x14,
-	0x5c, 0x1a, 0x39, 0xc1, 0x94, 0xb0, 0xd9, 0xb9, 0x7a, 0xca, 0xb5, 0xad, 0xb1, 0x30, 0x88, 0x3a,
-	0xe4, 0x13, 0x37, 0x51, 0x81, 0x1d, 0x48, 0xd1, 0x28, 0x9a, 0x10, 0xa6, 0x5b, 0x53, 0x4b, 0x68,
-	0x1f, 0x32, 0xea, 0xb6, 0x68, 0x35, 0x74, 0x5d, 0xe5, 0xd3, 0x73, 0xa8, 0x75, 0x56, 0x62, 0xbd,
-	0x70, 0xc6, 0x8d, 0x77, 0x3a, 0xa3, 0x78, 0xef, 0x22, 0x27, 0x08, 0x89, 0x5e, 0xdf, 0x94, 0x50,
-	0xff, 0x1e, 0xd2, 0xfa, 0xee, 0x46, 0x3b, 0xb0, 0x9a, 0x3c, 0x9a, 0xa9, 0x78, 0x5e, 0x5b, 0x6d,
-	0x35, 0xac, 0x55, 0xea, 0xa2, 0xfb, 0xc9, 0x92, 0x29, 0x96, 0xdc, 0xca, 0xaa, 0xec, 0xdc, 0xc5,
-	0x67, 0x52, 0x1b, 0x63, 0x9b, 0xcc, 0x16, 0x6b, 0xa7, 0x78, 0x91, 0x2f, 0x6e, 0x36, 0x6b, 0x17,
-	0x37, 0x1b, 0xf3, 0xc1, 0xeb, 0xd3, 0xea, 0xca, 0x1f, 0xa7, 0xd5, 0x95, 0x37, 0xa7, 0x55, 0xe3,
-	0xed, 0x69, 0xd5, 0xf8, 0xe7, 0xb4, 0x6a, 0xfc, 0x14, 0x57, 0x8d, 0x9f, 0xe3, 0xaa, 0xf1, 0x4b,
-	0x5c, 0x35, 0x7e, 0x8b, 0xab, 0xc6, 0xab, 0xb8, 0x6a, 0xbc, 0x8e, 0xab, 0xc6, 0x9b, 0xb8, 0x6a,
-	0xfc, 0x15, 0x57, 0x57, 0xde, 0xc6, 0x55, 0xa3, 0x97, 0x92, 0x9c, 0x9f, 0xfd, 0x1b, 0x00, 0x00,
-	0xff, 0xff, 0x00, 0x59, 0xd5, 0xc0, 0x3b, 0x0c, 0x00, 0x00,
+	// 1384 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x94, 0x56, 0xcb, 0x73, 0x1b, 0xc5,
+	0x13, 0xf6, 0xfa, 0xa1, 0x47, 0xeb, 0xe9, 0xb1, 0xe3, 0x28, 0xfe, 0xd5, 0x4f, 0x72, 0x89, 0x02,
+	0x0c, 0x05, 0x49, 0xc5, 0x14, 0x54, 0x52, 0xe4, 0x92, 0xb5, 0x92, 0x92, 0x90, 0x5d, 0x51, 0xad,
+	0x4c, 0x0e, 0x50, 0x95, 0xad, 0xd1, 0xee, 0x48, 0x1a, 0xb4, 0xda, 0x5d, 0x66, 0x47, 0x22, 0x2a,
+	0x2e, 0xfc, 0x39, 0xfc, 0x09, 0xdc, 0xe0, 0x98, 0x63, 0x4e, 0x14, 0x17, 0x54, 0xf1, 0x9e, 0x38,
+	0xe6, 0x06, 0x47, 0x6a, 0x1e, 0x5a, 0xdb, 0xf2, 0xa3, 0xc2, 0x49, 0xea, 0xee, 0xaf, 0xbf, 0xaf,
+	0xa7, 0x77, 0x7a, 0x66, 0xe0, 0xd6, 0x88, 0xcc, 0x22, 0xc2, 0xa6, 0x84, 0x39, 0x81, 0xdf, 0xa7,
+	0x83, 0xbb, 0x21, 0x0b, 0x78, 0x80, 0x36, 0xe4, 0xcf, 0xee, 0xa7, 0x03, 0xca, 0x87, 0x93, 0xde,
+	0x5d, 0x27, 0x18, 0xdf, 0x1b, 0x04, 0x83, 0xe0, 0x9e, 0x74, 0xf7, 0x26, 0x7d, 0x69, 0x49, 0x43,
+	0xfe, 0x53, 0x59, 0xbb, 0x25, 0xee, 0x45, 0xe7, 0x69, 0x76, 0x8b, 0xee, 0x84, 0x61, 0x4e, 0x03,
+	0x5f, 0xdb, 0x79, 0xc7, 0xa3, 0xc4, 0xe7, 0xca, 0xaa, 0xff, 0x9a, 0x86, 0x82, 0x45, 0x42, 0x8f,
+	0x3a, 0xf8, 0x50, 0x66, 0xa1, 0x36, 0x94, 0x93, 0x7a, 0x6c, 0xc5, 0x54, 0x31, 0xf6, 0x8c, 0xfd,
+	0xdc, 0xc1, 0x8e, 0xca, 0xb9, 0xdb, 0x5e, 0x84, 0x55, 0x86, 0x99, 0x79, 0x35, 0xaf, 0xad, 0xbc,
+	0x9e, 0xd7, 0x0c, 0xab, 0x34, 0xba, 0x18, 0x42, 0x9f, 0x00, 0x30, 0xc5, 0x6e, 0x53, 0xb7, 0xb2,
+	0xba, 0x67, 0xec, 0xaf, 0x9b, 0x85, 0x78, 0x5e, 0xcb, 0x6a, 0xcd, 0x56, 0xc3, 0xca, 0x6a, 0x40,
+	0xcb, 0x45, 0x5f, 0x40, 0x31, 0xa2, 0x03, 0x9f, 0xfa, 0x03, 0x7b, 0x44, 0x66, 0x22, 0x63, 0x6d,
+	0xcf, 0xd8, 0xcf, 0x9a, 0xe5, 0x78, 0x5e, 0xcb, 0x77, 0x55, 0xa4, 0x4d, 0x66, 0xad, 0x86, 0x95,
+	0x8f, 0xce, 0x2c, 0x17, 0xd5, 0x20, 0x17, 0x4e, 0x7a, 0x1e, 0x75, 0x6c, 0xec, 0xba, 0xac, 0xb2,
+	0x2e, 0x92, 0x2c, 0x50, 0xae, 0xc7, 0xae, 0xcb, 0x90, 0x09, 0xda, 0xb2, 0xb9, 0x17, 0x55, 0x36,
+	0xe4, 0x6a, 0xca, 0x7a, 0x35, 0x27, 0x47, 0x5d, 0xbd, 0x8e, 0x4d, 0xb1, 0x0e, 0x51, 0x5c, 0x47,
+	0x62, 0x4f, 0x8e, 0xba, 0x56, 0x56, 0xa5, 0x9d, 0x78, 0x11, 0x7a, 0x0f, 0x0a, 0x53, 0xc2, 0x68,
+	0x9f, 0x12, 0xa6, 0x64, 0x52, 0x52, 0x26, 0xbf, 0x70, 0x4a, 0xa1, 0x26, 0x24, 0xb6, 0x94, 0x4a,
+	0x5f, 0x23, 0xb5, 0xa5, 0xa5, 0x72, 0xcf, 0x35, 0x5a, 0x88, 0xe5, 0x16, 0xa9, 0x42, 0xee, 0x03,
+	0xc8, 0x0c, 0x47, 0xa1, 0x52, 0xca, 0xc8, 0x2e, 0xe4, 0xe2, 0x79, 0x2d, 0xdd, 0x6c, 0x77, 0x84,
+	0x90, 0x95, 0x1e, 0x8e, 0x42, 0xa9, 0xf8, 0x10, 0xc4, 0x5f, 0x29, 0x96, 0xbd, 0x46, 0xac, 0xa8,
+	0xc5, 0x52, 0xcd, 0x76, 0x47, 0xe8, 0xa4, 0x86, 0xa3, 0x50, 0x48, 0x3c, 0x80, 0xe2, 0x90, 0xf3,
+	0xb0, 0xcf, 0x02, 0x9f, 0x2b, 0x21, 0x90, 0x42, 0x9b, 0xf1, 0xbc, 0x56, 0x68, 0x9e, 0x9c, 0x74,
+	0x9e, 0x8a, 0x88, 0x94, 0x2b, 0x24, 0x40, 0x29, 0xda, 0x86, 0x33, 0x87, 0x94, 0xce, 0x5d, 0x23,
+	0xbd, 0xad, 0xa5, 0xf3, 0x09, 0x9d, 0x28, 0x20, 0x9f, 0x24, 0x8b, 0x32, 0xfe, 0x07, 0x59, 0x86,
+	0xfb, 0xba, 0x82, 0xbc, 0x6c, 0x6a, 0x46, 0x38, 0xa4, 0xd2, 0x23, 0x90, 0xff, 0xa5, 0x48, 0xe1,
+	0x1a, 0x91, 0x92, 0x16, 0x49, 0x5b, 0xb8, 0x2f, 0xf9, 0xd3, 0x22, 0x45, 0x50, 0x1f, 0x40, 0xde,
+	0x23, 0x53, 0xe2, 0xb9, 0x3d, 0x3b, 0xc4, 0x7c, 0x58, 0x29, 0xca, 0xf5, 0x95, 0x44, 0xe3, 0x8f,
+	0x84, 0xbf, 0x61, 0x76, 0x30, 0x1f, 0x5a, 0x39, 0x0d, 0x12, 0x06, 0x7a, 0x04, 0x45, 0xa9, 0x38,
+	0x24, 0x98, 0xf1, 0x1e, 0xc1, 0xbc, 0x52, 0x92, 0xba, 0x25, 0xad, 0xdb, 0xd0, 0xe3, 0x64, 0xae,
+	0x0b, 0x59, 0xab, 0x20, 0xc0, 0xcd, 0x05, 0x16, 0x1d, 0xc0, 0x2d, 0x0f, 0x0f, 0x06, 0x62, 0x0b,
+	0x27, 0x1b, 0x21, 0x72, 0xb0, 0x5f, 0x29, 0x8b, 0xbd, 0x6f, 0x6d, 0xe9, 0xe0, 0xe2, 0xb3, 0x77,
+	0x1d, 0xec, 0x0b, 0x45, 0x35, 0x93, 0x36, 0xa7, 0x63, 0x12, 0x4c, 0x78, 0x65, 0xf3, 0x46, 0x45,
+	0x05, 0x3e, 0x51, 0xd8, 0xfa, 0x7c, 0x0d, 0x4a, 0x4b, 0x13, 0x89, 0x3e, 0x82, 0xac, 0x1e, 0x60,
+	0xea, 0xca, 0xe1, 0x5d, 0x37, 0xf3, 0xf1, 0xbc, 0x96, 0xe9, 0x4a, 0x67, 0xab, 0x61, 0x65, 0x54,
+	0xb8, 0xe5, 0xa2, 0x6d, 0xd8, 0x60, 0x04, 0x7b, 0x63, 0x39, 0x9c, 0x59, 0x4b, 0x19, 0xe8, 0x63,
+	0x80, 0x29, 0xeb, 0x5f, 0x9c, 0x42, 0xc9, 0xf0, 0xdc, 0x7a, 0xaa, 0x26, 0x30, 0x33, 0x65, 0x7d,
+	0x35, 0x7d, 0x87, 0x80, 0xc6, 0xd4, 0xb7, 0x49, 0x18, 0x38, 0x43, 0x9b, 0xfa, 0x9c, 0xb0, 0x29,
+	0xf6, 0xe4, 0x10, 0x5e, 0xbb, 0x84, 0xf2, 0x98, 0xfa, 0x4f, 0x04, 0xbe, 0xa5, 0xe1, 0x92, 0x04,
+	0xbf, 0x5c, 0x26, 0xd9, 0xb8, 0x99, 0x04, 0xbf, 0xbc, 0x48, 0x72, 0x0c, 0xb7, 0x43, 0x16, 0x84,
+	0x41, 0x84, 0x3d, 0x9b, 0x11, 0xce, 0x66, 0x67, 0x4c, 0xa9, 0x9b, 0x98, 0x6e, 0x2d, 0xb2, 0x2c,
+	0x91, 0x94, 0xd0, 0x3d, 0x84, 0x32, 0xf5, 0x29, 0xa7, 0x92, 0x4d, 0x9e, 0x51, 0x62, 0xa0, 0xd7,
+	0xf6, 0x73, 0x07, 0x45, 0xcd, 0xa3, 0x4f, 0x31, 0xab, 0xa4, 0x71, 0xda, 0x8e, 0xd0, 0x57, 0xb0,
+	0xc5, 0xc8, 0x80, 0x46, 0x5c, 0xe9, 0xd8, 0x61, 0xe0, 0x51, 0x67, 0x56, 0xc9, 0xc8, 0xec, 0x3b,
+	0x49, 0xf6, 0x19, 0xa2, 0x23, 0x01, 0x16, 0x62, 0x97, 0x7c, 0xf5, 0x3f, 0xd7, 0x00, 0x5d, 0x86,
+	0xa2, 0x2f, 0xe1, 0x0e, 0xf5, 0x23, 0xe2, 0x4c, 0x18, 0xb1, 0xa3, 0x11, 0x0d, 0x6d, 0x32, 0xc6,
+	0xd4, 0xb3, 0x43, 0x16, 0x04, 0x7d, 0xf9, 0xcd, 0x33, 0xcd, 0x15, 0x6b, 0x67, 0x01, 0xe9, 0x8e,
+	0x68, 0xf8, 0x44, 0x00, 0x3a, 0x22, 0x8e, 0x5e, 0xc0, 0xd6, 0x39, 0xb8, 0xdd, 0x9b, 0xd9, 0xee,
+	0x88, 0xaa, 0x3d, 0x90, 0x3b, 0xb8, 0xad, 0xeb, 0x3b, 0xc3, 0x9b, 0xb3, 0x46, 0xbb, 0x75, 0x6c,
+	0x6e, 0xc7, 0xf3, 0x5a, 0x79, 0xd9, 0xdb, 0x5c, 0xb1, 0xca, 0xe4, 0xbc, 0x6f, 0x44, 0xc7, 0xe8,
+	0x5b, 0xd8, 0x5d, 0xe2, 0xd7, 0x3b, 0xdc, 0x21, 0x8c, 0xcb, 0xfd, 0x94, 0x3b, 0xf8, 0xff, 0x15,
+	0x32, 0x87, 0x12, 0x75, 0x48, 0x18, 0x17, 0xc5, 0x93, 0x2b, 0x23, 0x57, 0x14, 0x1f, 0x50, 0xd7,
+	0xd1, 0x3b, 0xee, 0xaa, 0xe2, 0x9f, 0xb5, 0x1a, 0x87, 0x97, 0x8b, 0x17, 0xde, 0xe5, 0xe2, 0x9f,
+	0x51, 0xd7, 0xb9, 0x82, 0x3f, 0xc2, 0xe3, 0xc5, 0x66, 0xbc, 0x8a, 0xbf, 0xfb, 0xf8, 0xf8, 0xe8,
+	0x32, 0xbf, 0xf0, 0x2e, 0xf3, 0x77, 0xf1, 0xd8, 0x33, 0x0b, 0x90, 0x53, 0xfb, 0xc1, 0xe6, 0xb3,
+	0x90, 0xd4, 0x7f, 0x84, 0x4b, 0x3d, 0x45, 0x1f, 0x42, 0x09, 0x7b, 0x5e, 0xf0, 0x03, 0x71, 0x6d,
+	0x37, 0x18, 0x63, 0xea, 0x47, 0x15, 0x63, 0x6f, 0x6d, 0x3f, 0x6b, 0x15, 0xb5, 0xbb, 0xa1, 0xbc,
+	0xe8, 0x36, 0xa4, 0x79, 0xa0, 0x8e, 0x4e, 0x35, 0xc0, 0x29, 0x1e, 0xc8, 0x83, 0xf3, 0x7d, 0x28,
+	0x46, 0x93, 0xde, 0x77, 0xc4, 0xe1, 0x76, 0xc8, 0x48, 0x9f, 0xbe, 0x54, 0x53, 0x6c, 0x15, 0xb4,
+	0xb7, 0x23, 0x9d, 0xf5, 0x6f, 0x60, 0xe7, 0xea, 0xfe, 0xff, 0xa7, 0x12, 0x1c, 0xac, 0x3e, 0xac,
+	0x28, 0x21, 0x6f, 0xa5, 0x1c, 0x2c, 0x18, 0xea, 0xcf, 0xe1, 0x52, 0xbf, 0x91, 0x09, 0x39, 0xf1,
+	0xb1, 0xce, 0x1e, 0x16, 0x62, 0x20, 0x36, 0x75, 0x4f, 0x05, 0x62, 0x71, 0x67, 0xc5, 0xf3, 0x1a,
+	0x9c, 0xd9, 0x16, 0x88, 0x2c, 0xf5, 0xbf, 0xfe, 0xfb, 0x2a, 0x5c, 0x6a, 0xf4, 0xbb, 0x97, 0xfb,
+	0x08, 0xca, 0xd4, 0x0d, 0xed, 0x31, 0xe1, 0xd8, 0xc5, 0x1c, 0xdb, 0x13, 0xe6, 0xa9, 0xd6, 0x99,
+	0x28, 0x9e, 0xd7, 0x8a, 0xad, 0x46, 0xe7, 0x58, 0x87, 0xbe, 0xb6, 0x8e, 0xac, 0x22, 0x75, 0xc3,
+	0xc4, 0x66, 0x1e, 0x6a, 0xc2, 0xb6, 0x13, 0xf8, 0xd1, 0x64, 0x2c, 0xce, 0x75, 0xc2, 0xa6, 0xd4,
+	0x21, 0x92, 0x41, 0xbe, 0x39, 0xcc, 0x9d, 0x78, 0x5e, 0x43, 0x87, 0x3a, 0xde, 0x55, 0x61, 0xc1,
+	0x82, 0x9c, 0x25, 0x1f, 0xf3, 0xd0, 0x0b, 0xd8, 0x5e, 0x10, 0x84, 0x2c, 0x98, 0x52, 0x57, 0x3f,
+	0x19, 0xae, 0x7b, 0x9d, 0xec, 0xea, 0x5b, 0x0e, 0x69, 0x8e, 0x8e, 0x4e, 0x12, 0x17, 0x1e, 0x8a,
+	0x96, 0x7c, 0x5e, 0x84, 0xee, 0x43, 0x66, 0x8a, 0x3d, 0xea, 0x52, 0x3e, 0xbb, 0xf9, 0xf4, 0x4b,
+	0x60, 0xf5, 0xbf, 0x0d, 0x38, 0xd7, 0xf3, 0x77, 0x6f, 0xe9, 0xe7, 0x50, 0x70, 0x69, 0xe4, 0x04,
+	0x53, 0xc2, 0x66, 0xe7, 0xfa, 0x29, 0x9f, 0x6d, 0x8d, 0x45, 0x40, 0xf4, 0x21, 0x9f, 0xc0, 0x44,
+	0x07, 0x76, 0x20, 0x45, 0xa3, 0x68, 0x42, 0x98, 0xde, 0x9a, 0xda, 0x42, 0xfb, 0x90, 0x51, 0xa7,
+	0x45, 0xab, 0xa1, 0xfb, 0x2a, 0xaf, 0x9e, 0x43, 0xed, 0xb3, 0x92, 0xe8, 0x85, 0x35, 0x6e, 0xbc,
+	0xd3, 0x1a, 0xc5, 0x7d, 0x17, 0x39, 0x41, 0x48, 0xf4, 0xf3, 0x4d, 0x19, 0xf5, 0xef, 0x21, 0xad,
+	0xcf, 0x6e, 0xb4, 0x03, 0xab, 0xc9, 0xa5, 0x99, 0x8a, 0xe7, 0xb5, 0xd5, 0x56, 0xc3, 0x5a, 0xa5,
+	0x2e, 0xba, 0x9f, 0x3c, 0x32, 0xc5, 0x23, 0xb7, 0xb2, 0x2a, 0x77, 0xee, 0xe2, 0x33, 0xa9, 0x17,
+	0x63, 0x9b, 0xcc, 0x16, 0xcf, 0x4e, 0x71, 0x23, 0x5f, 0x7c, 0xd9, 0xac, 0x5d, 0x7c, 0xd9, 0x98,
+	0x0f, 0x5e, 0x9f, 0x56, 0x57, 0xfe, 0x38, 0xad, 0xae, 0xbc, 0x39, 0xad, 0x1a, 0x6f, 0x4f, 0xab,
+	0xc6, 0x3f, 0xa7, 0x55, 0xe3, 0xa7, 0xb8, 0x6a, 0xfc, 0x1c, 0x57, 0x8d, 0x5f, 0xe2, 0xaa, 0xf1,
+	0x5b, 0x5c, 0x35, 0x5e, 0xc5, 0x55, 0xe3, 0x75, 0x5c, 0x35, 0xde, 0xc4, 0x55, 0xe3, 0xaf, 0xb8,
+	0xba, 0xf2, 0x36, 0xae, 0x1a, 0xbd, 0x94, 0xd4, 0xfc, 0xec, 0xdf, 0x00, 0x00, 0x00, 0xff, 0xff,
+	0xaa, 0x79, 0xd3, 0x62, 0x38, 0x0c, 0x00, 0x00,
 }

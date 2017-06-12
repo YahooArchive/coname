@@ -29,8 +29,8 @@
 package main
 
 import (
-	"github.com/maditya/protobuf/vanity"
-	"github.com/maditya/protobuf/vanity/command"
+	"github.com/gogo/protobuf/vanity"
+	"github.com/gogo/protobuf/vanity/command"
 )
 
 func main() {

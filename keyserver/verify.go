@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 
+	"github.com/yahoo/coname"
 	"github.com/yahoo/coname/keyserver/kv"
 	"github.com/yahoo/coname/keyserver/replication"
 	"github.com/yahoo/coname/proto"
@@ -42,7 +43,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 		// constraints of ks.sb. Both methods of accessing verifier log
 		// entries are surfaced here due to flow control and memory allocation
 		// constraints: we cannot allow allocation of an unbounded queue.
-		iter := ks.db.NewIterator(&kv.Range{Start: tableVerifierLog(start), Limit: tableVerifierLog(limit)})
+		iter := ks.db.NewIterator(&kv.Range{Start: coname.TableVerifierLog(start), Limit: coname.TableVerifierLog(limit)})
 		for ; iter.Next() && start < limit; start++ {
 			select {
 			case <-stream.Context().Done():
@@ -69,7 +70,7 @@ func (ks *Keyserver) VerifierStream(rq *proto.VerifierStreamRequest, stream prot
 		}
 		iter.Release()
 		if err := iter.Error(); err != nil {
-			log.Printf("ERROR: range [tableVerifierLog(%d), tableVerifierLog(%d)) ended at %d (not included) with error %s", rq.Start, limit, start, err)
+			log.Printf("ERROR: range [TableVerifierLog(%d), TableVerifierLog(%d)) ended at %d (not included) with error %s", rq.Start, limit, start, err)
 			return fmt.Errorf("internal error")
 		}
 
@@ -107,7 +108,7 @@ func authenticateVerifier(ctx context.Context) (uint64, error) {
 	}
 	certChains := pr.AuthInfo.(credentials.TLSInfo).State.VerifiedChains
 	if len(certChains) != 1 {
-		return 0, fmt.Errorf("failed to authenticate verifier: expected exactly one valid certificate chain")
+		return 0, fmt.Errorf("failed to authenticate verifier: expected exactly one valid certificate chain: %d", len(certChains))
 	}
 	chain := certChains[0]
 	leaf := chain[0]
@@ -158,7 +159,7 @@ func (ks *Keyserver) verifierLogAppend(m *proto.VerifierStep, rs *proto.ReplicaS
 	// m : *mut // RECURSIVE transfer of ownership
 	// ks : &const // read-only
 	// rs, wb : &mut
-	wb.Put(tableVerifierLog(rs.NextIndexVerifier), proto.MustMarshal(m))
+	wb.Put(coname.TableVerifierLog(rs.NextIndexVerifier), proto.MustMarshal(m))
 	rs.NextIndexVerifier++
 	return func() {
 		ks.sb.Send(m)
