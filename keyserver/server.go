@@ -893,3 +893,7 @@ func genUID() uint64 {
 	}
 	return binary.BigEndian.Uint64(buf[:])
 }
+
+func (ks *Keyserver) GetKSInfo() (*merkletree.MerkleTree, proto.ReplicaState) {
+        return ks.merkletree, ks.rs
+}
